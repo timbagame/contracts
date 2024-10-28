@@ -182,11 +182,9 @@ pub mod coinflip {
 
         game.oracle_hash = Some(hash_value);
 
-        // Now that we have the oracle hash, determine the winner
-        let blockhash = ctx.accounts.recent_blockhash.key().to_bytes();
-
         // Combine oracle hash with blockhash for randomness
-        let mut combined = vec![];
+        let blockhash = ctx.accounts.recent_blockhash.key().to_bytes();
+        let mut combined = Vec::with_capacity(64);
         combined.extend_from_slice(&hash_value);
         combined.extend_from_slice(&blockhash);
         let final_hash = hash(&combined).to_bytes();
