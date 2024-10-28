@@ -203,9 +203,7 @@ pub mod coinflip {
         game.participants.push(ctx.accounts.player.key());
 
         // Mark game ready for oracle if full
-        if game.participants.len() == game.max_participants as usize {
-            game.ready_for_oracle = true;
-        }
+        game.ready_for_oracle = game.participants.len() == game.max_participants as usize;
 
         Ok(())
     }
