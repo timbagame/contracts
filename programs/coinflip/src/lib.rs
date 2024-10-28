@@ -408,7 +408,6 @@ pub struct ClaimWinnings<'info> {
     pub winner_token_account: Account<'info, TokenAccount>,
     #[account(mut)]
     pub treasury_token_account: Account<'info, TokenAccount>,
-    /// CHECK: PDA for vault authority
     pub vault_authority: AccountInfo<'info>,
     pub token_program: Program<'info, Token>,
 }
@@ -419,7 +418,6 @@ pub struct SetOracleHash<'info> {
     pub game: Account<'info, Game>,
     pub config: Account<'info, ProgramConfig>,
     pub oracle: Signer<'info>,
-    /// CHECK: Used for randomness
     pub recent_blockhash: AccountInfo<'info>,
 }
 
@@ -435,7 +433,7 @@ pub struct JoinGame<'info> {
     pub vault_token_account: Account<'info, TokenAccount>,
     pub token_program: Program<'info, Token>,
     #[account(mut)]
-    pub config: Account<'info, ProgramConfig>, // Add this line
+    pub config: Account<'info, ProgramConfig>,
 }
 
 #[derive(Accounts)]
@@ -446,7 +444,6 @@ pub struct ClaimTimeout<'info> {
     pub vault_token_account: Account<'info, TokenAccount>,
     #[account(mut)]
     pub participant_token_account: Account<'info, TokenAccount>,
-    /// CHECK: PDA for vault authority
     pub vault_authority: AccountInfo<'info>,
     pub token_program: Program<'info, Token>,
 }
