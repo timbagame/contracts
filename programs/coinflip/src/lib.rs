@@ -1,6 +1,8 @@
 use anchor_lang::prelude::*;
-use anchor_lang::solana_program::{ed25519_program, instruction::Instruction, program::invoke};
-use anchor_spl::token::{self, Token, TokenAccount};
+use anchor_lang::solana_program::{
+    ed25519_program, hash::hash, instruction::Instruction, program::invoke,
+};
+use anchor_spl::token::{self, Token, TokenAccount, Transfer};
 
 declare_id!("BzU9WwzqMoDSTTdTurweMLp2tAciFpZaNL2bPUitwNyy");
 
@@ -406,6 +408,7 @@ pub struct ClaimWinnings<'info> {
     pub winner_token_account: Account<'info, TokenAccount>,
     #[account(mut)]
     pub treasury_token_account: Account<'info, TokenAccount>,
+    /// CHECK: PDA for vault authority
     pub vault_authority: AccountInfo<'info>,
     pub token_program: Program<'info, Token>,
 }
@@ -416,6 +419,7 @@ pub struct SetOracleHash<'info> {
     pub game: Account<'info, Game>,
     pub config: Account<'info, ProgramConfig>,
     pub oracle: Signer<'info>,
+    /// CHECK: Used for randomness
     pub recent_blockhash: AccountInfo<'info>,
 }
 
@@ -442,6 +446,7 @@ pub struct ClaimTimeout<'info> {
     pub vault_token_account: Account<'info, TokenAccount>,
     #[account(mut)]
     pub participant_token_account: Account<'info, TokenAccount>,
+    /// CHECK: PDA for vault authority
     pub vault_authority: AccountInfo<'info>,
     pub token_program: Program<'info, Token>,
 }
