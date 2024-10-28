@@ -6,10 +6,11 @@ declare_id!("BzU9WwzqMoDSTTdTurweMLp2tAciFpZaNL2bPUitwNyy");
 
 #[account]
 pub struct ProgramConfig {
-    pub fee_collector: Pubkey,
+    pub treasury: Pubkey,
     pub game_token: Pubkey,
     pub fee_percentage: u64,
     pub authority: Pubkey,
+    pub operator: Pubkey,
 }
 
 #[program]
@@ -18,31 +19,34 @@ pub mod coinflip {
 
     pub fn initialize_config(
         ctx: Context<InitializeConfig>,
-        fee_collector: Pubkey,
+        treasury: Pubkey,
         game_token: Pubkey,
         fee_percentage: u64,
+        operator: Pubkey,
     ) -> Result<()> {
         require!(fee_percentage <= 100, ErrorCode::InvalidFeePercentage);
 
         let config = &mut ctx.accounts.config;
-        config.fee_collector = fee_collector;
+        config.treasury = treasury;
         config.game_token = game_token;
         config.fee_percentage = fee_percentage;
         config.authority = ctx.accounts.authority.key();
+        config.operator = operator;
 
         Ok(())
     }
 
     pub fn update_config(
         ctx: Context<UpdateConfig>,
-        new_fee_collector: Option<Pubkey>,
+        new_treasury: Option<Pubkey>,
         new_game_token: Option<Pubkey>,
         new_fee_percentage: Option<u64>,
+        new_operator: Option<Pubkey>,
     ) -> Result<()> {
         let config = &mut ctx.accounts.config;
 
-        if let Some(fee_collector) = new_fee_collector {
-            config.fee_collector = fee_collector;
+        if let Some(treasury) = new_treasury {
+            config.treasury = treasury;
         }
 
         if let Some(game_token) = new_game_token {
@@ -54,6 +58,10 @@ pub mod coinflip {
             config.fee_percentage = fee_percentage;
         }
 
+        if let Some(operator) = new_operator {
+            config.operator = operator;
+        }
+
         Ok(())
     }
 
@@ -62,6 +70,8 @@ pub mod coinflip {
         game_type: GameType,
         amount: u64,
         max_participants: u8,
+        timeout_duration: i64,
+        is_private: bool,
     ) -> Result<()> {
         require!(
             ctx.accounts.token_mint.key() == ctx.accounts.config.game_token,
@@ -79,6 +89,10 @@ pub mod coinflip {
         game.token_mint = ctx.accounts.token_mint.key();
         game.oracle_hash = None;
         game.ready_for_oracle = false;
+        game.created_at = Clock::get()?.unix_timestamp;
+        game.timeout_duration = timeout_duration;
+        game.is_private = is_private;
+        game.authorized_signatures = Vec::new();
 
         if game_type == GameType::Giveaway {
             let transfer_ctx = CpiContext::new(
@@ -95,7 +109,10 @@ pub mod coinflip {
         Ok(())
     }
 
-    pub fn join_game(ctx: Context<JoinGame>) -> Result<()> {
+    pub fn join_game(
+        ctx: Context<JoinGame>,
+        signature: Option<Vec<u8>>, // Changed to Vec<u8> to support variable length signatures
+    ) -> Result<()> {
         let game = &mut ctx.accounts.game;
         require!(game.status == GameStatus::Active, ErrorCode::GameNotActive);
         require!(
@@ -109,6 +126,26 @@ pub mod coinflip {
             !game.participants.contains(&ctx.accounts.player.key()),
             ErrorCode::AlreadyJoined
         );
+
+        // Check private game authorization
+        if game.is_private {
+            require!(signature.is_some(), ErrorCode::SignatureRequired);
+
+            // Message to verify: game seed + player public key
+            let mut message = Vec::with_capacity(64);
+            message.extend_from_slice(&game.game_seed);
+            message.extend_from_slice(&ctx.accounts.player.key().to_bytes());
+
+            // Verify operator signature
+            require!(
+                verify_operator_signature(
+                    &ctx.accounts.config.operator,
+                    &message,
+                    signature.as_ref().unwrap()
+                ),
+                ErrorCode::InvalidSignature
+            );
+        }
 
         // Transfer tokens to vault
         let transfer_ctx = CpiContext::new(
@@ -134,8 +171,8 @@ pub mod coinflip {
 
     pub fn set_oracle_hash(ctx: Context<SetOracleHash>, hash_value: [u8; 32]) -> Result<()> {
         require!(
-            ctx.accounts.oracle.key().to_string() == FEE_COLLECTOR,
-            ErrorCode::InvalidOracle
+            ctx.accounts.oracle.key() == ctx.accounts.config.operator,
+            ErrorCode::InvalidOperator
         );
 
         let game = &mut ctx.accounts.game;
@@ -182,7 +219,7 @@ pub mod coinflip {
             ctx.accounts.token_program.to_account_info(),
             Transfer {
                 from: ctx.accounts.vault_token_account.to_account_info(),
-                to: ctx.accounts.fee_collector_token_account.to_account_info(),
+                to: ctx.accounts.treasury_token_account.to_account_info(),
                 authority: ctx.accounts.vault_authority.to_account_info(),
             },
         );
@@ -204,8 +241,13 @@ pub mod coinflip {
 
     pub fn claim_timeout(ctx: Context<ClaimTimeout>) -> Result<()> {
         let game = &mut ctx.accounts.game;
+        let current_time = Clock::get()?.unix_timestamp;
 
         require!(game.status == GameStatus::Active, ErrorCode::GameNotActive);
+        require!(
+            current_time >= game.created_at + game.timeout_duration,
+            ErrorCode::TimeoutNotReached
+        );
 
         // Return tokens to participants
         for participant in &game.participants {
@@ -223,6 +265,27 @@ pub mod coinflip {
         game.status = GameStatus::Cancelled;
         Ok(())
     }
+}
+
+// Helper function to verify ed25519 signatures
+fn verify_operator_signature(operator_pubkey: &Pubkey, message: &[u8], signature: &[u8]) -> bool {
+    if signature.len() != 64 {
+        return false;
+    }
+
+    // Convert signature bytes to ed25519_dalek format
+    let sig_bytes: [u8; 64] = signature.try_into().unwrap_or_default();
+
+    // Verify using native Solana ed25519 program
+    let ix = anchor_lang::solana_program::ed25519_program::instruction::new_ed25519_instruction(
+        &sig_bytes,
+        message,
+        &operator_pubkey.to_bytes(),
+    );
+
+    let result = anchor_lang::solana_program::program::invoke(&ix, &[]);
+
+    result.is_ok()
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq)]
@@ -251,11 +314,15 @@ pub struct Game {
     pub token_mint: Pubkey,
     pub oracle_hash: Option<[u8; 32]>,
     pub ready_for_oracle: bool,
+    pub created_at: i64,
+    pub timeout_duration: i64,
+    pub is_private: bool,
+    pub game_seed: [u8; 32], // Added for signature verification
 }
 
 #[derive(Accounts)]
 pub struct InitializeConfig<'info> {
-    #[account(init, payer = authority, space = 8 + 32 + 32 + 8 + 32)]
+    #[account(init, payer = authority, space = 8 + 32 + 32 + 8 + 32 + 32)]
     pub config: Account<'info, ProgramConfig>,
     #[account(mut)]
     pub authority: Signer<'info>,
@@ -271,7 +338,7 @@ pub struct UpdateConfig<'info> {
 
 #[derive(Accounts)]
 pub struct InitializeGame<'info> {
-    #[account(init, payer = creator, space = 8 + 32 + 1 + 8 + 1 + 32 * 10 + 33 + 1 + 32 + 33 + 1)]
+    #[account(init, payer = creator, space = 8 + 32 + 1 + 8 + 1 + 32 * 10 + 33 + 1 + 32 + 33 + 1 + 8 + 8 + 1 + 64 * 10)]
     pub game: Account<'info, Game>,
     #[account(mut)]
     pub creator: Signer<'info>,
@@ -286,6 +353,14 @@ pub struct InitializeGame<'info> {
 }
 
 #[derive(Accounts)]
+pub struct AuthorizePlayer<'info> {
+    #[account(mut)]
+    pub game: Account<'info, Game>,
+    pub config: Account<'info, ProgramConfig>,
+    pub operator: Signer<'info>,
+}
+
+#[derive(Accounts)]
 pub struct ClaimWinnings<'info> {
     #[account(mut)]
     pub game: Account<'info, Game>,
@@ -297,7 +372,7 @@ pub struct ClaimWinnings<'info> {
     #[account(mut)]
     pub winner_token_account: Account<'info, TokenAccount>,
     #[account(mut)]
-    pub fee_collector_token_account: Account<'info, TokenAccount>,
+    pub treasury_token_account: Account<'info, TokenAccount>,
     /// CHECK: PDA for vault authority
     pub vault_authority: AccountInfo<'info>,
     pub token_program: Program<'info, Token>,
@@ -307,6 +382,7 @@ pub struct ClaimWinnings<'info> {
 pub struct SetOracleHash<'info> {
     #[account(mut)]
     pub game: Account<'info, Game>,
+    pub config: Account<'info, ProgramConfig>,
     pub oracle: Signer<'info>,
     /// CHECK: Used for randomness
     pub recent_blockhash: AccountInfo<'info>,
@@ -360,4 +436,14 @@ pub enum ErrorCode {
     NotWinner,
     #[msg("Fee percentage must be between 0 and 100")]
     InvalidFeePercentage,
+    #[msg("Signature required for private game")]
+    SignatureRequired,
+    #[msg("Invalid signature")]
+    InvalidSignature,
+    #[msg("Game is not private")]
+    GameNotPrivate,
+    #[msg("Invalid operator")]
+    InvalidOperator,
+    #[msg("Timeout not reached")]
+    TimeoutNotReached,
 }
