@@ -1,12 +1,12 @@
 import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
-import { Timba } from "../target/types/timba";
+import { Coinflip } from "../target/types/coinflip";
 
-describe("timba", () => {
+describe("coinflip", () => {
   // Configure the client to use the local cluster.
   anchor.setProvider(anchor.AnchorProvider.env());
 
-  const program = anchor.workspace.Timba as Program<Timba>;
+  const program = anchor.workspace.Coinflip as Program<Coinflip>;
 
   it("Is initialized!", async () => {
     // Add your test here.
