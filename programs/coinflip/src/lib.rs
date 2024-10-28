@@ -8,14 +8,87 @@ declare_id!("BzU9WwzqMoDSTTdTurweMLp2tAciFpZaNL2bPUitwNyy");
 
 #[constant]
 pub const MAX_FEE_PERCENTAGE: u64 = 5;
+pub const MAX_PARTICIPANTS: u8 = 100;
+pub const BUFFER_SIZE: usize = 64;
 
 #[account]
+#[derive(Default)]
 pub struct ProgramConfig {
     pub treasury: Pubkey,
     pub game_token: Pubkey,
     pub fee_percentage: u64,
     pub authority: Pubkey,
     pub operator: Pubkey,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Copy)]
+pub enum GameType {
+    Coinflip,
+    Giveaway,
+}
+
+impl Default for GameType {
+    fn default() -> Self {
+        GameType::Coinflip
+    }
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Copy)]
+pub enum GameStatus {
+    Active,
+    ReadyForClaim,
+    Completed,
+    Cancelled,
+}
+
+impl Default for GameStatus {
+    fn default() -> Self {
+        GameStatus::Active
+    }
+}
+
+#[account]
+#[derive(Default)]
+pub struct Game {
+    pub creator: Pubkey,
+    pub game_type: GameType,
+    pub amount: u64,
+    pub max_participants: u8,
+    pub participants: Vec<Pubkey>,
+    pub winner: Option<Pubkey>,
+    pub status: GameStatus,
+    pub token_mint: Pubkey,
+    pub oracle_hash: Option<[u8; 32]>,
+    pub ready_for_oracle: bool,
+    pub created_at: i64,
+    pub timeout_duration: i64,
+    pub is_private: bool,
+    pub game_seed: [u8; 32],
+}
+
+impl Game {
+    // Add helper methods to reduce code duplication
+    pub fn validate_status(&self, expected: GameStatus) -> Result<()> {
+        require!(self.status == expected, ErrorCode::InvalidGameStatus);
+        Ok(())
+    }
+
+    pub fn validate_participation(&self, player: &Pubkey) -> Result<()> {
+        require!(
+            !self.participants.contains(player),
+            ErrorCode::AlreadyJoined
+        );
+        require!(
+            self.participants.len() < self.max_participants as usize,
+            ErrorCode::GameFull
+        );
+        Ok(())
+    }
+
+    pub fn add_participant(&mut self, player: Pubkey) {
+        self.participants.push(player);
+        self.ready_for_oracle = self.participants.len() == self.max_participants as usize;
+    }
 }
 
 #[program]
@@ -45,15 +118,12 @@ pub mod coinflip {
     }
 
     pub fn update_authority(ctx: Context<UpdateAuthority>, new_authority: Pubkey) -> Result<()> {
-        let config = &mut ctx.accounts.config;
-
         require!(
-            ctx.accounts.authority.key() == config.authority,
+            ctx.accounts.authority.key() == ctx.accounts.config.authority,
             ErrorCode::Unauthorized
         );
 
-        config.authority = new_authority;
-
+        ctx.accounts.config.authority = new_authority;
         Ok(())
     }
 
@@ -64,21 +134,19 @@ pub mod coinflip {
         new_fee_percentage: Option<u64>,
         new_operator: Option<Pubkey>,
     ) -> Result<()> {
-        let config = &mut ctx.accounts.config;
-
         require!(
-            ctx.accounts.authority.key() == config.authority,
+            ctx.accounts.authority.key() == ctx.accounts.config.authority,
             ErrorCode::Unauthorized
         );
+
+        let config = &mut ctx.accounts.config;
 
         if let Some(treasury) = new_treasury {
             config.treasury = treasury;
         }
-
         if let Some(game_token) = new_game_token {
             config.game_token = game_token;
         }
-
         if let Some(fee_percentage) = new_fee_percentage {
             require!(
                 fee_percentage <= MAX_FEE_PERCENTAGE,
@@ -86,7 +154,6 @@ pub mod coinflip {
             );
             config.fee_percentage = fee_percentage;
         }
-
         if let Some(operator) = new_operator {
             config.operator = operator;
         }
@@ -106,74 +173,68 @@ pub mod coinflip {
             ctx.accounts.token_mint.key() == ctx.accounts.config.game_token,
             ErrorCode::InvalidToken
         );
+        require!(
+            max_participants <= MAX_PARTICIPANTS,
+            ErrorCode::InvalidParticipantCount
+        );
 
         match game_type {
             GameType::Coinflip => {
-                require!(max_participants >= 2, ErrorCode::InvalidParticipantCount);
+                require!(max_participants >= 2, ErrorCode::InvalidParticipantCount)
             }
             GameType::Giveaway => {
-                require!(max_participants >= 1, ErrorCode::InvalidParticipantCount);
+                require!(max_participants >= 1, ErrorCode::InvalidParticipantCount)
             }
         }
 
         let game = &mut ctx.accounts.game;
-        game.creator = ctx.accounts.creator.key();
-        game.game_type = game_type;
-        game.amount = amount;
-        game.max_participants = max_participants;
-        game.participants = Vec::with_capacity(max_participants as usize);
-        game.winner = None;
-        game.status = GameStatus::Active;
-        game.token_mint = ctx.accounts.token_mint.key();
-        game.oracle_hash = None;
-        game.ready_for_oracle = false;
-        game.created_at = Clock::get()?.unix_timestamp;
-        game.timeout_duration = timeout_duration;
-        game.is_private = is_private;
+        let mut new_game = Game {
+            creator: ctx.accounts.creator.key(),
+            game_type,
+            amount,
+            max_participants,
+            participants: Vec::with_capacity(max_participants as usize),
+            status: GameStatus::Active,
+            token_mint: ctx.accounts.token_mint.key(),
+            created_at: Clock::get()?.unix_timestamp,
+            timeout_duration,
+            is_private,
+            ..Default::default()
+        };
+
+        if game_type == GameType::Coinflip {
+            new_game.add_participant(ctx.accounts.creator.key());
+        }
+
+        **game = new_game;
 
         // Transfer tokens to vault
-        let transfer_ctx = CpiContext::new(
-            ctx.accounts.token_program.to_account_info(),
-            Transfer {
-                from: ctx.accounts.creator_token_account.to_account_info(),
-                to: ctx.accounts.vault_token_account.to_account_info(),
-                authority: ctx.accounts.creator.to_account_info(),
-            },
-        );
-        token::transfer(transfer_ctx, amount)?;
-
-        // Only add creator to participants if it's a Coinflip game
-        if game.game_type == GameType::Coinflip {
-            game.participants.push(ctx.accounts.creator.key());
-        }
+        token::transfer(
+            CpiContext::new(
+                ctx.accounts.token_program.to_account_info(),
+                Transfer {
+                    from: ctx.accounts.creator_token_account.to_account_info(),
+                    to: ctx.accounts.vault_token_account.to_account_info(),
+                    authority: ctx.accounts.creator.to_account_info(),
+                },
+            ),
+            amount,
+        )?;
 
         Ok(())
     }
 
     pub fn join_game(ctx: Context<JoinGame>, signature: Option<Vec<u8>>) -> Result<()> {
         let game = &mut ctx.accounts.game;
-        require!(game.status == GameStatus::Active, ErrorCode::GameNotActive);
-        require!(
-            game.participants.len() < game.max_participants as usize,
-            ErrorCode::GameFull
-        );
+        game.validate_status(GameStatus::Active)?;
+        game.validate_participation(&ctx.accounts.player.key())?;
 
-        // Check if player already joined
-        require!(
-            !game.participants.contains(&ctx.accounts.player.key()),
-            ErrorCode::AlreadyJoined
-        );
-
-        // Check private game authorization
         if game.is_private {
             require!(signature.is_some(), ErrorCode::SignatureRequired);
-
-            // Message to verify: game seed + player public key
-            let mut message = Vec::with_capacity(64);
+            let mut message = Vec::with_capacity(BUFFER_SIZE);
             message.extend_from_slice(&game.game_seed);
             message.extend_from_slice(&ctx.accounts.player.key().to_bytes());
 
-            // Verify operator signature
             require!(
                 verify_operator_signature(
                     &ctx.accounts.config.operator,
@@ -184,26 +245,21 @@ pub mod coinflip {
             );
         }
 
-        // For giveaway games, players don't need to transfer tokens
         if game.game_type == GameType::Coinflip {
-            // Transfer tokens to vault
-            let transfer_ctx = CpiContext::new(
-                ctx.accounts.token_program.to_account_info(),
-                Transfer {
-                    from: ctx.accounts.player_token_account.to_account_info(),
-                    to: ctx.accounts.vault_token_account.to_account_info(),
-                    authority: ctx.accounts.player.to_account_info(),
-                },
-            );
-            token::transfer(transfer_ctx, game.amount)?;
+            token::transfer(
+                CpiContext::new(
+                    ctx.accounts.token_program.to_account_info(),
+                    Transfer {
+                        from: ctx.accounts.player_token_account.to_account_info(),
+                        to: ctx.accounts.vault_token_account.to_account_info(),
+                        authority: ctx.accounts.player.to_account_info(),
+                    },
+                ),
+                game.amount,
+            )?;
         }
 
-        // Add player to participants
-        game.participants.push(ctx.accounts.player.key());
-
-        // Mark game ready for oracle if full
-        game.ready_for_oracle = game.participants.len() == game.max_participants as usize;
-
+        game.add_participant(ctx.accounts.player.key());
         Ok(())
     }
 
@@ -338,38 +394,6 @@ fn verify_operator_signature(
     }
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq)]
-pub enum GameType {
-    Coinflip,
-    Giveaway,
-}
-
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq)]
-pub enum GameStatus {
-    Active,
-    ReadyForClaim,
-    Completed,
-    Cancelled,
-}
-
-#[account]
-pub struct Game {
-    pub creator: Pubkey,
-    pub game_type: GameType,
-    pub amount: u64,
-    pub max_participants: u8,
-    pub participants: Vec<Pubkey>,
-    pub winner: Option<Pubkey>,
-    pub status: GameStatus,
-    pub token_mint: Pubkey,
-    pub oracle_hash: Option<[u8; 32]>,
-    pub ready_for_oracle: bool,
-    pub created_at: i64,
-    pub timeout_duration: i64,
-    pub is_private: bool,
-    pub game_seed: [u8; 32],
-}
-
 #[derive(Accounts)]
 pub struct InitializeConfig<'info> {
     #[account(init, payer = authority, space = 8 + 32 + 32 + 8 + 32 + 32)]
@@ -477,8 +501,8 @@ pub struct ClaimTimeout<'info> {
 pub enum ErrorCode {
     #[msg("Not authorized to perform this action.")]
     Unauthorized,
-    #[msg("Game is not active")]
-    GameNotActive,
+    #[msg("Invalid game status for this action")]
+    InvalidGameStatus,
     #[msg("Game is already full")]
     GameFull,
     #[msg("Player has already joined")]
@@ -507,6 +531,8 @@ pub enum ErrorCode {
     InvalidOperator,
     #[msg("Timeout not reached")]
     TimeoutNotReached,
-    #[msg("Game must have at least 2 participants")]
+    #[msg("Invalid participant count")]
     InvalidParticipantCount,
+    #[msg("Game is not active")]
+    GameNotActive,
 }
