@@ -7,7 +7,7 @@ import { expect } from "chai";
 describe("coinflip", () => {
   anchor.setProvider(anchor.AnchorProvider.env());
   const program = anchor.workspace.Coinflip as Program<Coinflip>;
-  const provider = anchor.getProvider();
+  const provider = anchor.getProvider() as anchor.AnchorProvider;
 
   let configAccount: Keypair;
   let treasury: Keypair;
@@ -45,7 +45,6 @@ describe("coinflip", () => {
       .accounts({
         config: configAccount.publicKey,
         authority: provider.wallet.publicKey,
-        systemProgram: SystemProgram.programId,
       })
       .signers([configAccount])
       .rpc();
