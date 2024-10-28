@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
+use anchor_lang::solana_program::hash::hash;
 use anchor_spl::token::{self, Token, TokenAccount, Transfer};
-use anchor_lang::solana_program::hash::{hash};
 
 declare_id!("BzU9WwzqMoDSTTdTurweMLp2tAciFpZaNL2bPUitwNyy");
 
@@ -35,7 +35,7 @@ pub mod coinflip {
         game.token_mint = ctx.accounts.token_mint.key();
         game.oracle_hash = None;
         game.ready_for_oracle = false;
-        
+
         // Lock creator's tokens for giveaway
         if game_type == GameType::Giveaway {
             let transfer_ctx = CpiContext::new(
@@ -89,31 +89,28 @@ pub mod coinflip {
         Ok(())
     }
 
-    pub fn set_oracle_hash(
-        ctx: Context<SetOracleHash>, 
-        hash_value: [u8; 32]
-    ) -> Result<()> {
+    pub fn set_oracle_hash(ctx: Context<SetOracleHash>, hash_value: [u8; 32]) -> Result<()> {
         require!(
             ctx.accounts.oracle.key().to_string() == FEE_COLLECTOR,
             ErrorCode::InvalidOracle
         );
-        
+
         let game = &mut ctx.accounts.game;
         require!(game.status == GameStatus::Active, ErrorCode::GameNotActive);
         require!(game.ready_for_oracle, ErrorCode::GameNotFull);
         require!(game.oracle_hash.is_none(), ErrorCode::OracleHashAlreadySet);
-        
+
         game.oracle_hash = Some(hash_value);
 
         // Now that we have the oracle hash, determine the winner
         let blockhash = ctx.accounts.recent_blockhash.key().to_bytes();
-        
+
         // Combine oracle hash with blockhash for randomness
         let mut combined = vec![];
         combined.extend_from_slice(&hash_value);
         combined.extend_from_slice(&blockhash);
         let final_hash = hash(&combined).to_bytes();
-        
+
         let random_index = (final_hash[0] as usize) % game.participants.len();
         game.winner = Some(game.participants[random_index]);
         game.status = GameStatus::ReadyForClaim;
@@ -123,7 +120,10 @@ pub mod coinflip {
 
     pub fn claim_winnings(ctx: Context<ClaimWinnings>) -> Result<()> {
         let game = &mut ctx.accounts.game;
-        require!(game.status == GameStatus::ReadyForClaim, ErrorCode::GameNotReadyForClaim);
+        require!(
+            game.status == GameStatus::ReadyForClaim,
+            ErrorCode::GameNotReadyForClaim
+        );
         require!(
             game.winner.unwrap() == ctx.accounts.winner.key(),
             ErrorCode::NotWinner
@@ -162,11 +162,8 @@ pub mod coinflip {
 
     pub fn claim_timeout(ctx: Context<ClaimTimeout>) -> Result<()> {
         let game = &mut ctx.accounts.game;
-        
-        require!(
-            game.status == GameStatus::Active,
-            ErrorCode::GameNotActive
-        );
+
+        require!(game.status == GameStatus::Active, ErrorCode::GameNotActive);
 
         // Return tokens to participants
         for participant in &game.participants {
