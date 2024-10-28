@@ -89,12 +89,21 @@ pub mod coinflip {
             ErrorCode::InvalidToken
         );
 
+        match game_type {
+            GameType::Coinflip => {
+                require!(max_participants >= 2, ErrorCode::InvalidParticipantCount);
+            }
+            GameType::Giveaway => {
+                require!(max_participants >= 1, ErrorCode::InvalidParticipantCount);
+            }
+        }
+
         let game = &mut ctx.accounts.game;
         game.creator = ctx.accounts.creator.key();
         game.game_type = game_type;
         game.amount = amount;
         game.max_participants = max_participants;
-        game.participants = Vec::new();
+        game.participants = Vec::with_capacity(max_participants as usize);
         game.winner = None;
         game.status = GameStatus::Active;
         game.token_mint = ctx.accounts.token_mint.key();
@@ -104,25 +113,26 @@ pub mod coinflip {
         game.timeout_duration = timeout_duration;
         game.is_private = is_private;
 
-        if game.game_type == GameType::Giveaway {
-            let transfer_ctx = CpiContext::new(
-                ctx.accounts.token_program.to_account_info(),
-                Transfer {
-                    from: ctx.accounts.creator_token_account.to_account_info(),
-                    to: ctx.accounts.vault_token_account.to_account_info(),
-                    authority: ctx.accounts.creator.to_account_info(),
-                },
-            );
-            token::transfer(transfer_ctx, amount)?;
+        // Transfer tokens to vault
+        let transfer_ctx = CpiContext::new(
+            ctx.accounts.token_program.to_account_info(),
+            Transfer {
+                from: ctx.accounts.creator_token_account.to_account_info(),
+                to: ctx.accounts.vault_token_account.to_account_info(),
+                authority: ctx.accounts.creator.to_account_info(),
+            },
+        );
+        token::transfer(transfer_ctx, amount)?;
+
+        // Only add creator to participants if it's a Coinflip game
+        if game.game_type == GameType::Coinflip {
+            game.participants.push(ctx.accounts.creator.key());
         }
 
         Ok(())
     }
 
-    pub fn join_game(
-        ctx: Context<JoinGame>,
-        signature: Option<Vec<u8>>, // Changed to Vec<u8> to support variable length signatures
-    ) -> Result<()> {
+    pub fn join_game(ctx: Context<JoinGame>, signature: Option<Vec<u8>>) -> Result<()> {
         let game = &mut ctx.accounts.game;
         require!(game.status == GameStatus::Active, ErrorCode::GameNotActive);
         require!(
@@ -157,21 +167,24 @@ pub mod coinflip {
             );
         }
 
-        // Transfer tokens to vault
-        let transfer_ctx = CpiContext::new(
-            ctx.accounts.token_program.to_account_info(),
-            Transfer {
-                from: ctx.accounts.player_token_account.to_account_info(),
-                to: ctx.accounts.vault_token_account.to_account_info(),
-                authority: ctx.accounts.player.to_account_info(),
-            },
-        );
-        token::transfer(transfer_ctx, game.amount)?;
+        // For giveaway games, players don't need to transfer tokens
+        if game.game_type == GameType::Coinflip {
+            // Transfer tokens to vault
+            let transfer_ctx = CpiContext::new(
+                ctx.accounts.token_program.to_account_info(),
+                Transfer {
+                    from: ctx.accounts.player_token_account.to_account_info(),
+                    to: ctx.accounts.vault_token_account.to_account_info(),
+                    authority: ctx.accounts.player.to_account_info(),
+                },
+            );
+            token::transfer(transfer_ctx, game.amount)?;
+        }
 
         // Add player to participants
         game.participants.push(ctx.accounts.player.key());
 
-        // Mark game ready for oracle hash if full
+        // Mark game ready for oracle if full
         if game.participants.len() == game.max_participants as usize {
             game.ready_for_oracle = true;
         }
@@ -470,4 +483,6 @@ pub enum ErrorCode {
     InvalidOperator,
     #[msg("Timeout not reached")]
     TimeoutNotReached,
+    #[msg("Game must have at least 2 participants")]
+    InvalidParticipantCount,
 }
