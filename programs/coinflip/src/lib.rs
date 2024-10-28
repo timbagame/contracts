@@ -102,7 +102,7 @@ pub mod coinflip {
         game.timeout_duration = timeout_duration;
         game.is_private = is_private;
 
-        if game_type == GameType::Giveaway {
+        if game.game_type == GameType::Giveaway {
             let transfer_ctx = CpiContext::new(
                 ctx.accounts.token_program.to_account_info(),
                 Transfer {
@@ -323,7 +323,7 @@ pub struct Game {
     pub created_at: i64,
     pub timeout_duration: i64,
     pub is_private: bool,
-    pub game_seed: [u8; 32], // Added for signature verification
+    pub game_seed: [u8; 32],
 }
 
 #[derive(Accounts)]
