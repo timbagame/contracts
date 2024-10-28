@@ -92,7 +92,6 @@ pub mod coinflip {
         game.created_at = Clock::get()?.unix_timestamp;
         game.timeout_duration = timeout_duration;
         game.is_private = is_private;
-        game.authorized_signatures = Vec::new();
 
         if game_type == GameType::Giveaway {
             let transfer_ctx = CpiContext::new(
