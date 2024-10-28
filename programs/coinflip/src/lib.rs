@@ -157,7 +157,6 @@ pub mod coinflip {
             game.participants.len() < game.max_participants as usize,
             ErrorCode::GameFull
         );
-        require!(game.oracle_hash.is_none(), ErrorCode::OracleHashAlreadySet);
 
         // Check if player already joined
         require!(
