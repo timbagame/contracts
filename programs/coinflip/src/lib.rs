@@ -1,8 +1,6 @@
 use anchor_lang::prelude::*;
-use anchor_lang::solana_program::{
-    ed25519_program, hash::hash, instruction::Instruction, program::invoke,
-};
-use anchor_spl::token::{self, Token, TokenAccount, Transfer};
+use anchor_lang::solana_program::{ed25519_program, instruction::Instruction, program::invoke};
+use anchor_spl::token::{self, Token, TokenAccount};
 
 declare_id!("BzU9WwzqMoDSTTdTurweMLp2tAciFpZaNL2bPUitwNyy");
 
