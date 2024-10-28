@@ -5,7 +5,7 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-timba = "9dWCi3pk3iZXaDtchUzNBD7km4163YkaD9iH2rypz3k6"
+coinflip = "BzU9WwzqMoDSTTdTurweMLp2tAciFpZaNL2bPUitwNyy"
 
 [registry]
 url = "https://api.apr.dev"
