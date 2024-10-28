@@ -256,7 +256,7 @@ pub mod coinflip {
         );
 
         // Return tokens to participants
-        for participant in &game.participants {
+        for _participant in &game.participants {
             let transfer_ctx = CpiContext::new(
                 ctx.accounts.token_program.to_account_info(),
                 Transfer {
@@ -405,6 +405,8 @@ pub struct JoinGame<'info> {
     #[account(mut)]
     pub vault_token_account: Account<'info, TokenAccount>,
     pub token_program: Program<'info, Token>,
+    #[account(mut)]
+    pub config: Account<'info, ProgramConfig>, // Add this line
 }
 
 #[derive(Accounts)]
