@@ -4,14 +4,58 @@ use anchor_spl::token::{self, Token, TokenAccount, Transfer};
 
 declare_id!("BzU9WwzqMoDSTTdTurweMLp2tAciFpZaNL2bPUitwNyy");
 
-// Constants
-pub const FEE_COLLECTOR: &str = "HhEWJstpJE6vvrYGS3BaK5ZJbdVAXqGmQ2MBM8FyiPvy";
-pub const GAME_TOKEN: &str = "F3A1baCgv4TF79TSjdMTvpMDtNv8DJvHZwNc9DG8pump";
-pub const FEE_PERCENTAGE: u64 = 1; // 1% fee
+#[account]
+pub struct ProgramConfig {
+    pub fee_collector: Pubkey,
+    pub game_token: Pubkey,
+    pub fee_percentage: u64,
+    pub authority: Pubkey,
+}
 
 #[program]
 pub mod coinflip {
     use super::*;
+
+    pub fn initialize_config(
+        ctx: Context<InitializeConfig>,
+        fee_collector: Pubkey,
+        game_token: Pubkey,
+        fee_percentage: u64,
+    ) -> Result<()> {
+        require!(fee_percentage <= 100, ErrorCode::InvalidFeePercentage);
+
+        let config = &mut ctx.accounts.config;
+        config.fee_collector = fee_collector;
+        config.game_token = game_token;
+        config.fee_percentage = fee_percentage;
+        config.authority = ctx.accounts.authority.key();
+
+        Ok(())
+    }
+
+    pub fn update_config(
+        ctx: Context<UpdateConfig>,
+        new_fee_collector: Option<Pubkey>,
+        new_game_token: Option<Pubkey>,
+        new_fee_percentage: Option<u64>,
+    ) -> Result<()> {
+        let config = &mut ctx.accounts.config;
+
+        if let Some(fee_collector) = new_fee_collector {
+            config.fee_collector = fee_collector;
+        }
+
+        if let Some(game_token) = new_game_token {
+            config.game_token = game_token;
+        }
+
+        if let Some(fee_percentage) = new_fee_percentage {
+            require!(fee_percentage <= 100, ErrorCode::InvalidFeePercentage);
+            config.fee_percentage = fee_percentage;
+        }
+
+        Ok(())
+    }
 
     pub fn initialize_game(
         ctx: Context<InitializeGame>,
@@ -20,7 +64,7 @@ pub mod coinflip {
         max_participants: u8,
     ) -> Result<()> {
         require!(
-            ctx.accounts.token_mint.key().to_string() == GAME_TOKEN,
+            ctx.accounts.token_mint.key() == ctx.accounts.config.game_token,
             ErrorCode::InvalidToken
         );
 
@@ -36,7 +80,6 @@ pub mod coinflip {
         game.oracle_hash = None;
         game.ready_for_oracle = false;
 
-        // Lock creator's tokens for giveaway
         if game_type == GameType::Giveaway {
             let transfer_ctx = CpiContext::new(
                 ctx.accounts.token_program.to_account_info(),
@@ -120,6 +163,8 @@ pub mod coinflip {
 
     pub fn claim_winnings(ctx: Context<ClaimWinnings>) -> Result<()> {
         let game = &mut ctx.accounts.game;
+        let config = &ctx.accounts.config;
+
         require!(
             game.status == GameStatus::ReadyForClaim,
             ErrorCode::GameNotReadyForClaim
@@ -129,12 +174,10 @@ pub mod coinflip {
             ErrorCode::NotWinner
         );
 
-        // Calculate total pot and fee
         let total_pot = game.amount * (game.max_participants as u64);
-        let fee_amount = (total_pot * FEE_PERCENTAGE) / 100;
+        let fee_amount = (total_pot * config.fee_percentage) / 100;
         let winner_amount = total_pot - fee_amount;
 
-        // Transfer fee to fee collector
         let fee_transfer_ctx = CpiContext::new(
             ctx.accounts.token_program.to_account_info(),
             Transfer {
@@ -145,7 +188,6 @@ pub mod coinflip {
         );
         token::transfer(fee_transfer_ctx, fee_amount)?;
 
-        // Transfer winnings to winner
         let winner_transfer_ctx = CpiContext::new(
             ctx.accounts.token_program.to_account_info(),
             Transfer {
@@ -212,11 +254,28 @@ pub struct Game {
 }
 
 #[derive(Accounts)]
+pub struct InitializeConfig<'info> {
+    #[account(init, payer = authority, space = 8 + 32 + 32 + 8 + 32)]
+    pub config: Account<'info, ProgramConfig>,
+    #[account(mut)]
+    pub authority: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct UpdateConfig<'info> {
+    #[account(mut, has_one = authority)]
+    pub config: Account<'info, ProgramConfig>,
+    pub authority: Signer<'info>,
+}
+
+#[derive(Accounts)]
 pub struct InitializeGame<'info> {
     #[account(init, payer = creator, space = 8 + 32 + 1 + 8 + 1 + 32 * 10 + 33 + 1 + 32 + 33 + 1)]
     pub game: Account<'info, Game>,
     #[account(mut)]
     pub creator: Signer<'info>,
+    pub config: Account<'info, ProgramConfig>,
     pub token_mint: Account<'info, token::Mint>,
     #[account(mut)]
     pub creator_token_account: Account<'info, TokenAccount>,
@@ -224,6 +283,24 @@ pub struct InitializeGame<'info> {
     pub vault_token_account: Account<'info, TokenAccount>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct ClaimWinnings<'info> {
+    #[account(mut)]
+    pub game: Account<'info, Game>,
+    pub config: Account<'info, ProgramConfig>,
+    #[account(mut)]
+    pub winner: Signer<'info>,
+    #[account(mut)]
+    pub vault_token_account: Account<'info, TokenAccount>,
+    #[account(mut)]
+    pub winner_token_account: Account<'info, TokenAccount>,
+    #[account(mut)]
+    pub fee_collector_token_account: Account<'info, TokenAccount>,
+    /// CHECK: PDA for vault authority
+    pub vault_authority: AccountInfo<'info>,
+    pub token_program: Program<'info, Token>,
 }
 
 #[derive(Accounts)]
@@ -245,23 +322,6 @@ pub struct JoinGame<'info> {
     pub player_token_account: Account<'info, TokenAccount>,
     #[account(mut)]
     pub vault_token_account: Account<'info, TokenAccount>,
-    pub token_program: Program<'info, Token>,
-}
-
-#[derive(Accounts)]
-pub struct ClaimWinnings<'info> {
-    #[account(mut)]
-    pub game: Account<'info, Game>,
-    #[account(mut)]
-    pub winner: Signer<'info>,
-    #[account(mut)]
-    pub vault_token_account: Account<'info, TokenAccount>,
-    #[account(mut)]
-    pub winner_token_account: Account<'info, TokenAccount>,
-    #[account(mut)]
-    pub fee_collector_token_account: Account<'info, TokenAccount>,
-    /// CHECK: PDA for vault authority
-    pub vault_authority: AccountInfo<'info>,
     pub token_program: Program<'info, Token>,
 }
 
@@ -298,4 +358,6 @@ pub enum ErrorCode {
     GameNotReadyForClaim,
     #[msg("Not the winner")]
     NotWinner,
+    #[msg("Fee percentage must be between 0 and 100")]
+    InvalidFeePercentage,
 }
