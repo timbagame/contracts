@@ -1,5 +1,7 @@
 use anchor_lang::prelude::*;
-use anchor_lang::solana_program::hash::hash;
+use anchor_lang::solana_program::{
+    ed25519_program, hash::hash, instruction::Instruction, program::invoke,
+};
 use anchor_spl::token::{self, Token, TokenAccount, Transfer};
 
 declare_id!("BzU9WwzqMoDSTTdTurweMLp2tAciFpZaNL2bPUitwNyy");
@@ -150,7 +152,7 @@ pub mod coinflip {
                     &ctx.accounts.config.operator,
                     &message,
                     signature.as_ref().unwrap()
-                ),
+                )?,
                 ErrorCode::InvalidSignature
             );
         }
@@ -274,24 +276,38 @@ pub mod coinflip {
 }
 
 // Helper function to verify ed25519 signatures
-fn verify_operator_signature(operator_pubkey: &Pubkey, message: &[u8], signature: &[u8]) -> bool {
+fn verify_operator_signature(
+    operator_pubkey: &Pubkey,
+    message: &[u8],
+    signature: &[u8],
+) -> Result<bool> {
+    // Verify signature length
     if signature.len() != 64 {
-        return false;
+        return Ok(false);
     }
 
-    // Convert signature bytes to ed25519_dalek format
-    let sig_bytes: [u8; 64] = signature.try_into().unwrap_or_default();
+    // Convert signature to fixed size array
+    let mut sig_bytes = [0u8; 64];
+    sig_bytes.copy_from_slice(signature);
 
-    // Verify using native Solana ed25519 program
-    let ix = anchor_lang::solana_program::ed25519_program::instruction::new_ed25519_instruction(
-        &sig_bytes,
-        message,
-        &operator_pubkey.to_bytes(),
+    // Create instruction data
+    let mut instruction_data = Vec::with_capacity(signature.len() + message.len() + 32);
+    instruction_data.extend_from_slice(&sig_bytes);
+    instruction_data.extend_from_slice(message);
+    instruction_data.extend_from_slice(&operator_pubkey.to_bytes());
+
+    // Create ed25519 program instruction
+    let ix = Instruction::new_with_bytes(
+        ed25519_program::id(),
+        &instruction_data,
+        vec![], // No account keys needed
     );
 
-    let result = anchor_lang::solana_program::program::invoke(&ix, &[]);
-
-    result.is_ok()
+    // Invoke the ed25519 program
+    match invoke(&ix, &[]) {
+        Ok(_) => Ok(true),
+        Err(_) => Ok(false),
+    }
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq)]
