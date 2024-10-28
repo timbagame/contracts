@@ -44,6 +44,19 @@ pub mod coinflip {
         Ok(())
     }
 
+    pub fn update_authority(ctx: Context<UpdateAuthority>, new_authority: Pubkey) -> Result<()> {
+        let config = &mut ctx.accounts.config;
+
+        require!(
+            ctx.accounts.authority.key() == config.authority,
+            ErrorCode::Unauthorized
+        );
+
+        config.authority = new_authority;
+
+        Ok(())
+    }
+
     pub fn update_config(
         ctx: Context<UpdateConfig>,
         new_treasury: Option<Pubkey>,
@@ -52,6 +65,11 @@ pub mod coinflip {
         new_operator: Option<Pubkey>,
     ) -> Result<()> {
         let config = &mut ctx.accounts.config;
+
+        require!(
+            ctx.accounts.authority.key() == config.authority,
+            ErrorCode::Unauthorized
+        );
 
         if let Some(treasury) = new_treasury {
             config.treasury = treasury;
@@ -365,6 +383,13 @@ pub struct InitializeConfig<'info> {
 }
 
 #[derive(Accounts)]
+pub struct UpdateAuthority<'info> {
+    #[account(mut, has_one = authority)]
+    pub config: Account<'info, ProgramConfig>,
+    pub authority: Signer<'info>, // The current authority
+}
+
+#[derive(Accounts)]
 pub struct UpdateConfig<'info> {
     #[account(mut, has_one = authority)]
     pub config: Account<'info, ProgramConfig>,
@@ -453,6 +478,8 @@ pub struct ClaimTimeout<'info> {
 
 #[error_code]
 pub enum ErrorCode {
+    #[msg("Not authorized to perform this action.")]
+    Unauthorized,
     #[msg("Game is not active")]
     GameNotActive,
     #[msg("Game is already full")]
