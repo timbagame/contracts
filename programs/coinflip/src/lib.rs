@@ -4,6 +4,9 @@ use anchor_spl::token::{self, Token, TokenAccount, Transfer};
 
 declare_id!("BzU9WwzqMoDSTTdTurweMLp2tAciFpZaNL2bPUitwNyy");
 
+#[constant]
+pub const MAX_FEE_PERCENTAGE: u64 = 5;
+
 #[account]
 pub struct ProgramConfig {
     pub treasury: Pubkey,
@@ -24,7 +27,10 @@ pub mod coinflip {
         fee_percentage: u64,
         operator: Pubkey,
     ) -> Result<()> {
-        require!(fee_percentage <= 100, ErrorCode::InvalidFeePercentage);
+        require!(
+            fee_percentage <= MAX_FEE_PERCENTAGE,
+            ErrorCode::InvalidFeePercentage
+        );
 
         let config = &mut ctx.accounts.config;
         config.treasury = treasury;
@@ -54,7 +60,10 @@ pub mod coinflip {
         }
 
         if let Some(fee_percentage) = new_fee_percentage {
-            require!(fee_percentage <= 100, ErrorCode::InvalidFeePercentage);
+            require!(
+                fee_percentage <= MAX_FEE_PERCENTAGE,
+                ErrorCode::InvalidFeePercentage
+            );
             config.fee_percentage = fee_percentage;
         }
 
