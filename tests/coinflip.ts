@@ -13,16 +13,15 @@ describe("coinflip", () => {
   let treasury: Keypair;
   let gameToken: Keypair;
   let operator: Keypair;
-  const feePercentage = 3; // Example value below MAX_FEE_PERCENTAGE
+  let newAuthority: Keypair;
+  const feePercentage = 3;
 
   before(async () => {
-    // Generate new Keypairs for config, treasury, game token, and operator.
     configAccount = Keypair.generate();
     treasury = Keypair.generate();
     gameToken = Keypair.generate();
     operator = Keypair.generate();
 
-    // Airdrop some SOL to these accounts to cover fees.
     await provider.connection.confirmTransaction(
       await provider.connection.requestAirdrop(treasury.publicKey, 1e9)
     );
@@ -49,10 +48,8 @@ describe("coinflip", () => {
       .signers([configAccount])
       .rpc();
 
-    // Fetch the account to check if initialized correctly.
     const config = await program.account.programConfig.fetch(configAccount.publicKey);
 
-    // Verify account data matches expected values.
     expect(config.treasury.toBase58()).to.equal(treasury.publicKey.toBase58());
     expect(config.gameToken.toBase58()).to.equal(gameToken.publicKey.toBase58());
     expect(config.feePercentage.toNumber()).to.equal(feePercentage);
@@ -60,5 +57,52 @@ describe("coinflip", () => {
     expect(config.operator.toBase58()).to.equal(operator.publicKey.toBase58());
 
     console.log("Config account initialized successfully with the correct data");
+  });
+
+  it("updates authority", async () => {
+    newAuthority = Keypair.generate();
+
+    await program.methods
+      .updateAuthority(newAuthority.publicKey)
+      .accounts({
+        config: configAccount.publicKey,
+        authority: provider.wallet.publicKey,
+      })
+      .rpc();
+
+    const config = await program.account.programConfig.fetch(configAccount.publicKey);
+    expect(config.authority.toBase58()).to.equal(newAuthority.publicKey.toBase58());
+
+    console.log("Authority updated successfully");
+  });
+
+  it("updates config fields", async () => {
+    const newTreasury = Keypair.generate().publicKey;
+    const newGameToken = Keypair.generate().publicKey;
+    const newFeePercentage = 5;
+    const newOperator = Keypair.generate().publicKey;
+
+    await program.methods
+      .updateConfig(
+        newTreasury,
+        newGameToken,
+        new anchor.BN(newFeePercentage),
+        newOperator
+      )
+      .accounts({
+        config: configAccount.publicKey,
+        authority: newAuthority.publicKey,
+      })
+      .signers([newAuthority])
+      .rpc();
+
+    const config = await program.account.programConfig.fetch(configAccount.publicKey);
+
+    expect(config.treasury.toBase58()).to.equal(newTreasury.toBase58());
+    expect(config.gameToken.toBase58()).to.equal(newGameToken.toBase58());
+    expect(config.feePercentage.toNumber()).to.equal(newFeePercentage);
+    expect(config.operator.toBase58()).to.equal(newOperator.toBase58());
+
+    console.log("Config fields updated successfully");
   });
 });
