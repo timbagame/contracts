@@ -14,15 +14,17 @@ pub struct InitializeConfig<'info> {
 
 #[derive(Accounts)]
 pub struct UpdateAuthority<'info> {
-    #[account(mut, has_one = authority)]
+    #[account(mut)]
     pub config: Account<'info, ProgramConfig>,
+    #[account(constraint = config.authority == authority.key())]
     pub authority: Signer<'info>,
 }
 
 #[derive(Accounts)]
 pub struct UpdateConfig<'info> {
-    #[account(mut, has_one = authority)]
+    #[account(mut)]
     pub config: Account<'info, ProgramConfig>,
+    #[account(constraint = config.authority == authority.key())]
     pub authority: Signer<'info>,
 }
 
