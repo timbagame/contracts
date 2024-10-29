@@ -1,12 +1,11 @@
 import * as anchor from "@coral-xyz/anchor";
-import { Program } from "@coral-xyz/anchor";
 import { Coinflip } from "../target/types/coinflip";
-import { PublicKey, Keypair, SystemProgram, TransactionConfirmationStrategy } from "@solana/web3.js";
+import { Keypair, TransactionConfirmationStrategy } from "@solana/web3.js";
 import { expect } from "chai";
 
 describe("coinflip", () => {
   anchor.setProvider(anchor.AnchorProvider.env());
-  const program = anchor.workspace.Coinflip as Program<Coinflip>;
+  const program = anchor.workspace.Coinflip as anchor.Program<Coinflip>;
   const provider = anchor.getProvider() as anchor.AnchorProvider;
 
   let configAccount: Keypair;
