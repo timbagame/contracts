@@ -407,7 +407,7 @@ pub struct InitializeConfig<'info> {
 pub struct UpdateAuthority<'info> {
     #[account(mut, has_one = authority)]
     pub config: Account<'info, ProgramConfig>,
-    pub authority: Signer<'info>, // The current authority
+    pub authority: Signer<'info>,
 }
 
 #[derive(Accounts)]
