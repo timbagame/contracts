@@ -72,7 +72,6 @@ describe("coinflip", () => {
       .updateAuthority(newAuthority.publicKey)
       .accounts({
         config: configAccount.publicKey,
-        authority: provider.wallet.publicKey,
       })
       .rpc();
 
