@@ -1,7 +1,7 @@
 import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
 import { Coinflip } from "../target/types/coinflip";
-import { PublicKey, Keypair, SystemProgram } from "@solana/web3.js";
+import { PublicKey, Keypair, SystemProgram, TransactionConfirmationStrategy } from "@solana/web3.js";
 import { expect } from "chai";
 
 describe("coinflip", () => {
@@ -22,15 +22,21 @@ describe("coinflip", () => {
     gameToken = Keypair.generate();
     operator = Keypair.generate();
 
-    await provider.connection.confirmTransaction(
-      await provider.connection.requestAirdrop(treasury.publicKey, 1e9)
-    );
-    await provider.connection.confirmTransaction(
-      await provider.connection.requestAirdrop(gameToken.publicKey, 1e9)
-    );
-    await provider.connection.confirmTransaction(
-      await provider.connection.requestAirdrop(operator.publicKey, 1e9)
-    );
+    const treasurySignature = await provider.connection.requestAirdrop(treasury.publicKey, 1e9);
+    const gameTokenSignature = await provider.connection.requestAirdrop(gameToken.publicKey, 1e9);
+    const operatorSignature = await provider.connection.requestAirdrop(operator.publicKey, 1e9);
+
+    await provider.connection.confirmTransaction({
+      signature: treasurySignature
+    } as TransactionConfirmationStrategy);
+
+    await provider.connection.confirmTransaction({
+      signature: gameTokenSignature
+    } as TransactionConfirmationStrategy);
+
+    await provider.connection.confirmTransaction({
+      signature: operatorSignature
+    } as TransactionConfirmationStrategy);
   });
 
   it("initializes config account", async () => {
