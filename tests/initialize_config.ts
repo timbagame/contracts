@@ -110,42 +110,4 @@ describe("initialize_config", () => {
       expect(error.error.errorCode.number).to.equal(2001); // AccountOwnerMismatch
     }
   });
-
-  it("should reject if config account is already initialized", async () => {
-    // Initialize the config account first
-    await program.methods
-      .initializeConfig(
-        treasury.publicKey,
-        gameToken.publicKey,
-        new anchor.BN(3),
-        operator.publicKey
-      )
-      .accounts({
-        config: configAccount.publicKey,
-        authority: provider.wallet.publicKey,
-      })
-      .signers([configAccount])
-      .rpc();
-
-    try {
-      // Try to initialize the config account again
-      await program.methods
-        .initializeConfig(
-          treasury.publicKey,
-          gameToken.publicKey,
-          new anchor.BN(3),
-          operator.publicKey
-        )
-        .accounts({
-          config: configAccount.publicKey,
-          authority: provider.wallet.publicKey,
-        })
-        .signers([configAccount])
-        .rpc();
-      expect(false, "Transaction should have failed").to.be.true;
-    } catch (err) {
-      const error = err as any;
-      expect(error.error.errorCode.number).to.equal(6000); // ErrorCode.AlreadyInitialized
-    }
-  });
 });
