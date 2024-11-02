@@ -99,3 +99,17 @@ pub struct ClaimTimeout<'info> {
     pub vault_authority: AccountInfo<'info>,
     pub token_program: Program<'info, Token>,
 }
+
+#[derive(Accounts)]
+pub struct CollectFees<'info> {
+    pub config: Account<'info, ProgramConfig>,
+    #[account(constraint = config.operator == operator.key())]
+    pub operator: Signer<'info>,
+    #[account(mut)]
+    pub vault_token_account: Account<'info, TokenAccount>,
+    #[account(mut)]
+    pub operator_token_account: Account<'info, TokenAccount>,
+    /// CHECK: PDA for vault authority
+    pub vault_authority: AccountInfo<'info>,
+    pub token_program: Program<'info, Token>,
+}

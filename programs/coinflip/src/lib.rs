@@ -88,4 +88,8 @@ pub mod coinflip {
     pub fn claim_timeout(ctx: Context<ClaimTimeout>) -> Result<()> {
         instructions::claim_timeout::handler(ctx)
     }
+
+    pub fn collect_fees(ctx: Context<CollectFees>, amount: u64) -> Result<()> {
+        instructions::collect_fees::handler(ctx, amount)
+    }
 }
