@@ -21,20 +21,7 @@ pub fn handler(ctx: Context<super::ClaimWinnings>) -> Result<()> {
     let fee_amount = (total_pot * config.fee_percentage) / 100;
     let winner_amount = total_pot - fee_amount;
 
-    // Transfer fee to treasury
-    token::transfer(
-        CpiContext::new(
-            ctx.accounts.token_program.to_account_info(),
-            token::Transfer {
-                from: ctx.accounts.vault_token_account.to_account_info(),
-                to: ctx.accounts.treasury_token_account.to_account_info(),
-                authority: ctx.accounts.vault_authority.to_account_info(),
-            },
-        ),
-        fee_amount,
-    )?;
-
-    // Transfer winnings to winner
+    // Transfer winnings to winner (fees stay in vault)
     token::transfer(
         CpiContext::new(
             ctx.accounts.token_program.to_account_info(),
