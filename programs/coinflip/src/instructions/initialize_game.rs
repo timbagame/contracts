@@ -10,6 +10,7 @@ pub fn handler(
     game_type: GameType,
     amount: u64,
     max_participants: u8,
+    min_participants: u8,
     timeout_duration: i64,
     is_private: bool,
 ) -> Result<()> {
@@ -21,13 +22,19 @@ pub fn handler(
         max_participants <= MAX_PARTICIPANTS,
         ErrorCode::InvalidParticipantCount
     );
+    require!(
+        min_participants <= max_participants,
+        ErrorCode::InvalidParticipantCount
+    );
 
     match game_type {
         GameType::Coinflip => {
-            require!(max_participants >= 2, ErrorCode::InvalidParticipantCount)
+            require!(max_participants >= 2, ErrorCode::InvalidParticipantCount);
+            require!(min_participants >= 2, ErrorCode::InvalidParticipantCount);
         }
         GameType::Giveaway => {
-            require!(max_participants >= 1, ErrorCode::InvalidParticipantCount)
+            require!(max_participants >= 1, ErrorCode::InvalidParticipantCount);
+            require!(min_participants >= 1, ErrorCode::InvalidParticipantCount);
         }
     }
 
@@ -37,6 +44,7 @@ pub fn handler(
         game_type,
         amount,
         max_participants,
+        min_participants,
         participants: Vec::with_capacity(max_participants as usize),
         status: crate::state::GameStatus::Active,
         token_mint: ctx.accounts.token_mint.key(),

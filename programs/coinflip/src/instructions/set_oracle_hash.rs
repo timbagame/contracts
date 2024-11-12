@@ -11,8 +11,15 @@ pub fn handler(ctx: Context<super::SetOracleHash>, hash_value: [u8; 32]) -> Resu
     );
 
     let game = &mut ctx.accounts.game;
+    let current_time = Clock::get()?.unix_timestamp;
+
     require!(game.status == GameStatus::Active, ErrorCode::GameNotActive);
-    require!(game.ready_for_oracle, ErrorCode::GameNotFull);
+    require!(
+        game.ready_for_oracle
+            || (game.participants.len() >= game.min_participants as usize
+                && current_time >= game.created_at + game.timeout_duration),
+        ErrorCode::GameNotFull
+    );
     require!(game.oracle_hash.is_none(), ErrorCode::OracleHashAlreadySet);
 
     game.oracle_hash = Some(hash_value);
