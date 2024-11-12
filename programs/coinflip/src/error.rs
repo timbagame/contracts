@@ -38,4 +38,6 @@ pub enum ErrorCode {
     InvalidParticipantCount,
     #[msg("Game is not active")]
     GameNotActive,
+    #[msg("Total pot is too low")]
+    TotalPotTooLow,
 }
