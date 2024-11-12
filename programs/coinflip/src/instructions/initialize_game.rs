@@ -27,6 +27,12 @@ pub fn handler(
         ErrorCode::InvalidParticipantCount
     );
 
+    let total_pot = amount * min_participants as u64;
+    require!(
+        total_pot >= ctx.accounts.config.min_total_pot,
+        ErrorCode::TotalPotTooLow
+    );
+
     match game_type {
         GameType::Coinflip => {
             require!(max_participants >= 2, ErrorCode::InvalidParticipantCount);

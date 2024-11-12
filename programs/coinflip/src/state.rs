@@ -8,6 +8,7 @@ pub struct ProgramConfig {
     pub fee_percentage: u64,
     pub authority: Pubkey,
     pub operator: Pubkey,
+    pub min_total_pot: u64,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Copy)]

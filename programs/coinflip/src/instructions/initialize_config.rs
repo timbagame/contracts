@@ -9,6 +9,7 @@ pub fn handler(
     game_token: Pubkey,
     fee_percentage: u64,
     operator: Pubkey,
+    min_total_pot: u64,
 ) -> Result<()> {
     require!(
         fee_percentage <= MAX_FEE_PERCENTAGE,
@@ -21,6 +22,7 @@ pub fn handler(
     config.fee_percentage = fee_percentage;
     config.authority = ctx.accounts.authority.key();
     config.operator = operator;
+    config.min_total_pot = min_total_pot;
 
     Ok(())
 }

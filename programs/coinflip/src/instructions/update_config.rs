@@ -8,6 +8,7 @@ pub fn handler(
     new_game_token: Option<Pubkey>,
     new_fee_percentage: Option<u64>,
     new_operator: Option<Pubkey>,
+    new_min_total_pot: Option<u64>,
 ) -> Result<()> {
     require!(
         ctx.accounts.authority.key() == ctx.accounts.config.authority,
@@ -31,6 +32,9 @@ pub fn handler(
     }
     if let Some(operator) = new_operator {
         config.operator = operator;
+    }
+    if let Some(min_total_pot) = new_min_total_pot {
+        config.min_total_pot = min_total_pot;
     }
 
     Ok(())
