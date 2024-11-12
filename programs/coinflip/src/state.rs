@@ -43,6 +43,7 @@ pub struct Game {
     pub game_type: GameType,
     pub amount: u64,
     pub max_participants: u8,
+    pub min_participants: u8,
     pub participants: Vec<Pubkey>,
     pub winner: Option<Pubkey>,
     pub status: GameStatus,
