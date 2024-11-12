@@ -25,6 +25,7 @@ pub mod coinflip {
         game_token: Pubkey,
         fee_percentage: u64,
         operator: Pubkey,
+        min_total_pot: u64,
     ) -> Result<()> {
         instructions::initialize_config::handler(
             ctx,
@@ -32,6 +33,7 @@ pub mod coinflip {
             game_token,
             fee_percentage,
             operator,
+            min_total_pot,
         )
     }
 
@@ -45,6 +47,7 @@ pub mod coinflip {
         new_game_token: Option<Pubkey>,
         new_fee_percentage: Option<u64>,
         new_operator: Option<Pubkey>,
+        new_min_total_pot: Option<u64>,
     ) -> Result<()> {
         instructions::update_config::handler(
             ctx,
@@ -52,6 +55,7 @@ pub mod coinflip {
             new_game_token,
             new_fee_percentage,
             new_operator,
+            new_min_total_pot,
         )
     }
 
@@ -60,6 +64,7 @@ pub mod coinflip {
         game_type: GameType,
         amount: u64,
         max_participants: u8,
+        min_participants: u8,
         timeout_duration: i64,
         is_private: bool,
     ) -> Result<()> {
@@ -68,6 +73,7 @@ pub mod coinflip {
             game_type,
             amount,
             max_participants,
+            min_participants,
             timeout_duration,
             is_private,
         )
