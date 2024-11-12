@@ -108,7 +108,7 @@ pub struct CollectFees<'info> {
     #[account(mut)]
     pub vault_token_account: Account<'info, TokenAccount>,
     #[account(mut)]
-    pub operator_token_account: Account<'info, TokenAccount>,
+    pub treasury_token_account: Account<'info, TokenAccount>,
     /// CHECK: PDA for vault authority
     pub vault_authority: AccountInfo<'info>,
     pub token_program: Program<'info, Token>,
