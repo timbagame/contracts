@@ -5,7 +5,6 @@ use anchor_lang::prelude::*;
 pub struct ProgramConfig {
     pub treasury: Pubkey,
     pub fee_percentage: u64,
-    pub authority: Pubkey,
     pub operator: Pubkey,
 }
 
