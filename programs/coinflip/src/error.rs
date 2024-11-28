@@ -22,8 +22,6 @@ pub enum ErrorCode {
     GameNotReadyForClaim,
     #[msg("Not the winner")]
     NotWinner,
-    #[msg("Fee percentage must be between 0 and 100")]
-    InvalidFeePercentage,
     #[msg("Signature required for private game")]
     SignatureRequired,
     #[msg("Invalid signature")]
@@ -38,6 +36,4 @@ pub enum ErrorCode {
     InvalidParticipantCount,
     #[msg("Game is not active")]
     GameNotActive,
-    #[msg("Total pot is too low")]
-    TotalPotTooLow,
 }

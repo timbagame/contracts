@@ -3,7 +3,6 @@ use anchor_spl::token;
 
 use crate::error::ErrorCode;
 use crate::state::{Game, GameType};
-use crate::MAX_PARTICIPANTS;
 
 pub fn handler(
     ctx: Context<super::InitializeGame>,
@@ -13,24 +12,11 @@ pub fn handler(
     min_participants: u8,
     timeout_duration: i64,
     is_private: bool,
+    is_sol: bool,
 ) -> Result<()> {
-    require!(
-        ctx.accounts.token_mint.key() == ctx.accounts.config.game_token,
-        ErrorCode::InvalidToken
-    );
-    require!(
-        max_participants <= MAX_PARTICIPANTS,
-        ErrorCode::InvalidParticipantCount
-    );
     require!(
         min_participants <= max_participants,
         ErrorCode::InvalidParticipantCount
-    );
-
-    let total_pot = amount * min_participants as u64;
-    require!(
-        total_pot >= ctx.accounts.config.min_total_pot,
-        ErrorCode::TotalPotTooLow
     );
 
     match game_type {
@@ -44,7 +30,6 @@ pub fn handler(
         }
     }
 
-    let game = &mut ctx.accounts.game;
     let mut new_game = Game {
         creator: ctx.accounts.creator.key(),
         game_type,
@@ -53,10 +38,15 @@ pub fn handler(
         min_participants,
         participants: Vec::with_capacity(max_participants as usize),
         status: crate::state::GameStatus::Active,
-        token_mint: ctx.accounts.token_mint.key(),
+        token_mint: if is_sol { 
+            Pubkey::default() 
+        } else {
+            ctx.accounts.token_mint.as_ref().unwrap().key()
+        },
         created_at: Clock::get()?.unix_timestamp,
         timeout_duration,
         is_private,
+        is_sol,
         ..Default::default()
     };
 
@@ -64,20 +54,35 @@ pub fn handler(
         new_game.add_participant(ctx.accounts.creator.key());
     }
 
-    **game = new_game;
+    *ctx.accounts.game = new_game;
 
-    // Transfer tokens to vault
-    token::transfer(
-        CpiContext::new(
-            ctx.accounts.token_program.to_account_info(),
-            token::Transfer {
-                from: ctx.accounts.creator_token_account.to_account_info(),
-                to: ctx.accounts.vault_token_account.to_account_info(),
-                authority: ctx.accounts.creator.to_account_info(),
-            },
-        ),
-        amount,
-    )?;
+    // Transfer initial amount
+    if is_sol {
+        // Transfer SOL to vault
+        anchor_lang::system_program::transfer(
+            CpiContext::new(
+                ctx.accounts.system_program.to_account_info(),
+                anchor_lang::system_program::Transfer {
+                    from: ctx.accounts.creator.to_account_info(),
+                    to: ctx.accounts.vault.as_ref().unwrap().to_account_info(),
+                },
+            ),
+            amount,
+        )?;
+    } else {
+        // Transfer SPL tokens to vault
+        token::transfer(
+            CpiContext::new(
+                ctx.accounts.token_program.as_ref().unwrap().to_account_info(),
+                token::Transfer {
+                    from: ctx.accounts.creator_token_account.as_ref().unwrap().to_account_info(),
+                    to: ctx.accounts.vault_token_account.as_ref().unwrap().to_account_info(),
+                    authority: ctx.accounts.creator.to_account_info(),
+                },
+            ),
+            amount,
+        )?;
+    }
 
     Ok(())
 }
