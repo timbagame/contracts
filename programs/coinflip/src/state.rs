@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 
 #[account]
 #[derive(Default)]
-pub struct ProgramConfig {
+pub struct Config {
     pub treasury: Pubkey,
     pub fee_percentage: u64,
     pub operator: Pubkey,

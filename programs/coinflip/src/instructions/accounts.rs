@@ -6,7 +6,7 @@ use crate::state::*;
 #[derive(Accounts)]
 pub struct InitializeConfig<'info> {
     #[account(init, payer = signer, space = 8 + 32 + 8 + 32)]
-    pub config: Account<'info, ProgramConfig>,
+    pub config: Account<'info, Config>,
     #[account(mut)]
     pub signer: Signer<'info>,
     pub system_program: Program<'info, System>,
@@ -18,7 +18,7 @@ pub struct InitializeGame<'info> {
     pub game: Account<'info, Game>,
     #[account(mut)]
     pub creator: Signer<'info>,
-    pub config: Account<'info, ProgramConfig>,
+    pub config: Account<'info, Config>,
     /// CHECK: Optional token mint
     #[account(mut)]
     pub token_mint: Option<Account<'info, anchor_spl::token::Mint>>,
@@ -47,14 +47,14 @@ pub struct JoinGame<'info> {
     pub vault_token_account: Account<'info, TokenAccount>,
     pub token_program: Program<'info, Token>,
     #[account(mut)]
-    pub config: Account<'info, ProgramConfig>,
+    pub config: Account<'info, Config>,
 }
 
 #[derive(Accounts)]
 pub struct SetOracleHash<'info> {
     #[account(mut)]
     pub game: Account<'info, Game>,
-    pub config: Account<'info, ProgramConfig>,
+    pub config: Account<'info, Config>,
     pub oracle: Signer<'info>,
     /// CHECK: Used for randomness
     pub recent_blockhash: AccountInfo<'info>,
@@ -64,7 +64,7 @@ pub struct SetOracleHash<'info> {
 pub struct ClaimWinnings<'info> {
     #[account(mut)]
     pub game: Account<'info, Game>,
-    pub config: Account<'info, ProgramConfig>,
+    pub config: Account<'info, Config>,
     #[account(mut)]
     pub winner: Signer<'info>,
     #[account(mut)]
@@ -93,7 +93,7 @@ pub struct ClaimTimeout<'info> {
 
 #[derive(Accounts)]
 pub struct CollectFees<'info> {
-    pub config: Account<'info, ProgramConfig>,
+    pub config: Account<'info, Config>,
     #[account(constraint = config.operator == operator.key())]
     pub operator: Signer<'info>,
     #[account(mut)]
