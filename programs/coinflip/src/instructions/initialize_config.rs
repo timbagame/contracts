@@ -9,7 +9,6 @@ pub fn handler(
     let config = &mut ctx.accounts.config;
     config.treasury = treasury;
     config.fee_percentage = fee_percentage;
-    config.authority = ctx.accounts.authority.key();
     config.operator = operator;
 
     Ok(())

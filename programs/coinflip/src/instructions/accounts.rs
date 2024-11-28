@@ -5,7 +5,7 @@ use crate::state::*;
 
 #[derive(Accounts)]
 pub struct InitializeConfig<'info> {
-    #[account(init, payer = authority, space = 8 + 32 + 8 + 32 + 32)]
+    #[account(init, payer = authority, space = 8 + 32 + 8 + 32)]
     pub config: Account<'info, ProgramConfig>,
     #[account(mut)]
     pub authority: Signer<'info>,
