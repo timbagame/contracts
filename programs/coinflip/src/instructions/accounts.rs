@@ -13,22 +13,6 @@ pub struct InitializeConfig<'info> {
 }
 
 #[derive(Accounts)]
-pub struct UpdateAuthority<'info> {
-    #[account(mut)]
-    pub config: Account<'info, ProgramConfig>,
-    #[account(constraint = config.authority == authority.key())]
-    pub authority: Signer<'info>,
-}
-
-#[derive(Accounts)]
-pub struct UpdateConfig<'info> {
-    #[account(mut)]
-    pub config: Account<'info, ProgramConfig>,
-    #[account(constraint = config.authority == authority.key())]
-    pub authority: Signer<'info>,
-}
-
-#[derive(Accounts)]
 pub struct InitializeGame<'info> {
     #[account(init, payer = creator, space = 8 + 32 + 1 + 8 + 1 + 32 * 10 + 33 + 1 + 32 + 33 + 1 + 8 + 8 + 1 + 64 * 10 + 1)]
     pub game: Account<'info, Game>,
