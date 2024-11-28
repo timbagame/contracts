@@ -10,11 +10,6 @@ use crate::state::GameType;
 
 declare_id!("BzU9WwzqMoDSTTdTurweMLp2tAciFpZaNL2bPUitwNyy");
 
-#[constant]
-pub const MAX_FEE_PERCENTAGE: u64 = 5;
-pub const MAX_PARTICIPANTS: u8 = 100;
-pub const BUFFER_SIZE: usize = 64;
-
 #[program]
 pub mod coinflip {
     use super::*;
@@ -22,40 +17,14 @@ pub mod coinflip {
     pub fn initialize_config(
         ctx: Context<InitializeConfig>,
         treasury: Pubkey,
-        game_token: Pubkey,
         fee_percentage: u64,
         operator: Pubkey,
-        min_total_pot: u64,
     ) -> Result<()> {
         instructions::initialize_config::handler(
             ctx,
             treasury,
-            game_token,
             fee_percentage,
             operator,
-            min_total_pot,
-        )
-    }
-
-    pub fn update_authority(ctx: Context<UpdateAuthority>, new_authority: Pubkey) -> Result<()> {
-        instructions::update_authority::handler(ctx, new_authority)
-    }
-
-    pub fn update_config(
-        ctx: Context<UpdateConfig>,
-        new_treasury: Option<Pubkey>,
-        new_game_token: Option<Pubkey>,
-        new_fee_percentage: Option<u64>,
-        new_operator: Option<Pubkey>,
-        new_min_total_pot: Option<u64>,
-    ) -> Result<()> {
-        instructions::update_config::handler(
-            ctx,
-            new_treasury,
-            new_game_token,
-            new_fee_percentage,
-            new_operator,
-            new_min_total_pot,
         )
     }
 
@@ -67,6 +36,7 @@ pub mod coinflip {
         min_participants: u8,
         timeout_duration: i64,
         is_private: bool,
+        is_sol: bool,
     ) -> Result<()> {
         instructions::initialize_game::handler(
             ctx,
@@ -76,6 +46,7 @@ pub mod coinflip {
             min_participants,
             timeout_duration,
             is_private,
+            is_sol,
         )
     }
 
