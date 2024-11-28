@@ -5,7 +5,7 @@ use crate::state::*;
 
 #[derive(Accounts)]
 pub struct InitializeConfig<'info> {
-    #[account(init, payer = authority, space = 8 + 32 + 32 + 8 + 32 + 32)]
+    #[account(init, payer = authority, space = 8 + 32 + 8 + 32 + 32)]
     pub config: Account<'info, ProgramConfig>,
     #[account(mut)]
     pub authority: Signer<'info>,
@@ -30,17 +30,24 @@ pub struct UpdateConfig<'info> {
 
 #[derive(Accounts)]
 pub struct InitializeGame<'info> {
-    #[account(init, payer = creator, space = 8 + 32 + 1 + 8 + 1 + 32 * 10 + 33 + 1 + 32 + 33 + 1 + 8 + 8 + 1 + 64 * 10)]
+    #[account(init, payer = creator, space = 8 + 32 + 1 + 8 + 1 + 32 * 10 + 33 + 1 + 32 + 33 + 1 + 8 + 8 + 1 + 64 * 10 + 1)]
     pub game: Account<'info, Game>,
     #[account(mut)]
     pub creator: Signer<'info>,
     pub config: Account<'info, ProgramConfig>,
-    pub token_mint: Account<'info, anchor_spl::token::Mint>,
+    /// CHECK: Optional token mint
     #[account(mut)]
-    pub creator_token_account: Account<'info, TokenAccount>,
+    pub token_mint: Option<Account<'info, anchor_spl::token::Mint>>,
+    /// CHECK: Optional creator token account
     #[account(mut)]
-    pub vault_token_account: Account<'info, TokenAccount>,
-    pub token_program: Program<'info, Token>,
+    pub creator_token_account: Option<Account<'info, TokenAccount>>,
+    /// CHECK: Optional vault token account
+    #[account(mut)]
+    pub vault_token_account: Option<Account<'info, TokenAccount>>,
+    /// CHECK: Optional vault for SOL
+    #[account(mut)]
+    pub vault: Option<AccountInfo<'info>>,
+    pub token_program: Option<Program<'info, Token>>,
     pub system_program: Program<'info, System>,
 }
 

@@ -4,7 +4,6 @@ use anchor_spl::token;
 use crate::error::ErrorCode;
 use crate::state::GameStatus;
 use crate::utils::verify_operator_signature;
-use crate::BUFFER_SIZE;
 
 pub fn handler(ctx: Context<super::JoinGame>, signature: Option<Vec<u8>>) -> Result<()> {
     let game = &mut ctx.accounts.game;
@@ -13,7 +12,7 @@ pub fn handler(ctx: Context<super::JoinGame>, signature: Option<Vec<u8>>) -> Res
 
     if game.is_private {
         require!(signature.is_some(), ErrorCode::SignatureRequired);
-        let mut message = Vec::with_capacity(BUFFER_SIZE);
+        let mut message = Vec::with_capacity(64);
         message.extend_from_slice(&game.game_seed);
         message.extend_from_slice(&ctx.accounts.player.key().to_bytes());
 

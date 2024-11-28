@@ -4,11 +4,9 @@ use anchor_lang::prelude::*;
 #[derive(Default)]
 pub struct ProgramConfig {
     pub treasury: Pubkey,
-    pub game_token: Pubkey,
     pub fee_percentage: u64,
     pub authority: Pubkey,
     pub operator: Pubkey,
-    pub min_total_pot: u64,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Copy)]
@@ -55,6 +53,7 @@ pub struct Game {
     pub timeout_duration: i64,
     pub is_private: bool,
     pub game_seed: [u8; 32],
+    pub is_sol: bool,
 }
 
 impl Game {
