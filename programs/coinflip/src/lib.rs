@@ -3,7 +3,6 @@ use anchor_lang::prelude::*;
 mod error;
 mod instructions;
 mod state;
-mod utils;
 
 use crate::instructions::*;
 use crate::state::GameType;
@@ -50,8 +49,8 @@ pub mod coinflip {
         )
     }
 
-    pub fn join_game(ctx: Context<JoinGame>, signature: Option<Vec<u8>>) -> Result<()> {
-        instructions::join_game::handler(ctx, signature)
+    pub fn join_game(ctx: Context<JoinGame>) -> Result<()> {
+        instructions::join_game::handler(ctx)
     }
 
     pub fn set_oracle_hash(ctx: Context<SetOracleHash>, hash_value: [u8; 32]) -> Result<()> {
