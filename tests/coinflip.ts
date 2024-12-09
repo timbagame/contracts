@@ -719,4 +719,322 @@ describe("coinflip", () => {
       expect(error.toString()).to.include("SignatureRequired");
     }
   });
+
+  it("Set Oracle Hash Successfully", async () => {
+    // Create config and game
+    const operatorKeypair = anchor.web3.Keypair.generate();
+    const treasury = anchor.web3.Keypair.generate().publicKey;
+    const feePercentage = new BN(1);
+    const configAccount = anchor.web3.Keypair.generate();
+
+    // Initialize config with our operator
+    await program.methods
+      .initializeConfig(treasury, feePercentage, operatorKeypair.publicKey)
+      .accounts({
+        config: configAccount.publicKey,
+        signer: program.provider.publicKey,
+      })
+      .signers([configAccount])
+      .rpc();
+
+    const vaultAccount = anchor.web3.Keypair.generate();
+    const gameAccount = anchor.web3.Keypair.generate();
+    const amount = new BN(1_000_000);
+
+    // Create game
+    await program.methods
+      .initializeGame(
+        { coinflip: {} },
+        amount,
+        2,
+        2,
+        new BN(3600),
+        false,
+        true
+      )
+      .accounts({
+        game: gameAccount.publicKey,
+        creator: program.provider.publicKey,
+        config: configAccount.publicKey,
+        tokenMint: null,
+        creatorTokenAccount: null,
+        vaultTokenAccount: null,
+        vault: vaultAccount.publicKey,
+      })
+      .signers([gameAccount])
+      .rpc();
+
+    // Add second player to fill the game
+    const player = anchor.web3.Keypair.generate();
+    const playerAirdrop = await program.provider.connection.requestAirdrop(
+      player.publicKey,
+      2 * anchor.web3.LAMPORTS_PER_SOL
+    );
+    await program.provider.connection.confirmTransaction(playerAirdrop);
+
+    await program.methods
+      .joinGame()
+      .accounts({
+        game: gameAccount.publicKey,
+        player: player.publicKey,
+        playerTokenAccount: null,
+        vaultTokenAccount: null,
+        vault: vaultAccount.publicKey,
+        config: configAccount.publicKey,
+      })
+      .signers([player])
+      .rpc();
+
+    // Set oracle hash
+    const hashValue = Array.from({ length: 32 }, () => Math.floor(Math.random() * 256));
+    await program.methods
+      .setOracleHash(hashValue)
+      .accounts({
+        game: gameAccount.publicKey,
+        config: configAccount.publicKey,
+        oracle: operatorKeypair.publicKey,
+        recentBlockhash: anchor.web3.SYSVAR_RECENT_BLOCKHASHES_PUBKEY,
+      })
+      .signers([operatorKeypair])
+      .rpc();
+
+    // Verify game state
+    const gameData = await program.account.game.fetch(gameAccount.publicKey);
+    expect(gameData.status.readyForClaim).to.not.be.undefined;
+    expect(gameData.oracleHash).to.deep.equal(hashValue);
+    expect(gameData.winner).to.not.be.null;
+  });
+
+  it("Fail to Set Oracle Hash Without Operator Authority", async () => {
+    // Similar setup as above
+    const { configAccount } = await createConfigAccount();
+    const vaultAccount = anchor.web3.Keypair.generate();
+    const gameAccount = anchor.web3.Keypair.generate();
+    const amount = new BN(1_000_000);
+
+    // Create game
+    await program.methods
+      .initializeGame(
+        { coinflip: {} },
+        amount,
+        2,
+        2,
+        new BN(3600),
+        false,
+        true
+      )
+      .accounts({
+        game: gameAccount.publicKey,
+        creator: program.provider.publicKey,
+        config: configAccount.publicKey,
+        tokenMint: null,
+        creatorTokenAccount: null,
+        vaultTokenAccount: null,
+        vault: vaultAccount.publicKey,
+      })
+      .signers([gameAccount])
+      .rpc();
+
+    // Add second player
+    const player = anchor.web3.Keypair.generate();
+    const playerAirdrop = await program.provider.connection.requestAirdrop(
+      player.publicKey,
+      2 * anchor.web3.LAMPORTS_PER_SOL
+    );
+    await program.provider.connection.confirmTransaction(playerAirdrop);
+
+    await program.methods
+      .joinGame()
+      .accounts({
+        game: gameAccount.publicKey,
+        player: player.publicKey,
+        playerTokenAccount: null,
+        vaultTokenAccount: null,
+        vault: vaultAccount.publicKey,
+        config: configAccount.publicKey,
+      })
+      .signers([player])
+      .rpc();
+
+    // Try to set oracle hash with fake operator
+    const fakeOperator = anchor.web3.Keypair.generate();
+    try {
+      const hashValue = Array.from({ length: 32 }, () => Math.floor(Math.random() * 256));
+      await program.methods
+        .setOracleHash(hashValue)
+        .accounts({
+          game: gameAccount.publicKey,
+          config: configAccount.publicKey,
+          oracle: fakeOperator.publicKey,
+          recentBlockhash: anchor.web3.SYSVAR_RECENT_BLOCKHASHES_PUBKEY,
+        })
+        .signers([fakeOperator])
+        .rpc();
+
+      expect.fail("Should have thrown InvalidOperator error");
+    } catch (error) {
+      expect(error.toString()).to.include("InvalidOperator");
+    }
+  });
+
+  it("Fail to Set Oracle Hash Before Game is Full", async () => {
+    const operatorKeypair = anchor.web3.Keypair.generate();
+    const treasury = anchor.web3.Keypair.generate().publicKey;
+    const feePercentage = new BN(1);
+    const configAccount = anchor.web3.Keypair.generate();
+
+    // Initialize config
+    await program.methods
+      .initializeConfig(treasury, feePercentage, operatorKeypair.publicKey)
+      .accounts({
+        config: configAccount.publicKey,
+        signer: program.provider.publicKey,
+      })
+      .signers([configAccount])
+      .rpc();
+
+    const vaultAccount = anchor.web3.Keypair.generate();
+    const gameAccount = anchor.web3.Keypair.generate();
+    const amount = new BN(1_000_000);
+
+    // Create game but don't fill it
+    await program.methods
+      .initializeGame(
+        { coinflip: {} },
+        amount,
+        2,
+        2,
+        new BN(3600),
+        false,
+        true
+      )
+      .accounts({
+        game: gameAccount.publicKey,
+        creator: program.provider.publicKey,
+        config: configAccount.publicKey,
+        tokenMint: null,
+        creatorTokenAccount: null,
+        vaultTokenAccount: null,
+        vault: vaultAccount.publicKey,
+      })
+      .signers([gameAccount])
+      .rpc();
+
+    // Try to set oracle hash before game is full
+    try {
+      const hashValue = Array.from({ length: 32 }, () => Math.floor(Math.random() * 256));
+      await program.methods
+        .setOracleHash(hashValue)
+        .accounts({
+          game: gameAccount.publicKey,
+          config: configAccount.publicKey,
+          oracle: operatorKeypair.publicKey,
+          recentBlockhash: anchor.web3.SYSVAR_RECENT_BLOCKHASHES_PUBKEY,
+        })
+        .signers([operatorKeypair])
+        .rpc();
+
+      expect.fail("Should have thrown GameNotFull error");
+    } catch (error) {
+      expect(error.toString()).to.include("GameNotFull");
+    }
+  });
+
+  it("Fail to Set Oracle Hash Twice", async () => {
+    // Create config and game
+    const operatorKeypair = anchor.web3.Keypair.generate();
+    const treasury = anchor.web3.Keypair.generate().publicKey;
+    const feePercentage = new BN(1);
+    const configAccount = anchor.web3.Keypair.generate();
+
+    // Initialize config
+    await program.methods
+      .initializeConfig(treasury, feePercentage, operatorKeypair.publicKey)
+      .accounts({
+        config: configAccount.publicKey,
+        signer: program.provider.publicKey,
+      })
+      .signers([configAccount])
+      .rpc();
+
+    const vaultAccount = anchor.web3.Keypair.generate();
+    const gameAccount = anchor.web3.Keypair.generate();
+    const amount = new BN(1_000_000);
+
+    // Create game
+    await program.methods
+      .initializeGame(
+        { coinflip: {} },
+        amount,
+        2,
+        2,
+        new BN(3600),
+        false,
+        true
+      )
+      .accounts({
+        game: gameAccount.publicKey,
+        creator: program.provider.publicKey,
+        config: configAccount.publicKey,
+        tokenMint: null,
+        creatorTokenAccount: null,
+        vaultTokenAccount: null,
+        vault: vaultAccount.publicKey,
+      })
+      .signers([gameAccount])
+      .rpc();
+
+    // Add second player
+    const player = anchor.web3.Keypair.generate();
+    const playerAirdrop = await program.provider.connection.requestAirdrop(
+      player.publicKey,
+      2 * anchor.web3.LAMPORTS_PER_SOL
+    );
+    await program.provider.connection.confirmTransaction(playerAirdrop);
+
+    await program.methods
+      .joinGame()
+      .accounts({
+        game: gameAccount.publicKey,
+        player: player.publicKey,
+        playerTokenAccount: null,
+        vaultTokenAccount: null,
+        vault: vaultAccount.publicKey,
+        config: configAccount.publicKey,
+      })
+      .signers([player])
+      .rpc();
+
+    // Set oracle hash first time
+    const hashValue = Array.from({ length: 32 }, () => Math.floor(Math.random() * 256));
+    await program.methods
+      .setOracleHash(hashValue)
+      .accounts({
+        game: gameAccount.publicKey,
+        config: configAccount.publicKey,
+        oracle: operatorKeypair.publicKey,
+        recentBlockhash: anchor.web3.SYSVAR_RECENT_BLOCKHASHES_PUBKEY,
+      })
+      .signers([operatorKeypair])
+      .rpc();
+
+    // Try to set oracle hash second time
+    try {
+      const newHashValue = Array.from({ length: 32 }, () => Math.floor(Math.random() * 256));
+      await program.methods
+        .setOracleHash(newHashValue)
+        .accounts({
+          game: gameAccount.publicKey,
+          config: configAccount.publicKey,
+          oracle: operatorKeypair.publicKey,
+          recentBlockhash: anchor.web3.SYSVAR_RECENT_BLOCKHASHES_PUBKEY,
+        })
+        .signers([operatorKeypair])
+        .rpc();
+
+      expect.fail("Should have thrown OracleHashAlreadySet error");
+    } catch (error) {
+      expect(error.toString()).to.include("OracleHashAlreadySet");
+    }
+  });
 });

@@ -13,6 +13,10 @@ pub fn handler(ctx: Context<super::SetOracleHash>, hash_value: [u8; 32]) -> Resu
     let game = &mut ctx.accounts.game;
     let current_time = Clock::get()?.unix_timestamp;
 
+    // First check if oracle hash is already set
+    require!(game.oracle_hash.is_none(), ErrorCode::OracleHashAlreadySet);
+
+    // Then check game status and other conditions
     require!(game.status == GameStatus::Active, ErrorCode::GameNotActive);
     require!(
         game.is_ready_for_oracle()
@@ -20,7 +24,6 @@ pub fn handler(ctx: Context<super::SetOracleHash>, hash_value: [u8; 32]) -> Resu
                 && current_time >= game.created_at + game.timeout_duration),
         ErrorCode::GameNotFull
     );
-    require!(game.oracle_hash.is_none(), ErrorCode::OracleHashAlreadySet);
 
     game.oracle_hash = Some(hash_value);
 
