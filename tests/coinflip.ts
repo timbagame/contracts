@@ -631,4 +631,92 @@ describe("coinflip", () => {
       expect(error.toString()).to.include("AlreadyJoined");
     }
   });
+
+  it("Fail to Join Private Game with Wrong Operator", async () => {
+    // Create operator keypair and config with that operator
+    const operatorKeypair = anchor.web3.Keypair.generate();
+    const treasury = anchor.web3.Keypair.generate().publicKey;
+    const feePercentage = new BN(1);
+    const configAccount = anchor.web3.Keypair.generate();
+
+    // Initialize config with our operator
+    await program.methods
+      .initializeConfig(treasury, feePercentage, operatorKeypair.publicKey)
+      .accounts({
+        config: configAccount.publicKey,
+        signer: program.provider.publicKey,
+      })
+      .signers([configAccount])
+      .rpc();
+
+    const vaultAccount = anchor.web3.Keypair.generate();
+    const gameAccount = anchor.web3.Keypair.generate();
+    const amount = new BN(1_000_000);
+
+    // Create game with isPrivate = true
+    await program.methods
+      .initializeGame(
+        { coinflip: {} },
+        amount,
+        2,
+        2,
+        new BN(3600),
+        true, // isPrivate
+        true  // isSol
+      )
+      .accounts({
+        game: gameAccount.publicKey,
+        creator: program.provider.publicKey,
+        config: configAccount.publicKey,
+        tokenMint: null,
+        creatorTokenAccount: null,
+        vaultTokenAccount: null,
+        vault: vaultAccount.publicKey,
+      })
+      .signers([gameAccount])
+      .rpc();
+
+    // Create and fund player
+    const player = anchor.web3.Keypair.generate();
+    const playerAirdrop = await program.provider.connection.requestAirdrop(
+      player.publicKey,
+      2 * anchor.web3.LAMPORTS_PER_SOL
+    );
+    await program.provider.connection.confirmTransaction(playerAirdrop);
+
+    // Create fake operator
+    const fakeOperator = anchor.web3.Keypair.generate();
+    const fakeOperatorAirdrop = await program.provider.connection.requestAirdrop(
+      fakeOperator.publicKey,
+      anchor.web3.LAMPORTS_PER_SOL
+    );
+    await program.provider.connection.confirmTransaction(fakeOperatorAirdrop);
+
+    // Try to join game with fake operator signature
+    try {
+      await program.methods
+        .joinGame()
+        .accounts({
+          game: gameAccount.publicKey,
+          player: player.publicKey,
+          playerTokenAccount: null,
+          vaultTokenAccount: null,
+          vault: vaultAccount.publicKey,
+          config: configAccount.publicKey,
+        })
+        .remainingAccounts([
+          {
+            pubkey: fakeOperator.publicKey,
+            isWritable: false,
+            isSigner: true
+          }
+        ])
+        .signers([player, fakeOperator])
+        .rpc();
+
+      expect.fail("Should have thrown SignatureRequired error");
+    } catch (error) {
+      expect(error.toString()).to.include("SignatureRequired");
+    }
+  });
 });
