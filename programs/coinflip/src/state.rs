@@ -51,7 +51,6 @@ pub struct Game {
     pub created_at: i64,
     pub timeout_duration: i64,
     pub is_private: bool,
-    pub game_seed: [u8; 32],
     pub is_sol: bool,
 }
 
