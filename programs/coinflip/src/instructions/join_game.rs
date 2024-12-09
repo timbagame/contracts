@@ -3,31 +3,22 @@ use anchor_spl::token;
 
 use crate::error::ErrorCode;
 use crate::state::GameStatus;
-use crate::utils::verify_operator_signature;
 
-pub fn handler(ctx: Context<super::JoinGame>, signature: Option<Vec<u8>>) -> Result<()> {
+pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
     let game = &mut ctx.accounts.game;
     game.validate_status(GameStatus::Active)?;
     game.validate_participation(&ctx.accounts.player.key())?;
 
     if game.is_private {
-        require!(signature.is_some(), ErrorCode::SignatureRequired);
-        let mut message = Vec::with_capacity(64);
-        message.extend_from_slice(&game.game_seed);
-        message.extend_from_slice(&ctx.accounts.player.key().to_bytes());
-
         require!(
-            verify_operator_signature(
-                &ctx.accounts.config.operator,
-                &message,
-                signature.as_ref().unwrap()
-            )?,
-            ErrorCode::InvalidSignature
+            !ctx.remaining_accounts.is_empty() 
+            && ctx.remaining_accounts[0].is_signer 
+            && ctx.remaining_accounts[0].key() == ctx.accounts.config.operator,
+            ErrorCode::SignatureRequired
         );
     }
 
     if !game.is_sol {
-        // Only transfer tokens for SPL games
         require!(
             ctx.accounts.player_token_account.is_some() 
             && ctx.accounts.vault_token_account.is_some() 
@@ -47,7 +38,6 @@ pub fn handler(ctx: Context<super::JoinGame>, signature: Option<Vec<u8>>) -> Res
             game.amount,
         )?;
     } else {
-        // Transfer SOL for SOL games
         anchor_lang::system_program::transfer(
             CpiContext::new(
                 ctx.accounts.system_program.to_account_info(),
