@@ -45,9 +45,8 @@ pub struct Game {
     pub participants: Vec<Pubkey>,
     pub winner: Option<Pubkey>,
     pub status: GameStatus,
-    pub token_mint: Pubkey,
+    pub token_mint: Option<Pubkey>,
     pub oracle_hash: Option<[u8; 32]>,
-    pub ready_for_oracle: bool,
     pub created_at: i64,
     pub timeout_duration: i64,
     pub is_private: bool,
@@ -77,6 +76,9 @@ impl Game {
 
     pub fn add_participant(&mut self, player: Pubkey) {
         self.participants.push(player);
-        self.ready_for_oracle = self.participants.len() == self.max_participants as usize;
+    }
+
+    pub fn is_ready_for_oracle(&self) -> bool {
+        self.participants.len() == self.max_participants as usize
     }
 }

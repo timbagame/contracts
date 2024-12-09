@@ -311,7 +311,7 @@ describe("coinflip", () => {
     const gameData = await program.account.game.fetch(gameAccount.publicKey);
     expect(gameData.participants.length).to.equal(2);
     expect(gameData.participants[1].toString()).to.equal(player.publicKey.toString());
-    expect(gameData.readyForOracle).to.be.true;
+    expect(gameData.participants.length).to.equal(gameData.maxParticipants);
   });
 
   it("Join SPL Token Game Successfully", async () => {
@@ -394,7 +394,7 @@ describe("coinflip", () => {
     const gameData = await program.account.game.fetch(gameAccount.publicKey);
     expect(gameData.participants.length).to.equal(2);
     expect(gameData.participants[1].toString()).to.equal(player.publicKey.toString());
-    expect(gameData.readyForOracle).to.be.true;
+    expect(gameData.participants.length).to.equal(gameData.maxParticipants);
 
     // Verify token transfer
     const vaultTokenAccountInfo = await getAccount(

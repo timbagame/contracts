@@ -39,9 +39,9 @@ pub fn handler(
         participants: Vec::with_capacity(max_participants as usize),
         status: crate::state::GameStatus::Active,
         token_mint: if is_sol { 
-            Pubkey::default() 
+            None 
         } else {
-            ctx.accounts.token_mint.as_ref().unwrap().key()
+            Some(ctx.accounts.token_mint.as_ref().unwrap().key())
         },
         created_at: Clock::get()?.unix_timestamp,
         timeout_duration,
