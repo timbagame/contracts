@@ -41,12 +41,17 @@ pub struct JoinGame<'info> {
     pub game: Account<'info, Game>,
     #[account(mut)]
     pub player: Signer<'info>,
+    /// CHECK: Optional token account for player
     #[account(mut)]
-    pub player_token_account: Account<'info, TokenAccount>,
+    pub player_token_account: Option<Account<'info, TokenAccount>>,
+    /// CHECK: Optional token account for vault
     #[account(mut)]
-    pub vault_token_account: Account<'info, TokenAccount>,
-    pub token_program: Program<'info, Token>,
+    pub vault_token_account: Option<Account<'info, TokenAccount>>,
+    pub token_program: Option<Program<'info, Token>>,
+    /// CHECK: Optional vault for SOL
     #[account(mut)]
+    pub vault: Option<AccountInfo<'info>>,
+    pub system_program: Program<'info, System>,
     pub config: Account<'info, Config>,
 }
 
