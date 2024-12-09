@@ -26,14 +26,34 @@ pub fn handler(ctx: Context<super::JoinGame>, signature: Option<Vec<u8>>) -> Res
         );
     }
 
-    if game.game_type == crate::state::GameType::Coinflip {
+    if !game.is_sol {
+        // Only transfer tokens for SPL games
+        require!(
+            ctx.accounts.player_token_account.is_some() 
+            && ctx.accounts.vault_token_account.is_some() 
+            && ctx.accounts.token_program.is_some(),
+            ErrorCode::InvalidToken
+        );
+
         token::transfer(
             CpiContext::new(
-                ctx.accounts.token_program.to_account_info(),
+                ctx.accounts.token_program.as_ref().unwrap().to_account_info(),
                 token::Transfer {
-                    from: ctx.accounts.player_token_account.to_account_info(),
-                    to: ctx.accounts.vault_token_account.to_account_info(),
+                    from: ctx.accounts.player_token_account.as_ref().unwrap().to_account_info(),
+                    to: ctx.accounts.vault_token_account.as_ref().unwrap().to_account_info(),
                     authority: ctx.accounts.player.to_account_info(),
+                },
+            ),
+            game.amount,
+        )?;
+    } else {
+        // Transfer SOL for SOL games
+        anchor_lang::system_program::transfer(
+            CpiContext::new(
+                ctx.accounts.system_program.to_account_info(),
+                anchor_lang::system_program::Transfer {
+                    from: ctx.accounts.player.to_account_info(),
+                    to: ctx.accounts.vault.as_ref().unwrap().to_account_info(),
                 },
             ),
             game.amount,
