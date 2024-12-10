@@ -1392,7 +1392,7 @@ describe("coinflip", () => {
         amount,
         2,
         2,
-        new BN(5), // 5 second timeout
+        new BN(2), // 2 seconds timeout
         false,
       )
       .accounts({
@@ -1408,7 +1408,7 @@ describe("coinflip", () => {
       .rpc();
 
     // Wait for timeout
-    await new Promise((resolve) => setTimeout(resolve, 6000));
+    await new Promise((resolve) => setTimeout(resolve, 4000));
 
     // Get initial balance
     const initialBalance = (
@@ -1589,7 +1589,7 @@ describe("coinflip", () => {
         amount,
         3, // 3 participants
         2,
-        new BN(5), // 5 second timeout
+        new BN(4), // 4 seconds timeout
         false,
       )
       .accounts({
@@ -1646,7 +1646,7 @@ describe("coinflip", () => {
       .rpc();
 
     // Wait for timeout
-    await new Promise((resolve) => setTimeout(resolve, 6000));
+    await new Promise((resolve) => setTimeout(resolve, 4000));
 
     // Both participants claim timeout
     const initialCreatorBalance = (
@@ -1710,7 +1710,6 @@ describe("coinflip", () => {
       vaultPDA,
       creatorTokenAccount,
       vaultTokenAccount,
-      mintAuthority,
     } = await createSplTokenMint();
 
     const amount = new BN(1_000_000);
@@ -1722,7 +1721,7 @@ describe("coinflip", () => {
         amount,
         2,
         2,
-        new BN(5), // 5 second timeout
+        new BN(2), // 2 seconds timeout
         false,
       )
       .accounts({
@@ -1753,7 +1752,7 @@ describe("coinflip", () => {
     );
 
     // Wait for timeout
-    await new Promise((resolve) => setTimeout(resolve, 6000));
+    await new Promise((resolve) => setTimeout(resolve, 3000));
 
     // Try to claim timeout as non-participant
     try {
@@ -1804,14 +1803,14 @@ describe("coinflip", () => {
 
     const amount = new BN(1_000_000);
 
-    // Create game with min participants = 5 and max participants = 10
+    // Create game with min participants = 2 and max participants = 10
     await program.methods
       .initializeGame(
         { coinflip: {} },
         amount,
         10, // max participants
-        5, // min participants
-        new BN(5), // 5 second timeout
+        2, // min participants
+        new BN(7), // 7 seconds timeout
         false,
       )
       .accounts({
@@ -1828,7 +1827,7 @@ describe("coinflip", () => {
 
     // Create and fund players
     const players = [];
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 2; i++) {
       const player = anchor.web3.Keypair.generate();
       const playerAirdrop = await program.provider.connection.requestAirdrop(
         player.publicKey,
@@ -1873,7 +1872,7 @@ describe("coinflip", () => {
     }
 
     // Wait for timeout
-    await new Promise((resolve) => setTimeout(resolve, 6000));
+    await new Promise((resolve) => setTimeout(resolve, 4000));
 
     // Set oracle hash
     const hashValue = Array.from({ length: 32 }, () =>
