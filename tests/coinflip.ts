@@ -1774,4 +1774,126 @@ describe("coinflip", () => {
       expect(error.toString()).to.include("Invalid participant");
     }
   });
+
+  it("Set Oracle Hash When Minimum Participants Met and Timeout Passed", async () => {
+    // Create config and game
+    const operatorKeypair = anchor.web3.Keypair.generate();
+    const treasury = anchor.web3.Keypair.generate().publicKey;
+    const feePercentage = new BN(1);
+    const configAccount = anchor.web3.Keypair.generate();
+
+    // Initialize config
+    await program.methods
+      .initializeConfig(treasury, feePercentage, operatorKeypair.publicKey)
+      .accounts({
+        config: configAccount.publicKey,
+        signer: program.provider.publicKey,
+      })
+      .signers([configAccount])
+      .rpc();
+
+    // Create SPL token setup
+    const {
+      mint,
+      gameAccount,
+      vaultPDA,
+      creatorTokenAccount,
+      vaultTokenAccount,
+      mintAuthority,
+    } = await createSplTokenMint();
+
+    const amount = new BN(1_000_000);
+
+    // Create game with min participants = 5 and max participants = 10
+    await program.methods
+      .initializeGame(
+        { coinflip: {} },
+        amount,
+        10, // max participants
+        5, // min participants
+        new BN(5), // 5 second timeout
+        false,
+      )
+      .accounts({
+        game: gameAccount.publicKey,
+        creator: program.provider.publicKey,
+        config: configAccount.publicKey,
+        tokenMint: mint,
+        creatorTokenAccount: creatorTokenAccount,
+        vaultTokenAccount: vaultTokenAccount,
+        vault: vaultPDA,
+      })
+      .signers([gameAccount])
+      .rpc();
+
+    // Create and fund players
+    const players = [];
+    for (let i = 0; i < 5; i++) {
+      const player = anchor.web3.Keypair.generate();
+      const playerAirdrop = await program.provider.connection.requestAirdrop(
+        player.publicKey,
+        2 * anchor.web3.LAMPORTS_PER_SOL,
+      );
+      await program.provider.connection.confirmTransaction(playerAirdrop);
+      players.push(player);
+    }
+
+    // Create player's token accounts and mint tokens
+    for (const player of players) {
+      const playerTokenAccount = await createAssociatedTokenAccount(
+        program.provider.connection,
+        player,
+        mint,
+        player.publicKey,
+      );
+
+      await mintTo(
+        program.provider.connection,
+        mintAuthority,
+        mint,
+        playerTokenAccount,
+        mintAuthority.publicKey,
+        amount.toNumber(),
+        [mintAuthority],
+      );
+
+      // Join game
+      await program.methods
+        .joinGame()
+        .accounts({
+          game: gameAccount.publicKey,
+          player: player.publicKey,
+          playerTokenAccount: playerTokenAccount,
+          vaultTokenAccount: vaultTokenAccount,
+          vault: vaultPDA,
+          config: configAccount.publicKey,
+        })
+        .signers([player])
+        .rpc();
+    }
+
+    // Wait for timeout
+    await new Promise((resolve) => setTimeout(resolve, 6000));
+
+    // Set oracle hash
+    const hashValue = Array.from({ length: 32 }, () =>
+      Math.floor(Math.random() * 256),
+    );
+    await program.methods
+      .setOracleHash(hashValue)
+      .accounts({
+        game: gameAccount.publicKey,
+        config: configAccount.publicKey,
+        oracle: operatorKeypair.publicKey,
+        recentBlockhash: anchor.web3.SYSVAR_RECENT_BLOCKHASHES_PUBKEY,
+      })
+      .signers([operatorKeypair])
+      .rpc();
+
+    // Verify game state
+    const gameData = await program.account.game.fetch(gameAccount.publicKey);
+    expect(gameData.status.readyForClaim).to.not.be.undefined;
+    expect(gameData.oracleHash).to.deep.equal(hashValue);
+    expect(gameData.winner).to.not.be.null;
+  });
 });
