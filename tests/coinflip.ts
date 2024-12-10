@@ -1803,7 +1803,7 @@ describe("coinflip", () => {
     }
 
     // Wait for timeout
-    await new Promise((resolve) => setTimeout(resolve, 4000));
+    await new Promise((resolve) => setTimeout(resolve, 5000));
 
     // Set oracle hash
     const hashValue = Array.from({ length: 32 }, () =>
