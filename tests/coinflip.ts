@@ -1395,7 +1395,6 @@ describe("coinflip", () => {
       vaultPDA,
       creatorTokenAccount,
       vaultTokenAccount,
-      mintAuthority
     } = await createSplTokenMint();
 
     const amount = new BN(1_000_000);
