@@ -5,6 +5,5 @@ pub mod initialize_config;
 pub mod initialize_game;
 pub mod join_game;
 pub mod set_oracle_hash;
-pub mod collect_fees;
 
 pub use accounts::*;

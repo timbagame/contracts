@@ -7,8 +7,8 @@ import {
   createMint,
   getAccount,
   mintTo,
-  getAssociatedTokenAddress,
   createAssociatedTokenAccount,
+  getOrCreateAssociatedTokenAccount,
 } from "@solana/spl-token";
 
 describe("coinflip", () => {
@@ -51,28 +51,30 @@ describe("coinflip", () => {
       6
     );
 
-    // Create vault keypair and fund it
-    const vault = anchor.web3.Keypair.generate();
-    const vaultSignature = await program.provider.connection.requestAirdrop(
-      vault.publicKey,
-      anchor.web3.LAMPORTS_PER_SOL
+    // Create game account to derive vault PDA
+    const gameAccount = anchor.web3.Keypair.generate();
+
+    // Create vault PDA for authority
+    const [vaultPDA] = anchor.web3.PublicKey.findProgramAddressSync(
+      [Buffer.from("vault"), gameAccount.publicKey.toBuffer()],
+      program.programId
     );
-    await program.provider.connection.confirmTransaction(vaultSignature);
 
     // Create Associated Token Account for creator
-    const creatorTokenAccount = await createAssociatedTokenAccount(
+    const creatorTokenAccountInfo = await getOrCreateAssociatedTokenAccount(
       program.provider.connection,
       mintAuthority,
       mint,
       program.provider.publicKey
     );
 
-    // Create vault token account
-    const vaultTokenAccount = await createAssociatedTokenAccount(
+    // Create a token account for the vault
+    const vaultTokenAccountInfo = await getOrCreateAssociatedTokenAccount(
       program.provider.connection,
       mintAuthority,
       mint,
-      vault.publicKey
+      vaultPDA,
+      true  // allowOwnerOffCurve: true to allow PDA as owner
     );
 
     // Mint tokens to creator
@@ -80,7 +82,7 @@ describe("coinflip", () => {
       program.provider.connection,
       mintAuthority,
       mint,
-      creatorTokenAccount,
+      creatorTokenAccountInfo.address,
       mintAuthority.publicKey,
       1_000_000_000,
       [mintAuthority]
@@ -89,9 +91,10 @@ describe("coinflip", () => {
     return {
       mint,
       mintAuthority,
-      vault,
-      creatorTokenAccount,
-      vaultTokenAccount
+      gameAccount,
+      vaultPDA,
+      creatorTokenAccount: creatorTokenAccountInfo.address,
+      vaultTokenAccount: vaultTokenAccountInfo.address
     };
   }
 
@@ -107,64 +110,22 @@ describe("coinflip", () => {
     expect(configData.operator.toString()).to.equal(operator.toString());
   });
 
-  it("Initialize Game Successfully", async () => {
+  it("Initialize Game with Invalid Parameters", async () => {
     const { configAccount } = await createConfigAccount();
-
-    // Initialize game
-    const gameAccount = anchor.web3.Keypair.generate();
-    const amount = new BN(1_000_000); // 1 SOL
-    const maxParticipants = 2;
-    const minParticipants = 2;
-    const timeoutDuration = new BN(3600); // 1 hour
-    const isPrivate = false;
-    const isSol = true;
-
-    const tx = await program.methods
-      .initializeGame(
-        { coinflip: {} }, // GameType
-        amount,
-        maxParticipants,
-        minParticipants,
-        timeoutDuration,
-        isPrivate,
-        isSol
-      )
-      .accounts({
-        game: gameAccount.publicKey,
-        creator: program.provider.publicKey,
-        config: configAccount.publicKey,
-        tokenMint: null,
-        creatorTokenAccount: null,
-        vaultTokenAccount: null,
-        vault: anchor.web3.Keypair.generate().publicKey,
-      })
-      .signers([gameAccount])
-      .rpc();
-
-    console.log("Game initialization signature", tx);
-
-    // Fetch and verify game data
-    const gameData = await program.account.game.fetch(gameAccount.publicKey);
-    expect(gameData.creator.toString()).to.equal(program.provider.publicKey.toString());
-    expect(gameData.amount.toString()).to.equal(amount.toString());
-    expect(gameData.maxParticipants).to.equal(maxParticipants);
-    expect(gameData.minParticipants).to.equal(minParticipants);
-    expect(gameData.status.active).to.not.be.undefined;
-    expect(gameData.isSol).to.be.true;
-    expect(gameData.participants.length).to.equal(1); // Creator is first participant
-  });
-
-  it("Fail to Initialize Game with Invalid Parameters", async () => {
-    const { configAccount } = await createConfigAccount();
+    const {
+      mint,
+      gameAccount,
+      vaultPDA,
+      creatorTokenAccount,
+      vaultTokenAccount
+    } = await createSplTokenMint();
 
     // Try to initialize game with invalid parameters
-    const gameAccount = anchor.web3.Keypair.generate();
     const amount = new BN(1_000_000);
     const invalidMaxParticipants = 1; // Should be at least 2 for coinflip
     const invalidMinParticipants = 3; // Can't be greater than max
     const timeoutDuration = new BN(3600);
     const isPrivate = false;
-    const isSol = true;
 
     try {
       await program.methods
@@ -174,17 +135,16 @@ describe("coinflip", () => {
           invalidMaxParticipants,
           invalidMinParticipants,
           timeoutDuration,
-          isPrivate,
-          isSol
+          isPrivate
         )
         .accounts({
           game: gameAccount.publicKey,
           creator: program.provider.publicKey,
           config: configAccount.publicKey,
-          tokenMint: null,
-          creatorTokenAccount: null,
-          vaultTokenAccount: null,
-          vault: anchor.web3.Keypair.generate().publicKey,
+          tokenMint: mint,
+          creatorTokenAccount: creatorTokenAccount,
+          vaultTokenAccount: vaultTokenAccount,
+          vault: vaultPDA,
         })
         .signers([gameAccount])
         .rpc();
@@ -199,19 +159,18 @@ describe("coinflip", () => {
     const { configAccount } = await createConfigAccount();
     const {
       mint,
-      vault,
+      gameAccount,
+      vaultPDA,
       creatorTokenAccount,
       vaultTokenAccount
     } = await createSplTokenMint();
 
     // Initialize game
-    const gameAccount = anchor.web3.Keypair.generate();
     const amount = new BN(1_000_000);
     const maxParticipants = 2;
     const minParticipants = 2;
     const timeoutDuration = new BN(3600);
     const isPrivate = false;
-    const isSol = false;
 
     const tx = await program.methods
       .initializeGame(
@@ -220,8 +179,7 @@ describe("coinflip", () => {
         maxParticipants,
         minParticipants,
         timeoutDuration,
-        isPrivate,
-        isSol
+        isPrivate
       )
       .accounts({
         game: gameAccount.publicKey,
@@ -230,7 +188,7 @@ describe("coinflip", () => {
         tokenMint: mint,
         creatorTokenAccount: creatorTokenAccount,
         vaultTokenAccount: vaultTokenAccount,
-        vault: vault.publicKey,
+        vault: vaultPDA,
       })
       .signers([gameAccount])
       .rpc();
@@ -244,7 +202,6 @@ describe("coinflip", () => {
     expect(gameData.maxParticipants).to.equal(maxParticipants);
     expect(gameData.minParticipants).to.equal(minParticipants);
     expect(gameData.status.active).to.not.be.undefined;
-    expect(gameData.isSol).to.be.false;
     expect(gameData.tokenMint.toString()).to.equal(mint.toString());
     expect(gameData.participants.length).to.equal(1); // Creator is first participant
 
@@ -256,87 +213,31 @@ describe("coinflip", () => {
     expect(vaultTokenAccountInfo.amount.toString()).to.equal(amount.toString());
   });
 
-  it("Join SOL Game Successfully", async () => {
-    // First create config and game
-    const { configAccount } = await createConfigAccount();
-    const vaultAccount = anchor.web3.Keypair.generate();
-    const gameAccount = anchor.web3.Keypair.generate();
-    const amount = new BN(1_000_000);
-
-    await program.methods
-      .initializeGame(
-        { coinflip: {} },
-        amount,
-        2,
-        2,
-        new BN(3600),
-        false,
-        true // is_sol
-      )
-      .accounts({
-        game: gameAccount.publicKey,
-        creator: program.provider.publicKey,
-        config: configAccount.publicKey,
-        tokenMint: null,
-        creatorTokenAccount: null,
-        vaultTokenAccount: null,
-        vault: vaultAccount.publicKey,
-      })
-      .signers([gameAccount])
-      .rpc();
-
-    // Create second player
-    const player = anchor.web3.Keypair.generate();
-    const playerAirdrop = await program.provider.connection.requestAirdrop(
-      player.publicKey,
-      2 * anchor.web3.LAMPORTS_PER_SOL
-    );
-    await program.provider.connection.confirmTransaction(playerAirdrop);
-
-    // Join game
-    await program.methods
-      .joinGame()
-      .accounts({
-        game: gameAccount.publicKey,
-        player: player.publicKey,
-        playerTokenAccount: null,
-        vaultTokenAccount: null,
-        vault: vaultAccount.publicKey,
-        config: configAccount.publicKey,
-      })
-      .signers([player])
-      .rpc();
-
-    // Verify game state
-    const gameData = await program.account.game.fetch(gameAccount.publicKey);
-    expect(gameData.participants.length).to.equal(2);
-    expect(gameData.participants[1].toString()).to.equal(player.publicKey.toString());
-    expect(gameData.participants.length).to.equal(gameData.maxParticipants);
-  });
-
   it("Join SPL Token Game Successfully", async () => {
     const { configAccount } = await createConfigAccount();
     const {
       mint,
-      vault,
+      gameAccount,
+      vaultPDA,
       creatorTokenAccount,
-      vaultTokenAccount,
-      mintAuthority
+      vaultTokenAccount
     } = await createSplTokenMint();
 
-    // Create game account
-    const gameAccount = anchor.web3.Keypair.generate();
+    // Initialize game
     const amount = new BN(1_000_000);
+    const maxParticipants = 2;
+    const minParticipants = 2;
+    const timeoutDuration = new BN(3600);
+    const isPrivate = false;
 
-    await program.methods
+    const tx = await program.methods
       .initializeGame(
         { coinflip: {} },
         amount,
-        2,
-        2,
-        new BN(3600),
-        false,
-        false // not SOL
+        maxParticipants,
+        minParticipants,
+        timeoutDuration,
+        isPrivate
       )
       .accounts({
         game: gameAccount.publicKey,
@@ -345,19 +246,91 @@ describe("coinflip", () => {
         tokenMint: mint,
         creatorTokenAccount: creatorTokenAccount,
         vaultTokenAccount: vaultTokenAccount,
-        vault: vault.publicKey,
+        vault: vaultPDA,
       })
       .signers([gameAccount])
       .rpc();
 
-    // Create second player and their token account
+    console.log("Game initialization signature", tx);
+
+    // Fetch and verify game data
+    const gameData = await program.account.game.fetch(gameAccount.publicKey);
+    expect(gameData.creator.toString()).to.equal(program.provider.publicKey.toString());
+    expect(gameData.amount.toString()).to.equal(amount.toString());
+    expect(gameData.maxParticipants).to.equal(maxParticipants);
+    expect(gameData.minParticipants).to.equal(minParticipants);
+    expect(gameData.status.active).to.not.be.undefined;
+    expect(gameData.tokenMint.toString()).to.equal(mint.toString());
+    expect(gameData.participants.length).to.equal(1); // Creator is first participant
+
+    // Verify token transfer
+    const vaultTokenAccountInfo = await getAccount(
+      program.provider.connection,
+      vaultTokenAccount
+    );
+    expect(vaultTokenAccountInfo.amount.toString()).to.equal(amount.toString());
+  });
+
+  it("Join Private Game Successfully", async () => {
+    // Create operator keypair and config
+    const operatorKeypair = anchor.web3.Keypair.generate();
+    const treasury = anchor.web3.Keypair.generate().publicKey;
+    const feePercentage = new BN(1);
+    const configAccount = anchor.web3.Keypair.generate();
+
+    // Initialize config with operator
+    await program.methods
+      .initializeConfig(treasury, feePercentage, operatorKeypair.publicKey)
+      .accounts({
+        config: configAccount.publicKey,
+        signer: program.provider.publicKey,
+      })
+      .signers([configAccount])
+      .rpc();
+
+    // Create SPL token setup
+    const {
+      mint,
+      gameAccount,
+      vaultPDA,
+      creatorTokenAccount,
+      vaultTokenAccount,
+      mintAuthority
+    } = await createSplTokenMint();
+
+    const amount = new BN(1_000_000);
+
+    // Create game with isPrivate = true
+    await program.methods
+      .initializeGame(
+        { coinflip: {} },
+        amount,
+        2,
+        2,
+        new BN(3600),
+        true // isPrivate
+      )
+      .accounts({
+        game: gameAccount.publicKey,
+        creator: program.provider.publicKey,
+        config: configAccount.publicKey,
+        tokenMint: mint,
+        creatorTokenAccount: creatorTokenAccount,
+        vaultTokenAccount: vaultTokenAccount,
+        vault: vaultPDA,
+      })
+      .signers([gameAccount])
+      .rpc();
+
+    // Create and fund player
     const player = anchor.web3.Keypair.generate();
     const playerAirdrop = await program.provider.connection.requestAirdrop(
       player.publicKey,
-      anchor.web3.LAMPORTS_PER_SOL
+      2 * anchor.web3.LAMPORTS_PER_SOL
     );
     await program.provider.connection.confirmTransaction(playerAirdrop);
 
+    // Create player's token account
     const playerTokenAccount = await createAssociatedTokenAccount(
       program.provider.connection,
       player,
@@ -372,89 +345,9 @@ describe("coinflip", () => {
       mint,
       playerTokenAccount,
       mintAuthority.publicKey,
-      1_000_000_000,
+      amount.toNumber(),
       [mintAuthority]
     );
-
-    // Join game
-    await program.methods
-      .joinGame()
-      .accounts({
-        game: gameAccount.publicKey,
-        player: player.publicKey,
-        playerTokenAccount: playerTokenAccount,
-        vaultTokenAccount: vaultTokenAccount,
-        vault: null,
-        config: configAccount.publicKey,
-      })
-      .signers([player])
-      .rpc();
-
-    // Verify game state
-    const gameData = await program.account.game.fetch(gameAccount.publicKey);
-    expect(gameData.participants.length).to.equal(2);
-    expect(gameData.participants[1].toString()).to.equal(player.publicKey.toString());
-    expect(gameData.participants.length).to.equal(gameData.maxParticipants);
-
-    // Verify token transfer
-    const vaultTokenAccountInfo = await getAccount(
-      program.provider.connection,
-      vaultTokenAccount
-    );
-    expect(vaultTokenAccountInfo.amount.toString()).to.equal((amount.toNumber() * 2).toString());
-  });
-
-  it("Join Private Game Successfully", async () => {
-    // Create operator keypair and config with that operator
-    const operatorKeypair = anchor.web3.Keypair.generate();
-    const treasury = anchor.web3.Keypair.generate().publicKey;
-    const feePercentage = new BN(1);
-    const configAccount = anchor.web3.Keypair.generate();
-
-    // Initialize config with our operator
-    await program.methods
-      .initializeConfig(treasury, feePercentage, operatorKeypair.publicKey)
-      .accounts({
-        config: configAccount.publicKey,
-        signer: program.provider.publicKey,
-      })
-      .signers([configAccount])
-      .rpc();
-
-    const vaultAccount = anchor.web3.Keypair.generate();
-    const gameAccount = anchor.web3.Keypair.generate();
-    const amount = new BN(1_000_000);
-
-    // Create game with isPrivate = true
-    await program.methods
-      .initializeGame(
-        { coinflip: {} },
-        amount,
-        2,
-        2,
-        new BN(3600),
-        true, // isPrivate
-        true  // isSol
-      )
-      .accounts({
-        game: gameAccount.publicKey,
-        creator: program.provider.publicKey,
-        config: configAccount.publicKey,
-        tokenMint: null,
-        creatorTokenAccount: null,
-        vaultTokenAccount: null,
-        vault: vaultAccount.publicKey,
-      })
-      .signers([gameAccount])
-      .rpc();
-
-    // Create and fund player
-    const player = anchor.web3.Keypair.generate();
-    const playerAirdrop = await program.provider.connection.requestAirdrop(
-      player.publicKey,
-      2 * anchor.web3.LAMPORTS_PER_SOL
-    );
-    await program.provider.connection.confirmTransaction(playerAirdrop);
 
     // Join game with both player and operator signatures
     await program.methods
@@ -462,9 +355,9 @@ describe("coinflip", () => {
       .accounts({
         game: gameAccount.publicKey,
         player: player.publicKey,
-        playerTokenAccount: null,
-        vaultTokenAccount: null,
-        vault: vaultAccount.publicKey,
+        playerTokenAccount: playerTokenAccount,
+        vaultTokenAccount: vaultTokenAccount,
+        vault: vaultPDA,
         config: configAccount.publicKey,
       })
       .remainingAccounts([
@@ -484,10 +377,16 @@ describe("coinflip", () => {
   });
 
   it("Fail to Join Full Game", async () => {
-    // Similar setup as successful join test
     const { configAccount } = await createConfigAccount();
-    const vaultAccount = anchor.web3.Keypair.generate();
-    const gameAccount = anchor.web3.Keypair.generate();
+    const {
+      mint,
+      gameAccount,
+      vaultPDA,
+      creatorTokenAccount,
+      vaultTokenAccount,
+      mintAuthority
+    } = await createSplTokenMint();
+
     const amount = new BN(1_000_000);
 
     // Create game with max 2 participants
@@ -498,17 +397,16 @@ describe("coinflip", () => {
         2,
         2,
         new BN(3600),
-        false,
-        true
+        false
       )
       .accounts({
         game: gameAccount.publicKey,
         creator: program.provider.publicKey,
         config: configAccount.publicKey,
-        tokenMint: null,
-        creatorTokenAccount: null,
-        vaultTokenAccount: null,
-        vault: vaultAccount.publicKey,
+        tokenMint: mint,
+        creatorTokenAccount: creatorTokenAccount,
+        vaultTokenAccount: vaultTokenAccount,
+        vault: vaultPDA,
       })
       .signers([gameAccount])
       .rpc();
@@ -525,15 +423,43 @@ describe("coinflip", () => {
       await program.provider.connection.confirmTransaction(airdrop);
     }
 
+    // Create token accounts for players and mint tokens
+    const player1TokenAccount = await createAssociatedTokenAccount(
+      program.provider.connection,
+      player1,
+      mint,
+      player1.publicKey
+    );
+
+    const player2TokenAccount = await createAssociatedTokenAccount(
+      program.provider.connection,
+      player2,
+      mint,
+      player2.publicKey
+    );
+
+    // Mint tokens to players
+    for (const playerAccount of [player1TokenAccount, player2TokenAccount]) {
+      await mintTo(
+        program.provider.connection,
+        mintAuthority,
+        mint,
+        playerAccount,
+        mintAuthority.publicKey,
+        amount.toNumber(),
+        [mintAuthority]
+      );
+    }
+
     // First player joins successfully
     await program.methods
       .joinGame()
       .accounts({
         game: gameAccount.publicKey,
         player: player1.publicKey,
-        playerTokenAccount: null,
-        vaultTokenAccount: null,
-        vault: vaultAccount.publicKey,
+        playerTokenAccount: player1TokenAccount,
+        vaultTokenAccount: vaultTokenAccount,
+        vault: vaultPDA,
         config: configAccount.publicKey,
       })
       .signers([player1])
@@ -546,9 +472,9 @@ describe("coinflip", () => {
         .accounts({
           game: gameAccount.publicKey,
           player: player2.publicKey,
-          playerTokenAccount: null,
-          vaultTokenAccount: null,
-          vault: vaultAccount.publicKey,
+          playerTokenAccount: player2TokenAccount,
+          vaultTokenAccount: vaultTokenAccount,
+          vault: vaultPDA,
           config: configAccount.publicKey,
         })
         .signers([player2])
@@ -561,10 +487,16 @@ describe("coinflip", () => {
   });
 
   it("Fail to Join Game Twice", async () => {
-    // Similar setup as previous tests
     const { configAccount } = await createConfigAccount();
-    const vaultAccount = anchor.web3.Keypair.generate();
-    const gameAccount = anchor.web3.Keypair.generate();
+    const {
+      mint,
+      gameAccount,
+      vaultPDA,
+      creatorTokenAccount,
+      vaultTokenAccount,
+      mintAuthority
+    } = await createSplTokenMint();
+
     const amount = new BN(1_000_000);
 
     await program.methods
@@ -574,17 +506,16 @@ describe("coinflip", () => {
         3, // Allow 3 participants to test double-join
         2,
         new BN(3600),
-        false,
-        true
+        false
       )
       .accounts({
         game: gameAccount.publicKey,
         creator: program.provider.publicKey,
         config: configAccount.publicKey,
-        tokenMint: null,
-        creatorTokenAccount: null,
-        vaultTokenAccount: null,
-        vault: vaultAccount.publicKey,
+        tokenMint: mint,
+        creatorTokenAccount: creatorTokenAccount,
+        vaultTokenAccount: vaultTokenAccount,
+        vault: vaultPDA,
       })
       .signers([gameAccount])
       .rpc();
@@ -597,15 +528,34 @@ describe("coinflip", () => {
     );
     await program.provider.connection.confirmTransaction(airdrop);
 
+    // Create player's token account
+    const playerTokenAccount = await createAssociatedTokenAccount(
+      program.provider.connection,
+      player,
+      mint,
+      player.publicKey
+    );
+
+    // Mint tokens to player
+    await mintTo(
+      program.provider.connection,
+      mintAuthority,
+      mint,
+      playerTokenAccount,
+      mintAuthority.publicKey,
+      amount.toNumber() * 2, // Enough for two attempts
+      [mintAuthority]
+    );
+
     // First join should succeed
     await program.methods
       .joinGame()
       .accounts({
         game: gameAccount.publicKey,
         player: player.publicKey,
-        playerTokenAccount: null,
-        vaultTokenAccount: null,
-        vault: vaultAccount.publicKey,
+        playerTokenAccount: playerTokenAccount,
+        vaultTokenAccount: vaultTokenAccount,
+        vault: vaultPDA,
         config: configAccount.publicKey,
       })
       .signers([player])
@@ -618,9 +568,9 @@ describe("coinflip", () => {
         .accounts({
           game: gameAccount.publicKey,
           player: player.publicKey,
-          playerTokenAccount: null,
-          vaultTokenAccount: null,
-          vault: vaultAccount.publicKey,
+          playerTokenAccount: playerTokenAccount,
+          vaultTokenAccount: vaultTokenAccount,
+          vault: vaultPDA,
           config: configAccount.publicKey,
         })
         .signers([player])
@@ -649,8 +599,16 @@ describe("coinflip", () => {
       .signers([configAccount])
       .rpc();
 
-    const vaultAccount = anchor.web3.Keypair.generate();
-    const gameAccount = anchor.web3.Keypair.generate();
+    // Create SPL token setup
+    const {
+      mint,
+      gameAccount,
+      vaultPDA,
+      creatorTokenAccount,
+      vaultTokenAccount,
+      mintAuthority
+    } = await createSplTokenMint();
+
     const amount = new BN(1_000_000);
 
     // Create game with isPrivate = true
@@ -661,17 +619,16 @@ describe("coinflip", () => {
         2,
         2,
         new BN(3600),
-        true, // isPrivate
-        true  // isSol
+        true // isPrivate
       )
       .accounts({
         game: gameAccount.publicKey,
         creator: program.provider.publicKey,
         config: configAccount.publicKey,
-        tokenMint: null,
-        creatorTokenAccount: null,
-        vaultTokenAccount: null,
-        vault: vaultAccount.publicKey,
+        tokenMint: mint,
+        creatorTokenAccount: creatorTokenAccount,
+        vaultTokenAccount: vaultTokenAccount,
+        vault: vaultPDA,
       })
       .signers([gameAccount])
       .rpc();
@@ -683,6 +640,25 @@ describe("coinflip", () => {
       2 * anchor.web3.LAMPORTS_PER_SOL
     );
     await program.provider.connection.confirmTransaction(playerAirdrop);
+
+    // Create player's token account
+    const playerTokenAccount = await createAssociatedTokenAccount(
+      program.provider.connection,
+      player,
+      mint,
+      player.publicKey
+    );
+
+    // Mint tokens to player
+    await mintTo(
+      program.provider.connection,
+      mintAuthority,
+      mint,
+      playerTokenAccount,
+      mintAuthority.publicKey,
+      amount.toNumber(),
+      [mintAuthority]
+    );
 
     // Create fake operator
     const fakeOperator = anchor.web3.Keypair.generate();
@@ -699,9 +675,9 @@ describe("coinflip", () => {
         .accounts({
           game: gameAccount.publicKey,
           player: player.publicKey,
-          playerTokenAccount: null,
-          vaultTokenAccount: null,
-          vault: vaultAccount.publicKey,
+          playerTokenAccount: playerTokenAccount,
+          vaultTokenAccount: vaultTokenAccount,
+          vault: vaultPDA,
           config: configAccount.publicKey,
         })
         .remainingAccounts([
@@ -737,8 +713,16 @@ describe("coinflip", () => {
       .signers([configAccount])
       .rpc();
 
-    const vaultAccount = anchor.web3.Keypair.generate();
-    const gameAccount = anchor.web3.Keypair.generate();
+    // Create SPL token setup
+    const {
+      mint,
+      gameAccount,
+      vaultPDA,
+      creatorTokenAccount,
+      vaultTokenAccount,
+      mintAuthority
+    } = await createSplTokenMint();
+
     const amount = new BN(1_000_000);
 
     // Create game
@@ -749,22 +733,21 @@ describe("coinflip", () => {
         2,
         2,
         new BN(3600),
-        false,
-        true
+        false
       )
       .accounts({
         game: gameAccount.publicKey,
         creator: program.provider.publicKey,
         config: configAccount.publicKey,
-        tokenMint: null,
-        creatorTokenAccount: null,
-        vaultTokenAccount: null,
-        vault: vaultAccount.publicKey,
+        tokenMint: mint,
+        creatorTokenAccount: creatorTokenAccount,
+        vaultTokenAccount: vaultTokenAccount,
+        vault: vaultPDA,
       })
       .signers([gameAccount])
       .rpc();
 
-    // Add second player to fill the game
+    // Create and fund second player
     const player = anchor.web3.Keypair.generate();
     const playerAirdrop = await program.provider.connection.requestAirdrop(
       player.publicKey,
@@ -772,14 +755,34 @@ describe("coinflip", () => {
     );
     await program.provider.connection.confirmTransaction(playerAirdrop);
 
+    // Create player's token account
+    const playerTokenAccount = await createAssociatedTokenAccount(
+      program.provider.connection,
+      player,
+      mint,
+      player.publicKey
+    );
+
+    // Mint tokens to player
+    await mintTo(
+      program.provider.connection,
+      mintAuthority,
+      mint,
+      playerTokenAccount,
+      mintAuthority.publicKey,
+      amount.toNumber(),
+      [mintAuthority]
+    );
+
+    // Add second player to fill the game
     await program.methods
       .joinGame()
       .accounts({
         game: gameAccount.publicKey,
         player: player.publicKey,
-        playerTokenAccount: null,
-        vaultTokenAccount: null,
-        vault: vaultAccount.publicKey,
+        playerTokenAccount: playerTokenAccount,
+        vaultTokenAccount: vaultTokenAccount,
+        vault: vaultPDA,
         config: configAccount.publicKey,
       })
       .signers([player])
@@ -806,10 +809,16 @@ describe("coinflip", () => {
   });
 
   it("Fail to Set Oracle Hash Without Operator Authority", async () => {
-    // Similar setup as above
     const { configAccount } = await createConfigAccount();
-    const vaultAccount = anchor.web3.Keypair.generate();
-    const gameAccount = anchor.web3.Keypair.generate();
+    const {
+      mint,
+      gameAccount,
+      vaultPDA,
+      creatorTokenAccount,
+      vaultTokenAccount,
+      mintAuthority
+    } = await createSplTokenMint();
+
     const amount = new BN(1_000_000);
 
     // Create game
@@ -820,17 +829,16 @@ describe("coinflip", () => {
         2,
         2,
         new BN(3600),
-        false,
-        true
+        false
       )
       .accounts({
         game: gameAccount.publicKey,
         creator: program.provider.publicKey,
         config: configAccount.publicKey,
-        tokenMint: null,
-        creatorTokenAccount: null,
-        vaultTokenAccount: null,
-        vault: vaultAccount.publicKey,
+        tokenMint: mint,
+        creatorTokenAccount: creatorTokenAccount,
+        vaultTokenAccount: vaultTokenAccount,
+        vault: vaultPDA,
       })
       .signers([gameAccount])
       .rpc();
@@ -843,14 +851,33 @@ describe("coinflip", () => {
     );
     await program.provider.connection.confirmTransaction(playerAirdrop);
 
+    // Create player's token account
+    const playerTokenAccount = await createAssociatedTokenAccount(
+      program.provider.connection,
+      player,
+      mint,
+      player.publicKey
+    );
+
+    // Mint tokens to player
+    await mintTo(
+      program.provider.connection,
+      mintAuthority,
+      mint,
+      playerTokenAccount,
+      mintAuthority.publicKey,
+      amount.toNumber(),
+      [mintAuthority]
+    );
+
     await program.methods
       .joinGame()
       .accounts({
         game: gameAccount.publicKey,
         player: player.publicKey,
-        playerTokenAccount: null,
-        vaultTokenAccount: null,
-        vault: vaultAccount.publicKey,
+        playerTokenAccount: playerTokenAccount,
+        vaultTokenAccount: vaultTokenAccount,
+        vault: vaultPDA,
         config: configAccount.publicKey,
       })
       .signers([player])
@@ -878,12 +905,13 @@ describe("coinflip", () => {
   });
 
   it("Fail to Set Oracle Hash Before Game is Full", async () => {
+    // Create operator keypair and config
     const operatorKeypair = anchor.web3.Keypair.generate();
     const treasury = anchor.web3.Keypair.generate().publicKey;
     const feePercentage = new BN(1);
     const configAccount = anchor.web3.Keypair.generate();
 
-    // Initialize config
+    // Initialize config with operator
     await program.methods
       .initializeConfig(treasury, feePercentage, operatorKeypair.publicKey)
       .accounts({
@@ -893,11 +921,19 @@ describe("coinflip", () => {
       .signers([configAccount])
       .rpc();
 
-    const vaultAccount = anchor.web3.Keypair.generate();
-    const gameAccount = anchor.web3.Keypair.generate();
+    // Create SPL token setup
+    const {
+      mint,
+      gameAccount,
+      vaultPDA,
+      creatorTokenAccount,
+      vaultTokenAccount,
+      mintAuthority
+    } = await createSplTokenMint();
+
     const amount = new BN(1_000_000);
 
-    // Create game but don't fill it
+    // Create game with max 2 participants
     await program.methods
       .initializeGame(
         { coinflip: {} },
@@ -905,17 +941,16 @@ describe("coinflip", () => {
         2,
         2,
         new BN(3600),
-        false,
-        true
+        false
       )
       .accounts({
         game: gameAccount.publicKey,
         creator: program.provider.publicKey,
         config: configAccount.publicKey,
-        tokenMint: null,
-        creatorTokenAccount: null,
-        vaultTokenAccount: null,
-        vault: vaultAccount.publicKey,
+        tokenMint: mint,
+        creatorTokenAccount: creatorTokenAccount,
+        vaultTokenAccount: vaultTokenAccount,
+        vault: vaultPDA,
       })
       .signers([gameAccount])
       .rpc();
@@ -941,7 +976,7 @@ describe("coinflip", () => {
   });
 
   it("Fail to Set Oracle Hash Twice", async () => {
-    // Create config and game
+    // Create operator keypair and config
     const operatorKeypair = anchor.web3.Keypair.generate();
     const treasury = anchor.web3.Keypair.generate().publicKey;
     const feePercentage = new BN(1);
@@ -957,8 +992,16 @@ describe("coinflip", () => {
       .signers([configAccount])
       .rpc();
 
-    const vaultAccount = anchor.web3.Keypair.generate();
-    const gameAccount = anchor.web3.Keypair.generate();
+    // Create SPL token setup
+    const {
+      mint,
+      gameAccount,
+      vaultPDA,
+      creatorTokenAccount,
+      vaultTokenAccount,
+      mintAuthority
+    } = await createSplTokenMint();
+
     const amount = new BN(1_000_000);
 
     // Create game
@@ -969,37 +1012,55 @@ describe("coinflip", () => {
         2,
         2,
         new BN(3600),
-        false,
-        true
+        false
       )
       .accounts({
         game: gameAccount.publicKey,
         creator: program.provider.publicKey,
         config: configAccount.publicKey,
-        tokenMint: null,
-        creatorTokenAccount: null,
-        vaultTokenAccount: null,
-        vault: vaultAccount.publicKey,
+        tokenMint: mint,
+        creatorTokenAccount: creatorTokenAccount,
+        vaultTokenAccount: vaultTokenAccount,
+        vault: vaultPDA,
       })
       .signers([gameAccount])
       .rpc();
 
-    // Add second player
+    // Create and fund second player
     const player = anchor.web3.Keypair.generate();
     const playerAirdrop = await program.provider.connection.requestAirdrop(
       player.publicKey,
-      2 * anchor.web3.LAMPORTS_PER_SOL
+      anchor.web3.LAMPORTS_PER_SOL
     );
     await program.provider.connection.confirmTransaction(playerAirdrop);
 
+    const playerTokenAccount = await createAssociatedTokenAccount(
+      program.provider.connection,
+      player,
+      mint,
+      player.publicKey
+    );
+
+    // Mint tokens to player
+    await mintTo(
+      program.provider.connection,
+      mintAuthority,
+      mint,
+      playerTokenAccount,
+      mintAuthority.publicKey,
+      amount.toNumber(),
+      [mintAuthority]
+    );
+
+    // Join game with second player
     await program.methods
       .joinGame()
       .accounts({
         game: gameAccount.publicKey,
         player: player.publicKey,
-        playerTokenAccount: null,
-        vaultTokenAccount: null,
-        vault: vaultAccount.publicKey,
+        playerTokenAccount: playerTokenAccount,
+        vaultTokenAccount: vaultTokenAccount,
+        vault: vaultPDA,
         config: configAccount.publicKey,
       })
       .signers([player])
@@ -1035,6 +1096,419 @@ describe("coinflip", () => {
       expect.fail("Should have thrown OracleHashAlreadySet error");
     } catch (error) {
       expect(error.toString()).to.include("OracleHashAlreadySet");
+    }
+  });
+
+  it("Claim Winnings Successfully (SPL)", async () => {
+    // Create config and game
+    const operatorKeypair = anchor.web3.Keypair.generate();
+    const treasury = anchor.web3.Keypair.generate().publicKey;
+    const feePercentage = new BN(1);
+    const configAccount = anchor.web3.Keypair.generate();
+
+    // Initialize config
+    await program.methods
+      .initializeConfig(treasury, feePercentage, operatorKeypair.publicKey)
+      .accounts({
+        config: configAccount.publicKey,
+        signer: program.provider.publicKey,
+      })
+      .signers([configAccount])
+      .rpc();
+
+    // Create SPL token and accounts
+    const {
+      mint,
+      gameAccount,
+      vaultPDA,
+      creatorTokenAccount,
+      vaultTokenAccount,
+      mintAuthority
+    } = await createSplTokenMint();
+
+    // Create treasury token account
+    const treasuryTokenAccount = await createAssociatedTokenAccount(
+      program.provider.connection,
+      mintAuthority,  // Use mintAuthority as payer since it already has SOL
+      mint,
+      treasury
+    );
+
+    const amount = new BN(1_000_000);
+
+    // Create game
+    await program.methods
+      .initializeGame(
+        { coinflip: {} },
+        amount,
+        2,
+        2,
+        new BN(3600),
+        false
+      )
+      .accounts({
+        game: gameAccount.publicKey,
+        creator: program.provider.publicKey,
+        config: configAccount.publicKey,
+        tokenMint: mint,
+        creatorTokenAccount: creatorTokenAccount,
+        vaultTokenAccount: vaultTokenAccount,
+        vault: vaultPDA,
+      })
+      .signers([gameAccount])
+      .rpc();
+
+    // Create and fund second player
+    const player = anchor.web3.Keypair.generate();
+    const playerAirdrop = await program.provider.connection.requestAirdrop(
+      player.publicKey,
+      anchor.web3.LAMPORTS_PER_SOL
+    );
+    await program.provider.connection.confirmTransaction(playerAirdrop);
+
+    const playerTokenAccount = await createAssociatedTokenAccount(
+      program.provider.connection,
+      player,
+      mint,
+      player.publicKey
+    );
+
+    // Mint tokens to player
+    await mintTo(
+      program.provider.connection,
+      mintAuthority,
+      mint,
+      playerTokenAccount,
+      mintAuthority.publicKey,
+      1_000_000_000,
+      [mintAuthority]
+    );
+
+    // Join game
+    await program.methods
+      .joinGame()
+      .accounts({
+        game: gameAccount.publicKey,
+        player: player.publicKey,
+        playerTokenAccount: playerTokenAccount,
+        vaultTokenAccount: vaultTokenAccount,
+        vault: vaultPDA,
+        config: configAccount.publicKey,
+      })
+      .signers([player])
+      .rpc();
+
+    // Set oracle hash
+    const hashValue = Array.from({ length: 32 }, () => Math.floor(Math.random() * 256));
+    await program.methods
+      .setOracleHash(hashValue)
+      .accounts({
+        game: gameAccount.publicKey,
+        config: configAccount.publicKey,
+        oracle: operatorKeypair.publicKey,
+        recentBlockhash: anchor.web3.SYSVAR_RECENT_BLOCKHASHES_PUBKEY,
+      })
+      .signers([operatorKeypair])
+      .rpc();
+
+    // Get game data to find winner
+    const gameData = await program.account.game.fetch(gameAccount.publicKey);
+    const winner = gameData.winner;
+    expect(winner).to.not.be.null;
+
+    // Get winner's token account
+    const winnerTokenAccount = winner.equals(program.provider.publicKey)
+      ? creatorTokenAccount
+      : playerTokenAccount;
+
+    // Get initial balances
+    const initialBalance = (await getAccount(program.provider.connection, winnerTokenAccount)).amount;
+
+    // Claim winnings
+    await program.methods
+      .claimWinnings()
+      .accounts({
+        game: gameAccount.publicKey,
+        winner: winner,
+        config: configAccount.publicKey,
+        vaultTokenAccount: vaultTokenAccount,
+        winnerTokenAccount: winnerTokenAccount,
+        treasuryTokenAccount: treasuryTokenAccount,
+        vault: vaultPDA,
+      })
+      .signers(winner.equals(program.provider.publicKey) ? [] : [player])
+      .rpc();
+
+    // Verify winner received funds
+    const finalBalance = (await getAccount(program.provider.connection, winnerTokenAccount)).amount;
+    expect(finalBalance - initialBalance).to.equal(
+      BigInt(amount.toNumber() * 2 * (1 - feePercentage.toNumber() / 100))  // Convert to BigInt
+    );
+  });
+
+  it("Fail to Claim as Non-Winner", async () => {
+    // Create config and game
+    const operatorKeypair = anchor.web3.Keypair.generate();
+    const treasury = anchor.web3.Keypair.generate().publicKey;
+    const feePercentage = new BN(1);
+    const configAccount = anchor.web3.Keypair.generate();
+
+    // Initialize config
+    await program.methods
+      .initializeConfig(treasury, feePercentage, operatorKeypair.publicKey)
+      .accounts({
+        config: configAccount.publicKey,
+        signer: program.provider.publicKey,
+      })
+      .signers([configAccount])
+      .rpc();
+
+    // Create SPL token setup
+    const {
+      mint,
+      gameAccount,
+      vaultPDA,
+      creatorTokenAccount,
+      vaultTokenAccount,
+      mintAuthority
+    } = await createSplTokenMint();
+
+    // Create treasury token account
+    const treasuryTokenAccount = await createAssociatedTokenAccount(
+      program.provider.connection,
+      mintAuthority,
+      mint,
+      treasury
+    );
+
+    const amount = new BN(1_000_000);
+
+    // Create game
+    await program.methods
+      .initializeGame(
+        { coinflip: {} },
+        amount,
+        2,
+        2,
+        new BN(3600),
+        false
+      )
+      .accounts({
+        game: gameAccount.publicKey,
+        creator: program.provider.publicKey,
+        config: configAccount.publicKey,
+        tokenMint: mint,
+        creatorTokenAccount: creatorTokenAccount,
+        vaultTokenAccount: vaultTokenAccount,
+        vault: vaultPDA,
+      })
+      .signers([gameAccount])
+      .rpc();
+
+    // Create and fund second player
+    const player = anchor.web3.Keypair.generate();
+    const playerAirdrop = await program.provider.connection.requestAirdrop(
+      player.publicKey,
+      anchor.web3.LAMPORTS_PER_SOL
+    );
+    await program.provider.connection.confirmTransaction(playerAirdrop);
+
+    const playerTokenAccount = await createAssociatedTokenAccount(
+      program.provider.connection,
+      player,
+      mint,
+      player.publicKey
+    );
+
+    // Mint tokens to player
+    await mintTo(
+      program.provider.connection,
+      mintAuthority,
+      mint,
+      playerTokenAccount,
+      mintAuthority.publicKey,
+      amount.toNumber(),
+      [mintAuthority]
+    );
+
+    // Join game
+    await program.methods
+      .joinGame()
+      .accounts({
+        game: gameAccount.publicKey,
+        player: player.publicKey,
+        playerTokenAccount: playerTokenAccount,
+        vaultTokenAccount: vaultTokenAccount,
+        vault: vaultPDA,
+        config: configAccount.publicKey,
+      })
+      .signers([player])
+      .rpc();
+
+    // Set oracle hash
+    const hashValue = Array.from({ length: 32 }, () => Math.floor(Math.random() * 256));
+    await program.methods
+      .setOracleHash(hashValue)
+      .accounts({
+        game: gameAccount.publicKey,
+        config: configAccount.publicKey,
+        oracle: operatorKeypair.publicKey,
+        recentBlockhash: anchor.web3.SYSVAR_RECENT_BLOCKHASHES_PUBKEY,
+      })
+      .signers([operatorKeypair])
+      .rpc();
+
+    // Get game data to find loser
+    const gameData = await program.account.game.fetch(gameAccount.publicKey);
+    const winner = gameData.winner;
+    const loser = winner.equals(program.provider.publicKey) ? player.publicKey : program.provider.publicKey;
+    const loserTokenAccount = winner.equals(program.provider.publicKey) ? playerTokenAccount : creatorTokenAccount;
+
+    // Try to claim as loser
+    try {
+      await program.methods
+        .claimWinnings()
+        .accounts({
+          game: gameAccount.publicKey,
+          winner: loser,
+          config: configAccount.publicKey,
+          vaultTokenAccount: vaultTokenAccount,
+          winnerTokenAccount: loserTokenAccount,
+          treasuryTokenAccount: treasuryTokenAccount,
+          vault: vaultPDA,
+        })
+        .signers(loser.equals(program.provider.publicKey) ? [] : [player])
+        .rpc();
+
+      expect.fail("Should have thrown NotWinner error");
+    } catch (error) {
+      expect(error.toString()).to.include("NotWinner");
+    }
+  });
+
+  it("Claim Timeout When Game Expires", async () => {
+    // Create game with short timeout
+    const { configAccount } = await createConfigAccount();
+    const {
+        mint,
+        gameAccount,
+        vaultPDA,
+        creatorTokenAccount,
+        vaultTokenAccount,
+        mintAuthority
+    } = await createSplTokenMint();
+
+    const amount = new BN(1_000_000);
+
+    await program.methods
+      .initializeGame(
+        { coinflip: {} },
+        amount,
+        2,
+        2,
+        new BN(5), // 5 second timeout
+        false
+      )
+      .accounts({
+        game: gameAccount.publicKey,
+        creator: program.provider.publicKey,
+        config: configAccount.publicKey,
+        tokenMint: mint,
+        creatorTokenAccount: creatorTokenAccount,
+        vaultTokenAccount: vaultTokenAccount,
+        vault: vaultPDA,
+      })
+      .signers([gameAccount])
+      .rpc();
+
+    // Wait for timeout
+    await new Promise(resolve => setTimeout(resolve, 6000));
+
+    // Get initial balance
+    const initialBalance = (await getAccount(program.provider.connection, creatorTokenAccount)).amount;
+
+    // Claim timeout
+    await program.methods
+      .claimTimeout()
+      .accounts({
+        game: gameAccount.publicKey,
+        vaultTokenAccount: vaultTokenAccount,
+        participantTokenAccount: creatorTokenAccount,
+        vault: vaultPDA,
+      })
+      .rpc();
+
+    // Verify funds returned
+    const finalBalance = (await getAccount(program.provider.connection, creatorTokenAccount)).amount;
+    expect(finalBalance - initialBalance).to.equal(BigInt(amount.toString()));
+  });
+
+  it("Fail to Claim Timeout Before Expiration", async () => {
+    // Create config and game
+    const operatorKeypair = anchor.web3.Keypair.generate();
+    const treasury = anchor.web3.Keypair.generate().publicKey;
+    const feePercentage = new BN(1);
+    const configAccount = anchor.web3.Keypair.generate();
+
+    // Initialize config
+    await program.methods
+      .initializeConfig(treasury, feePercentage, operatorKeypair.publicKey)
+      .accounts({
+        config: configAccount.publicKey,
+        signer: program.provider.publicKey,
+      })
+      .signers([configAccount])
+      .rpc();
+
+    // Create SPL token setup
+    const {
+      mint,
+      gameAccount,
+      vaultPDA,
+      creatorTokenAccount,
+      vaultTokenAccount,
+      mintAuthority
+    } = await createSplTokenMint();
+
+    const amount = new BN(1_000_000);
+
+    // Create game with 1 hour timeout
+    await program.methods
+      .initializeGame(
+        { coinflip: {} },
+        amount,
+        2,
+        2,
+        new BN(3600), // 1 hour timeout
+        false
+      )
+      .accounts({
+        game: gameAccount.publicKey,
+        creator: program.provider.publicKey,
+        config: configAccount.publicKey,
+        tokenMint: mint,
+        creatorTokenAccount: creatorTokenAccount,
+        vaultTokenAccount: vaultTokenAccount,
+        vault: vaultPDA,
+      })
+      .signers([gameAccount])
+      .rpc();
+
+    // Try to claim timeout immediately
+    try {
+      await program.methods
+        .claimTimeout()
+        .accounts({
+          game: gameAccount.publicKey,
+          vaultTokenAccount: vaultTokenAccount,
+          participantTokenAccount: creatorTokenAccount,
+          vault: vaultPDA,
+        })
+        .rpc();
+
+      expect.fail("Should have thrown TimeoutNotReached error");
+    } catch (error) {
+      expect(error.toString()).to.include("TimeoutNotReached");
     }
   });
 });

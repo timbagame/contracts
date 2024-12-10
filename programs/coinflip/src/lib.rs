@@ -35,7 +35,6 @@ pub mod coinflip {
         min_participants: u8,
         timeout_duration: i64,
         is_private: bool,
-        is_sol: bool,
     ) -> Result<()> {
         instructions::initialize_game::handler(
             ctx,
@@ -45,7 +44,6 @@ pub mod coinflip {
             min_participants,
             timeout_duration,
             is_private,
-            is_sol,
         )
     }
 
@@ -63,9 +61,5 @@ pub mod coinflip {
 
     pub fn claim_timeout(ctx: Context<ClaimTimeout>) -> Result<()> {
         instructions::claim_timeout::handler(ctx)
-    }
-
-    pub fn collect_fees(ctx: Context<CollectFees>, amount: u64) -> Result<()> {
-        instructions::collect_fees::handler(ctx, amount)
     }
 }

@@ -19,19 +19,15 @@ pub struct InitializeGame<'info> {
     #[account(mut)]
     pub creator: Signer<'info>,
     pub config: Account<'info, Config>,
-    /// CHECK: Optional token mint
+    pub token_mint: Account<'info, anchor_spl::token::Mint>,
     #[account(mut)]
-    pub token_mint: Option<Account<'info, anchor_spl::token::Mint>>,
-    /// CHECK: Optional creator token account
+    pub creator_token_account: Account<'info, TokenAccount>,
     #[account(mut)]
-    pub creator_token_account: Option<Account<'info, TokenAccount>>,
-    /// CHECK: Optional vault token account
+    pub vault_token_account: Account<'info, TokenAccount>,
+    /// CHECK: Vault PDA for token authority
     #[account(mut)]
-    pub vault_token_account: Option<Account<'info, TokenAccount>>,
-    /// CHECK: Optional vault for SOL
-    #[account(mut)]
-    pub vault: Option<AccountInfo<'info>>,
-    pub token_program: Option<Program<'info, Token>>,
+    pub vault: AccountInfo<'info>,
+    pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
 }
 
@@ -41,17 +37,14 @@ pub struct JoinGame<'info> {
     pub game: Account<'info, Game>,
     #[account(mut)]
     pub player: Signer<'info>,
-    /// CHECK: Optional token account for player
     #[account(mut)]
-    pub player_token_account: Option<Account<'info, TokenAccount>>,
-    /// CHECK: Optional token account for vault
+    pub player_token_account: Account<'info, TokenAccount>,
     #[account(mut)]
-    pub vault_token_account: Option<Account<'info, TokenAccount>>,
-    pub token_program: Option<Program<'info, Token>>,
-    /// CHECK: Optional vault for SOL
+    pub vault_token_account: Account<'info, TokenAccount>,
+    pub token_program: Program<'info, Token>,
+    /// CHECK: Vault PDA for token authority
     #[account(mut)]
-    pub vault: Option<AccountInfo<'info>>,
-    pub system_program: Program<'info, System>,
+    pub vault: AccountInfo<'info>,
     pub config: Account<'info, Config>,
 }
 
@@ -78,8 +71,9 @@ pub struct ClaimWinnings<'info> {
     pub winner_token_account: Account<'info, TokenAccount>,
     #[account(mut)]
     pub treasury_token_account: Account<'info, TokenAccount>,
-    /// CHECK: PDA for vault authority
-    pub vault_authority: AccountInfo<'info>,
+    /// CHECK: Vault PDA for token authority
+    #[account(mut)]
+    pub vault: AccountInfo<'info>,
     pub token_program: Program<'info, Token>,
 }
 
@@ -91,21 +85,8 @@ pub struct ClaimTimeout<'info> {
     pub vault_token_account: Account<'info, TokenAccount>,
     #[account(mut)]
     pub participant_token_account: Account<'info, TokenAccount>,
-    /// CHECK: PDA for vault authority
-    pub vault_authority: AccountInfo<'info>,
-    pub token_program: Program<'info, Token>,
-}
-
-#[derive(Accounts)]
-pub struct CollectFees<'info> {
-    pub config: Account<'info, Config>,
-    #[account(constraint = config.operator == operator.key())]
-    pub operator: Signer<'info>,
+    /// CHECK: Vault PDA for token authority
     #[account(mut)]
-    pub vault_token_account: Account<'info, TokenAccount>,
-    #[account(mut)]
-    pub treasury_token_account: Account<'info, TokenAccount>,
-    /// CHECK: PDA for vault authority
-    pub vault_authority: AccountInfo<'info>,
+    pub vault: AccountInfo<'info>,
     pub token_program: Program<'info, Token>,
 }
