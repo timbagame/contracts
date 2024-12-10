@@ -32,8 +32,6 @@ pub enum ErrorCode {
     InvalidOperator,
     #[msg("Timeout reached")]
     TimeoutReached,
-    #[msg("Timeout not reached")]
-    TimeoutNotReached,
     #[msg("Invalid participant count")]
     InvalidParticipantCount,
     #[msg("Game is not active")]

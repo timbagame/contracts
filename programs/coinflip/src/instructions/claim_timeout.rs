@@ -6,12 +6,6 @@ use crate::state::GameStatus;
 
 pub fn handler(ctx: Context<super::ClaimTimeout>) -> Result<()> {
     let game = &mut ctx.accounts.game;
-    let current_time = Clock::get()?.unix_timestamp;
-
-    require!(
-        current_time >= game.created_at + game.timeout_duration,
-        ErrorCode::TimeoutNotReached
-    );
 
     // Verify participant is in the game
     let participant = ctx.accounts.participant_token_account.owner;
@@ -28,6 +22,17 @@ pub fn handler(ctx: Context<super::ClaimTimeout>) -> Result<()> {
         ErrorCode::InvalidVault
     );
 
+    // If timeout has passed, mark game as cancelled
+    let current_time = Clock::get()?.unix_timestamp;
+    if current_time >= game.created_at + game.timeout_duration {
+        game.status = GameStatus::Cancelled;
+    }
+
+    // Remove participant from
+    if let Some(pos) = game.participants.iter().position(|x| x == &participant) {
+        game.participants.remove(pos);
+    }
+
     // Return SPL tokens to participant
     token::transfer(
         CpiContext::new_with_signer(
@@ -41,16 +46,6 @@ pub fn handler(ctx: Context<super::ClaimTimeout>) -> Result<()> {
         ),
         game.amount,
     )?;
-
-    // Remove participant from game after refund
-    if let Some(pos) = game.participants.iter().position(|x| x == &participant) {
-        game.participants.remove(pos);
-    }
-
-    // If all participants have claimed, mark game as cancelled
-    if game.participants.is_empty() {
-        game.status = GameStatus::Cancelled;
-    }
 
     Ok(())
 }
