@@ -21,10 +21,8 @@ pub fn handler(ctx: Context<super::ClaimTimeout>) -> Result<()> {
     );
 
     // Get vault PDA and bump
-    let (vault_pda, bump) = Pubkey::find_program_address(
-        &[b"vault", game.key().as_ref()],
-        ctx.program_id
-    );
+    let (vault_pda, bump) =
+        Pubkey::find_program_address(&[b"vault", game.key().as_ref()], ctx.program_id);
     require!(
         ctx.accounts.vault.key() == vault_pda,
         ErrorCode::InvalidVault
@@ -39,7 +37,7 @@ pub fn handler(ctx: Context<super::ClaimTimeout>) -> Result<()> {
                 to: ctx.accounts.participant_token_account.to_account_info(),
                 authority: ctx.accounts.vault.to_account_info(),
             },
-            &[&[b"vault", game.key().as_ref(), &[bump]]]
+            &[&[b"vault", game.key().as_ref(), &[bump]]],
         ),
         game.amount,
     )?;

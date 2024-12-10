@@ -83,10 +83,14 @@ pub struct ClaimTimeout<'info> {
     pub game: Account<'info, Game>,
     #[account(mut)]
     pub vault_token_account: Account<'info, TokenAccount>,
-    #[account(mut)]
+    #[account(
+        mut,
+        constraint = participant_token_account.owner == participant.key()
+    )]
     pub participant_token_account: Account<'info, TokenAccount>,
     /// CHECK: Vault PDA for token authority
     #[account(mut)]
     pub vault: AccountInfo<'info>,
     pub token_program: Program<'info, Token>,
+    pub participant: Signer<'info>,
 }

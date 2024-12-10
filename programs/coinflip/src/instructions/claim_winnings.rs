@@ -6,7 +6,7 @@ use crate::state::GameStatus;
 
 pub fn handler(ctx: Context<super::ClaimWinnings>) -> Result<()> {
     let game = &mut ctx.accounts.game;
-    
+
     require!(
         game.status == GameStatus::ReadyForClaim,
         ErrorCode::GameNotReadyForClaim
@@ -21,10 +21,8 @@ pub fn handler(ctx: Context<super::ClaimWinnings>) -> Result<()> {
     let winner_amount = total_pot - fee_amount;
 
     // Get vault PDA and bump
-    let (vault_pda, bump) = Pubkey::find_program_address(
-        &[b"vault", game.key().as_ref()],
-        ctx.program_id
-    );
+    let (vault_pda, bump) =
+        Pubkey::find_program_address(&[b"vault", game.key().as_ref()], ctx.program_id);
     require!(
         ctx.accounts.vault.key() == vault_pda,
         ErrorCode::InvalidVault
@@ -39,7 +37,7 @@ pub fn handler(ctx: Context<super::ClaimWinnings>) -> Result<()> {
                 to: ctx.accounts.winner_token_account.to_account_info(),
                 authority: ctx.accounts.vault.to_account_info(),
             },
-            &[&[b"vault", game.key().as_ref(), &[bump]]]
+            &[&[b"vault", game.key().as_ref(), &[bump]]],
         ),
         winner_amount,
     )?;
@@ -53,7 +51,7 @@ pub fn handler(ctx: Context<super::ClaimWinnings>) -> Result<()> {
                 to: ctx.accounts.treasury_token_account.to_account_info(),
                 authority: ctx.accounts.vault.to_account_info(),
             },
-            &[&[b"vault", game.key().as_ref(), &[bump]]]
+            &[&[b"vault", game.key().as_ref(), &[bump]]],
         ),
         fee_amount,
     )?;
