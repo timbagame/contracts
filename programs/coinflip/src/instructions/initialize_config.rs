@@ -7,8 +7,8 @@ pub fn handler(
     fee_percentage: u64,
     operator: Pubkey,
 ) -> Result<()> {
-    // Validate fee percentage is not greater than 100
-    require!(fee_percentage <= 100, ErrorCode::InvalidFeePercentage);
+    // Validate fee percentage is not greater than 5
+    require!(fee_percentage <= 5, ErrorCode::InvalidFeePercentage);
 
     let config = &mut ctx.accounts.config;
     config.treasury = treasury;
