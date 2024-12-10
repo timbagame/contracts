@@ -20,7 +20,7 @@ pub fn handler(ctx: Context<super::SetOracleHash>, hash_value: [u8; 32]) -> Resu
     require!(game.status == GameStatus::Active, ErrorCode::GameNotActive);
     require!(
         game.is_ready_for_oracle()
-            || (game.participants.len() >= game.min_participants as usize
+            || (game.participants.len() >= (game.min_participants as usize)
                 && current_time >= game.created_at + game.timeout_duration),
         ErrorCode::GameNotFull
     );

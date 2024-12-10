@@ -67,7 +67,7 @@ impl Game {
             crate::error::ErrorCode::AlreadyJoined
         );
         require!(
-            self.participants.len() < self.max_participants as usize,
+            self.participants.len() < (self.max_participants as usize),
             crate::error::ErrorCode::GameFull
         );
         Ok(())
@@ -78,6 +78,6 @@ impl Game {
     }
 
     pub fn is_ready_for_oracle(&self) -> bool {
-        self.participants.len() == self.max_participants as usize
+        self.participants.len() == (self.max_participants as usize)
     }
 }
