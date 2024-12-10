@@ -18,6 +18,8 @@ pub enum ErrorCode {
     OracleHashAlreadySet,
     #[msg("Game not full yet")]
     GameNotFull,
+    #[msg("Game ready for claim")]
+    GameReadyForClaim,
     #[msg("Game not ready for claim")]
     GameNotReadyForClaim,
     #[msg("Not the winner")]
@@ -36,6 +38,8 @@ pub enum ErrorCode {
     InvalidParticipantCount,
     #[msg("Game is not active")]
     GameNotActive,
+    #[msg("Game is completed")]
+    GameCompleted,
     #[msg("Invalid vault")]
     InvalidVault,
     #[msg("Invalid participant")]
