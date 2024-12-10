@@ -6,6 +6,14 @@ use crate::state::GameStatus;
 
 pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
     let game = &mut ctx.accounts.game;
+
+    // Check if the timeout has not passed
+    let current_time = Clock::get()?.unix_timestamp;
+    require!(
+        current_time < game.created_at + game.timeout_duration,
+        ErrorCode::TimeoutReached
+    );
+
     game.validate_status(GameStatus::Active)?;
     game.validate_participation(&ctx.accounts.player.key())?;
 
