@@ -12,7 +12,6 @@ pub fn handler(
     min_participants: u8,
     timeout_duration: i64,
     is_private: bool,
-    is_sol: bool,
 ) -> Result<()> {
     require!(
         min_participants <= max_participants,
@@ -38,15 +37,10 @@ pub fn handler(
         min_participants,
         participants: Vec::with_capacity(max_participants as usize),
         status: crate::state::GameStatus::Active,
-        token_mint: if is_sol { 
-            None 
-        } else {
-            Some(ctx.accounts.token_mint.as_ref().unwrap().key())
-        },
+        token_mint: ctx.accounts.token_mint.key(),
         created_at: Clock::get()?.unix_timestamp,
         timeout_duration,
         is_private,
-        is_sol,
         ..Default::default()
     };
 
@@ -57,32 +51,17 @@ pub fn handler(
     *ctx.accounts.game = new_game;
 
     // Transfer initial amount
-    if is_sol {
-        // Transfer SOL to vault
-        anchor_lang::system_program::transfer(
-            CpiContext::new(
-                ctx.accounts.system_program.to_account_info(),
-                anchor_lang::system_program::Transfer {
-                    from: ctx.accounts.creator.to_account_info(),
-                    to: ctx.accounts.vault.as_ref().unwrap().to_account_info(),
-                },
-            ),
-            amount,
-        )?;
-    } else {
-        // Transfer SPL tokens to vault
-        token::transfer(
-            CpiContext::new(
-                ctx.accounts.token_program.as_ref().unwrap().to_account_info(),
-                token::Transfer {
-                    from: ctx.accounts.creator_token_account.as_ref().unwrap().to_account_info(),
-                    to: ctx.accounts.vault_token_account.as_ref().unwrap().to_account_info(),
-                    authority: ctx.accounts.creator.to_account_info(),
-                },
-            ),
-            amount,
-        )?;
-    }
+    token::transfer(
+        CpiContext::new(
+            ctx.accounts.token_program.to_account_info(),
+            token::Transfer {
+                from: ctx.accounts.creator_token_account.to_account_info(),
+                to: ctx.accounts.vault_token_account.to_account_info(),
+                authority: ctx.accounts.creator.to_account_info(),
+            },
+        ),
+        amount,
+    )?;
 
     Ok(())
 }

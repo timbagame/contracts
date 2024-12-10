@@ -45,12 +45,11 @@ pub struct Game {
     pub participants: Vec<Pubkey>,
     pub winner: Option<Pubkey>,
     pub status: GameStatus,
-    pub token_mint: Option<Pubkey>,
+    pub token_mint: Pubkey,
     pub oracle_hash: Option<[u8; 32]>,
     pub created_at: i64,
     pub timeout_duration: i64,
     pub is_private: bool,
-    pub is_sol: bool,
 }
 
 impl Game {

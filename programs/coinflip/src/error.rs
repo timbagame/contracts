@@ -36,4 +36,8 @@ pub enum ErrorCode {
     InvalidParticipantCount,
     #[msg("Game is not active")]
     GameNotActive,
+    #[msg("Invalid vault")]
+    InvalidVault,
+    #[msg("Invalid participant")]
+    InvalidParticipant,
 }
