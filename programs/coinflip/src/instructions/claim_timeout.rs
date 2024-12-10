@@ -36,7 +36,8 @@ pub fn handler(ctx: Context<super::ClaimTimeout>) -> Result<()> {
 
     // If timeout has passed, mark game as cancelled
     let current_time = Clock::get()?.unix_timestamp;
-    if current_time >= game.created_at + game.timeout_duration {
+    if current_time >= game.created_at + game.timeout_duration && game.status == GameStatus::Active
+    {
         game.status = GameStatus::Cancelled;
     }
 
