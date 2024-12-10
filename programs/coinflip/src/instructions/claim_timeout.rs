@@ -7,7 +7,7 @@ use crate::state::GameStatus;
 pub fn handler(ctx: Context<super::ClaimTimeout>) -> Result<()> {
     let game = &mut ctx.accounts.game;
 
-    // Require game to not be ReadyToClaim
+    // Require game to not be ReadyForClaim
     require!(
         game.status != GameStatus::ReadyForClaim,
         ErrorCode::GameReadyForClaim
