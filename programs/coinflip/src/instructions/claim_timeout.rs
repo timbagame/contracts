@@ -7,6 +7,18 @@ use crate::state::GameStatus;
 pub fn handler(ctx: Context<super::ClaimTimeout>) -> Result<()> {
     let game = &mut ctx.accounts.game;
 
+    // Require game to not be ReadyToClaim
+    require!(
+        game.status != GameStatus::ReadyForClaim,
+        ErrorCode::GameReadyForClaim
+    );
+
+    // Require game to not be Completed
+    require!(
+        game.status != GameStatus::Completed,
+        ErrorCode::GameCompleted
+    );
+
     // Verify participant is in the game
     let participant = ctx.accounts.participant_token_account.owner;
     require!(
