@@ -1390,12 +1390,12 @@ describe("coinflip", () => {
     // Create game with short timeout
     const { configAccount } = await createConfigAccount();
     const {
-        mint,
-        gameAccount,
-        vaultPDA,
-        creatorTokenAccount,
-        vaultTokenAccount,
-        mintAuthority
+      mint,
+      gameAccount,
+      vaultPDA,
+      creatorTokenAccount,
+      vaultTokenAccount,
+      mintAuthority
     } = await createSplTokenMint();
 
     const amount = new BN(1_000_000);
@@ -1509,6 +1509,267 @@ describe("coinflip", () => {
       expect.fail("Should have thrown TimeoutNotReached error");
     } catch (error) {
       expect(error.toString()).to.include("TimeoutNotReached");
+    }
+  });
+
+  it("Initialize and Join Giveaway Game Successfully", async () => {
+    const { configAccount } = await createConfigAccount();
+    const {
+      mint,
+      gameAccount,
+      vaultPDA,
+      creatorTokenAccount,
+      vaultTokenAccount,
+      mintAuthority
+    } = await createSplTokenMint();
+
+    const amount = new BN(1_000_000);
+    const maxParticipants = 5;
+    const minParticipants = 1;
+    const timeoutDuration = new BN(3600);
+    const isPrivate = false;
+
+    // Initialize giveaway game
+    await program.methods
+      .initializeGame(
+        { giveaway: {} },
+        amount,
+        maxParticipants,
+        minParticipants,
+        timeoutDuration,
+        isPrivate
+      )
+      .accounts({
+        game: gameAccount.publicKey,
+        creator: program.provider.publicKey,
+        config: configAccount.publicKey,
+        tokenMint: mint,
+        creatorTokenAccount: creatorTokenAccount,
+        vaultTokenAccount: vaultTokenAccount,
+        vault: vaultPDA,
+      })
+      .signers([gameAccount])
+      .rpc();
+
+    // Verify game state - creator should not be added as participant for giveaway
+    const gameData = await program.account.game.fetch(gameAccount.publicKey);
+    expect(gameData.participants.length).to.equal(0);
+    expect(gameData.gameType.giveaway).to.not.be.undefined;
+  });
+
+  it("Fail to Initialize Config with Invalid Fee Percentage", async () => {
+    const treasury = anchor.web3.Keypair.generate().publicKey;
+    const invalidFeePercentage = new BN(101); // More than 100%
+    const operator = program.provider.publicKey;
+    const configAccount = anchor.web3.Keypair.generate();
+
+    try {
+      await program.methods
+        .initializeConfig(treasury, invalidFeePercentage, operator)
+        .accounts({
+          config: configAccount.publicKey,
+          signer: program.provider.publicKey,
+        })
+        .signers([configAccount])
+        .rpc();
+
+      expect.fail("Should have thrown error for invalid fee percentage");
+    } catch (error) {
+      expect(error.toString()).to.include("InvalidFeePercentage");
+    }
+  });
+
+  it("Multiple Participants Can Claim Timeout", async () => {
+    const { configAccount } = await createConfigAccount();
+    const {
+      mint,
+      gameAccount,
+      vaultPDA,
+      creatorTokenAccount,
+      vaultTokenAccount,
+      mintAuthority
+    } = await createSplTokenMint();
+
+    const amount = new BN(1_000_000);
+
+    // Create game with short timeout
+    await program.methods
+      .initializeGame(
+        { coinflip: {} },
+        amount,
+        3, // 3 participants
+        2,
+        new BN(5), // 5 second timeout
+        false
+      )
+      .accounts({
+        game: gameAccount.publicKey,
+        creator: program.provider.publicKey,
+        config: configAccount.publicKey,
+        tokenMint: mint,
+        creatorTokenAccount: creatorTokenAccount,
+        vaultTokenAccount: vaultTokenAccount,
+        vault: vaultPDA,
+      })
+      .signers([gameAccount])
+      .rpc();
+
+    // Create and fund second player
+    const player = anchor.web3.Keypair.generate();
+    const playerAirdrop = await program.provider.connection.requestAirdrop(
+      player.publicKey,
+      2 * anchor.web3.LAMPORTS_PER_SOL
+    );
+    await program.provider.connection.confirmTransaction(playerAirdrop);
+
+    // Create player's token account
+    const playerTokenAccount = await createAssociatedTokenAccount(
+      program.provider.connection,
+      player, // payer
+      mint,
+      player.publicKey
+    );
+
+    // Mint tokens to player
+    await mintTo(
+      program.provider.connection,
+      mintAuthority,
+      mint,
+      playerTokenAccount,
+      mintAuthority.publicKey,
+      amount.toNumber(),
+      [mintAuthority]
+    );
+
+    // Join game with player
+    await program.methods
+      .joinGame()
+      .accounts({
+        game: gameAccount.publicKey,
+        player: player.publicKey,
+        playerTokenAccount: playerTokenAccount,
+        vaultTokenAccount: vaultTokenAccount,
+        vault: vaultPDA,
+        config: configAccount.publicKey,
+      })
+      .signers([player])
+      .rpc();
+
+    // Wait for timeout
+    await new Promise(resolve => setTimeout(resolve, 6000));
+
+    // Both participants claim timeout
+    const initialCreatorBalance = (await getAccount(program.provider.connection, creatorTokenAccount)).amount;
+    const initialPlayerBalance = (await getAccount(program.provider.connection, playerTokenAccount)).amount;
+
+    // Creator claims timeout
+    await program.methods
+      .claimTimeout()
+      .accounts({
+        game: gameAccount.publicKey,
+        vaultTokenAccount: vaultTokenAccount,
+        participantTokenAccount: creatorTokenAccount,
+        vault: vaultPDA,
+        participant: program.provider.publicKey,
+      })
+      .rpc();
+
+    // Player claims timeout
+    await program.methods
+      .claimTimeout()
+      .accounts({
+        game: gameAccount.publicKey,
+        vaultTokenAccount: vaultTokenAccount,
+        participantTokenAccount: playerTokenAccount,
+        vault: vaultPDA,
+        participant: player.publicKey,
+      })
+      .signers([player])
+      .rpc();
+
+    // Verify both participants got their funds back
+    const finalCreatorBalance = (await getAccount(program.provider.connection, creatorTokenAccount)).amount;
+    const finalPlayerBalance = (await getAccount(program.provider.connection, playerTokenAccount)).amount;
+
+    expect(finalCreatorBalance - initialCreatorBalance).to.equal(BigInt(amount.toString()));
+    expect(finalPlayerBalance - initialPlayerBalance).to.equal(BigInt(amount.toString()));
+
+    // Verify game is cancelled after all claims
+    const gameData = await program.account.game.fetch(gameAccount.publicKey);
+    expect(gameData.status.cancelled).to.not.be.undefined;
+    expect(gameData.participants.length).to.equal(0);
+  });
+
+  it("Fail to Claim Timeout as Non-Participant", async () => {
+    const { configAccount } = await createConfigAccount();
+    const {
+      mint,
+      gameAccount,
+      vaultPDA,
+      creatorTokenAccount,
+      vaultTokenAccount,
+      mintAuthority
+    } = await createSplTokenMint();
+
+    const amount = new BN(1_000_000);
+
+    // Create game with short timeout
+    await program.methods
+      .initializeGame(
+        { coinflip: {} },
+        amount,
+        2,
+        2,
+        new BN(5), // 5 second timeout
+        false
+      )
+      .accounts({
+        game: gameAccount.publicKey,
+        creator: program.provider.publicKey,
+        config: configAccount.publicKey,
+        tokenMint: mint,
+        creatorTokenAccount: creatorTokenAccount,
+        vaultTokenAccount: vaultTokenAccount,
+        vault: vaultPDA,
+      })
+      .signers([gameAccount])
+      .rpc();
+
+    // Create non-participant account
+    const nonParticipant = anchor.web3.Keypair.generate();
+    const airdrop = await program.provider.connection.requestAirdrop(
+      nonParticipant.publicKey,
+      2 * anchor.web3.LAMPORTS_PER_SOL
+    );
+    await program.provider.connection.confirmTransaction(airdrop);
+
+    const nonParticipantTokenAccount = await createAssociatedTokenAccount(
+      program.provider.connection,
+      nonParticipant,
+      mint,
+      nonParticipant.publicKey
+    );
+
+    // Wait for timeout
+    await new Promise(resolve => setTimeout(resolve, 6000));
+
+    // Try to claim timeout as non-participant
+    try {
+      await program.methods
+        .claimTimeout()
+        .accounts({
+          game: gameAccount.publicKey,
+          vaultTokenAccount: vaultTokenAccount,
+          participantTokenAccount: nonParticipantTokenAccount,
+          vault: vaultPDA,
+          participant: nonParticipant.publicKey,
+        })
+        .signers([nonParticipant])
+        .rpc({ skipPreflight: true });
+
+      expect.fail("Should have thrown Invalid participant error");
+    } catch (error) {
+      expect(error.toString()).to.include("Invalid participant");
     }
   });
 });

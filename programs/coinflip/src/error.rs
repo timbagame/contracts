@@ -40,4 +40,6 @@ pub enum ErrorCode {
     InvalidVault,
     #[msg("Invalid participant")]
     InvalidParticipant,
+    #[msg("Fee percentage must be between 0 and 100")]
+    InvalidFeePercentage,
 }

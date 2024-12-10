@@ -11,9 +11,9 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
 
     if game.is_private {
         require!(
-            !ctx.remaining_accounts.is_empty() 
-            && ctx.remaining_accounts[0].is_signer 
-            && ctx.remaining_accounts[0].key() == ctx.accounts.config.operator,
+            !ctx.remaining_accounts.is_empty()
+                && ctx.remaining_accounts[0].is_signer
+                && ctx.remaining_accounts[0].key() == ctx.accounts.config.operator,
             ErrorCode::SignatureRequired
         );
     }

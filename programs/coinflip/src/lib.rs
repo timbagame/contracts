@@ -19,12 +19,7 @@ pub mod coinflip {
         fee_percentage: u64,
         operator: Pubkey,
     ) -> Result<()> {
-        instructions::initialize_config::handler(
-            ctx,
-            treasury,
-            fee_percentage,
-            operator,
-        )
+        instructions::initialize_config::handler(ctx, treasury, fee_percentage, operator)
     }
 
     pub fn initialize_game(
