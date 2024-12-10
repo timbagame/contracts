@@ -160,7 +160,7 @@ describe("coinflip", () => {
     }
   });
 
-  it("Initialize Game with SPL Token Successfully", async () => {
+  it("Initialize Game Successfully", async () => {
     const { configAccount } = await createConfigAccount();
     const {
       mint,
@@ -220,7 +220,7 @@ describe("coinflip", () => {
     expect(vaultTokenAccountInfo.amount.toString()).to.equal(amount.toString());
   });
 
-  it("Join SPL Token Game Successfully", async () => {
+  it("Join Game Successfully", async () => {
     const { configAccount } = await createConfigAccount();
     const {
       mint,
@@ -1088,7 +1088,7 @@ describe("coinflip", () => {
     }
   });
 
-  it("Claim Winnings Successfully (SPL)", async () => {
+  it("Claim Winnings Successfully", async () => {
     // Create config and game
     const operatorKeypair = anchor.web3.Keypair.generate();
     const treasury = anchor.web3.Keypair.generate().publicKey;
