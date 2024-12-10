@@ -30,6 +30,8 @@ pub enum ErrorCode {
     GameNotPrivate,
     #[msg("Invalid operator")]
     InvalidOperator,
+    #[msg("Timeout reached")]
+    TimeoutReached,
     #[msg("Timeout not reached")]
     TimeoutNotReached,
     #[msg("Invalid participant count")]
