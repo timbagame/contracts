@@ -770,7 +770,7 @@ describe("coinflip", () => {
       mint,
       playerTokenAccount,
       mintAuthority.publicKey,
-      amount.toNumber(),
+      1_000_000_000,
       [mintAuthority],
     );
 
@@ -2209,6 +2209,325 @@ describe("coinflip", () => {
       expect.fail("Should have thrown error for potential pot amount overflow");
     } catch (error) {
       expect(error.toString()).to.include("InvalidParticipantCount");
+    }
+  });
+
+  it("Cannot Manipulate Game State Through Account Reinitialization", async () => {
+    // First create and complete a game normally
+    const { configAccount } = await createConfigAccount();
+    const {
+      mint,
+      gameAccount,
+      vaultPDA,
+      creatorTokenAccount,
+      vaultTokenAccount,
+      mintAuthority,
+    } = await createSplTokenMint();
+
+    const amount = new BN(1_000_000);
+
+    // Initialize first game
+    await program.methods
+      .initializeGame(
+        { coinflip: {} },
+        amount,
+        2,
+        2,
+        new BN(3600),
+        false,
+      )
+      .accounts({
+        game: gameAccount.publicKey,
+        creator: program.provider.publicKey,
+        config: configAccount.publicKey,
+        tokenMint: mint,
+        creatorTokenAccount: creatorTokenAccount,
+        vaultTokenAccount: vaultTokenAccount,
+        vault: vaultPDA,
+      })
+      .signers([gameAccount])
+      .rpc();
+
+    // Try to reinitialize the same game account
+    try {
+      await program.methods
+        .initializeGame(
+          { coinflip: {} },
+          amount,
+          2,
+          2,
+          new BN(3600),
+          false,
+        )
+        .accounts({
+          game: gameAccount.publicKey,
+          creator: program.provider.publicKey,
+          config: configAccount.publicKey,
+          tokenMint: mint,
+          creatorTokenAccount: creatorTokenAccount,
+          vaultTokenAccount: vaultTokenAccount,
+          vault: vaultPDA,
+        })
+        .signers([gameAccount])
+        .rpc();
+
+      expect.fail("Should not be able to reinitialize game account");
+    } catch (error) {
+      expect(error.toString()).to.include("already in use");
+    }
+  });
+
+  it("Cannot Join Game With Different Token Mint", async () => {
+    const { configAccount } = await createConfigAccount();
+    const {
+      mint,
+      gameAccount,
+      vaultPDA,
+      creatorTokenAccount,
+      vaultTokenAccount,
+      mintAuthority,
+    } = await createSplTokenMint();
+
+    const amount = new BN(1_000_000);
+
+    // Initialize game with first mint
+    await program.methods
+      .initializeGame(
+        { coinflip: {} },
+        amount,
+        2,
+        2,
+        new BN(3600),
+        false,
+      )
+      .accounts({
+        game: gameAccount.publicKey,
+        creator: program.provider.publicKey,
+        config: configAccount.publicKey,
+        tokenMint: mint,
+        creatorTokenAccount: creatorTokenAccount,
+        vaultTokenAccount: vaultTokenAccount,
+        vault: vaultPDA,
+      })
+      .signers([gameAccount])
+      .rpc();
+
+    // Create a different token mint
+    const differentMintAuthority = anchor.web3.Keypair.generate();
+    const differentMintAirdrop = await program.provider.connection.requestAirdrop(
+      differentMintAuthority.publicKey,
+      2 * anchor.web3.LAMPORTS_PER_SOL,
+    );
+    await program.provider.connection.confirmTransaction(differentMintAirdrop);
+
+    const differentMint = await createMint(
+      program.provider.connection,
+      differentMintAuthority,
+      differentMintAuthority.publicKey,
+      null,
+      6,
+    );
+
+    // Create player with different token mint
+    const player = anchor.web3.Keypair.generate();
+    const playerAirdrop = await program.provider.connection.requestAirdrop(
+      player.publicKey,
+      2 * anchor.web3.LAMPORTS_PER_SOL,
+    );
+    await program.provider.connection.confirmTransaction(playerAirdrop);
+
+    const playerTokenAccount = await createAssociatedTokenAccount(
+      program.provider.connection,
+      player,
+      differentMint,
+      player.publicKey,
+    );
+
+    // Mint tokens of different mint to player
+    await mintTo(
+      program.provider.connection,
+      differentMintAuthority,
+      differentMint,
+      playerTokenAccount,
+      differentMintAuthority.publicKey,
+      amount.toNumber(),
+      [differentMintAuthority],
+    );
+
+    // Try to join with different token mint
+    try {
+      await program.methods
+        .joinGame()
+        .accounts({
+          game: gameAccount.publicKey,
+          player: player.publicKey,
+          playerTokenAccount: playerTokenAccount,
+          vaultTokenAccount: vaultTokenAccount,
+          vault: vaultPDA,
+          config: configAccount.publicKey,
+        })
+        .signers([player])
+        .rpc();
+
+      expect.fail("Should not be able to join with different token mint");
+    } catch (error) {
+      expect(error.toString()).to.include("InvalidToken");
+    }
+  });
+
+  it("Can Cancel Bet Before Game is Full", async () => {
+    const { configAccount } = await createConfigAccount();
+    const {
+      mint,
+      gameAccount,
+      vaultPDA,
+      creatorTokenAccount,
+      vaultTokenAccount,
+    } = await createSplTokenMint();
+
+    const amount = new BN(1_000_000);
+
+    // Initialize game with long timeout
+    await program.methods
+      .initializeGame(
+        { coinflip: {} },
+        amount,
+        3, // More than 2 to test cancellation before game is full
+        2,
+        new BN(3600), // 1 hour timeout
+        false,
+      )
+      .accounts({
+        game: gameAccount.publicKey,
+        creator: program.provider.publicKey,
+        config: configAccount.publicKey,
+        tokenMint: mint,
+        creatorTokenAccount: creatorTokenAccount,
+        vaultTokenAccount: vaultTokenAccount,
+        vault: vaultPDA,
+      })
+      .signers([gameAccount])
+      .rpc();
+
+    // Get initial balance
+    const initialBalance = (
+      await getAccount(program.provider.connection, creatorTokenAccount)
+    ).amount;
+
+    // Claim timeout (cancel bet) before game is full
+    await program.methods
+      .claimTimeout()
+      .accounts({
+        game: gameAccount.publicKey,
+        vaultTokenAccount: vaultTokenAccount,
+        participantTokenAccount: creatorTokenAccount,
+        vault: vaultPDA,
+        participant: program.provider.publicKey,
+      })
+      .rpc();
+
+    // Verify funds were returned
+    const finalBalance = (
+      await getAccount(program.provider.connection, creatorTokenAccount)
+    ).amount;
+    expect(finalBalance - initialBalance).to.equal(BigInt(amount.toString()));
+
+    // Verify participant was removed
+    const gameData = await program.account.game.fetch(gameAccount.publicKey);
+    expect(gameData.participants.length).to.equal(0);
+  });
+
+  it("Cannot Cancel Bet When Game is Full", async () => {
+    const { configAccount } = await createConfigAccount();
+    const {
+      mint,
+      gameAccount,
+      vaultPDA,
+      creatorTokenAccount,
+      vaultTokenAccount,
+      mintAuthority,
+    } = await createSplTokenMint();
+
+    const amount = new BN(1_000_000);
+
+    // Initialize game
+    await program.methods
+      .initializeGame(
+        { coinflip: {} },
+        amount,
+        2, // Only 2 participants needed
+        2,
+        new BN(3600),
+        false,
+      )
+      .accounts({
+        game: gameAccount.publicKey,
+        creator: program.provider.publicKey,
+        config: configAccount.publicKey,
+        tokenMint: mint,
+        creatorTokenAccount: creatorTokenAccount,
+        vaultTokenAccount: vaultTokenAccount,
+        vault: vaultPDA,
+      })
+      .signers([gameAccount])
+      .rpc();
+
+    // Create and fund second player
+    const player = anchor.web3.Keypair.generate();
+    const playerAirdrop = await program.provider.connection.requestAirdrop(
+      player.publicKey,
+      2 * anchor.web3.LAMPORTS_PER_SOL,
+    );
+    await program.provider.connection.confirmTransaction(playerAirdrop);
+
+    const playerTokenAccount = await createAssociatedTokenAccount(
+      program.provider.connection,
+      player,
+      mint,
+      player.publicKey,
+    );
+
+    // Mint tokens to player
+    await mintTo(
+      program.provider.connection,
+      mintAuthority,
+      mint,
+      playerTokenAccount,
+      mintAuthority.publicKey,
+      amount.toNumber(),
+      [mintAuthority],
+    );
+
+    // Join game with second player to make it full
+    await program.methods
+      .joinGame()
+      .accounts({
+        game: gameAccount.publicKey,
+        player: player.publicKey,
+        playerTokenAccount: playerTokenAccount,
+        vaultTokenAccount: vaultTokenAccount,
+        vault: vaultPDA,
+        config: configAccount.publicKey,
+      })
+      .signers([player])
+      .rpc();
+
+    // Try to cancel bet when game is full
+    try {
+      await program.methods
+        .claimTimeout()
+        .accounts({
+          game: gameAccount.publicKey,
+          vaultTokenAccount: vaultTokenAccount,
+          participantTokenAccount: creatorTokenAccount,
+          vault: vaultPDA,
+          participant: program.provider.publicKey,
+        })
+        .rpc();
+
+      expect.fail("Should not be able to cancel when game is full");
+    } catch (error) {
+      expect(error.toString()).to.include("GameFull");
     }
   });
 });
