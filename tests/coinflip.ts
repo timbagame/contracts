@@ -1826,4 +1826,246 @@ describe("coinflip", () => {
     expect(gameData.oracleHash).to.deep.equal(hashValue);
     expect(gameData.winner).to.not.be.null;
   });
+
+  it("Cannot Claim Winnings Multiple Times", async () => {
+    // Create operator keypair and config
+    const operatorKeypair = anchor.web3.Keypair.generate();
+    const treasury = anchor.web3.Keypair.generate().publicKey;
+    const feePercentage = new BN(1);
+    const configAccount = anchor.web3.Keypair.generate();
+
+    // Initialize config with operator
+    await program.methods
+      .initializeConfig(treasury, feePercentage, operatorKeypair.publicKey)
+      .accounts({
+        config: configAccount.publicKey,
+        signer: program.provider.publicKey,
+      })
+      .signers([configAccount])
+      .rpc();
+
+    const {
+      mint,
+      gameAccount,
+      vaultPDA,
+      creatorTokenAccount,
+      vaultTokenAccount,
+      mintAuthority,
+    } = await createSplTokenMint();
+
+    // Create and setup player
+    const player = anchor.web3.Keypair.generate();
+    const playerAirdrop = await program.provider.connection.requestAirdrop(
+      player.publicKey,
+      2 * anchor.web3.LAMPORTS_PER_SOL,
+    );
+    await program.provider.connection.confirmTransaction(playerAirdrop);
+
+    const playerTokenAccount = await createAssociatedTokenAccount(
+      program.provider.connection,
+      player,
+      mint,
+      player.publicKey,
+    );
+
+    // Create treasury token account
+    const treasuryTokenAccount = await createAssociatedTokenAccount(
+      program.provider.connection,
+      mintAuthority,
+      mint,
+      treasury,
+    );
+
+    const amount = new BN(1_000_000);
+
+    // Initialize game
+    await program.methods
+      .initializeGame(
+        { coinflip: {} },
+        amount,
+        2,
+        2,
+        new BN(3600),
+        false,
+      )
+      .accounts({
+        game: gameAccount.publicKey,
+        creator: program.provider.publicKey,
+        config: configAccount.publicKey,
+        tokenMint: mint,
+        creatorTokenAccount: creatorTokenAccount,
+        vaultTokenAccount: vaultTokenAccount,
+        vault: vaultPDA,
+      })
+      .signers([gameAccount])
+      .rpc();
+
+    // Mint tokens and join game
+    await mintTo(
+      program.provider.connection,
+      mintAuthority,
+      mint,
+      playerTokenAccount,
+      mintAuthority.publicKey,
+      amount.toNumber(),
+      [mintAuthority],
+    );
+
+    await program.methods
+      .joinGame()
+      .accounts({
+        game: gameAccount.publicKey,
+        player: player.publicKey,
+        playerTokenAccount: playerTokenAccount,
+        vaultTokenAccount: vaultTokenAccount,
+        vault: vaultPDA,
+        config: configAccount.publicKey,
+      })
+      .signers([player])
+      .rpc();
+
+    // Set oracle hash
+    const hashValue = Array.from({ length: 32 }, () =>
+      Math.floor(Math.random() * 256),
+    );
+
+    await program.methods
+      .setOracleHash(hashValue)
+      .accounts({
+        game: gameAccount.publicKey,
+        config: configAccount.publicKey,
+        oracle: operatorKeypair.publicKey,
+        recentBlockhash: anchor.web3.SYSVAR_RECENT_BLOCKHASHES_PUBKEY,
+      })
+      .signers([operatorKeypair])
+      .rpc();
+
+    // Get game data to find winner
+    const gameData = await program.account.game.fetch(gameAccount.publicKey);
+    const winner = gameData.winner;
+    const winnerTokenAccount = winner.equals(program.provider.publicKey)
+      ? creatorTokenAccount
+      : playerTokenAccount;
+    const winnerKeypair = winner.equals(program.provider.publicKey)
+      ? null
+      : player;
+
+    // First claim should succeed
+    await program.methods
+      .claimWinnings()
+      .accounts({
+        game: gameAccount.publicKey,
+        winner: winner,
+        config: configAccount.publicKey,
+        vaultTokenAccount: vaultTokenAccount,
+        winnerTokenAccount: winnerTokenAccount,
+        treasuryTokenAccount: treasuryTokenAccount,
+        vault: vaultPDA,
+      })
+      .signers(winnerKeypair ? [winnerKeypair] : [])
+      .rpc();
+
+    // Second claim should fail
+    try {
+      await program.methods
+        .claimWinnings()
+        .accounts({
+          game: gameAccount.publicKey,
+          winner: winner,
+          config: configAccount.publicKey,
+          vaultTokenAccount: vaultTokenAccount,
+          winnerTokenAccount: winnerTokenAccount,
+          treasuryTokenAccount: treasuryTokenAccount,
+          vault: vaultPDA,
+        })
+        .signers(winnerKeypair ? [winnerKeypair] : [])
+        .rpc();
+
+      expect.fail("Should have thrown GameNotReadyForClaim error");
+    } catch (error) {
+      expect(error.toString()).to.include("GameNotReadyForClaim");
+    }
+  });
+
+  it("Cannot Join Game With Insufficient Funds", async () => {
+    const { configAccount } = await createConfigAccount();
+    const {
+      mint,
+      gameAccount,
+      vaultPDA,
+      creatorTokenAccount,
+      vaultTokenAccount,
+      mintAuthority,
+    } = await createSplTokenMint();
+
+    const amount = new BN(1_000_000);
+
+    // Initialize game
+    await program.methods
+      .initializeGame(
+        { coinflip: {} },
+        amount,
+        2,
+        2,
+        new BN(3600),
+        false,
+      )
+      .accounts({
+        game: gameAccount.publicKey,
+        creator: program.provider.publicKey,
+        config: configAccount.publicKey,
+        tokenMint: mint,
+        creatorTokenAccount: creatorTokenAccount,
+        vaultTokenAccount: vaultTokenAccount,
+        vault: vaultPDA,
+      })
+      .signers([gameAccount])
+      .rpc();
+
+    // Create player with insufficient funds
+    const player = anchor.web3.Keypair.generate();
+    const playerAirdrop = await program.provider.connection.requestAirdrop(
+      player.publicKey,
+      2 * anchor.web3.LAMPORTS_PER_SOL,
+    );
+    await program.provider.connection.confirmTransaction(playerAirdrop);
+
+    const playerTokenAccount = await createAssociatedTokenAccount(
+      program.provider.connection,
+      player,
+      mint,
+      player.publicKey,
+    );
+
+    // Mint insufficient tokens to player (half of required amount)
+    await mintTo(
+      program.provider.connection,
+      mintAuthority,
+      mint,
+      playerTokenAccount,
+      mintAuthority.publicKey,
+      amount.toNumber() / 2,
+      [mintAuthority],
+    );
+
+    // Attempt to join game
+    try {
+      await program.methods
+        .joinGame()
+        .accounts({
+          game: gameAccount.publicKey,
+          player: player.publicKey,
+          playerTokenAccount: playerTokenAccount,
+          vaultTokenAccount: vaultTokenAccount,
+          vault: vaultPDA,
+          config: configAccount.publicKey,
+        })
+        .signers([player])
+        .rpc();
+
+      expect.fail("Should have thrown insufficient funds error");
+    } catch (error) {
+      expect(error.toString()).to.include("insufficient funds");
+    }
+  });
 });
