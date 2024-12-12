@@ -13,6 +13,14 @@ pub fn handler(
     timeout_duration: i64,
     is_private: bool,
 ) -> Result<()> {
+    require!(timeout_duration > 0, ErrorCode::InvalidTimeout);
+
+    // Simple check to prevent amount * max_participants overflow
+    require!(
+        amount <= u64::MAX / (max_participants as u64),
+        ErrorCode::InvalidParticipantCount
+    );
+
     require!(
         min_participants <= max_participants,
         ErrorCode::InvalidParticipantCount
