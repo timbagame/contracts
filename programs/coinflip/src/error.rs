@@ -46,4 +46,6 @@ pub enum ErrorCode {
     InvalidParticipant,
     #[msg("Fee percentage must be between 0 and 100")]
     InvalidFeePercentage,
+    #[msg("Invalid timeout duration")]
+    InvalidTimeout,
 }

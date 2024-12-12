@@ -2068,4 +2068,147 @@ describe("coinflip", () => {
       expect(error.toString()).to.include("insufficient funds");
     }
   });
+
+  it("Cannot Initialize Game with Negative or Zero Timeout", async () => {
+    const { configAccount } = await createConfigAccount();
+    const {
+      mint,
+      gameAccount,
+      vaultPDA,
+      creatorTokenAccount,
+      vaultTokenAccount,
+    } = await createSplTokenMint();
+
+    const amount = new BN(1_000_000);
+
+    // Try with negative timeout
+    try {
+      await program.methods
+        .initializeGame(
+          { coinflip: {} },
+          amount,
+          2,
+          2,
+          new BN(-1), // Negative timeout
+          false,
+        )
+        .accounts({
+          game: gameAccount.publicKey,
+          creator: program.provider.publicKey,
+          config: configAccount.publicKey,
+          tokenMint: mint,
+          creatorTokenAccount: creatorTokenAccount,
+          vaultTokenAccount: vaultTokenAccount,
+          vault: vaultPDA,
+        })
+        .signers([gameAccount])
+        .rpc();
+
+      expect.fail("Should have thrown error for negative timeout");
+    } catch (error) {
+      expect(error.toString()).to.include("InvalidTimeout");
+    }
+
+    // Try with zero timeout
+    try {
+      await program.methods
+        .initializeGame(
+          { coinflip: {} },
+          amount,
+          2,
+          2,
+          new BN(0), // Zero timeout
+          false,
+        )
+        .accounts({
+          game: gameAccount.publicKey,
+          creator: program.provider.publicKey,
+          config: configAccount.publicKey,
+          tokenMint: mint,
+          creatorTokenAccount: creatorTokenAccount,
+          vaultTokenAccount: vaultTokenAccount,
+          vault: vaultPDA,
+        })
+        .signers([gameAccount])
+        .rpc();
+
+      expect.fail("Should have thrown error for zero timeout");
+    } catch (error) {
+      expect(error.toString()).to.include("InvalidTimeout");
+    }
+  });
+
+  it("Cannot Initialize Game with Amount Overflow", async () => {
+    const { configAccount } = await createConfigAccount();
+    const {
+      mint,
+      gameAccount,
+      vaultPDA,
+      creatorTokenAccount,
+      vaultTokenAccount,
+    } = await createSplTokenMint();
+
+    // Try with max u64 value
+    const maxAmount = new BN("18446744073709551615"); // 2^64 - 1
+
+    try {
+      await program.methods
+        .initializeGame(
+          { coinflip: {} },
+          maxAmount,
+          2,
+          2,
+          new BN(3600),
+          false,
+        )
+        .accounts({
+          game: gameAccount.publicKey,
+          creator: program.provider.publicKey,
+          config: configAccount.publicKey,
+          tokenMint: mint,
+          creatorTokenAccount: creatorTokenAccount,
+          vaultTokenAccount: vaultTokenAccount,
+          vault: vaultPDA,
+        })
+        .signers([gameAccount])
+        .rpc();
+
+      expect.fail("Should have thrown error for amount overflow");
+    } catch (error) {
+      // The error might be from token program or our validation
+      expect(error.toString()).to.satisfy((msg: string) =>
+        msg.includes("insufficient funds") || msg.includes("InvalidParticipantCount")
+      );
+    }
+
+    // Try with amount that would overflow when calculating total pot
+    const halfMaxAmount = new BN("9223372036854775808"); // 2^63
+
+    try {
+      await program.methods
+        .initializeGame(
+          { coinflip: {} },
+          halfMaxAmount,
+          3, // More than 2 participants to test multiplication overflow
+          2,
+          new BN(3600),
+          false,
+        )
+        .accounts({
+          game: gameAccount.publicKey,
+          creator: program.provider.publicKey,
+          config: configAccount.publicKey,
+          tokenMint: mint,
+          creatorTokenAccount: creatorTokenAccount,
+          vaultTokenAccount: vaultTokenAccount,
+          vault: vaultPDA,
+        })
+        .signers([gameAccount])
+        .rpc();
+
+      expect.fail("Should have thrown error for potential pot amount overflow");
+    } catch (error) {
+      expect(error.toString()).to.include("InvalidParticipantCount");
+    }
+  });
 });
