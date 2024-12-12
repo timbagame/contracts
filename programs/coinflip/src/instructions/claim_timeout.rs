@@ -34,14 +34,20 @@ pub fn handler(ctx: Context<super::ClaimTimeout>) -> Result<()> {
         ErrorCode::InvalidVault
     );
 
-    // If timeout has passed, mark game as cancelled
+    // Allow cancellation if game is not full, or if timeout has passed
     let current_time = Clock::get()?.unix_timestamp;
+    require!(
+        !game.is_ready_for_oracle() || current_time >= game.created_at + game.timeout_duration,
+        ErrorCode::GameFull
+    );
+
+    // If timeout has passed, mark game as cancelled
     if current_time >= game.created_at + game.timeout_duration && game.status == GameStatus::Active
     {
         game.status = GameStatus::Cancelled;
     }
 
-    // Remove participant from
+    // Remove participant
     if let Some(pos) = game.participants.iter().position(|x| x == &participant) {
         game.participants.remove(pos);
     }

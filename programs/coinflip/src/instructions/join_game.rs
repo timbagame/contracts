@@ -7,6 +7,12 @@ use crate::state::GameStatus;
 pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
     let game = &mut ctx.accounts.game;
 
+    // Check if the token mint matches
+    require!(
+        ctx.accounts.player_token_account.mint == game.token_mint,
+        ErrorCode::InvalidToken
+    );
+
     // Check if the timeout has not passed
     let current_time = Clock::get()?.unix_timestamp;
     require!(
