@@ -16,13 +16,6 @@ pub fn handler(ctx: Context<super::ClaimWinnings>) -> Result<()> {
         ErrorCode::NotWinner
     );
 
-    let total_pot = match game.game_type {
-        GameType::Coinflip => game.amount * (game.participants.len() as u64),
-        GameType::Giveaway => game.amount,
-    };
-    let fee_amount = total_pot * ctx.accounts.config.fee_percentage / 100;
-    let winner_amount = total_pot - fee_amount;
-
     // Get vault PDA and bump
     let (vault_pda, bump) =
         Pubkey::find_program_address(&[b"vault", game.key().as_ref()], ctx.program_id);
@@ -30,6 +23,15 @@ pub fn handler(ctx: Context<super::ClaimWinnings>) -> Result<()> {
         ctx.accounts.vault.key() == vault_pda,
         ErrorCode::InvalidVault
     );
+
+    let total_pot = match game.game_type {
+        GameType::Coinflip => game.amount * (game.participants.len() as u64),
+        GameType::Giveaway => game.amount,
+    };
+    let fee_amount = total_pot * ctx.accounts.config.fee_percentage / 100;
+    let winner_amount = total_pot - fee_amount;
+
+    game.status = GameStatus::Completed;
 
     // Transfer winnings to winner
     token::transfer(
@@ -59,6 +61,5 @@ pub fn handler(ctx: Context<super::ClaimWinnings>) -> Result<()> {
         fee_amount,
     )?;
 
-    game.status = GameStatus::Completed;
     Ok(())
 }
