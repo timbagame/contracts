@@ -4,7 +4,7 @@ use anchor_spl::token;
 use crate::error::ErrorCode;
 use crate::state::GameStatus;
 
-pub fn handler(ctx: Context<super::ClaimTimeout>) -> Result<()> {
+pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
     let game = &mut ctx.accounts.game;
 
     // Require game to not be ReadyForClaim
