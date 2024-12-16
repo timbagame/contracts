@@ -1,4 +1,3 @@
-use crate::error::ErrorCode;
 use anchor_lang::prelude::*;
 
 pub fn handler(
@@ -7,9 +6,6 @@ pub fn handler(
     fee_percentage: u64,
     operator: Pubkey,
 ) -> Result<()> {
-    // Validate fee percentage is not greater than 5
-    require!(fee_percentage <= 5, ErrorCode::InvalidFeePercentage);
-
     let config = &mut ctx.accounts.config;
     config.treasury = treasury;
     config.fee_percentage = fee_percentage;

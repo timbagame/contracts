@@ -149,7 +149,6 @@ describe("coinflip", () => {
           tokenMint: mint,
           creatorTokenAccount: creatorTokenAccount,
           vaultTokenAccount: vaultTokenAccount,
-          vault: vaultPDA,
         })
         .signers([gameAccount])
         .rpc();
@@ -193,7 +192,6 @@ describe("coinflip", () => {
         tokenMint: mint,
         creatorTokenAccount: creatorTokenAccount,
         vaultTokenAccount: vaultTokenAccount,
-        vault: vaultPDA,
       })
       .signers([gameAccount])
       .rpc();
@@ -253,7 +251,6 @@ describe("coinflip", () => {
         tokenMint: mint,
         creatorTokenAccount: creatorTokenAccount,
         vaultTokenAccount: vaultTokenAccount,
-        vault: vaultPDA,
       })
       .signers([gameAccount])
       .rpc();
@@ -326,7 +323,6 @@ describe("coinflip", () => {
         tokenMint: mint,
         creatorTokenAccount: creatorTokenAccount,
         vaultTokenAccount: vaultTokenAccount,
-        vault: vaultPDA,
       })
       .signers([gameAccount])
       .rpc();
@@ -366,7 +362,6 @@ describe("coinflip", () => {
         player: player.publicKey,
         playerTokenAccount: playerTokenAccount,
         vaultTokenAccount: vaultTokenAccount,
-        vault: vaultPDA,
         config: configAccount.publicKey,
       })
       .remainingAccounts([
@@ -412,7 +407,6 @@ describe("coinflip", () => {
         tokenMint: mint,
         creatorTokenAccount: creatorTokenAccount,
         vaultTokenAccount: vaultTokenAccount,
-        vault: vaultPDA,
       })
       .signers([gameAccount])
       .rpc();
@@ -465,7 +459,6 @@ describe("coinflip", () => {
         player: player1.publicKey,
         playerTokenAccount: player1TokenAccount,
         vaultTokenAccount: vaultTokenAccount,
-        vault: vaultPDA,
         config: configAccount.publicKey,
       })
       .signers([player1])
@@ -480,7 +473,6 @@ describe("coinflip", () => {
           player: player2.publicKey,
           playerTokenAccount: player2TokenAccount,
           vaultTokenAccount: vaultTokenAccount,
-          vault: vaultPDA,
           config: configAccount.publicKey,
         })
         .signers([player2])
@@ -521,7 +513,6 @@ describe("coinflip", () => {
         tokenMint: mint,
         creatorTokenAccount: creatorTokenAccount,
         vaultTokenAccount: vaultTokenAccount,
-        vault: vaultPDA,
       })
       .signers([gameAccount])
       .rpc();
@@ -561,7 +552,6 @@ describe("coinflip", () => {
         player: player.publicKey,
         playerTokenAccount: playerTokenAccount,
         vaultTokenAccount: vaultTokenAccount,
-        vault: vaultPDA,
         config: configAccount.publicKey,
       })
       .signers([player])
@@ -576,7 +566,6 @@ describe("coinflip", () => {
           player: player.publicKey,
           playerTokenAccount: playerTokenAccount,
           vaultTokenAccount: vaultTokenAccount,
-          vault: vaultPDA,
           config: configAccount.publicKey,
         })
         .signers([player])
@@ -634,7 +623,6 @@ describe("coinflip", () => {
         tokenMint: mint,
         creatorTokenAccount: creatorTokenAccount,
         vaultTokenAccount: vaultTokenAccount,
-        vault: vaultPDA,
       })
       .signers([gameAccount])
       .rpc();
@@ -684,7 +672,6 @@ describe("coinflip", () => {
           player: player.publicKey,
           playerTokenAccount: playerTokenAccount,
           vaultTokenAccount: vaultTokenAccount,
-          vault: vaultPDA,
           config: configAccount.publicKey,
         })
         .remainingAccounts([
@@ -742,7 +729,6 @@ describe("coinflip", () => {
         tokenMint: mint,
         creatorTokenAccount: creatorTokenAccount,
         vaultTokenAccount: vaultTokenAccount,
-        vault: vaultPDA,
       })
       .signers([gameAccount])
       .rpc();
@@ -782,7 +768,6 @@ describe("coinflip", () => {
         player: player.publicKey,
         playerTokenAccount: playerTokenAccount,
         vaultTokenAccount: vaultTokenAccount,
-        vault: vaultPDA,
         config: configAccount.publicKey,
       })
       .signers([player])
@@ -833,7 +818,6 @@ describe("coinflip", () => {
         tokenMint: mint,
         creatorTokenAccount: creatorTokenAccount,
         vaultTokenAccount: vaultTokenAccount,
-        vault: vaultPDA,
       })
       .signers([gameAccount])
       .rpc();
@@ -872,7 +856,6 @@ describe("coinflip", () => {
         player: player.publicKey,
         playerTokenAccount: playerTokenAccount,
         vaultTokenAccount: vaultTokenAccount,
-        vault: vaultPDA,
         config: configAccount.publicKey,
       })
       .signers([player])
@@ -940,7 +923,6 @@ describe("coinflip", () => {
         tokenMint: mint,
         creatorTokenAccount: creatorTokenAccount,
         vaultTokenAccount: vaultTokenAccount,
-        vault: vaultPDA,
       })
       .signers([gameAccount])
       .rpc();
@@ -1006,7 +988,6 @@ describe("coinflip", () => {
         tokenMint: mint,
         creatorTokenAccount: creatorTokenAccount,
         vaultTokenAccount: vaultTokenAccount,
-        vault: vaultPDA,
       })
       .signers([gameAccount])
       .rpc();
@@ -1045,7 +1026,6 @@ describe("coinflip", () => {
         player: player.publicKey,
         playerTokenAccount: playerTokenAccount,
         vaultTokenAccount: vaultTokenAccount,
-        vault: vaultPDA,
         config: configAccount.publicKey,
       })
       .signers([player])
@@ -1135,7 +1115,6 @@ describe("coinflip", () => {
         tokenMint: mint,
         creatorTokenAccount: creatorTokenAccount,
         vaultTokenAccount: vaultTokenAccount,
-        vault: vaultPDA,
       })
       .signers([gameAccount])
       .rpc();
@@ -1174,7 +1153,6 @@ describe("coinflip", () => {
         player: player.publicKey,
         playerTokenAccount: playerTokenAccount,
         vaultTokenAccount: vaultTokenAccount,
-        vault: vaultPDA,
         config: configAccount.publicKey,
       })
       .signers([player])
@@ -1220,7 +1198,6 @@ describe("coinflip", () => {
         vaultTokenAccount: vaultTokenAccount,
         winnerTokenAccount: winnerTokenAccount,
         treasuryTokenAccount: treasuryTokenAccount,
-        vault: vaultPDA,
       })
       .signers(winner.equals(program.provider.publicKey) ? [] : [player])
       .rpc();
@@ -1281,7 +1258,6 @@ describe("coinflip", () => {
         tokenMint: mint,
         creatorTokenAccount: creatorTokenAccount,
         vaultTokenAccount: vaultTokenAccount,
-        vault: vaultPDA,
       })
       .signers([gameAccount])
       .rpc();
@@ -1320,7 +1296,6 @@ describe("coinflip", () => {
         player: player.publicKey,
         playerTokenAccount: playerTokenAccount,
         vaultTokenAccount: vaultTokenAccount,
-        vault: vaultPDA,
         config: configAccount.publicKey,
       })
       .signers([player])
@@ -1362,7 +1337,6 @@ describe("coinflip", () => {
           vaultTokenAccount: vaultTokenAccount,
           winnerTokenAccount: loserTokenAccount,
           treasuryTokenAccount: treasuryTokenAccount,
-          vault: vaultPDA,
         })
         .signers(loser.equals(program.provider.publicKey) ? [] : [player])
         .rpc();
@@ -1402,7 +1376,6 @@ describe("coinflip", () => {
         tokenMint: mint,
         creatorTokenAccount: creatorTokenAccount,
         vaultTokenAccount: vaultTokenAccount,
-        vault: vaultPDA,
       })
       .signers([gameAccount])
       .rpc();
@@ -1422,7 +1395,6 @@ describe("coinflip", () => {
         game: gameAccount.publicKey,
         vaultTokenAccount: vaultTokenAccount,
         participantTokenAccount: creatorTokenAccount,
-        vault: vaultPDA,
       })
       .rpc();
 
@@ -1467,7 +1439,6 @@ describe("coinflip", () => {
         tokenMint: mint,
         creatorTokenAccount: creatorTokenAccount,
         vaultTokenAccount: vaultTokenAccount,
-        vault: vaultPDA,
       })
       .signers([gameAccount])
       .rpc();
@@ -1530,7 +1501,6 @@ describe("coinflip", () => {
         tokenMint: mint,
         creatorTokenAccount: creatorTokenAccount,
         vaultTokenAccount: vaultTokenAccount,
-        vault: vaultPDA,
       })
       .signers([gameAccount])
       .rpc();
@@ -1570,7 +1540,6 @@ describe("coinflip", () => {
         player: player.publicKey,
         playerTokenAccount: playerTokenAccount,
         vaultTokenAccount: vaultTokenAccount,
-        vault: vaultPDA,
         config: configAccount.publicKey,
       })
       .signers([player])
@@ -1594,7 +1563,6 @@ describe("coinflip", () => {
         game: gameAccount.publicKey,
         vaultTokenAccount: vaultTokenAccount,
         participantTokenAccount: creatorTokenAccount,
-        vault: vaultPDA,
         participant: program.provider.publicKey,
       })
       .rpc();
@@ -1606,7 +1574,6 @@ describe("coinflip", () => {
         game: gameAccount.publicKey,
         vaultTokenAccount: vaultTokenAccount,
         participantTokenAccount: playerTokenAccount,
-        vault: vaultPDA,
         participant: player.publicKey,
       })
       .signers([player])
@@ -1662,7 +1629,6 @@ describe("coinflip", () => {
         tokenMint: mint,
         creatorTokenAccount: creatorTokenAccount,
         vaultTokenAccount: vaultTokenAccount,
-        vault: vaultPDA,
       })
       .signers([gameAccount])
       .rpc();
@@ -1693,7 +1659,6 @@ describe("coinflip", () => {
           game: gameAccount.publicKey,
           vaultTokenAccount: vaultTokenAccount,
           participantTokenAccount: nonParticipantTokenAccount,
-          vault: vaultPDA,
           participant: nonParticipant.publicKey,
         })
         .signers([nonParticipant])
@@ -1751,7 +1716,6 @@ describe("coinflip", () => {
         tokenMint: mint,
         creatorTokenAccount: creatorTokenAccount,
         vaultTokenAccount: vaultTokenAccount,
-        vault: vaultPDA,
       })
       .signers([gameAccount])
       .rpc();
@@ -1795,7 +1759,6 @@ describe("coinflip", () => {
           player: player.publicKey,
           playerTokenAccount: playerTokenAccount,
           vaultTokenAccount: vaultTokenAccount,
-          vault: vaultPDA,
           config: configAccount.publicKey,
         })
         .signers([player])
@@ -1895,7 +1858,6 @@ describe("coinflip", () => {
         tokenMint: mint,
         creatorTokenAccount: creatorTokenAccount,
         vaultTokenAccount: vaultTokenAccount,
-        vault: vaultPDA,
       })
       .signers([gameAccount])
       .rpc();
@@ -1918,7 +1880,6 @@ describe("coinflip", () => {
         player: player.publicKey,
         playerTokenAccount: playerTokenAccount,
         vaultTokenAccount: vaultTokenAccount,
-        vault: vaultPDA,
         config: configAccount.publicKey,
       })
       .signers([player])
@@ -1960,7 +1921,6 @@ describe("coinflip", () => {
         vaultTokenAccount: vaultTokenAccount,
         winnerTokenAccount: winnerTokenAccount,
         treasuryTokenAccount: treasuryTokenAccount,
-        vault: vaultPDA,
       })
       .signers(winnerKeypair ? [winnerKeypair] : [])
       .rpc();
@@ -1976,7 +1936,6 @@ describe("coinflip", () => {
           vaultTokenAccount: vaultTokenAccount,
           winnerTokenAccount: winnerTokenAccount,
           treasuryTokenAccount: treasuryTokenAccount,
-          vault: vaultPDA,
         })
         .signers(winnerKeypair ? [winnerKeypair] : [])
         .rpc();
@@ -2017,7 +1976,6 @@ describe("coinflip", () => {
         tokenMint: mint,
         creatorTokenAccount: creatorTokenAccount,
         vaultTokenAccount: vaultTokenAccount,
-        vault: vaultPDA,
       })
       .signers([gameAccount])
       .rpc();
@@ -2057,7 +2015,6 @@ describe("coinflip", () => {
           player: player.publicKey,
           playerTokenAccount: playerTokenAccount,
           vaultTokenAccount: vaultTokenAccount,
-          vault: vaultPDA,
           config: configAccount.publicKey,
         })
         .signers([player])
@@ -2099,7 +2056,6 @@ describe("coinflip", () => {
           tokenMint: mint,
           creatorTokenAccount: creatorTokenAccount,
           vaultTokenAccount: vaultTokenAccount,
-          vault: vaultPDA,
         })
         .signers([gameAccount])
         .rpc();
@@ -2127,7 +2083,6 @@ describe("coinflip", () => {
           tokenMint: mint,
           creatorTokenAccount: creatorTokenAccount,
           vaultTokenAccount: vaultTokenAccount,
-          vault: vaultPDA,
         })
         .signers([gameAccount])
         .rpc();
@@ -2168,7 +2123,6 @@ describe("coinflip", () => {
           tokenMint: mint,
           creatorTokenAccount: creatorTokenAccount,
           vaultTokenAccount: vaultTokenAccount,
-          vault: vaultPDA,
         })
         .signers([gameAccount])
         .rpc();
@@ -2201,7 +2155,6 @@ describe("coinflip", () => {
           tokenMint: mint,
           creatorTokenAccount: creatorTokenAccount,
           vaultTokenAccount: vaultTokenAccount,
-          vault: vaultPDA,
         })
         .signers([gameAccount])
         .rpc();
@@ -2243,7 +2196,6 @@ describe("coinflip", () => {
         tokenMint: mint,
         creatorTokenAccount: creatorTokenAccount,
         vaultTokenAccount: vaultTokenAccount,
-        vault: vaultPDA,
       })
       .signers([gameAccount])
       .rpc();
@@ -2266,7 +2218,6 @@ describe("coinflip", () => {
           tokenMint: mint,
           creatorTokenAccount: creatorTokenAccount,
           vaultTokenAccount: vaultTokenAccount,
-          vault: vaultPDA,
         })
         .signers([gameAccount])
         .rpc();
@@ -2307,7 +2258,6 @@ describe("coinflip", () => {
         tokenMint: mint,
         creatorTokenAccount: creatorTokenAccount,
         vaultTokenAccount: vaultTokenAccount,
-        vault: vaultPDA,
       })
       .signers([gameAccount])
       .rpc();
@@ -2363,7 +2313,6 @@ describe("coinflip", () => {
           player: player.publicKey,
           playerTokenAccount: playerTokenAccount,
           vaultTokenAccount: vaultTokenAccount,
-          vault: vaultPDA,
           config: configAccount.publicKey,
         })
         .signers([player])
@@ -2404,7 +2353,6 @@ describe("coinflip", () => {
         tokenMint: mint,
         creatorTokenAccount: creatorTokenAccount,
         vaultTokenAccount: vaultTokenAccount,
-        vault: vaultPDA,
       })
       .signers([gameAccount])
       .rpc();
@@ -2421,7 +2369,6 @@ describe("coinflip", () => {
         game: gameAccount.publicKey,
         vaultTokenAccount: vaultTokenAccount,
         participantTokenAccount: creatorTokenAccount,
-        vault: vaultPDA,
         participant: program.provider.publicKey,
       })
       .rpc();
@@ -2467,7 +2414,6 @@ describe("coinflip", () => {
         tokenMint: mint,
         creatorTokenAccount: creatorTokenAccount,
         vaultTokenAccount: vaultTokenAccount,
-        vault: vaultPDA,
       })
       .signers([gameAccount])
       .rpc();
@@ -2506,7 +2452,6 @@ describe("coinflip", () => {
         player: player.publicKey,
         playerTokenAccount: playerTokenAccount,
         vaultTokenAccount: vaultTokenAccount,
-        vault: vaultPDA,
         config: configAccount.publicKey,
       })
       .signers([player])
@@ -2520,7 +2465,6 @@ describe("coinflip", () => {
           game: gameAccount.publicKey,
           vaultTokenAccount: vaultTokenAccount,
           participantTokenAccount: creatorTokenAccount,
-          vault: vaultPDA,
           participant: program.provider.publicKey,
         })
         .rpc();

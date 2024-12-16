@@ -2,25 +2,12 @@ use anchor_lang::prelude::*;
 use anchor_spl::token;
 
 use crate::error::ErrorCode;
-use crate::state::{GameStatus, GameType};
+use crate::state::GameType;
 
 pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
     let game = &mut ctx.accounts.game;
 
-    // Check if the token mint matches
-    require!(
-        ctx.accounts.player_token_account.mint == game.token_mint,
-        ErrorCode::InvalidToken
-    );
-
-    // Check if the timeout has not passed
-    let current_time = Clock::get()?.unix_timestamp;
-    require!(
-        current_time < game.created_at + game.timeout_duration,
-        ErrorCode::TimeoutReached
-    );
-
-    game.validate_status(GameStatus::Active)?;
+    // Validate participation
     game.validate_participation(&ctx.accounts.player.key())?;
 
     if game.is_private {
