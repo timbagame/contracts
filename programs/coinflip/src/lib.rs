@@ -46,15 +46,15 @@ pub mod coinflip {
         instructions::join_game::handler(ctx)
     }
 
+    pub fn unjoin_game(ctx: Context<UnjoinGame>) -> Result<()> {
+        instructions::unjoin_game::handler(ctx)
+    }
+
     pub fn set_oracle_hash(ctx: Context<SetOracleHash>, hash_value: [u8; 32]) -> Result<()> {
         instructions::set_oracle_hash::handler(ctx, hash_value)
     }
 
     pub fn claim_winnings(ctx: Context<ClaimWinnings>) -> Result<()> {
         instructions::claim_winnings::handler(ctx)
-    }
-
-    pub fn claim_timeout(ctx: Context<ClaimTimeout>) -> Result<()> {
-        instructions::claim_timeout::handler(ctx)
     }
 }

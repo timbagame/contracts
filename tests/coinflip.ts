@@ -1417,7 +1417,7 @@ describe("coinflip", () => {
 
     // Claim timeout
     await program.methods
-      .claimTimeout()
+      .unjoinGame()
       .accounts({
         game: gameAccount.publicKey,
         vaultTokenAccount: vaultTokenAccount,
@@ -1589,7 +1589,7 @@ describe("coinflip", () => {
 
     // Creator claims timeout
     await program.methods
-      .claimTimeout()
+      .unjoinGame()
       .accounts({
         game: gameAccount.publicKey,
         vaultTokenAccount: vaultTokenAccount,
@@ -1601,7 +1601,7 @@ describe("coinflip", () => {
 
     // Player claims timeout
     await program.methods
-      .claimTimeout()
+      .unjoinGame()
       .accounts({
         game: gameAccount.publicKey,
         vaultTokenAccount: vaultTokenAccount,
@@ -1688,7 +1688,7 @@ describe("coinflip", () => {
     // Try to claim timeout as non-participant
     try {
       await program.methods
-        .claimTimeout()
+        .unjoinGame()
         .accounts({
           game: gameAccount.publicKey,
           vaultTokenAccount: vaultTokenAccount,
@@ -2416,7 +2416,7 @@ describe("coinflip", () => {
 
     // Claim timeout (cancel bet) before game is full
     await program.methods
-      .claimTimeout()
+      .unjoinGame()
       .accounts({
         game: gameAccount.publicKey,
         vaultTokenAccount: vaultTokenAccount,
@@ -2515,7 +2515,7 @@ describe("coinflip", () => {
     // Try to cancel bet when game is full
     try {
       await program.methods
-        .claimTimeout()
+        .unjoinGame()
         .accounts({
           game: gameAccount.publicKey,
           vaultTokenAccount: vaultTokenAccount,

@@ -78,7 +78,7 @@ pub struct ClaimWinnings<'info> {
 }
 
 #[derive(Accounts)]
-pub struct ClaimTimeout<'info> {
+pub struct UnjoinGame<'info> {
     #[account(mut)]
     pub game: Account<'info, Game>,
     #[account(mut)]

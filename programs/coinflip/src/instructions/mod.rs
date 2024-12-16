@@ -1,5 +1,5 @@
 pub mod accounts;
-pub mod claim_timeout;
+pub mod unjoin_game;
 pub mod claim_winnings;
 pub mod initialize_config;
 pub mod initialize_game;
