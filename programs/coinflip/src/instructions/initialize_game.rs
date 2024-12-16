@@ -1,7 +1,6 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token;
 
-use crate::error::ErrorCode;
 use crate::state::{Game, GameType};
 
 pub fn handler(
@@ -13,30 +12,6 @@ pub fn handler(
     timeout_duration: i64,
     is_private: bool,
 ) -> Result<()> {
-    require!(timeout_duration > 0, ErrorCode::InvalidTimeout);
-
-    // Simple check to prevent amount * max_participants overflow
-    require!(
-        amount <= u64::MAX / (max_participants as u64),
-        ErrorCode::InvalidParticipantCount
-    );
-
-    require!(
-        min_participants <= max_participants,
-        ErrorCode::InvalidParticipantCount
-    );
-
-    match game_type {
-        GameType::Coinflip => {
-            require!(max_participants >= 2, ErrorCode::InvalidParticipantCount);
-            require!(min_participants >= 2, ErrorCode::InvalidParticipantCount);
-        }
-        GameType::Giveaway => {
-            require!(max_participants >= 1, ErrorCode::InvalidParticipantCount);
-            require!(min_participants >= 1, ErrorCode::InvalidParticipantCount);
-        }
-    }
-
     let mut new_game = Game {
         creator: ctx.accounts.creator.key(),
         game_type,
