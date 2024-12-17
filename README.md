@@ -2,15 +2,33 @@
 
 A Solana smart contract implementation of a coin flip game using the Anchor framework.
 
-## Prerequisites
+## Development Environment
+
+This project includes a devcontainer configuration for VS Code/Cursor and GitHub Codespaces, which automatically sets up all required dependencies in a containerized environment.
+
+### Using Devcontainer (Recommended)
+
+1. Prerequisites:
+   - VS Code/Cursor
+   - Docker
+
+2. Setup:
+   - Clone the repository
+   - Open in VS Code/Cursor
+   - When prompted, click "Reopen in Container"
+   - Wait for the container to build and initialize (this will automatically install Solana, Anchor, and other dependencies)
+
+### Manual Setup
+
+If you prefer not to use devcontainers, you'll need to install the following prerequisites manually:
 
 - [Rust](https://rustup.rs/)
 - [Solana CLI Tools](https://docs.solana.com/cli/install-solana-cli-tools)
 - [Anchor](https://www.anchor-lang.com/)
-- [Node.js](https://nodejs.org/) (v14 or higher)
+- [Node.js](https://nodejs.org/)
 - [Yarn](https://yarnpkg.com/)
 
-## Installation
+#### Manual Installation Steps
 
 1. Install Solana:
 ```bash
@@ -19,9 +37,8 @@ sh -c "$(curl -sSfL https://release.anza.xyz/stable/install)"
 
 2. Install Anchor:
 ```bash
-cargo install --git https://github.com/coral-xyz/anchor avm --force
+cargo install --git https://github.com/coral-xyz/anchor avm --locked --force
 avm install latest
-avm use latest
 ```
 
 3. Install dependencies:
@@ -49,35 +66,3 @@ Deploy to your desired Solana cluster:
 ```bash
 anchor deploy
 ```
-
-Or use the migration script:
-```bash
-yarn run deploy
-```
-
-## Project Structure
-
-```
-coinflip-contracts/
-├── programs/           # Smart contract source code
-│   └── coinflip/      # Main program logic
-├── tests/             # Test files
-├── migrations/        # Deployment scripts
-└── app/              # Client-side application (if applicable)
-```
-
-## License
-
-[MIT License](LICENSE)
-
-## Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## Security
-
-If you discover a security vulnerability, please send an e-mail to [your-email@example.com](mailto:your-email@example.com).
