@@ -12,5 +12,12 @@
 		}
 	},
 	"postCreateCommand": "bash -i .devcontainer/post-create.sh",
-	"postStartCommand": "yarn install"
+	"postStartCommand": "yarn install",
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"fill-labs.dependi"
+			]
+		}
+	}
 }
