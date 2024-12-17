@@ -53,14 +53,6 @@ pub struct Game {
 }
 
 impl Game {
-    pub fn validate_status(&self, expected: GameStatus) -> Result<()> {
-        require!(
-            self.status == expected,
-            crate::error::ErrorCode::InvalidGameStatus
-        );
-        Ok(())
-    }
-
     pub fn validate_participation(&self, player: &Pubkey) -> Result<()> {
         require!(
             !self.participants.contains(player),
@@ -79,5 +71,7 @@ impl Game {
 
     pub fn is_ready_for_oracle(&self) -> bool {
         self.participants.len() == (self.max_participants as usize)
+            || (self.participants.len() >= (self.min_participants as usize)
+                && Clock::get().unwrap().unix_timestamp >= self.created_at + self.timeout_duration)
     }
 }
