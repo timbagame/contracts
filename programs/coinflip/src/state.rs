@@ -53,18 +53,6 @@ pub struct Game {
 }
 
 impl Game {
-    pub fn validate_participation(&self, player: &Pubkey) -> Result<()> {
-        require!(
-            !self.participants.contains(player),
-            crate::error::ErrorCode::AlreadyJoined
-        );
-        require!(
-            self.participants.len() < (self.max_participants as usize),
-            crate::error::ErrorCode::GameFull
-        );
-        Ok(())
-    }
-
     pub fn add_participant(&mut self, player: Pubkey) {
         self.participants.push(player);
     }

@@ -7,9 +7,6 @@ use crate::state::GameType;
 pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
     let game = &mut ctx.accounts.game;
 
-    // Validate participation
-    game.validate_participation(&ctx.accounts.player.key())?;
-
     if game.is_private {
         require!(
             !ctx.remaining_accounts.is_empty()
