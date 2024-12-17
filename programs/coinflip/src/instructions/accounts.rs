@@ -112,11 +112,7 @@ pub struct SetOracleHash<'info> {
         mut,
         constraint = game.oracle_hash.is_none() @ ErrorCode::OracleHashAlreadySet,
         constraint = game.status == GameStatus::Active @ ErrorCode::GameNotActive,
-        constraint = (
-            game.is_ready_for_oracle() 
-            || (game.participants.len() >= (game.min_participants as usize) 
-                && Clock::get().unwrap().unix_timestamp >= game.created_at + game.timeout_duration)
-        ) @ ErrorCode::GameNotFull
+        constraint = game.is_ready_for_oracle() @ ErrorCode::GameNotFull
     )]
     pub game: Account<'info, Game>,
     pub config: Account<'info, Config>,
@@ -170,10 +166,9 @@ pub struct UnjoinGame<'info> {
         constraint = game.status != GameStatus::ReadyForClaim @ ErrorCode::GameReadyForClaim,
         constraint = game.status != GameStatus::Completed @ ErrorCode::GameCompleted,
         constraint = game.participants.contains(&participant.key()) @ ErrorCode::InvalidParticipant,
-        constraint = (
-            !game.is_ready_for_oracle() 
+        constraint = !game.is_ready_for_oracle() 
             || Clock::get().unwrap().unix_timestamp >= game.created_at + game.timeout_duration
-        ) @ ErrorCode::GameFull
+            @ ErrorCode::GameFull
     )]
     pub game: Account<'info, Game>,
     #[account(
