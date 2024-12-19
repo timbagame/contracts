@@ -46,5 +46,9 @@ pub fn handler(
         amount,
     )?;
 
+    // Increment game counter
+    let config = &mut ctx.accounts.config;
+    config.game_counter = config.game_counter.checked_add(1).unwrap();
+
     Ok(())
 }
