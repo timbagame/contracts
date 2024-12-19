@@ -10,6 +10,7 @@ pub fn handler(
     config.treasury = treasury;
     config.fee_percentage = fee_percentage;
     config.operator = operator;
+    config.game_counter = 0;
 
     Ok(())
 }

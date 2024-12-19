@@ -12,9 +12,11 @@ use crate::state::*;
 )]
 pub struct InitializeConfig<'info> {
     #[account(
-        init, 
-        payer = signer, 
-        space = 8 + 32 + 8 + 32,
+        init,
+        payer = signer,
+        space = 8 + 32 + 8 + 32 + 8,
+        seeds = [b"config"],
+        bump,
         constraint = fee_percentage <= 5 @ ErrorCode::InvalidFeePercentage
     )]
     pub config: Account<'info, Config>,
@@ -37,6 +39,8 @@ pub struct InitializeGame<'info> {
         init, 
         payer = creator, 
         space = 8 + 32 + 1 + 8 + 1 + 32 * 10 + 33 + 1 + 32 + 33 + 1 + 8 + 8 + 1 + 64 * 10 + 1,
+        seeds = [b"game", config.game_counter.to_le_bytes().as_ref()],
+        bump,
         constraint = timeout_duration > 0 @ ErrorCode::InvalidTimeout,
         constraint = amount <= u64::MAX / (max_participants as u64) @ ErrorCode::InvalidParticipantCount,
         constraint = min_participants <= max_participants @ ErrorCode::InvalidParticipantCount,
@@ -48,6 +52,11 @@ pub struct InitializeGame<'info> {
     pub game: Account<'info, Game>,
     #[account(mut)]
     pub creator: Signer<'info>,
+    #[account(
+        mut,
+        seeds = [b"config"],
+        bump
+    )]
     pub config: Account<'info, Config>,
     pub token_mint: Account<'info, anchor_spl::token::Mint>,
     #[account(
@@ -61,7 +70,7 @@ pub struct InitializeGame<'info> {
         constraint = vault_token_account.mint == token_mint.key()
     )]
     pub vault_token_account: Account<'info, TokenAccount>,
-    /// CHECK: Vault PDA for token authority
+    /// CHECK: Vault PDA for token authority, seeds are verified in constraints
     #[account(
         mut,
         seeds = [b"vault", game.key().as_ref()],
@@ -96,13 +105,17 @@ pub struct JoinGame<'info> {
     )]
     pub vault_token_account: Account<'info, TokenAccount>,
     pub token_program: Program<'info, Token>,
-    /// CHECK: Vault PDA for token authority
+    /// CHECK: Vault PDA for token authority, seeds are verified in constraints
     #[account(
         mut,
         seeds = [b"vault", game.key().as_ref()],
         bump
     )]
     pub vault: AccountInfo<'info>,
+    #[account(
+        seeds = [b"config"],
+        bump
+    )]
     pub config: Account<'info, Config>,
 }
 
@@ -115,6 +128,10 @@ pub struct SetOracleHash<'info> {
         constraint = game.is_ready_for_oracle() @ ErrorCode::GameNotFull
     )]
     pub game: Account<'info, Game>,
+    #[account(
+        seeds = [b"config"],
+        bump
+    )]
     pub config: Account<'info, Config>,
     #[account(constraint = oracle.key() == config.operator @ ErrorCode::InvalidOperator)]
     pub oracle: Signer<'info>,
@@ -130,6 +147,10 @@ pub struct ClaimWinnings<'info> {
         constraint = game.winner.unwrap() == winner.key() @ ErrorCode::NotWinner
     )]
     pub game: Account<'info, Game>,
+    #[account(
+        seeds = [b"config"],
+        bump
+    )]
     pub config: Account<'info, Config>,
     #[account(mut)]
     pub winner: Signer<'info>,
@@ -149,7 +170,7 @@ pub struct ClaimWinnings<'info> {
         constraint = treasury_token_account.mint == game.token_mint
     )]
     pub treasury_token_account: Account<'info, TokenAccount>,
-    /// CHECK: Vault PDA for token authority
+    /// CHECK: Vault PDA for token authority, seeds are verified in constraints
     #[account(
         mut,
         seeds = [b"vault", game.key().as_ref()],
@@ -182,7 +203,7 @@ pub struct UnjoinGame<'info> {
         constraint = participant_token_account.mint == game.token_mint
     )]
     pub participant_token_account: Account<'info, TokenAccount>,
-    /// CHECK: Vault PDA for token authority
+    /// CHECK: Vault PDA for token authority, seeds are verified in constraints
     #[account(
         mut,
         seeds = [b"vault", game.key().as_ref()],

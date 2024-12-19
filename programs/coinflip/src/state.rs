@@ -6,6 +6,7 @@ pub struct Config {
     pub treasury: Pubkey,
     pub fee_percentage: u64,
     pub operator: Pubkey,
+    pub game_counter: u64,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Copy)]
