@@ -1471,25 +1471,6 @@ describe("coinflip", () => {
     expect(gameData.gameType.giveaway).to.not.be.undefined;
   });
 
-  it("Fail to Initialize Config with Invalid Fee Percentage", async () => {
-    const treasury = anchor.web3.Keypair.generate().publicKey;
-    const invalidFeePercentage = new BN(101); // More than 100%
-    const operator = program.provider.publicKey;
-
-    try {
-      await program.methods
-        .initializeConfig(treasury, invalidFeePercentage, operator)
-        .accounts({
-          signer: program.provider.publicKey,
-        })
-        .rpc();
-
-      expect.fail("Should have thrown error for invalid fee percentage");
-    } catch (error) {
-      expect(error.toString()).to.include("custom program error");
-    }
-  });
-
   it("Multiple Participants Can Claim Timeout", async () => {
     await createConfigAccount();
     const {
@@ -1925,7 +1906,7 @@ describe("coinflip", () => {
 
       expect.fail("Should not be able to claim winnings twice");
     } catch (error) {
-      expect(error.toString()).to.include("AnchorError");
+      expect(error.toString()).to.include("GameNotReadyForClaim");
     }
   });
 

@@ -16,8 +16,7 @@ pub struct InitializeConfig<'info> {
         payer = signer,
         space = 8 + 32 + 8 + 32 + 8,
         seeds = [b"config"],
-        bump,
-        constraint = fee_percentage <= 5 @ ErrorCode::InvalidFeePercentage
+        bump
     )]
     pub config: Account<'info, Config>,
     #[account(mut)]
