@@ -1089,24 +1089,11 @@ describe("coinflip", () => {
   });
 
   it("Claim Winnings Successfully", async () => {
-    // Create config and game
-    const operatorKeypair = anchor.web3.Keypair.generate();
-    const treasury = anchor.web3.Keypair.generate().publicKey;
-    const feePercentage = new BN(1);
+    // Get current config and operator
+    const { operator, treasury, feePercentage } = await createConfigAccount();
 
-    // Initialize config
-    await program.methods
-      .initializeConfig(treasury, feePercentage, operatorKeypair.publicKey)
-      .accounts({
-        signer: program.provider.publicKey,
-      })
-      .signers([operatorKeypair])
-      .rpc();
-
-    // Create SPL token and accounts
     const {
       mint,
-      gameAccount,
       creatorTokenAccount,
       vaultTokenAccount,
       mintAuthority
@@ -1115,7 +1102,7 @@ describe("coinflip", () => {
     // Create treasury token account
     const treasuryTokenAccount = await createAssociatedTokenAccount(
       program.provider.connection,
-      mintAuthority, // Use mintAuthority as payer since it already has SOL
+      mintAuthority,
       mint,
       treasury,
     );
@@ -1124,24 +1111,38 @@ describe("coinflip", () => {
 
     // Create game
     await program.methods
-      .initializeGame({ coinflip: {} }, amount, 2, 2, new BN(3600), false)
+      .initializeGame(
+        { coinflip: {} },
+        amount,
+        2,
+        2,
+        new BN(3600),
+        false,
+      )
       .accounts({
         creator: program.provider.publicKey,
         creatorTokenAccount: creatorTokenAccount,
         vaultTokenAccount: vaultTokenAccount,
         tokenMint: mint,
       })
-      .signers([gameAccount])
       .rpc();
+
+    // Get current game counter for PDA derivation
+    const gameCounter = await getCurrentGameCounter();
+    const [gamePDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("game"), gameCounter.subn(1).toArrayLike(Buffer, 'le', 8)],
+      program.programId
+    );
 
     // Create and fund second player
     const player = anchor.web3.Keypair.generate();
     const playerAirdrop = await program.provider.connection.requestAirdrop(
       player.publicKey,
-      anchor.web3.LAMPORTS_PER_SOL,
+      2 * anchor.web3.LAMPORTS_PER_SOL,
     );
     await program.provider.connection.confirmTransaction(playerAirdrop);
 
+    // Create player's token account and mint tokens
     const playerTokenAccount = await createAssociatedTokenAccount(
       program.provider.connection,
       player,
@@ -1149,14 +1150,13 @@ describe("coinflip", () => {
       player.publicKey,
     );
 
-    // Mint tokens to player
     await mintTo(
       program.provider.connection,
       mintAuthority,
       mint,
       playerTokenAccount,
       mintAuthority.publicKey,
-      1_000_000_000,
+      amount.toNumber(),
       [mintAuthority],
     );
 
@@ -1164,6 +1164,7 @@ describe("coinflip", () => {
     await program.methods
       .joinGame()
       .accounts({
+        game: gamePDA,
         player: player.publicKey,
         playerTokenAccount: playerTokenAccount,
         vaultTokenAccount: vaultTokenAccount,
@@ -1178,14 +1179,14 @@ describe("coinflip", () => {
     await program.methods
       .setOracleHash(hashValue)
       .accounts({
-        oracle: operatorKeypair.publicKey,
+        game: gamePDA,
+        oracle: operator,
         recentBlockhash: anchor.web3.SYSVAR_RECENT_BLOCKHASHES_PUBKEY,
       })
-      .signers([operatorKeypair])
       .rpc();
 
     // Get game data to find winner
-    const gameData = await program.account.game.fetch(gameAccount.publicKey);
+    const gameData = await program.account.game.fetch(gamePDA);
     const winner = gameData.winner;
     expect(winner).to.not.be.null;
 
@@ -1203,6 +1204,7 @@ describe("coinflip", () => {
     await program.methods
       .claimWinnings()
       .accounts({
+        game: gamePDA,
         winner: winner,
         vaultTokenAccount: vaultTokenAccount,
         winnerTokenAccount: winnerTokenAccount,
@@ -1216,29 +1218,16 @@ describe("coinflip", () => {
       await getAccount(program.provider.connection, winnerTokenAccount)
     ).amount;
     expect(finalBalance - initialBalance).to.equal(
-      BigInt(amount.toNumber() * 2 * (1 - feePercentage.toNumber() / 100)), // Convert to BigInt
+      BigInt(amount.toNumber() * 2 * (1 - feePercentage.toNumber() / 100)),
     );
   });
 
   it("Fail to Claim as Non-Winner", async () => {
-    // Create config and game
-    const operatorKeypair = anchor.web3.Keypair.generate();
-    const treasury = anchor.web3.Keypair.generate().publicKey;
-    const feePercentage = new BN(1);
+    // Get current config and operator
+    const { operator, treasury } = await createConfigAccount();
 
-    // Initialize config
-    await program.methods
-      .initializeConfig(treasury, feePercentage, operatorKeypair.publicKey)
-      .accounts({
-        signer: program.provider.publicKey,
-      })
-      .signers([operatorKeypair])
-      .rpc();
-
-    // Create SPL token setup
     const {
       mint,
-      gameAccount,
       creatorTokenAccount,
       vaultTokenAccount,
       mintAuthority
@@ -1256,24 +1245,38 @@ describe("coinflip", () => {
 
     // Create game
     await program.methods
-      .initializeGame({ coinflip: {} }, amount, 2, 2, new BN(3600), false)
+      .initializeGame(
+        { coinflip: {} },
+        amount,
+        2,
+        2,
+        new BN(3600),
+        false,
+      )
       .accounts({
         creator: program.provider.publicKey,
         creatorTokenAccount: creatorTokenAccount,
         vaultTokenAccount: vaultTokenAccount,
         tokenMint: mint,
       })
-      .signers([gameAccount])
       .rpc();
+
+    // Get current game counter for PDA derivation
+    const gameCounter = await getCurrentGameCounter();
+    const [gamePDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("game"), gameCounter.subn(1).toArrayLike(Buffer, 'le', 8)],
+      program.programId
+    );
 
     // Create and fund second player
     const player = anchor.web3.Keypair.generate();
     const playerAirdrop = await program.provider.connection.requestAirdrop(
       player.publicKey,
-      anchor.web3.LAMPORTS_PER_SOL,
+      2 * anchor.web3.LAMPORTS_PER_SOL,
     );
     await program.provider.connection.confirmTransaction(playerAirdrop);
 
+    // Create player's token account and mint tokens
     const playerTokenAccount = await createAssociatedTokenAccount(
       program.provider.connection,
       player,
@@ -1281,7 +1284,6 @@ describe("coinflip", () => {
       player.publicKey,
     );
 
-    // Mint tokens to player
     await mintTo(
       program.provider.connection,
       mintAuthority,
@@ -1296,6 +1298,7 @@ describe("coinflip", () => {
     await program.methods
       .joinGame()
       .accounts({
+        game: gamePDA,
         player: player.publicKey,
         playerTokenAccount: playerTokenAccount,
         vaultTokenAccount: vaultTokenAccount,
@@ -1310,33 +1313,24 @@ describe("coinflip", () => {
     await program.methods
       .setOracleHash(hashValue)
       .accounts({
-        oracle: operatorKeypair.publicKey,
+        game: gamePDA,
+        oracle: operator,
         recentBlockhash: anchor.web3.SYSVAR_RECENT_BLOCKHASHES_PUBKEY,
       })
-      .signers([operatorKeypair])
       .rpc();
 
-    // Get game data to find loser
-    const gameData = await program.account.game.fetch(gameAccount.publicKey);
-    const winner = gameData.winner;
-    const loser = winner.equals(program.provider.publicKey)
-      ? player.publicKey
-      : program.provider.publicKey;
-    const loserTokenAccount = winner.equals(program.provider.publicKey)
-      ? playerTokenAccount
-      : creatorTokenAccount;
-
-    // Try to claim as loser
+    // Try to claim as non-winner
     try {
       await program.methods
         .claimWinnings()
         .accounts({
-          winner: loser,
+          game: gamePDA,
+          winner: player.publicKey,
           vaultTokenAccount: vaultTokenAccount,
-          winnerTokenAccount: loserTokenAccount,
+          winnerTokenAccount: playerTokenAccount,
           treasuryTokenAccount: treasuryTokenAccount,
         })
-        .signers(loser.equals(program.provider.publicKey) ? [] : [player])
+        .signers([player])
         .rpc();
 
       expect.fail("Should have thrown NotWinner error");
