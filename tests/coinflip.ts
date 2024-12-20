@@ -541,7 +541,6 @@ describe("coinflip", () => {
     await createConfigAccount();
     const {
       mint,
-      gameAccount,
       creatorTokenAccount,
       vaultTokenAccount,
       mintAuthority
@@ -564,8 +563,14 @@ describe("coinflip", () => {
         vaultTokenAccount: vaultTokenAccount,
         tokenMint: mint,
       })
-      .signers([gameAccount])
       .rpc();
+
+    // Get current game counter for PDA derivation
+    const gameCounter = await getCurrentGameCounter();
+    const [gamePDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("game"), gameCounter.subn(1).toArrayLike(Buffer, 'le', 8)],
+      program.programId
+    );
 
     // Create and fund player
     const player = anchor.web3.Keypair.generate();
@@ -598,6 +603,7 @@ describe("coinflip", () => {
     await program.methods
       .joinGame()
       .accounts({
+        game: gamePDA,
         player: player.publicKey,
         playerTokenAccount: playerTokenAccount,
         vaultTokenAccount: vaultTokenAccount,
@@ -610,6 +616,7 @@ describe("coinflip", () => {
       await program.methods
         .joinGame()
         .accounts({
+          game: gamePDA,
           player: player.publicKey,
           playerTokenAccount: playerTokenAccount,
           vaultTokenAccount: vaultTokenAccount,
