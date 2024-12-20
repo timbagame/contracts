@@ -1366,7 +1366,6 @@ describe("coinflip", () => {
         vaultTokenAccount: vaultTokenAccount,
         tokenMint: mint,
       })
-      .signers([gameAccount])
       .rpc();
 
     // Wait for timeout
@@ -1426,7 +1425,6 @@ describe("coinflip", () => {
         vaultTokenAccount: vaultTokenAccount,
         tokenMint: mint,
       })
-      .signers([gameAccount])
       .rpc();
 
     // Verify game state - creator should not be added as participant for giveaway
@@ -1483,7 +1481,6 @@ describe("coinflip", () => {
         vaultTokenAccount: vaultTokenAccount,
         tokenMint: mint,
       })
-      .signers([gameAccount])
       .rpc();
 
     // Create and fund second player
@@ -1607,7 +1604,6 @@ describe("coinflip", () => {
         vaultTokenAccount: vaultTokenAccount,
         tokenMint: mint,
       })
-      .signers([gameAccount])
       .rpc();
 
     // Create non-participant account
@@ -1689,7 +1685,6 @@ describe("coinflip", () => {
         vaultTokenAccount: vaultTokenAccount,
         tokenMint: mint,
       })
-      .signers([gameAccount])
       .rpc();
 
     // Create and fund players
@@ -1823,7 +1818,6 @@ describe("coinflip", () => {
         vaultTokenAccount: vaultTokenAccount,
         tokenMint: mint,
       })
-      .signers([gameAccount])
       .rpc();
 
     // Mint tokens and join game
@@ -1967,7 +1961,6 @@ describe("coinflip", () => {
     await createConfigAccount();
     const {
       mint,
-      gameAccount,
       creatorTokenAccount,
       vaultTokenAccount,
     } = await createSplTokenMint();
@@ -1991,7 +1984,6 @@ describe("coinflip", () => {
           vaultTokenAccount: vaultTokenAccount,
           tokenMint: mint,
         })
-        .signers([gameAccount])
         .rpc();
 
       expect.fail("Should have thrown error for negative timeout");
@@ -2016,7 +2008,6 @@ describe("coinflip", () => {
           vaultTokenAccount: vaultTokenAccount,
           tokenMint: mint,
         })
-        .signers([gameAccount])
         .rpc();
 
       expect.fail("Should have thrown error for zero timeout");
@@ -2029,7 +2020,6 @@ describe("coinflip", () => {
     await createConfigAccount();
     const {
       mint,
-      gameAccount,
       creatorTokenAccount,
       vaultTokenAccount,
     } = await createSplTokenMint();
@@ -2053,7 +2043,6 @@ describe("coinflip", () => {
           vaultTokenAccount: vaultTokenAccount,
           tokenMint: mint,
         })
-        .signers([gameAccount])
         .rpc();
 
       expect.fail("Should have thrown error for amount overflow");
@@ -2083,7 +2072,6 @@ describe("coinflip", () => {
           vaultTokenAccount: vaultTokenAccount,
           tokenMint: mint,
         })
-        .signers([gameAccount])
         .rpc();
 
       expect.fail("Should have thrown error for potential pot amount overflow");
@@ -2097,7 +2085,6 @@ describe("coinflip", () => {
     await createConfigAccount();
     const {
       mint,
-      gameAccount,
       creatorTokenAccount,
       vaultTokenAccount,
     } = await createSplTokenMint();
@@ -2120,7 +2107,6 @@ describe("coinflip", () => {
         vaultTokenAccount: vaultTokenAccount,
         tokenMint: mint,
       })
-      .signers([gameAccount])
       .rpc();
 
     // Try to reinitialize the same game account
@@ -2140,7 +2126,6 @@ describe("coinflip", () => {
           vaultTokenAccount: vaultTokenAccount,
           tokenMint: mint,
         })
-        .signers([gameAccount])
         .rpc();
 
       expect.fail("Should not be able to reinitialize game account");
@@ -2176,7 +2161,6 @@ describe("coinflip", () => {
         vaultTokenAccount: vaultTokenAccount,
         tokenMint: mint,
       })
-      .signers([gameAccount])
       .rpc();
 
     // Create a different token mint
@@ -2267,7 +2251,6 @@ describe("coinflip", () => {
         vaultTokenAccount: vaultTokenAccount,
         tokenMint: mint,
       })
-      .signers([gameAccount])
       .rpc();
 
     // Get initial balance
@@ -2325,7 +2308,6 @@ describe("coinflip", () => {
         vaultTokenAccount: vaultTokenAccount,
         tokenMint: mint,
       })
-      .signers([gameAccount])
       .rpc();
 
     // Create and fund second player
