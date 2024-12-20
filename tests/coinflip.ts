@@ -923,41 +923,41 @@ describe("coinflip", () => {
   });
 
   it("Fail to Set Oracle Hash Before Game is Full", async () => {
-    // Create operator keypair and config
-    const operatorKeypair = anchor.web3.Keypair.generate();
-    const treasury = anchor.web3.Keypair.generate().publicKey;
-    const feePercentage = new BN(1);
+    // Get current config and operator
+    const { operator } = await createConfigAccount();
 
-    // Initialize config with operator
-    await program.methods
-      .initializeConfig(treasury, feePercentage, operatorKeypair.publicKey)
-      .accounts({
-        signer: program.provider.publicKey,
-      })
-      .signers([operatorKeypair])
-      .rpc();
-
-    // Create SPL token setup
     const {
       mint,
-      gameAccount,
       creatorTokenAccount,
       vaultTokenAccount,
     } = await createSplTokenMint();
 
     const amount = new BN(1_000_000);
 
-    // Create game with max 2 participants
+    // Create game
     await program.methods
-      .initializeGame({ coinflip: {} }, amount, 2, 2, new BN(3600), false)
+      .initializeGame(
+        { coinflip: {} },
+        amount,
+        2,
+        2,
+        new BN(3600),
+        false,
+      )
       .accounts({
         creator: program.provider.publicKey,
         creatorTokenAccount: creatorTokenAccount,
         vaultTokenAccount: vaultTokenAccount,
         tokenMint: mint,
       })
-      .signers([gameAccount])
       .rpc();
+
+    // Get current game counter for PDA derivation
+    const gameCounter = await getCurrentGameCounter();
+    const [gamePDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("game"), gameCounter.subn(1).toArrayLike(Buffer, 'le', 8)],
+      program.programId
+    );
 
     // Try to set oracle hash before game is full
     try {
@@ -967,10 +967,10 @@ describe("coinflip", () => {
       await program.methods
         .setOracleHash(hashValue)
         .accounts({
-          oracle: operatorKeypair.publicKey,
+          game: gamePDA,
+          oracle: operator,
           recentBlockhash: anchor.web3.SYSVAR_RECENT_BLOCKHASHES_PUBKEY,
         })
-        .signers([operatorKeypair])
         .rpc();
 
       expect.fail("Should have thrown GameNotFull error");
@@ -980,24 +980,11 @@ describe("coinflip", () => {
   });
 
   it("Fail to Set Oracle Hash Twice", async () => {
-    // Create operator keypair and config
-    const operatorKeypair = anchor.web3.Keypair.generate();
-    const treasury = anchor.web3.Keypair.generate().publicKey;
-    const feePercentage = new BN(1);
+    // Get current config and operator
+    const { operator } = await createConfigAccount();
 
-    // Initialize config
-    await program.methods
-      .initializeConfig(treasury, feePercentage, operatorKeypair.publicKey)
-      .accounts({
-        signer: program.provider.publicKey,
-      })
-      .signers([operatorKeypair])
-      .rpc();
-
-    // Create SPL token setup
     const {
       mint,
-      gameAccount,
       creatorTokenAccount,
       vaultTokenAccount,
       mintAuthority
@@ -1007,24 +994,38 @@ describe("coinflip", () => {
 
     // Create game
     await program.methods
-      .initializeGame({ coinflip: {} }, amount, 2, 2, new BN(3600), false)
+      .initializeGame(
+        { coinflip: {} },
+        amount,
+        2,
+        2,
+        new BN(3600),
+        false,
+      )
       .accounts({
         creator: program.provider.publicKey,
         creatorTokenAccount: creatorTokenAccount,
         vaultTokenAccount: vaultTokenAccount,
         tokenMint: mint,
       })
-      .signers([gameAccount])
       .rpc();
+
+    // Get current game counter for PDA derivation
+    const gameCounter = await getCurrentGameCounter();
+    const [gamePDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("game"), gameCounter.subn(1).toArrayLike(Buffer, 'le', 8)],
+      program.programId
+    );
 
     // Create and fund second player
     const player = anchor.web3.Keypair.generate();
     const playerAirdrop = await program.provider.connection.requestAirdrop(
       player.publicKey,
-      anchor.web3.LAMPORTS_PER_SOL,
+      2 * anchor.web3.LAMPORTS_PER_SOL,
     );
     await program.provider.connection.confirmTransaction(playerAirdrop);
 
+    // Create player's token account and mint tokens
     const playerTokenAccount = await createAssociatedTokenAccount(
       program.provider.connection,
       player,
@@ -1032,7 +1033,6 @@ describe("coinflip", () => {
       player.publicKey,
     );
 
-    // Mint tokens to player
     await mintTo(
       program.provider.connection,
       mintAuthority,
@@ -1043,10 +1043,11 @@ describe("coinflip", () => {
       [mintAuthority],
     );
 
-    // Join game with second player
+    // Add second player to fill the game
     await program.methods
       .joinGame()
       .accounts({
+        game: gamePDA,
         player: player.publicKey,
         playerTokenAccount: playerTokenAccount,
         vaultTokenAccount: vaultTokenAccount,
@@ -1061,10 +1062,10 @@ describe("coinflip", () => {
     await program.methods
       .setOracleHash(hashValue)
       .accounts({
-        oracle: operatorKeypair.publicKey,
+        game: gamePDA,
+        oracle: operator,
         recentBlockhash: anchor.web3.SYSVAR_RECENT_BLOCKHASHES_PUBKEY,
       })
-      .signers([operatorKeypair])
       .rpc();
 
     // Try to set oracle hash second time
@@ -1075,10 +1076,10 @@ describe("coinflip", () => {
       await program.methods
         .setOracleHash(newHashValue)
         .accounts({
-          oracle: operatorKeypair.publicKey,
+          game: gamePDA,
+          oracle: operator,
           recentBlockhash: anchor.web3.SYSVAR_RECENT_BLOCKHASHES_PUBKEY,
         })
-        .signers([operatorKeypair])
         .rpc();
 
       expect.fail("Should have thrown OracleHashAlreadySet error");
