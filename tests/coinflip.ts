@@ -830,7 +830,6 @@ describe("coinflip", () => {
     await createConfigAccount();
     const {
       mint,
-      gameAccount,
       creatorTokenAccount,
       vaultTokenAccount,
       mintAuthority
@@ -840,15 +839,28 @@ describe("coinflip", () => {
 
     // Create game
     await program.methods
-      .initializeGame({ coinflip: {} }, amount, 2, 2, new BN(3600), false)
+      .initializeGame(
+        { coinflip: {} },
+        amount,
+        2,
+        2,
+        new BN(3600),
+        false,
+      )
       .accounts({
         creator: program.provider.publicKey,
         creatorTokenAccount: creatorTokenAccount,
         vaultTokenAccount: vaultTokenAccount,
         tokenMint: mint,
       })
-      .signers([gameAccount])
       .rpc();
+
+    // Get current game counter for PDA derivation
+    const gameCounter = await getCurrentGameCounter();
+    const [gamePDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("game"), gameCounter.subn(1).toArrayLike(Buffer, 'le', 8)],
+      program.programId
+    );
 
     // Add second player
     const player = anchor.web3.Keypair.generate();
@@ -858,7 +870,7 @@ describe("coinflip", () => {
     );
     await program.provider.connection.confirmTransaction(playerAirdrop);
 
-    // Create player's token account
+    // Create player's token account and mint tokens
     const playerTokenAccount = await createAssociatedTokenAccount(
       program.provider.connection,
       player,
@@ -866,7 +878,6 @@ describe("coinflip", () => {
       player.publicKey,
     );
 
-    // Mint tokens to player
     await mintTo(
       program.provider.connection,
       mintAuthority,
@@ -877,6 +888,18 @@ describe("coinflip", () => {
       [mintAuthority],
     );
 
+    // Join game
+    await program.methods
+      .joinGame()
+      .accounts({
+        game: gamePDA,
+        player: player.publicKey,
+        playerTokenAccount: playerTokenAccount,
+        vaultTokenAccount: vaultTokenAccount,
+      })
+      .signers([player])
+      .rpc();
+
     // Try to set oracle hash with fake operator
     const fakeOperator = anchor.web3.Keypair.generate();
     try {
@@ -886,6 +909,7 @@ describe("coinflip", () => {
       await program.methods
         .setOracleHash(hashValue)
         .accounts({
+          game: gamePDA,
           oracle: fakeOperator.publicKey,
           recentBlockhash: anchor.web3.SYSVAR_RECENT_BLOCKHASHES_PUBKEY,
         })
