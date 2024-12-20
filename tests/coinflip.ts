@@ -1411,7 +1411,6 @@ describe("coinflip", () => {
     await createConfigAccount();
     const {
       mint,
-      gameAccount,
       creatorTokenAccount,
       vaultTokenAccount,
     } = await createSplTokenMint();
@@ -1421,6 +1420,9 @@ describe("coinflip", () => {
     const minParticipants = 1;
     const timeoutDuration = new BN(3600);
     const isPrivate = false;
+
+    // Get current game counter for PDA derivation
+    const gameCounter = await getCurrentGameCounter();
 
     // Initialize giveaway game
     await program.methods
@@ -1440,8 +1442,11 @@ describe("coinflip", () => {
       })
       .rpc();
 
+    // Get game PDA
+    const gamePDA = await getGamePDA(gameCounter);
+
     // Verify game state - creator should not be added as participant for giveaway
-    const gameData = await program.account.game.fetch(gameAccount.publicKey);
+    const gameData = await program.account.game.fetch(gamePDA);
     expect(gameData.participants.length).to.equal(0);
     expect(gameData.gameType.giveaway).to.not.be.undefined;
   });
