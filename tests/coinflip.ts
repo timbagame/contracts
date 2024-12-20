@@ -72,21 +72,20 @@ describe("coinflip", () => {
       6,  // decimals
     );
 
-    // Create game account
-    const gameAccount = anchor.web3.Keypair.generate();
-
-    // Create vault PDA
-    const [vaultPDA] = anchor.web3.PublicKey.findProgramAddressSync(
-      [Buffer.from("vault"), gameAccount.publicKey.toBuffer()],
-      program.programId,
-    );
-
     // Create token account for creator (using provider's wallet)
     const creatorTokenAccountInfo = await getOrCreateAssociatedTokenAccount(
       program.provider.connection,
       mintAuthority, // payer
       mint,
       program.provider.publicKey,
+    );
+
+    // Get current game counter for PDA derivation
+    const gameCounter = await getCurrentGameCounter();
+    const gamePDA = await getGamePDA(gameCounter);
+    const [vaultPDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("vault"), gamePDA.toBuffer()],
+      program.programId
     );
 
     // Create token account for vault
