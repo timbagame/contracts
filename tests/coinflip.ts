@@ -1381,6 +1381,7 @@ describe("coinflip", () => {
     await program.methods
       .unjoinGame()
       .accounts({
+        game: gameAccount.publicKey,
         vaultTokenAccount: vaultTokenAccount,
         participantTokenAccount: creatorTokenAccount,
         participant: program.provider.publicKey,
@@ -1516,6 +1517,7 @@ describe("coinflip", () => {
     await program.methods
       .joinGame()
       .accounts({
+        game: gameAccount.publicKey,
         player: player.publicKey,
         playerTokenAccount: playerTokenAccount,
         vaultTokenAccount: vaultTokenAccount,
@@ -1538,6 +1540,7 @@ describe("coinflip", () => {
     await program.methods
       .unjoinGame()
       .accounts({
+        game: gameAccount.publicKey,
         vaultTokenAccount: vaultTokenAccount,
         participantTokenAccount: creatorTokenAccount,
         participant: program.provider.publicKey,
@@ -1548,6 +1551,7 @@ describe("coinflip", () => {
     await program.methods
       .unjoinGame()
       .accounts({
+        game: gameAccount.publicKey,
         vaultTokenAccount: vaultTokenAccount,
         participantTokenAccount: playerTokenAccount,
         participant: player.publicKey,
@@ -1629,6 +1633,7 @@ describe("coinflip", () => {
       await program.methods
         .unjoinGame()
         .accounts({
+          game: gameAccount.publicKey,
           vaultTokenAccount: vaultTokenAccount,
           participantTokenAccount: nonParticipantTokenAccount,
           participant: nonParticipant.publicKey,
@@ -1722,6 +1727,7 @@ describe("coinflip", () => {
       await program.methods
         .joinGame()
         .accounts({
+          game: gameAccount.publicKey,
           player: player.publicKey,
           playerTokenAccount: playerTokenAccount,
           vaultTokenAccount: vaultTokenAccount,
@@ -1834,6 +1840,7 @@ describe("coinflip", () => {
     await program.methods
       .joinGame()
       .accounts({
+        game: gameAccount.publicKey,
         player: player.publicKey,
         playerTokenAccount: playerTokenAccount,
         vaultTokenAccount: vaultTokenAccount,
@@ -2219,6 +2226,7 @@ describe("coinflip", () => {
       await program.methods
         .joinGame()
         .accounts({
+          game: gameAccount.publicKey,
           player: player.publicKey,
           playerTokenAccount: playerTokenAccount,
           vaultTokenAccount: vaultTokenAccount,
@@ -2271,6 +2279,7 @@ describe("coinflip", () => {
     await program.methods
       .unjoinGame()
       .accounts({
+        game: gameAccount.publicKey,
         vaultTokenAccount: vaultTokenAccount,
         participantTokenAccount: creatorTokenAccount,
         participant: program.provider.publicKey,
@@ -2361,6 +2370,7 @@ describe("coinflip", () => {
       await program.methods
         .unjoinGame()
         .accounts({
+          game: gameAccount.publicKey,
           vaultTokenAccount: vaultTokenAccount,
           participantTokenAccount: creatorTokenAccount,
           participant: program.provider.publicKey,
