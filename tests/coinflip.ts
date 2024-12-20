@@ -128,6 +128,14 @@ describe("coinflip", () => {
     return configAccount.gameCounter;
   }
 
+  // Add this helper function at the top level
+  async function getGamePDA(gameCounter: BN) {
+    return PublicKey.findProgramAddressSync(
+      [Buffer.from("game"), gameCounter.toArrayLike(Buffer, 'le', 8)],
+      program.programId
+    )[0];
+  }
+
   it("Initialize Config Successfully", async () => {
     const { treasury, feePercentage, operator } = await createConfigAccount();
 
@@ -1344,12 +1352,14 @@ describe("coinflip", () => {
     await createConfigAccount();
     const {
       mint,
-      gameAccount,
       creatorTokenAccount,
       vaultTokenAccount,
     } = await createSplTokenMint();
 
     const amount = new BN(1_000_000);
+
+    // Get current game counter for PDA derivation
+    const gameCounter = await getCurrentGameCounter();
 
     await program.methods
       .initializeGame(
@@ -1368,6 +1378,9 @@ describe("coinflip", () => {
       })
       .rpc();
 
+    // Get game PDA
+    const gamePDA = await getGamePDA(gameCounter);
+
     // Wait for timeout
     await new Promise((resolve) => setTimeout(resolve, 4000));
 
@@ -1380,7 +1393,7 @@ describe("coinflip", () => {
     await program.methods
       .unjoinGame()
       .accounts({
-        game: gameAccount.publicKey,
+        game: gamePDA,
         vaultTokenAccount: vaultTokenAccount,
         participantTokenAccount: creatorTokenAccount,
         participant: program.provider.publicKey,
@@ -1457,22 +1470,21 @@ describe("coinflip", () => {
     await createConfigAccount();
     const {
       mint,
-      gameAccount,
       creatorTokenAccount,
       vaultTokenAccount,
       mintAuthority
     } = await createSplTokenMint();
 
     const amount = new BN(1_000_000);
+    const gameCounter = await getCurrentGameCounter();
 
-    // Create game with short timeout
     await program.methods
       .initializeGame(
         { coinflip: {} },
         amount,
-        3, // 3 participants
+        3,
         2,
-        new BN(4), // 4 seconds timeout
+        new BN(4),
         false,
       )
       .accounts({
@@ -1483,6 +1495,8 @@ describe("coinflip", () => {
       })
       .rpc();
 
+    const gamePDA = await getGamePDA(gameCounter);
+
     // Create and fund second player
     const player = anchor.web3.Keypair.generate();
     const playerAirdrop = await program.provider.connection.requestAirdrop(
@@ -1491,15 +1505,13 @@ describe("coinflip", () => {
     );
     await program.provider.connection.confirmTransaction(playerAirdrop);
 
-    // Create player's token account
     const playerTokenAccount = await createAssociatedTokenAccount(
       program.provider.connection,
-      player, // payer
+      player,
       mint,
       player.publicKey,
     );
 
-    // Mint tokens to player
     await mintTo(
       program.provider.connection,
       mintAuthority,
@@ -1510,11 +1522,11 @@ describe("coinflip", () => {
       [mintAuthority],
     );
 
-    // Join game with player
+    // Join game
     await program.methods
       .joinGame()
       .accounts({
-        game: gameAccount.publicKey,
+        game: gamePDA,
         player: player.publicKey,
         playerTokenAccount: playerTokenAccount,
         vaultTokenAccount: vaultTokenAccount,
@@ -1537,7 +1549,7 @@ describe("coinflip", () => {
     await program.methods
       .unjoinGame()
       .accounts({
-        game: gameAccount.publicKey,
+        game: gamePDA,
         vaultTokenAccount: vaultTokenAccount,
         participantTokenAccount: creatorTokenAccount,
         participant: program.provider.publicKey,
@@ -1548,7 +1560,7 @@ describe("coinflip", () => {
     await program.methods
       .unjoinGame()
       .accounts({
-        game: gameAccount.publicKey,
+        game: gamePDA,
         vaultTokenAccount: vaultTokenAccount,
         participantTokenAccount: playerTokenAccount,
         participant: player.publicKey,
@@ -1572,7 +1584,7 @@ describe("coinflip", () => {
     );
 
     // Verify game is cancelled after all claims
-    const gameData = await program.account.game.fetch(gameAccount.publicKey);
+    const gameData = await program.account.game.fetch(gamePDA);
     expect(gameData.status.cancelled).to.not.be.undefined;
     expect(gameData.participants.length).to.equal(0);
   });
