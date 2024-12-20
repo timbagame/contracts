@@ -12,6 +12,28 @@ import {
 } from "@solana/spl-token";
 import { PublicKey } from "@solana/web3.js";
 
+/**
+ * Important note about account handling in these tests:
+ * 
+ * Several accounts DO NOT need to be explicitly passed to instructions because Anchor handles them automatically:
+ * 
+ * 1. PDAs (Program Derived Addresses):
+ *    - config: Derived from seeds ["config"]
+ *    - game: Derived from seeds ["game", gameCounter]
+ *    - vault: Derived from seeds ["vault", gamePDA]
+ *    Anchor can derive these from the seeds defined in the program
+ * 
+ * 2. System-level accounts:
+ *    - systemProgram: Added automatically by Anchor when creating accounts
+ *    - tokenProgram: Added automatically for token operations
+ *    - rent: Added automatically for account creation
+ * 
+ * Only pass accounts that are:
+ *    - Signers (who's paying or authorizing)
+ *    - Token accounts (where tokens are stored)
+ *    - Accounts that can't be derived (like user wallets)
+ */
+
 describe("coinflip", () => {
   // Configure the client to use the local cluster.
   anchor.setProvider(anchor.AnchorProvider.env());
