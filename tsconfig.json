@@ -14,5 +14,7 @@
     "target": "es2023",
     "esModuleInterop": true,
     "resolveJsonModule": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true
   }
 }
