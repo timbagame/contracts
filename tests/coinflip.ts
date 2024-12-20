@@ -631,23 +631,12 @@ describe("coinflip", () => {
   });
 
   it("Fail to Join Private Game with Wrong Operator", async () => {
-    // Create operator keypair and config with that operator
-    const operatorKeypair = anchor.web3.Keypair.generate();
-    const treasury = anchor.web3.Keypair.generate().publicKey;
-    const feePercentage = new BN(1);
-
-    // Initialize config with our operator
-    await program.methods
-      .initializeConfig(treasury, feePercentage, operatorKeypair.publicKey)
-      .accounts({
-        signer: program.provider.publicKey,
-      })
-      .rpc();
+    // Initialize config
+    await createConfigAccount();
 
     // Create SPL token setup
     const {
       mint,
-      gameAccount,
       creatorTokenAccount,
       vaultTokenAccount,
       mintAuthority
@@ -671,8 +660,14 @@ describe("coinflip", () => {
         vaultTokenAccount: vaultTokenAccount,
         tokenMint: mint,
       })
-      .signers([gameAccount])
       .rpc();
+
+    // Get current game counter for PDA derivation
+    const gameCounter = await getCurrentGameCounter();
+    const [gamePDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("game"), gameCounter.subn(1).toArrayLike(Buffer, 'le', 8)],
+      program.programId
+    );
 
     // Create and fund player
     const player = anchor.web3.Keypair.generate();
@@ -682,7 +677,7 @@ describe("coinflip", () => {
     );
     await program.provider.connection.confirmTransaction(playerAirdrop);
 
-    // Create player's token account
+    // Create player's token account and mint tokens
     const playerTokenAccount = await createAssociatedTokenAccount(
       program.provider.connection,
       player,
@@ -690,7 +685,6 @@ describe("coinflip", () => {
       player.publicKey,
     );
 
-    // Mint tokens to player
     await mintTo(
       program.provider.connection,
       mintAuthority,
@@ -703,11 +697,10 @@ describe("coinflip", () => {
 
     // Create fake operator
     const fakeOperator = anchor.web3.Keypair.generate();
-    const fakeOperatorAirdrop =
-      await program.provider.connection.requestAirdrop(
-        fakeOperator.publicKey,
-        anchor.web3.LAMPORTS_PER_SOL,
-      );
+    const fakeOperatorAirdrop = await program.provider.connection.requestAirdrop(
+      fakeOperator.publicKey,
+      anchor.web3.LAMPORTS_PER_SOL,
+    );
     await program.provider.connection.confirmTransaction(fakeOperatorAirdrop);
 
     // Try to join game with fake operator signature
@@ -715,6 +708,7 @@ describe("coinflip", () => {
       await program.methods
         .joinGame()
         .accounts({
+          game: gamePDA,
           player: player.publicKey,
           playerTokenAccount: playerTokenAccount,
           vaultTokenAccount: vaultTokenAccount,
@@ -1875,7 +1869,6 @@ describe("coinflip", () => {
     await createConfigAccount();
     const {
       mint,
-      gameAccount,
       creatorTokenAccount,
       vaultTokenAccount,
       mintAuthority
@@ -1899,8 +1892,14 @@ describe("coinflip", () => {
         vaultTokenAccount: vaultTokenAccount,
         tokenMint: mint,
       })
-      .signers([gameAccount])
       .rpc();
+
+    // Get current game counter for PDA derivation
+    const gameCounter = await getCurrentGameCounter();
+    const [gamePDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("game"), gameCounter.subn(1).toArrayLike(Buffer, 'le', 8)],
+      program.programId
+    );
 
     // Create player with insufficient funds
     const player = anchor.web3.Keypair.generate();
@@ -1933,6 +1932,7 @@ describe("coinflip", () => {
       await program.methods
         .joinGame()
         .accounts({
+          game: gamePDA,
           player: player.publicKey,
           playerTokenAccount: playerTokenAccount,
           vaultTokenAccount: vaultTokenAccount,
@@ -1940,7 +1940,7 @@ describe("coinflip", () => {
         .signers([player])
         .rpc();
 
-      expect.fail("Should not be able to join with different token mint");
+      expect.fail("Should not be able to join with insufficient funds");
     } catch (error) {
       expect(error.toString()).to.include("insufficient funds");
     }
