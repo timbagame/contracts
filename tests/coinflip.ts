@@ -118,6 +118,16 @@ describe("coinflip", () => {
     };
   }
 
+  // Add this helper function to get current game counter
+  async function getCurrentGameCounter() {
+    const [configPDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("config")],
+      program.programId
+    );
+    const configAccount = await program.account.config.fetch(configPDA);
+    return configAccount.gameCounter;
+  }
+
   it("Initialize Config Successfully", async () => {
     const { treasury, feePercentage, operator } = await createConfigAccount();
 
@@ -203,9 +213,10 @@ describe("coinflip", () => {
       })
       .rpc();
 
-    // Get game PDA since we need it for joining
+    // Get current game counter for PDA derivation
+    const gameCounter = await getCurrentGameCounter();
     const [gamePDA] = PublicKey.findProgramAddressSync(
-      [Buffer.from("game"), new BN(0).toArrayLike(Buffer, 'le', 8)],
+      [Buffer.from("game"), gameCounter.subn(1).toArrayLike(Buffer, 'le', 8)],
       program.programId
     );
 
@@ -280,9 +291,10 @@ describe("coinflip", () => {
       })
       .rpc();
 
-    // Get game PDA since we need it for joining
+    // Get current game counter for PDA derivation
+    const gameCounter = await getCurrentGameCounter();
     const [gamePDA] = PublicKey.findProgramAddressSync(
-      [Buffer.from("game"), new BN(0).toArrayLike(Buffer, 'le', 8)],
+      [Buffer.from("game"), gameCounter.subn(1).toArrayLike(Buffer, 'le', 8)],
       program.programId
     );
 
@@ -330,97 +342,88 @@ describe("coinflip", () => {
   });
 
   it("Join Private Game Successfully", async () => {
-    // Create operator keypair and config
-    const operatorKeypair = anchor.web3.Keypair.generate();
-    const treasury = anchor.web3.Keypair.generate().publicKey;
-    const feePercentage = new BN(1);
-
-    // Initialize config with operator
-    await program.methods
-        .initializeConfig(treasury, feePercentage, operatorKeypair.publicKey)
-        .accounts({
-            signer: program.provider.publicKey,
-        })
-        .rpc();
+    // Get current config and operator
+    const { operator } = await createConfigAccount();
 
     // Create SPL token setup
     const {
-        mint,
-        creatorTokenAccount,
-        vaultTokenAccount,
-        mintAuthority
+      mint,
+      creatorTokenAccount,
+      vaultTokenAccount,
+      mintAuthority
     } = await createSplTokenMint();
 
     const amount = new BN(1_000_000);
 
     // Create game with isPrivate = true
     await program.methods
-        .initializeGame(
-            { coinflip: {} },
-            amount,
-            2,
-            2,
-            new BN(3600),
-            true, // isPrivate
-        )
-        .accounts({
-            creator: program.provider.publicKey,
-            creatorTokenAccount: creatorTokenAccount,
-            vaultTokenAccount: vaultTokenAccount,
-            tokenMint: mint,
-        })
-        .rpc();
+      .initializeGame(
+        { coinflip: {} },
+        amount,
+        2,
+        2,
+        new BN(3600),
+        true, // isPrivate
+      )
+      .accounts({
+        creator: program.provider.publicKey,
+        creatorTokenAccount: creatorTokenAccount,
+        vaultTokenAccount: vaultTokenAccount,
+        tokenMint: mint,
+      })
+      .rpc();
 
-    // Get game PDA since we need it for joining
+    // Get current game counter for PDA derivation
+    const gameCounter = await getCurrentGameCounter();
     const [gamePDA] = PublicKey.findProgramAddressSync(
-        [Buffer.from("game"), new BN(0).toArrayLike(Buffer, 'le', 8)],
-        program.programId
+      [Buffer.from("game"), gameCounter.subn(1).toArrayLike(Buffer, 'le', 8)],
+      program.programId
     );
 
     // Create and fund player
     const player = anchor.web3.Keypair.generate();
     const playerAirdrop = await program.provider.connection.requestAirdrop(
-        player.publicKey,
-        2 * anchor.web3.LAMPORTS_PER_SOL,
+      player.publicKey,
+      2 * anchor.web3.LAMPORTS_PER_SOL,
     );
     await program.provider.connection.confirmTransaction(playerAirdrop);
 
     // Create player's token account and mint tokens
     const playerTokenAccount = await createAssociatedTokenAccount(
-        program.provider.connection,
-        player,
-        mint,
-        player.publicKey,
+      program.provider.connection,
+      player,
+      mint,
+      player.publicKey,
     );
 
     await mintTo(
-        program.provider.connection,
-        mintAuthority,
-        mint,
-        playerTokenAccount,
-        mintAuthority.publicKey,
-        amount.toNumber(),
-        [mintAuthority],
+      program.provider.connection,
+      mintAuthority,
+      mint,
+      playerTokenAccount,
+      mintAuthority.publicKey,
+      amount.toNumber(),
+      [mintAuthority],
     );
 
     // Join game with both player and operator signatures
     await program.methods
-        .joinGame()
-        .accounts({
-            game: gamePDA,
-            player: player.publicKey,
-            playerTokenAccount: playerTokenAccount,
-            vaultTokenAccount: vaultTokenAccount,
-        })
-        .remainingAccounts([
-            {
-                pubkey: operatorKeypair.publicKey,
-                isWritable: false,
-                isSigner: true,
-            },
-        ])
-        .signers([player, operatorKeypair])
-        .rpc();
+      .joinGame()
+      .accounts({
+        game: gamePDA,
+        player: player.publicKey,
+        playerTokenAccount: playerTokenAccount,
+        vaultTokenAccount: vaultTokenAccount,
+      })
+      .remainingAccounts([
+        {
+          pubkey: operator,
+          isWritable: false,
+          isSigner: true,
+        },
+      ])
+      .signers([player])
+      .rpc();
 
     // Verify game state
     const gameData = await program.account.game.fetch(gamePDA);
@@ -431,7 +434,6 @@ describe("coinflip", () => {
     await createConfigAccount();
     const {
       mint,
-      gameAccount,
       creatorTokenAccount,
       vaultTokenAccount,
       mintAuthority
@@ -441,15 +443,28 @@ describe("coinflip", () => {
 
     // Create game with max 2 participants
     await program.methods
-      .initializeGame({ coinflip: {} }, amount, 2, 2, new BN(3600), false)
+      .initializeGame(
+        { coinflip: {} },
+        amount,
+        2,
+        2,
+        new BN(3600),
+        false,
+      )
       .accounts({
         creator: program.provider.publicKey,
         creatorTokenAccount: creatorTokenAccount,
         vaultTokenAccount: vaultTokenAccount,
         tokenMint: mint,
       })
-      .signers([gameAccount])
       .rpc();
+
+    // Get current game counter for PDA derivation
+    const gameCounter = await getCurrentGameCounter();
+    const [gamePDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("game"), gameCounter.subn(1).toArrayLike(Buffer, 'le', 8)],
+      program.programId
+    );
 
     // Create and fund two more players
     const player1 = anchor.web3.Keypair.generate();
@@ -495,6 +510,7 @@ describe("coinflip", () => {
     await program.methods
       .joinGame()
       .accounts({
+        game: gamePDA,
         player: player1.publicKey,
         playerTokenAccount: player1TokenAccount,
         vaultTokenAccount: vaultTokenAccount,
@@ -507,6 +523,7 @@ describe("coinflip", () => {
       await program.methods
         .joinGame()
         .accounts({
+          game: gamePDA,
           player: player2.publicKey,
           playerTokenAccount: player2TokenAccount,
           vaultTokenAccount: vaultTokenAccount,
@@ -618,7 +635,6 @@ describe("coinflip", () => {
       .accounts({
         signer: program.provider.publicKey,
       })
-      .signers([operatorKeypair])
       .rpc();
 
     // Create SPL token setup
