@@ -730,24 +730,12 @@ describe("coinflip", () => {
   });
 
   it("Set Oracle Hash Successfully", async () => {
-    // Create config and game
-    const operatorKeypair = anchor.web3.Keypair.generate();
-    const treasury = anchor.web3.Keypair.generate().publicKey;
-    const feePercentage = new BN(1);
-
-    // Initialize config
-    await program.methods
-      .initializeConfig(treasury, feePercentage, operatorKeypair.publicKey)
-      .accounts({
-        signer: program.provider.publicKey,
-      })
-      .signers([operatorKeypair])
-      .rpc();
+    // Get current config and operator
+    const { operator } = await createConfigAccount();
 
     // Create SPL token setup
     const {
       mint,
-      gameAccount,
       creatorTokenAccount,
       vaultTokenAccount,
       mintAuthority
@@ -757,15 +745,28 @@ describe("coinflip", () => {
 
     // Create game
     await program.methods
-      .initializeGame({ coinflip: {} }, amount, 2, 2, new BN(3600), false)
+      .initializeGame(
+        { coinflip: {} },
+        amount,
+        2,
+        2,
+        new BN(3600),
+        false,
+      )
       .accounts({
         creator: program.provider.publicKey,
         creatorTokenAccount: creatorTokenAccount,
         vaultTokenAccount: vaultTokenAccount,
         tokenMint: mint,
       })
-      .signers([gameAccount])
       .rpc();
+
+    // Get current game counter for PDA derivation
+    const gameCounter = await getCurrentGameCounter();
+    const [gamePDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("game"), gameCounter.subn(1).toArrayLike(Buffer, 'le', 8)],
+      program.programId
+    );
 
     // Create and fund second player
     const player = anchor.web3.Keypair.generate();
@@ -775,7 +776,7 @@ describe("coinflip", () => {
     );
     await program.provider.connection.confirmTransaction(playerAirdrop);
 
-    // Create player's token account
+    // Create player's token account and mint tokens
     const playerTokenAccount = await createAssociatedTokenAccount(
       program.provider.connection,
       player,
@@ -783,14 +784,13 @@ describe("coinflip", () => {
       player.publicKey,
     );
 
-    // Mint tokens to player
     await mintTo(
       program.provider.connection,
       mintAuthority,
       mint,
       playerTokenAccount,
       mintAuthority.publicKey,
-      1_000_000_000,
+      amount.toNumber(),
       [mintAuthority],
     );
 
@@ -798,6 +798,7 @@ describe("coinflip", () => {
     await program.methods
       .joinGame()
       .accounts({
+        game: gamePDA,
         player: player.publicKey,
         playerTokenAccount: playerTokenAccount,
         vaultTokenAccount: vaultTokenAccount,
@@ -812,14 +813,14 @@ describe("coinflip", () => {
     await program.methods
       .setOracleHash(hashValue)
       .accounts({
-        oracle: operatorKeypair.publicKey,
+        game: gamePDA,
+        oracle: operator,
         recentBlockhash: anchor.web3.SYSVAR_RECENT_BLOCKHASHES_PUBKEY,
       })
-      .signers([operatorKeypair])
       .rpc();
 
     // Verify game state
-    const gameData = await program.account.game.fetch(gameAccount.publicKey);
+    const gameData = await program.account.game.fetch(gamePDA);
     expect(gameData.status.readyForClaim).to.not.be.undefined;
     expect(gameData.oracleHash).to.deep.equal(hashValue);
     expect(gameData.winner).to.not.be.null;
@@ -875,16 +876,6 @@ describe("coinflip", () => {
       amount.toNumber(),
       [mintAuthority],
     );
-
-    await program.methods
-      .joinGame()
-      .accounts({
-        player: player.publicKey,
-        playerTokenAccount: playerTokenAccount,
-        vaultTokenAccount: vaultTokenAccount,
-      })
-      .signers([player])
-      .rpc();
 
     // Try to set oracle hash with fake operator
     const fakeOperator = anchor.web3.Keypair.generate();
