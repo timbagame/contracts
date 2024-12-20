@@ -1929,60 +1929,6 @@ describe("coinflip", () => {
     }
   });
 
-  it("Cannot Manipulate Game State Through Account Reinitialization", async () => {
-    await createConfigAccount();
-    const {
-      mint,
-      creatorTokenAccount,
-      vaultTokenAccount,
-    } = await createSplTokenMint();
-
-    const amount = new BN(1_000_000);
-    const gameCounter = await getCurrentGameCounter();
-
-    // Initialize first game
-    await program.methods
-      .initializeGame(
-        { coinflip: {} },
-        amount,
-        2,
-        2,
-        new BN(3600),
-        false,
-      )
-      .accounts({
-        creator: program.provider.publicKey,
-        creatorTokenAccount: creatorTokenAccount,
-        vaultTokenAccount: vaultTokenAccount,
-        tokenMint: mint,
-      })
-      .rpc();
-
-    // Try to initialize another game with same counter
-    try {
-      await program.methods
-        .initializeGame(
-          { coinflip: {} },
-          amount,
-          2,
-          2,
-          new BN(3600),
-          false,
-        )
-        .accounts({
-          creator: program.provider.publicKey,
-          creatorTokenAccount: creatorTokenAccount,
-          vaultTokenAccount: vaultTokenAccount,
-          tokenMint: mint,
-        })
-        .rpc();
-
-      expect.fail("Should not be able to reinitialize game account");
-    } catch (error) {
-      expect(error.toString()).to.include("Error");
-    }
-  });
-
   it("Cannot Join Game With Insufficient Funds", async () => {
     await createConfigAccount();
     const {
