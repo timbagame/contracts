@@ -791,7 +791,6 @@ describe("coinflip", () => {
       .accounts({
         game: gamePDA,
         oracle: operator,
-        recentBlockhash: anchor.web3.SYSVAR_RECENT_BLOCKHASHES_PUBKEY,
       })
       .rpc();
 
@@ -881,7 +880,6 @@ describe("coinflip", () => {
         .accounts({
           game: gamePDA,
           oracle: fakeOperator.publicKey,
-          recentBlockhash: anchor.web3.SYSVAR_RECENT_BLOCKHASHES_PUBKEY,
         })
         .signers([fakeOperator])
         .rpc();
@@ -935,7 +933,6 @@ describe("coinflip", () => {
         .accounts({
           game: gamePDA,
           oracle: operator,
-          recentBlockhash: anchor.web3.SYSVAR_RECENT_BLOCKHASHES_PUBKEY,
         })
         .rpc();
 
@@ -1024,7 +1021,6 @@ describe("coinflip", () => {
       .accounts({
         game: gamePDA,
         oracle: operator,
-        recentBlockhash: anchor.web3.SYSVAR_RECENT_BLOCKHASHES_PUBKEY,
       })
       .rpc();
 
@@ -1038,7 +1034,6 @@ describe("coinflip", () => {
         .accounts({
           game: gamePDA,
           oracle: operator,
-          recentBlockhash: anchor.web3.SYSVAR_RECENT_BLOCKHASHES_PUBKEY,
         })
         .rpc();
 
@@ -1129,7 +1124,6 @@ describe("coinflip", () => {
       .accounts({
         game: gamePDA,
         oracle: operator,
-        recentBlockhash: anchor.web3.SYSVAR_RECENT_BLOCKHASHES_PUBKEY,
       })
       .rpc();
 
@@ -1247,7 +1241,6 @@ describe("coinflip", () => {
       .accounts({
         game: gamePDA,
         oracle: operator,
-        recentBlockhash: anchor.web3.SYSVAR_RECENT_BLOCKHASHES_PUBKEY,
       })
       .rpc();
 
@@ -1623,7 +1616,6 @@ describe("coinflip", () => {
       .accounts({
         game: gamePDA,
         oracle: operator,
-        recentBlockhash: anchor.web3.SYSVAR_RECENT_BLOCKHASHES_PUBKEY,
       })
       .rpc();
 
@@ -1716,7 +1708,6 @@ describe("coinflip", () => {
       .accounts({
         game: gamePDA,
         oracle: operator,
-        recentBlockhash: anchor.web3.SYSVAR_RECENT_BLOCKHASHES_PUBKEY,
       })
       .rpc();
 

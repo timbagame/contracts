@@ -158,8 +158,6 @@ pub struct SetOracleHash<'info> {
     pub config: Account<'info, Config>,
     #[account(address = config.operator)]
     pub oracle: Signer<'info>,
-    /// CHECK: Used for randomness, no need to validate
-    pub recent_blockhash: AccountInfo<'info>,
 }
 
 #[derive(Accounts)]
