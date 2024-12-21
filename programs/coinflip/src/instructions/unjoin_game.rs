@@ -32,7 +32,7 @@ pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
                     to: ctx.accounts.participant_token_account.to_account_info(),
                     authority: ctx.accounts.vault.to_account_info(),
                 },
-                &[&[b"vault", game.key().as_ref(), &[ctx.bumps.vault]]],
+                &[&[b"vault", game.token_mint.as_ref(), &[ctx.bumps.vault]]],
             ),
             game.amount,
         )?;

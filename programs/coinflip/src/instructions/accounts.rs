@@ -62,7 +62,8 @@ pub struct InitializeGame<'info> {
     #[account(
         mut,
         associated_token::mint = token_mint,
-        associated_token::authority = creator
+        associated_token::authority = creator,
+        constraint = creator_token_account.amount >= amount @ ErrorCode::InsufficientVaultBalance
     )]
     pub creator_token_account: Account<'info, TokenAccount>,
     #[account(
@@ -71,7 +72,6 @@ pub struct InitializeGame<'info> {
         associated_token::authority = vault
     )]
     pub vault_token_account: Account<'info, TokenAccount>,
-    /// CHECK: Vault PDA for token authority
     #[account(
         mut,
         seeds = [b"vault", token_mint.key().as_ref()],
@@ -99,7 +99,8 @@ pub struct JoinGame<'info> {
     #[account(
         mut,
         associated_token::mint = game.token_mint,
-        associated_token::authority = player
+        associated_token::authority = player,
+        constraint = game.game_type != GameType::Coinflip || player_token_account.amount >= game.amount @ ErrorCode::InsufficientVaultBalance
     )]
     pub player_token_account: Account<'info, TokenAccount>,
     #[account(
@@ -108,7 +109,6 @@ pub struct JoinGame<'info> {
         associated_token::authority = vault
     )]
     pub vault_token_account: Account<'info, TokenAccount>,
-    /// CHECK: Vault PDA for token authority
     #[account(
         mut,
         seeds = [b"vault", game.token_mint.as_ref()],
@@ -142,7 +142,6 @@ pub struct SetOracleHash<'info> {
     pub config: Account<'info, Config>,
     #[account(constraint = oracle.key() == config.operator @ ErrorCode::InvalidOperator)]
     pub oracle: Signer<'info>,
-    /// CHECK: Used for randomness
     pub recent_blockhash: AccountInfo<'info>,
 }
 
@@ -151,9 +150,15 @@ pub struct ClaimWinnings<'info> {
     #[account(
         mut,
         constraint = game.status == GameStatus::ReadyForClaim @ ErrorCode::GameNotReadyForClaim,
-        constraint = game.winner.unwrap() == winner.key() @ ErrorCode::NotWinner
+        constraint = game.winner.unwrap() == winner.key() @ ErrorCode::NotWinner,
+        close = creator,
     )]
     pub game: Account<'info, Game>,
+    #[account(
+        mut,
+        address = game.creator,
+    )]
+    pub creator: AccountInfo<'info>,
     #[account(
         seeds = [b"config"],
         bump
@@ -179,7 +184,6 @@ pub struct ClaimWinnings<'info> {
         associated_token::authority = config.treasury
     )]
     pub treasury_token_account: Account<'info, TokenAccount>,
-    /// CHECK: Vault PDA for token authority
     #[account(
         mut,
         seeds = [b"vault", game.token_mint.as_ref()],
@@ -216,7 +220,6 @@ pub struct UnjoinGame<'info> {
         associated_token::authority = participant
     )]
     pub participant_token_account: Account<'info, TokenAccount>,
-    /// CHECK: Vault PDA for token authority
     #[account(
         mut,
         seeds = [b"vault", game.token_mint.as_ref()],

@@ -46,4 +46,6 @@ pub enum ErrorCode {
     InvalidParticipant,
     #[msg("Invalid timeout duration")]
     InvalidTimeout,
+    #[msg("Insufficient balance in vault")]
+    InsufficientVaultBalance,
 }

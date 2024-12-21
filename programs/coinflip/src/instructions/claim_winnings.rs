@@ -24,7 +24,7 @@ pub fn handler(ctx: Context<super::ClaimWinnings>) -> Result<()> {
                 to: ctx.accounts.winner_token_account.to_account_info(),
                 authority: ctx.accounts.vault.to_account_info(),
             },
-            &[&[b"vault", game.key().as_ref(), &[ctx.bumps.vault]]],
+            &[&[b"vault", game.token_mint.as_ref(), &[ctx.bumps.vault]]],
         ),
         winner_amount,
     )?;
@@ -38,7 +38,7 @@ pub fn handler(ctx: Context<super::ClaimWinnings>) -> Result<()> {
                 to: ctx.accounts.treasury_token_account.to_account_info(),
                 authority: ctx.accounts.vault.to_account_info(),
             },
-            &[&[b"vault", game.key().as_ref(), &[ctx.bumps.vault]]],
+            &[&[b"vault", game.token_mint.as_ref(), &[ctx.bumps.vault]]],
         ),
         fee_amount,
     )?;
