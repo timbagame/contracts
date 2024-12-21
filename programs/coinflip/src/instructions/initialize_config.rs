@@ -3,7 +3,7 @@ use anchor_lang::prelude::*;
 pub fn handler(
     ctx: Context<super::InitializeConfig>,
     treasury: Pubkey,
-    fee_percentage: u64,
+    fee_percentage: u8,
     operator: Pubkey,
 ) -> Result<()> {
     let config = &mut ctx.accounts.config;

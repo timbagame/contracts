@@ -10,7 +10,7 @@ pub fn handler(ctx: Context<super::ClaimWinnings>) -> Result<()> {
         GameType::Coinflip => game.amount * (game.participants.len() as u64),
         GameType::Giveaway => game.amount,
     };
-    let fee_amount = total_pot * ctx.accounts.config.fee_percentage / 100;
+    let fee_amount = total_pot * (ctx.accounts.config.fee_percentage as u64) / 100;
     let winner_amount = total_pot - fee_amount;
 
     game.status = GameStatus::Completed;

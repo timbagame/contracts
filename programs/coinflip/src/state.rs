@@ -4,7 +4,7 @@ use anchor_lang::prelude::*;
 #[derive(Default)]
 pub struct Config {
     pub treasury: Pubkey,
-    pub fee_percentage: u64,
+    pub fee_percentage: u8,
     pub operator: Pubkey,
     pub game_counter: u64,
 }

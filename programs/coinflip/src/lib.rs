@@ -16,7 +16,7 @@ pub mod coinflip {
     pub fn initialize_config(
         ctx: Context<InitializeConfig>,
         treasury: Pubkey,
-        fee_percentage: u64,
+        fee_percentage: u8,
         operator: Pubkey,
     ) -> Result<()> {
         instructions::initialize_config::handler(ctx, treasury, fee_percentage, operator)
