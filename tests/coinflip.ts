@@ -713,7 +713,7 @@ describe("coinflip", () => {
 
   it("Set Oracle Hash Successfully", async () => {
     // Get current config and operator
-    const { operator } = await createConfigAccount();
+    await createConfigAccount();
 
     // Create SPL token setup
     const {
@@ -790,7 +790,6 @@ describe("coinflip", () => {
       .setOracleHash(hashValue)
       .accounts({
         game: gamePDA,
-        oracle: operator,
       })
       .rpc();
 
@@ -879,7 +878,6 @@ describe("coinflip", () => {
         .setOracleHash(hashValue)
         .accounts({
           game: gamePDA,
-          oracle: fakeOperator.publicKey,
         })
         .signers([fakeOperator])
         .rpc();
@@ -892,7 +890,7 @@ describe("coinflip", () => {
 
   it("Fail to Set Oracle Hash Before Game is Full", async () => {
     // Get current config and operator
-    const { operator } = await createConfigAccount();
+    await createConfigAccount();
 
     const {
       mint,
@@ -932,7 +930,6 @@ describe("coinflip", () => {
         .setOracleHash(hashValue)
         .accounts({
           game: gamePDA,
-          oracle: operator,
         })
         .rpc();
 
@@ -944,7 +941,7 @@ describe("coinflip", () => {
 
   it("Fail to Set Oracle Hash Twice", async () => {
     // Get current config and operator
-    const { operator } = await createConfigAccount();
+    await createConfigAccount();
 
     const {
       mint,
@@ -1020,7 +1017,6 @@ describe("coinflip", () => {
       .setOracleHash(hashValue)
       .accounts({
         game: gamePDA,
-        oracle: operator,
       })
       .rpc();
 
@@ -1033,7 +1029,6 @@ describe("coinflip", () => {
         .setOracleHash(newHashValue)
         .accounts({
           game: gamePDA,
-          oracle: operator,
         })
         .rpc();
 
@@ -1045,7 +1040,7 @@ describe("coinflip", () => {
 
   it("Claim Winnings Successfully", async () => {
     // Get current config and operator
-    const { operator, feePercentage } = await createConfigAccount();
+    const { feePercentage } = await createConfigAccount();
 
     const {
       mint,
@@ -1123,7 +1118,6 @@ describe("coinflip", () => {
       .setOracleHash(hashValue)
       .accounts({
         game: gamePDA,
-        oracle: operator,
       })
       .rpc();
 
@@ -1147,7 +1141,6 @@ describe("coinflip", () => {
       .claimWinnings()
       .accounts({
         game: gamePDA,
-        winner: winner,
       })
       .signers(winner.equals(program.provider.publicKey) ? [] : [player])
       .rpc();
@@ -1163,7 +1156,7 @@ describe("coinflip", () => {
 
   it("Fail to Claim as Non-Winner", async () => {
     // Get current config and operator
-    const { operator } = await createConfigAccount();
+    await createConfigAccount();
 
     const {
       mint,
@@ -1240,7 +1233,6 @@ describe("coinflip", () => {
       .setOracleHash(hashValue)
       .accounts({
         game: gamePDA,
-        oracle: operator,
       })
       .rpc();
 
@@ -1528,14 +1520,6 @@ describe("coinflip", () => {
   });
 
   it("Set Oracle Hash When Minimum Participants Met and Timeout Passed", async () => {
-    // Get current config to use existing operator
-    const [configPDA] = PublicKey.findProgramAddressSync(
-      [Buffer.from("config")],
-      program.programId
-    );
-    const configAccount = await program.account.config.fetch(configPDA);
-    const operator = configAccount.operator;
-
     const {
       mint,
       mintAuthority
@@ -1615,7 +1599,6 @@ describe("coinflip", () => {
       .setOracleHash(hashValue)
       .accounts({
         game: gamePDA,
-        oracle: operator,
       })
       .rpc();
 
@@ -1627,14 +1610,6 @@ describe("coinflip", () => {
   });
 
   it("Cannot Claim Winnings Multiple Times", async () => {
-    // Get current config to use existing operator
-    const [configPDA] = PublicKey.findProgramAddressSync(
-      [Buffer.from("config")],
-      program.programId
-    );
-    const configAccount = await program.account.config.fetch(configPDA);
-    const operator = configAccount.operator;
-
     const {
       mint,
       mintAuthority
@@ -1707,7 +1682,6 @@ describe("coinflip", () => {
       .setOracleHash(hashValue)
       .accounts({
         game: gamePDA,
-        oracle: operator,
       })
       .rpc();
 
@@ -1723,7 +1697,6 @@ describe("coinflip", () => {
       .claimWinnings()
       .accounts({
         game: gamePDA,
-        winner: winner,
       })
       .signers(winner.equals(program.provider.publicKey) ? [] : [player])
       .rpc();
@@ -1734,7 +1707,6 @@ describe("coinflip", () => {
         .claimWinnings()
         .accounts({
           game: gamePDA,
-          winner: winner,
         })
         .signers(winner.equals(program.provider.publicKey) ? [] : [player])
         .rpc();
