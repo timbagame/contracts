@@ -230,3 +230,40 @@ pub struct UnjoinGame<'info> {
     pub system_program: Program<'info, System>,
     pub rent: Sysvar<'info, Rent>,
 }
+
+#[derive(Accounts)]
+pub struct CancelGame<'info> {
+    #[account(
+        mut,
+        constraint = game.status == GameStatus::Active @ ErrorCode::InvalidGameStatus,
+        constraint = Clock::get().unwrap().unix_timestamp >= game.created_at + game.timeout_duration @ ErrorCode::TimeoutNotReached,
+        constraint = game.participants.is_empty() @ ErrorCode::GameNotEmpty,
+        close = creator
+    )]
+    pub game: Account<'info, Game>,
+    #[account(
+        mut,
+        address = game.creator
+    )]
+    pub creator: Signer<'info>,
+    #[account(
+        mut,
+        associated_token::mint = game.token_mint,
+        associated_token::authority = creator
+    )]
+    pub creator_token_account: Account<'info, TokenAccount>,
+    #[account(
+        mut,
+        associated_token::mint = game.token_mint,
+        associated_token::authority = vault
+    )]
+    pub vault_token_account: Account<'info, TokenAccount>,
+    #[account(
+        mut,
+        seeds = [b"vault", game.token_mint.as_ref()],
+        bump
+    )]
+    pub vault: AccountInfo<'info>,
+    pub token_program: Program<'info, Token>,
+    pub system_program: Program<'info, System>,
+}

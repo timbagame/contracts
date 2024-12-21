@@ -57,4 +57,8 @@ pub mod coinflip {
     pub fn claim_winnings(ctx: Context<ClaimWinnings>) -> Result<()> {
         instructions::claim_winnings::handler(ctx)
     }
+
+    pub fn cancel_game(ctx: Context<CancelGame>) -> Result<()> {
+        instructions::cancel_game::handler(ctx)
+    }
 }
