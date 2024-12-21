@@ -43,7 +43,7 @@ describe("coinflip", () => {
   before(async () => {
     // Initialize config once for all tests
     const treasury = anchor.web3.Keypair.generate().publicKey;
-    const feePercentage = new BN(1);
+    const feePercentage = 1;
     const operator = program.provider.publicKey;
 
     try {
@@ -102,11 +102,9 @@ describe("coinflip", () => {
       program.provider.publicKey,
     );
 
-    // Get current game counter for PDA derivation
-    const gameCounter = await getCurrentGameCounter();
-    const gamePDA = await getGamePDA(gameCounter);
+    // Get vault PDA using token mint
     const [vaultPDA] = PublicKey.findProgramAddressSync(
-      [Buffer.from("vault"), gamePDA.toBuffer()],
+      [Buffer.from("vault"), mint.toBuffer()],
       program.programId
     );
 
@@ -178,8 +176,6 @@ describe("coinflip", () => {
     await createConfigAccount();
     const {
       mint,
-      creatorTokenAccount,
-      vaultTokenAccount,
     } = await createSplTokenMint();
 
     // Try to initialize game with invalid parameters
@@ -201,8 +197,6 @@ describe("coinflip", () => {
         )
         .accounts({
           creator: program.provider.publicKey,
-          creatorTokenAccount: creatorTokenAccount,
-          vaultTokenAccount: vaultTokenAccount,
           tokenMint: mint,
         })
         .rpc();
@@ -217,8 +211,6 @@ describe("coinflip", () => {
     await createConfigAccount();
     const {
       mint,
-      creatorTokenAccount,
-      vaultTokenAccount,
       mintAuthority
     } = await createSplTokenMint();
 
@@ -235,8 +227,6 @@ describe("coinflip", () => {
       )
       .accounts({
         creator: program.provider.publicKey,
-        creatorTokenAccount: creatorTokenAccount,
-        vaultTokenAccount: vaultTokenAccount,
         tokenMint: mint,
       })
       .rpc();
@@ -280,8 +270,6 @@ describe("coinflip", () => {
       .accounts({
         game: gamePDA,
         player: player.publicKey,
-        playerTokenAccount: playerTokenAccount,
-        vaultTokenAccount: vaultTokenAccount,
       })
       .signers([player])
       .rpc();
@@ -295,8 +283,6 @@ describe("coinflip", () => {
     await createConfigAccount();
     const {
       mint,
-      creatorTokenAccount,
-      vaultTokenAccount,
       mintAuthority
     } = await createSplTokenMint();
 
@@ -313,8 +299,6 @@ describe("coinflip", () => {
       )
       .accounts({
         creator: program.provider.publicKey,
-        creatorTokenAccount: creatorTokenAccount,
-        vaultTokenAccount: vaultTokenAccount,
         tokenMint: mint,
       })
       .rpc();
@@ -358,8 +342,6 @@ describe("coinflip", () => {
       .accounts({
         game: gamePDA,
         player: player.publicKey,
-        playerTokenAccount: playerTokenAccount,
-        vaultTokenAccount: vaultTokenAccount,
       })
       .signers([player])
       .rpc();
@@ -376,8 +358,6 @@ describe("coinflip", () => {
     // Create SPL token setup
     const {
       mint,
-      creatorTokenAccount,
-      vaultTokenAccount,
       mintAuthority
     } = await createSplTokenMint();
 
@@ -395,8 +375,6 @@ describe("coinflip", () => {
       )
       .accounts({
         creator: program.provider.publicKey,
-        creatorTokenAccount: creatorTokenAccount,
-        vaultTokenAccount: vaultTokenAccount,
         tokenMint: mint,
       })
       .rpc();
@@ -440,8 +418,6 @@ describe("coinflip", () => {
       .accounts({
         game: gamePDA,
         player: player.publicKey,
-        playerTokenAccount: playerTokenAccount,
-        vaultTokenAccount: vaultTokenAccount,
       })
       .remainingAccounts([
         {
@@ -462,8 +438,6 @@ describe("coinflip", () => {
     await createConfigAccount();
     const {
       mint,
-      creatorTokenAccount,
-      vaultTokenAccount,
       mintAuthority
     } = await createSplTokenMint();
 
@@ -481,8 +455,6 @@ describe("coinflip", () => {
       )
       .accounts({
         creator: program.provider.publicKey,
-        creatorTokenAccount: creatorTokenAccount,
-        vaultTokenAccount: vaultTokenAccount,
         tokenMint: mint,
       })
       .rpc();
@@ -540,8 +512,6 @@ describe("coinflip", () => {
       .accounts({
         game: gamePDA,
         player: player1.publicKey,
-        playerTokenAccount: player1TokenAccount,
-        vaultTokenAccount: vaultTokenAccount,
       })
       .signers([player1])
       .rpc();
@@ -553,8 +523,6 @@ describe("coinflip", () => {
         .accounts({
           game: gamePDA,
           player: player2.publicKey,
-          playerTokenAccount: player2TokenAccount,
-          vaultTokenAccount: vaultTokenAccount,
         })
         .signers([player2])
         .rpc();
@@ -569,8 +537,6 @@ describe("coinflip", () => {
     await createConfigAccount();
     const {
       mint,
-      creatorTokenAccount,
-      vaultTokenAccount,
       mintAuthority
     } = await createSplTokenMint();
 
@@ -587,8 +553,6 @@ describe("coinflip", () => {
       )
       .accounts({
         creator: program.provider.publicKey,
-        creatorTokenAccount: creatorTokenAccount,
-        vaultTokenAccount: vaultTokenAccount,
         tokenMint: mint,
       })
       .rpc();
@@ -633,8 +597,6 @@ describe("coinflip", () => {
       .accounts({
         game: gamePDA,
         player: player.publicKey,
-        playerTokenAccount: playerTokenAccount,
-        vaultTokenAccount: vaultTokenAccount,
       })
       .signers([player])
       .rpc();
@@ -646,8 +608,6 @@ describe("coinflip", () => {
         .accounts({
           game: gamePDA,
           player: player.publicKey,
-          playerTokenAccount: playerTokenAccount,
-          vaultTokenAccount: vaultTokenAccount,
         })
         .signers([player])
         .rpc();
@@ -665,8 +625,6 @@ describe("coinflip", () => {
     // Create SPL token setup
     const {
       mint,
-      creatorTokenAccount,
-      vaultTokenAccount,
       mintAuthority
     } = await createSplTokenMint();
 
@@ -684,8 +642,6 @@ describe("coinflip", () => {
       )
       .accounts({
         creator: program.provider.publicKey,
-        creatorTokenAccount: creatorTokenAccount,
-        vaultTokenAccount: vaultTokenAccount,
         tokenMint: mint,
       })
       .rpc();
@@ -738,8 +694,6 @@ describe("coinflip", () => {
         .accounts({
           game: gamePDA,
           player: player.publicKey,
-          playerTokenAccount: playerTokenAccount,
-          vaultTokenAccount: vaultTokenAccount,
         })
         .remainingAccounts([
           {
@@ -764,8 +718,6 @@ describe("coinflip", () => {
     // Create SPL token setup
     const {
       mint,
-      creatorTokenAccount,
-      vaultTokenAccount,
       mintAuthority
     } = await createSplTokenMint();
 
@@ -783,8 +735,6 @@ describe("coinflip", () => {
       )
       .accounts({
         creator: program.provider.publicKey,
-        creatorTokenAccount: creatorTokenAccount,
-        vaultTokenAccount: vaultTokenAccount,
         tokenMint: mint,
       })
       .rpc();
@@ -828,8 +778,6 @@ describe("coinflip", () => {
       .accounts({
         game: gamePDA,
         player: player.publicKey,
-        playerTokenAccount: playerTokenAccount,
-        vaultTokenAccount: vaultTokenAccount,
       })
       .signers([player])
       .rpc();
@@ -858,8 +806,6 @@ describe("coinflip", () => {
     await createConfigAccount();
     const {
       mint,
-      creatorTokenAccount,
-      vaultTokenAccount,
       mintAuthority
     } = await createSplTokenMint();
 
@@ -877,8 +823,6 @@ describe("coinflip", () => {
       )
       .accounts({
         creator: program.provider.publicKey,
-        creatorTokenAccount: creatorTokenAccount,
-        vaultTokenAccount: vaultTokenAccount,
         tokenMint: mint,
       })
       .rpc();
@@ -922,8 +866,6 @@ describe("coinflip", () => {
       .accounts({
         game: gamePDA,
         player: player.publicKey,
-        playerTokenAccount: playerTokenAccount,
-        vaultTokenAccount: vaultTokenAccount,
       })
       .signers([player])
       .rpc();
@@ -956,8 +898,6 @@ describe("coinflip", () => {
 
     const {
       mint,
-      creatorTokenAccount,
-      vaultTokenAccount,
     } = await createSplTokenMint();
 
     const amount = new BN(1_000_000);
@@ -974,8 +914,6 @@ describe("coinflip", () => {
       )
       .accounts({
         creator: program.provider.publicKey,
-        creatorTokenAccount: creatorTokenAccount,
-        vaultTokenAccount: vaultTokenAccount,
         tokenMint: mint,
       })
       .rpc();
@@ -1013,8 +951,6 @@ describe("coinflip", () => {
 
     const {
       mint,
-      creatorTokenAccount,
-      vaultTokenAccount,
       mintAuthority
     } = await createSplTokenMint();
 
@@ -1032,8 +968,6 @@ describe("coinflip", () => {
       )
       .accounts({
         creator: program.provider.publicKey,
-        creatorTokenAccount: creatorTokenAccount,
-        vaultTokenAccount: vaultTokenAccount,
         tokenMint: mint,
       })
       .rpc();
@@ -1077,8 +1011,6 @@ describe("coinflip", () => {
       .accounts({
         game: gamePDA,
         player: player.publicKey,
-        playerTokenAccount: playerTokenAccount,
-        vaultTokenAccount: vaultTokenAccount,
       })
       .signers([player])
       .rpc();
@@ -1118,23 +1050,15 @@ describe("coinflip", () => {
 
   it("Claim Winnings Successfully", async () => {
     // Get current config and operator
-    const { operator, treasury, feePercentage } = await createConfigAccount();
+    const { operator, feePercentage } = await createConfigAccount();
 
     const {
       mint,
       creatorTokenAccount,
-      vaultTokenAccount,
       mintAuthority
     } = await createSplTokenMint();
 
     // Create treasury token account
-    const treasuryTokenAccount = await createAssociatedTokenAccount(
-      program.provider.connection,
-      mintAuthority,
-      mint,
-      treasury,
-    );
-
     const amount = new BN(1_000_000);
 
     // Create game
@@ -1149,8 +1073,6 @@ describe("coinflip", () => {
       )
       .accounts({
         creator: program.provider.publicKey,
-        creatorTokenAccount: creatorTokenAccount,
-        vaultTokenAccount: vaultTokenAccount,
         tokenMint: mint,
       })
       .rpc();
@@ -1194,8 +1116,6 @@ describe("coinflip", () => {
       .accounts({
         game: gamePDA,
         player: player.publicKey,
-        playerTokenAccount: playerTokenAccount,
-        vaultTokenAccount: vaultTokenAccount,
       })
       .signers([player])
       .rpc();
@@ -1234,9 +1154,6 @@ describe("coinflip", () => {
       .accounts({
         game: gamePDA,
         winner: winner,
-        vaultTokenAccount: vaultTokenAccount,
-        winnerTokenAccount: winnerTokenAccount,
-        treasuryTokenAccount: treasuryTokenAccount,
       })
       .signers(winner.equals(program.provider.publicKey) ? [] : [player])
       .rpc();
@@ -1246,29 +1163,20 @@ describe("coinflip", () => {
       await getAccount(program.provider.connection, winnerTokenAccount)
     ).amount;
     expect(finalBalance - initialBalance).to.equal(
-      BigInt(amount.toNumber() * 2 * (1 - feePercentage.toNumber() / 100)),
+      BigInt(amount.toNumber() * 2 * (1 - feePercentage / 100)),
     );
   });
 
   it("Fail to Claim as Non-Winner", async () => {
     // Get current config and operator
-    const { operator, treasury } = await createConfigAccount();
+    const { operator } = await createConfigAccount();
 
     const {
       mint,
-      creatorTokenAccount,
-      vaultTokenAccount,
       mintAuthority
     } = await createSplTokenMint();
 
     // Create treasury token account
-    const treasuryTokenAccount = await createAssociatedTokenAccount(
-      program.provider.connection,
-      mintAuthority,
-      mint,
-      treasury,
-    );
-
     const amount = new BN(1_000_000);
 
     // Create game
@@ -1283,8 +1191,6 @@ describe("coinflip", () => {
       )
       .accounts({
         creator: program.provider.publicKey,
-        creatorTokenAccount: creatorTokenAccount,
-        vaultTokenAccount: vaultTokenAccount,
         tokenMint: mint,
       })
       .rpc();
@@ -1328,8 +1234,6 @@ describe("coinflip", () => {
       .accounts({
         game: gamePDA,
         player: player.publicKey,
-        playerTokenAccount: playerTokenAccount,
-        vaultTokenAccount: vaultTokenAccount,
       })
       .signers([player])
       .rpc();
@@ -1354,9 +1258,6 @@ describe("coinflip", () => {
         .accounts({
           game: gamePDA,
           winner: player.publicKey,
-          vaultTokenAccount: vaultTokenAccount,
-          winnerTokenAccount: playerTokenAccount,
-          treasuryTokenAccount: treasuryTokenAccount,
         })
         .signers([player])
         .rpc();
@@ -1373,7 +1274,6 @@ describe("coinflip", () => {
     const {
       mint,
       creatorTokenAccount,
-      vaultTokenAccount,
     } = await createSplTokenMint();
 
     const amount = new BN(1_000_000);
@@ -1392,8 +1292,6 @@ describe("coinflip", () => {
       )
       .accounts({
         creator: program.provider.publicKey,
-        creatorTokenAccount: creatorTokenAccount,
-        vaultTokenAccount: vaultTokenAccount,
         tokenMint: mint,
       })
       .rpc();
@@ -1414,8 +1312,6 @@ describe("coinflip", () => {
       .unjoinGame()
       .accounts({
         game: gamePDA,
-        vaultTokenAccount: vaultTokenAccount,
-        participantTokenAccount: creatorTokenAccount,
         participant: program.provider.publicKey,
       })
       .rpc();
@@ -1431,8 +1327,6 @@ describe("coinflip", () => {
     await createConfigAccount();
     const {
       mint,
-      creatorTokenAccount,
-      vaultTokenAccount,
     } = await createSplTokenMint();
 
     const amount = new BN(1_000_000);
@@ -1456,8 +1350,6 @@ describe("coinflip", () => {
       )
       .accounts({
         creator: program.provider.publicKey,
-        creatorTokenAccount: creatorTokenAccount,
-        vaultTokenAccount: vaultTokenAccount,
         tokenMint: mint,
       })
       .rpc();
@@ -1476,7 +1368,6 @@ describe("coinflip", () => {
     const {
       mint,
       creatorTokenAccount,
-      vaultTokenAccount,
       mintAuthority
     } = await createSplTokenMint();
 
@@ -1494,8 +1385,6 @@ describe("coinflip", () => {
       )
       .accounts({
         creator: program.provider.publicKey,
-        creatorTokenAccount: creatorTokenAccount,
-        vaultTokenAccount: vaultTokenAccount,
         tokenMint: mint,
       })
       .rpc();
@@ -1534,8 +1423,6 @@ describe("coinflip", () => {
       .accounts({
         game: gamePDA,
         player: player.publicKey,
-        playerTokenAccount: playerTokenAccount,
-        vaultTokenAccount: vaultTokenAccount,
       })
       .signers([player])
       .rpc();
@@ -1556,8 +1443,6 @@ describe("coinflip", () => {
       .unjoinGame()
       .accounts({
         game: gamePDA,
-        vaultTokenAccount: vaultTokenAccount,
-        participantTokenAccount: creatorTokenAccount,
         participant: program.provider.publicKey,
       })
       .rpc();
@@ -1567,8 +1452,6 @@ describe("coinflip", () => {
       .unjoinGame()
       .accounts({
         game: gamePDA,
-        vaultTokenAccount: vaultTokenAccount,
-        participantTokenAccount: playerTokenAccount,
         participant: player.publicKey,
       })
       .signers([player])
@@ -1599,8 +1482,6 @@ describe("coinflip", () => {
     await createConfigAccount();
     const {
       mint,
-      creatorTokenAccount,
-      vaultTokenAccount,
     } = await createSplTokenMint();
 
     const amount = new BN(1_000_000);
@@ -1618,8 +1499,6 @@ describe("coinflip", () => {
       )
       .accounts({
         creator: program.provider.publicKey,
-        creatorTokenAccount: creatorTokenAccount,
-        vaultTokenAccount: vaultTokenAccount,
         tokenMint: mint,
       })
       .rpc();
@@ -1634,12 +1513,6 @@ describe("coinflip", () => {
     );
     await program.provider.connection.confirmTransaction(airdrop);
 
-    const nonParticipantTokenAccount = await createAssociatedTokenAccount(
-      program.provider.connection,
-      nonParticipant,
-      mint,
-      nonParticipant.publicKey,
-    );
 
     // Wait for timeout
     await new Promise((resolve) => setTimeout(resolve, 3000));
@@ -1650,8 +1523,6 @@ describe("coinflip", () => {
         .unjoinGame()
         .accounts({
           game: gamePDA,
-          vaultTokenAccount: vaultTokenAccount,
-          participantTokenAccount: nonParticipantTokenAccount,
           participant: nonParticipant.publicKey,
         })
         .signers([nonParticipant])
@@ -1674,8 +1545,6 @@ describe("coinflip", () => {
 
     const {
       mint,
-      creatorTokenAccount,
-      vaultTokenAccount,
       mintAuthority
     } = await createSplTokenMint();
 
@@ -1694,8 +1563,6 @@ describe("coinflip", () => {
       )
       .accounts({
         creator: program.provider.publicKey,
-        creatorTokenAccount: creatorTokenAccount,
-        vaultTokenAccount: vaultTokenAccount,
         tokenMint: mint,
       })
       .rpc();
@@ -1739,8 +1606,6 @@ describe("coinflip", () => {
         .accounts({
           game: gamePDA,
           player: player.publicKey,
-          playerTokenAccount: playerTokenAccount,
-          vaultTokenAccount: vaultTokenAccount,
         })
         .signers([player])
         .rpc();
@@ -1780,8 +1645,6 @@ describe("coinflip", () => {
 
     const {
       mint,
-      creatorTokenAccount,
-      vaultTokenAccount,
       mintAuthority
     } = await createSplTokenMint();
 
@@ -1801,12 +1664,6 @@ describe("coinflip", () => {
     );
 
     // Create treasury token account
-    const treasuryTokenAccount = await createAssociatedTokenAccount(
-      program.provider.connection,
-      mintAuthority,
-      mint,
-      configAccount.treasury,
-    );
 
     const amount = new BN(1_000_000);
     const gameCounter = await getCurrentGameCounter();
@@ -1823,8 +1680,6 @@ describe("coinflip", () => {
       )
       .accounts({
         creator: program.provider.publicKey,
-        creatorTokenAccount: creatorTokenAccount,
-        vaultTokenAccount: vaultTokenAccount,
         tokenMint: mint,
       })
       .rpc();
@@ -1847,8 +1702,6 @@ describe("coinflip", () => {
       .accounts({
         game: gamePDA,
         player: player.publicKey,
-        playerTokenAccount: playerTokenAccount,
-        vaultTokenAccount: vaultTokenAccount,
       })
       .signers([player])
       .rpc();
@@ -1873,9 +1726,6 @@ describe("coinflip", () => {
     expect(winner).to.not.be.null;
 
     // Get winner's token account
-    const winnerTokenAccount = winner.equals(program.provider.publicKey)
-      ? creatorTokenAccount
-      : playerTokenAccount;
 
     // Claim winnings first time
     await program.methods
@@ -1883,9 +1733,6 @@ describe("coinflip", () => {
       .accounts({
         game: gamePDA,
         winner: winner,
-        vaultTokenAccount: vaultTokenAccount,
-        winnerTokenAccount: winnerTokenAccount,
-        treasuryTokenAccount: treasuryTokenAccount,
       })
       .signers(winner.equals(program.provider.publicKey) ? [] : [player])
       .rpc();
@@ -1897,9 +1744,6 @@ describe("coinflip", () => {
         .accounts({
           game: gamePDA,
           winner: winner,
-          vaultTokenAccount: vaultTokenAccount,
-          winnerTokenAccount: winnerTokenAccount,
-          treasuryTokenAccount: treasuryTokenAccount,
         })
         .signers(winner.equals(program.provider.publicKey) ? [] : [player])
         .rpc();
@@ -1914,8 +1758,6 @@ describe("coinflip", () => {
     await createConfigAccount();
     const {
       mint,
-      creatorTokenAccount,
-      vaultTokenAccount,
       mintAuthority
     } = await createSplTokenMint();
 
@@ -1933,8 +1775,6 @@ describe("coinflip", () => {
       )
       .accounts({
         creator: program.provider.publicKey,
-        creatorTokenAccount: creatorTokenAccount,
-        vaultTokenAccount: vaultTokenAccount,
         tokenMint: mint,
       })
       .rpc();
@@ -1979,8 +1819,6 @@ describe("coinflip", () => {
         .accounts({
           game: gamePDA,
           player: player.publicKey,
-          playerTokenAccount: playerTokenAccount,
-          vaultTokenAccount: vaultTokenAccount,
         })
         .signers([player])
         .rpc();
@@ -1995,8 +1833,6 @@ describe("coinflip", () => {
     await createConfigAccount();
     const {
       mint,
-      creatorTokenAccount,
-      vaultTokenAccount,
     } = await createSplTokenMint();
 
     const amount = new BN(1_000_000);
@@ -2014,8 +1850,6 @@ describe("coinflip", () => {
         )
         .accounts({
           creator: program.provider.publicKey,
-          creatorTokenAccount: creatorTokenAccount,
-          vaultTokenAccount: vaultTokenAccount,
           tokenMint: mint,
         })
         .rpc();
@@ -2038,8 +1872,6 @@ describe("coinflip", () => {
         )
         .accounts({
           creator: program.provider.publicKey,
-          creatorTokenAccount: creatorTokenAccount,
-          vaultTokenAccount: vaultTokenAccount,
           tokenMint: mint,
         })
         .rpc();
@@ -2054,8 +1886,6 @@ describe("coinflip", () => {
     await createConfigAccount();
     const {
       mint,
-      creatorTokenAccount,
-      vaultTokenAccount,
     } = await createSplTokenMint();
 
     // Try with max u64 value
@@ -2073,8 +1903,6 @@ describe("coinflip", () => {
         )
         .accounts({
           creator: program.provider.publicKey,
-          creatorTokenAccount: creatorTokenAccount,
-          vaultTokenAccount: vaultTokenAccount,
           tokenMint: mint,
         })
         .rpc();
@@ -2102,8 +1930,6 @@ describe("coinflip", () => {
         )
         .accounts({
           creator: program.provider.publicKey,
-          creatorTokenAccount: creatorTokenAccount,
-          vaultTokenAccount: vaultTokenAccount,
           tokenMint: mint,
         })
         .rpc();
@@ -2118,8 +1944,6 @@ describe("coinflip", () => {
     await createConfigAccount();
     const {
       mint,
-      creatorTokenAccount,
-      vaultTokenAccount,
     } = await createSplTokenMint();
 
     const amount = new BN(1_000_000);
@@ -2137,8 +1961,6 @@ describe("coinflip", () => {
       )
       .accounts({
         creator: program.provider.publicKey,
-        creatorTokenAccount: creatorTokenAccount,
-        vaultTokenAccount: vaultTokenAccount,
         tokenMint: mint,
       })
       .rpc();
@@ -2194,8 +2016,6 @@ describe("coinflip", () => {
         .accounts({
           game: gamePDA,
           player: player.publicKey,
-          playerTokenAccount: playerTokenAccount,
-          vaultTokenAccount: vaultTokenAccount,
         })
         .signers([player])
         .rpc();
@@ -2211,7 +2031,6 @@ describe("coinflip", () => {
     const {
       mint,
       creatorTokenAccount,
-      vaultTokenAccount,
     } = await createSplTokenMint();
 
     const amount = new BN(1_000_000);
@@ -2229,8 +2048,6 @@ describe("coinflip", () => {
       )
       .accounts({
         creator: program.provider.publicKey,
-        creatorTokenAccount: creatorTokenAccount,
-        vaultTokenAccount: vaultTokenAccount,
         tokenMint: mint,
       })
       .rpc();
@@ -2247,8 +2064,6 @@ describe("coinflip", () => {
       .unjoinGame()
       .accounts({
         game: gamePDA,
-        vaultTokenAccount: vaultTokenAccount,
-        participantTokenAccount: creatorTokenAccount,
         participant: program.provider.publicKey,
       })
       .rpc();
@@ -2268,8 +2083,6 @@ describe("coinflip", () => {
     await createConfigAccount();
     const {
       mint,
-      creatorTokenAccount,
-      vaultTokenAccount,
       mintAuthority
     } = await createSplTokenMint();
 
@@ -2288,8 +2101,6 @@ describe("coinflip", () => {
       )
       .accounts({
         creator: program.provider.publicKey,
-        creatorTokenAccount: creatorTokenAccount,
-        vaultTokenAccount: vaultTokenAccount,
         tokenMint: mint,
       })
       .rpc();
@@ -2328,8 +2139,6 @@ describe("coinflip", () => {
       .accounts({
         game: gamePDA,
         player: player.publicKey,
-        playerTokenAccount: playerTokenAccount,
-        vaultTokenAccount: vaultTokenAccount,
       })
       .signers([player])
       .rpc();
@@ -2340,8 +2149,6 @@ describe("coinflip", () => {
         .unjoinGame()
         .accounts({
           game: gamePDA,
-          vaultTokenAccount: vaultTokenAccount,
-          participantTokenAccount: creatorTokenAccount,
           participant: program.provider.publicKey,
         })
         .rpc();
