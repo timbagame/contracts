@@ -43,8 +43,7 @@ pub struct InitializeGame<'info> {
         bump,
         constraint = timeout_duration > 0 @ ErrorCode::InvalidTimeout,
         constraint = amount <= u64::MAX / (max_participants as u64) @ ErrorCode::InvalidParticipantCount,
-        constraint = min_participants <= max_participants @ ErrorCode::InvalidParticipantCount,
-        constraint = match game_type {
+        constraint = min_participants <= max_participants && match game_type {
             GameType::Coinflip => max_participants >= 2 && min_participants >= 2,
             GameType::Giveaway => max_participants >= 1 && min_participants >= 1,
         } @ ErrorCode::InvalidParticipantCount
@@ -122,8 +121,6 @@ pub struct JoinGame<'info> {
     pub config: Account<'info, Config>,
     pub token_program: Program<'info, Token>,
     pub associated_token_program: Program<'info, AssociatedToken>,
-    pub system_program: Program<'info, System>,
-    pub rent: Sysvar<'info, Rent>,
 }
 
 #[derive(Accounts)]
@@ -140,7 +137,7 @@ pub struct SetOracleHash<'info> {
         bump
     )]
     pub config: Account<'info, Config>,
-    #[account(constraint = oracle.key() == config.operator @ ErrorCode::InvalidOperator)]
+    #[account(address = config.operator)]
     pub oracle: Signer<'info>,
     pub recent_blockhash: AccountInfo<'info>,
 }
@@ -151,12 +148,12 @@ pub struct ClaimWinnings<'info> {
         mut,
         constraint = game.status == GameStatus::ReadyForClaim @ ErrorCode::GameNotReadyForClaim,
         constraint = game.winner.unwrap() == winner.key() @ ErrorCode::NotWinner,
-        close = creator,
+        close = creator
     )]
     pub game: Account<'info, Game>,
     #[account(
         mut,
-        address = game.creator,
+        address = game.creator
     )]
     pub creator: AccountInfo<'info>,
     #[account(
@@ -192,8 +189,6 @@ pub struct ClaimWinnings<'info> {
     pub vault: AccountInfo<'info>,
     pub token_program: Program<'info, Token>,
     pub associated_token_program: Program<'info, AssociatedToken>,
-    pub system_program: Program<'info, System>,
-    pub rent: Sysvar<'info, Rent>,
 }
 
 #[derive(Accounts)]
@@ -227,8 +222,6 @@ pub struct UnjoinGame<'info> {
     pub participant: Signer<'info>,
     pub token_program: Program<'info, Token>,
     pub associated_token_program: Program<'info, AssociatedToken>,
-    pub system_program: Program<'info, System>,
-    pub rent: Sysvar<'info, Rent>,
 }
 
 #[derive(Accounts)]
@@ -237,7 +230,7 @@ pub struct CancelGame<'info> {
         mut,
         constraint = game.status == GameStatus::Active @ ErrorCode::InvalidGameStatus,
         constraint = Clock::get().unwrap().unix_timestamp >= game.created_at + game.timeout_duration @ ErrorCode::TimeoutNotReached,
-        constraint = game.participants.is_empty() @ ErrorCode::GameNotEmpty,
+        constraint = game.game_type == GameType::Giveaway || game.participants.is_empty() @ ErrorCode::GameNotEmpty,
         close = creator
     )]
     pub game: Account<'info, Game>,
