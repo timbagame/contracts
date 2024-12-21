@@ -88,6 +88,7 @@ pub struct InitializeGame<'info> {
         associated_token::authority = vault
     )]
     pub vault_token_account: Account<'info, TokenAccount>,
+    /// CHECK: Vault PDA for token authority, seeds checked in constraints
     #[account(
         mut,
         seeds = [b"vault", token_mint.key().as_ref()],
@@ -125,6 +126,7 @@ pub struct JoinGame<'info> {
         associated_token::authority = vault
     )]
     pub vault_token_account: Account<'info, TokenAccount>,
+    /// CHECK: Vault PDA for token authority, seeds checked in constraints
     #[account(
         mut,
         seeds = [b"vault", game.token_mint.as_ref()],
@@ -156,6 +158,7 @@ pub struct SetOracleHash<'info> {
     pub config: Account<'info, Config>,
     #[account(address = config.operator)]
     pub oracle: Signer<'info>,
+    /// CHECK: Used for randomness, no need to validate
     pub recent_blockhash: AccountInfo<'info>,
 }
 
@@ -168,6 +171,7 @@ pub struct ClaimWinnings<'info> {
         close = creator
     )]
     pub game: Account<'info, Game>,
+    /// CHECK: Game creator receiving rent refund, verified by address constraint
     #[account(
         mut,
         address = game.creator
@@ -198,6 +202,7 @@ pub struct ClaimWinnings<'info> {
         associated_token::authority = config.treasury
     )]
     pub treasury_token_account: Account<'info, TokenAccount>,
+    /// CHECK: Vault PDA for token authority, seeds checked in constraints
     #[account(
         mut,
         seeds = [b"vault", game.token_mint.as_ref()],
@@ -230,6 +235,7 @@ pub struct UnjoinGame<'info> {
         associated_token::authority = participant
     )]
     pub participant_token_account: Account<'info, TokenAccount>,
+    /// CHECK: Vault PDA for token authority, seeds checked in constraints
     #[account(
         mut,
         seeds = [b"vault", game.token_mint.as_ref()],
@@ -268,6 +274,7 @@ pub struct CancelGame<'info> {
         associated_token::authority = vault
     )]
     pub vault_token_account: Account<'info, TokenAccount>,
+    /// CHECK: Vault PDA for token authority, seeds checked in constraints
     #[account(
         mut,
         seeds = [b"vault", game.token_mint.as_ref()],
