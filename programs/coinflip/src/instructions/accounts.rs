@@ -1,5 +1,6 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Token, TokenAccount};
+use anchor_spl::associated_token::AssociatedToken;
 
 use crate::error::ErrorCode;
 use crate::state::*;
@@ -37,7 +38,7 @@ pub struct InitializeGame<'info> {
     #[account(
         init, 
         payer = creator, 
-        space = 8 + 32 + 1 + 8 + 1 + 32 * 10 + 33 + 1 + 32 + 33 + 1 + 8 + 8 + 1 + 64 * 10 + 1,
+        space = 8 + 32 + 1 + 8 + 1 + (32 * max_participants as usize) + 33 + 1 + 32 + 33 + 1 + 8 + 8 + 1 + 64 * 10 + 1,
         seeds = [b"game", config.game_counter.to_le_bytes().as_ref()],
         bump,
         constraint = timeout_duration > 0 @ ErrorCode::InvalidTimeout,
@@ -60,24 +61,27 @@ pub struct InitializeGame<'info> {
     pub token_mint: Account<'info, anchor_spl::token::Mint>,
     #[account(
         mut,
-        constraint = creator_token_account.owner == creator.key(),
-        constraint = creator_token_account.mint == token_mint.key()
+        associated_token::mint = token_mint,
+        associated_token::authority = creator
     )]
     pub creator_token_account: Account<'info, TokenAccount>,
     #[account(
         mut,
-        constraint = vault_token_account.mint == token_mint.key()
+        associated_token::mint = token_mint,
+        associated_token::authority = vault
     )]
     pub vault_token_account: Account<'info, TokenAccount>,
-    /// CHECK: Vault PDA for token authority, seeds are verified in constraints
+    /// CHECK: Vault PDA for token authority
     #[account(
         mut,
-        seeds = [b"vault", game.key().as_ref()],
+        seeds = [b"vault", token_mint.key().as_ref()],
         bump
     )]
     pub vault: AccountInfo<'info>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
+    pub rent: Sysvar<'info, Rent>,
 }
 
 #[derive(Accounts)]
@@ -94,20 +98,20 @@ pub struct JoinGame<'info> {
     pub player: Signer<'info>,
     #[account(
         mut,
-        constraint = player_token_account.owner == player.key(),
-        constraint = player_token_account.mint == game.token_mint @ ErrorCode::InvalidToken
+        associated_token::mint = game.token_mint,
+        associated_token::authority = player
     )]
     pub player_token_account: Account<'info, TokenAccount>,
     #[account(
         mut,
-        constraint = vault_token_account.mint == game.token_mint
+        associated_token::mint = game.token_mint,
+        associated_token::authority = vault
     )]
     pub vault_token_account: Account<'info, TokenAccount>,
-    pub token_program: Program<'info, Token>,
-    /// CHECK: Vault PDA for token authority, seeds are verified in constraints
+    /// CHECK: Vault PDA for token authority
     #[account(
         mut,
-        seeds = [b"vault", game.key().as_ref()],
+        seeds = [b"vault", game.token_mint.as_ref()],
         bump
     )]
     pub vault: AccountInfo<'info>,
@@ -116,6 +120,10 @@ pub struct JoinGame<'info> {
         bump
     )]
     pub config: Account<'info, Config>,
+    pub token_program: Program<'info, Token>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
+    pub system_program: Program<'info, System>,
+    pub rent: Sysvar<'info, Rent>,
 }
 
 #[derive(Accounts)]
@@ -155,28 +163,33 @@ pub struct ClaimWinnings<'info> {
     pub winner: Signer<'info>,
     #[account(
         mut,
-        constraint = vault_token_account.mint == game.token_mint
+        associated_token::mint = game.token_mint,
+        associated_token::authority = vault
     )]
     pub vault_token_account: Account<'info, TokenAccount>,
     #[account(
         mut,
-        constraint = winner_token_account.owner == winner.key(),
-        constraint = winner_token_account.mint == game.token_mint
+        associated_token::mint = game.token_mint,
+        associated_token::authority = winner
     )]
     pub winner_token_account: Account<'info, TokenAccount>,
     #[account(
         mut,
-        constraint = treasury_token_account.mint == game.token_mint
+        associated_token::mint = game.token_mint,
+        associated_token::authority = config.treasury
     )]
     pub treasury_token_account: Account<'info, TokenAccount>,
-    /// CHECK: Vault PDA for token authority, seeds are verified in constraints
+    /// CHECK: Vault PDA for token authority
     #[account(
         mut,
-        seeds = [b"vault", game.key().as_ref()],
+        seeds = [b"vault", game.token_mint.as_ref()],
         bump
     )]
     pub vault: AccountInfo<'info>,
     pub token_program: Program<'info, Token>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
+    pub system_program: Program<'info, System>,
+    pub rent: Sysvar<'info, Rent>,
 }
 
 #[derive(Accounts)]
@@ -193,22 +206,26 @@ pub struct UnjoinGame<'info> {
     pub game: Account<'info, Game>,
     #[account(
         mut,
-        constraint = vault_token_account.mint == game.token_mint
+        associated_token::mint = game.token_mint,
+        associated_token::authority = vault
     )]
     pub vault_token_account: Account<'info, TokenAccount>,
     #[account(
         mut,
-        constraint = participant_token_account.owner == participant.key(),
-        constraint = participant_token_account.mint == game.token_mint
+        associated_token::mint = game.token_mint,
+        associated_token::authority = participant
     )]
     pub participant_token_account: Account<'info, TokenAccount>,
-    /// CHECK: Vault PDA for token authority, seeds are verified in constraints
+    /// CHECK: Vault PDA for token authority
     #[account(
         mut,
-        seeds = [b"vault", game.key().as_ref()],
+        seeds = [b"vault", game.token_mint.as_ref()],
         bump
     )]
     pub vault: AccountInfo<'info>,
-    pub token_program: Program<'info, Token>,
     pub participant: Signer<'info>,
+    pub token_program: Program<'info, Token>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
+    pub system_program: Program<'info, System>,
+    pub rent: Sysvar<'info, Rent>,
 }
