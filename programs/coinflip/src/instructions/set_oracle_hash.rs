@@ -9,14 +9,12 @@ pub fn handler(ctx: Context<super::SetOracleHash>, hash_value: [u8; 32]) -> Resu
 
     game.oracle_hash = hash_value;
 
-    // Get current timestamp and slot hash for additional randomness
-    let timestamp = Clock::get()?.unix_timestamp.to_le_bytes();
+    // Get slot hash for on-chain randomness
     let slot_hash = slot_hashes::id().to_bytes();
 
-    // Combine all sources of randomness
-    let mut combined = Vec::with_capacity(72); // 32 + 8 + 32
+    // Combine oracle hash with slot hash
+    let mut combined = Vec::with_capacity(64); // 32 + 32
     combined.extend_from_slice(&hash_value);
-    combined.extend_from_slice(&timestamp);
     combined.extend_from_slice(&slot_hash);
     let final_hash = hash(&combined).to_bytes();
 
