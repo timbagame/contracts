@@ -6,7 +6,7 @@ use crate::state::GameStatus;
 pub fn handler(ctx: Context<super::SetOracleHash>, hash_value: [u8; 32]) -> Result<()> {
     let game = &mut ctx.accounts.game;
 
-    game.oracle_hash = Some(hash_value);
+    game.oracle_hash = hash_value;
 
     // Combine oracle hash with blockhash for randomness
     let blockhash = ctx.accounts.recent_blockhash.key().to_bytes();

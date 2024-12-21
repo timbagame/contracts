@@ -33,8 +33,8 @@ pub struct InitializeConfig<'info> {
 #[instruction(
     game_type: GameType,
     amount: u64,
-    max_participants: u8,
-    min_participants: u8,
+    max_participants: u16,
+    min_participants: u16,
     timeout_duration: i64,
     is_private: bool
 )]
@@ -46,13 +46,13 @@ pub struct InitializeGame<'info> {
             32 + // creator
             1 + // game_type
             8 + // amount
-            1 + // max_participants
-            1 + // min_participants
+            2 + // max_participants
+            2 + // min_participants
             (32 * max_participants as usize) + // participants vec
             33 + // winner Option<Pubkey>
             1 + // status
             32 + // token_mint
-            33 + // oracle_hash Option<[u8; 32]>
+            32 + // oracle_hash [u8; 32]
             8 + // created_at
             8 + // timeout_duration
             1, // is_private
@@ -144,7 +144,7 @@ pub struct JoinGame<'info> {
 pub struct SetOracleHash<'info> {
     #[account(
         mut,
-        constraint = game.oracle_hash.is_none() @ ErrorCode::OracleHashAlreadySet,
+        constraint = !game.has_oracle_hash() @ ErrorCode::OracleHashAlreadySet,
         constraint = game.status == GameStatus::Active @ ErrorCode::GameNotActive,
         constraint = game.is_ready_for_oracle() @ ErrorCode::GameNotFull
     )]
