@@ -1,17 +1,10 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token;
 
-use crate::state::{GameStatus, GameType};
+use crate::state::GameType;
 
 pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
     let game = &mut ctx.accounts.game;
-
-    // If timeout has passed, mark game as cancelled
-    let current_time = Clock::get()?.unix_timestamp;
-    if current_time >= game.created_at + game.timeout_duration && game.status == GameStatus::Active
-    {
-        game.status = GameStatus::Cancelled;
-    }
 
     // Remove participant
     if let Some(pos) = game
