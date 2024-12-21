@@ -203,9 +203,7 @@ pub struct UnjoinGame<'info> {
         constraint = game.status != GameStatus::ReadyForClaim @ ErrorCode::GameReadyForClaim,
         constraint = game.status != GameStatus::Completed @ ErrorCode::GameCompleted,
         constraint = game.participants.contains(&participant.key()) @ ErrorCode::InvalidParticipant,
-        constraint = !game.is_ready_for_oracle() 
-            || Clock::get().unwrap().unix_timestamp >= game.created_at + game.timeout_duration
-            @ ErrorCode::GameFull
+        constraint = !game.is_ready_for_oracle() @ ErrorCode::GameReadyForOracle
     )]
     pub game: Account<'info, Game>,
     #[account(

@@ -22,6 +22,8 @@ pub enum ErrorCode {
     GameReadyForClaim,
     #[msg("Game not ready for claim")]
     GameNotReadyForClaim,
+    #[msg("Game ready for oracle")]
+    GameReadyForOracle,
     #[msg("Not the winner")]
     NotWinner,
     #[msg("Signature required for private game")]
