@@ -8,14 +8,18 @@ use crate::state::*;
 #[derive(Accounts)]
 #[instruction(
     treasury: Pubkey,
-    fee_percentage: u64,
+    fee_percentage: u8,
     operator: Pubkey
 )]
 pub struct InitializeConfig<'info> {
     #[account(
         init,
         payer = signer,
-        space = 8 + 32 + 8 + 32 + 8,
+        space = 8 + // discriminator
+            32 + // treasury
+            1 + // fee_percentage
+            32 + // operator
+            8, // game_counter
         seeds = [b"config"],
         bump
     )]
@@ -38,7 +42,20 @@ pub struct InitializeGame<'info> {
     #[account(
         init, 
         payer = creator, 
-        space = 8 + 32 + 1 + 8 + 1 + (32 * max_participants as usize) + 33 + 1 + 32 + 33 + 1 + 8 + 8 + 1 + 64 * 10 + 1,
+        space = 8 + // discriminator
+            32 + // creator
+            1 + // game_type
+            8 + // amount
+            1 + // max_participants
+            1 + // min_participants
+            (32 * max_participants as usize) + // participants vec
+            33 + // winner Option<Pubkey>
+            1 + // status
+            32 + // token_mint
+            33 + // oracle_hash Option<[u8; 32]>
+            8 + // created_at
+            8 + // timeout_duration
+            1, // is_private
         seeds = [b"game", config.game_counter.to_le_bytes().as_ref()],
         bump,
         constraint = timeout_duration > 0 @ ErrorCode::InvalidTimeout,
