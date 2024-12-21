@@ -9,7 +9,7 @@ pub fn handler(
     amount: u64,
     max_participants: u16,
     min_participants: u16,
-    timeout_duration: i64,
+    timeout: i64,
     is_private: bool,
 ) -> Result<()> {
     let mut new_game = Game {
@@ -22,7 +22,7 @@ pub fn handler(
         status: crate::state::GameStatus::Active,
         token_mint: ctx.accounts.token_mint.key(),
         created_at: Clock::get()?.unix_timestamp,
-        timeout_duration,
+        timeout,
         is_private,
         ..Default::default()
     };

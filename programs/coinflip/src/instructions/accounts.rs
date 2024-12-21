@@ -35,7 +35,7 @@ pub struct InitializeConfig<'info> {
     amount: u64,
     max_participants: u16,
     min_participants: u16,
-    timeout_duration: i64,
+    timeout: i64,
     is_private: bool
 )]
 pub struct InitializeGame<'info> {
@@ -49,16 +49,15 @@ pub struct InitializeGame<'info> {
             2 + // max_participants
             2 + // min_participants
             (32 * max_participants as usize) + // participants vec
-            33 + // winner Option<Pubkey>
+            2 + // winner
             1 + // status
             32 + // token_mint
-            32 + // oracle_hash [u8; 32]
             8 + // created_at
-            8 + // timeout_duration
+            8 + // timeout
             1, // is_private
         seeds = [b"game", config.game_counter.to_le_bytes().as_ref()],
         bump,
-        constraint = timeout_duration > 0 @ ErrorCode::InvalidTimeout,
+        constraint = timeout > 0 @ ErrorCode::InvalidTimeout,
         constraint = amount <= u64::MAX / (max_participants as u64) @ ErrorCode::InvalidParticipantCount,
         constraint = min_participants <= max_participants && match game_type {
             GameType::Coinflip => max_participants >= 2 && min_participants >= 2,
@@ -106,7 +105,7 @@ pub struct JoinGame<'info> {
     #[account(
         mut,
         constraint = game.status == GameStatus::Active @ ErrorCode::InvalidGameStatus,
-        constraint = Clock::get().unwrap().unix_timestamp < game.created_at + game.timeout_duration @ ErrorCode::TimeoutReached,
+        constraint = Clock::get().unwrap().unix_timestamp < game.created_at + game.timeout @ ErrorCode::TimeoutReached,
         constraint = !game.participants.contains(&player.key()) @ ErrorCode::AlreadyJoined,
         constraint = game.participants.len() < (game.max_participants as usize) @ ErrorCode::GameFull
     )]
@@ -146,7 +145,6 @@ pub struct JoinGame<'info> {
 pub struct SetOracleHash<'info> {
     #[account(
         mut,
-        constraint = !game.has_oracle_hash() @ ErrorCode::OracleHashAlreadySet,
         constraint = game.status == GameStatus::Active @ ErrorCode::GameNotActive,
         constraint = game.is_ready_for_oracle() @ ErrorCode::GameNotFull
     )]
@@ -165,7 +163,7 @@ pub struct ClaimWinnings<'info> {
     #[account(
         mut,
         constraint = game.status == GameStatus::ReadyForClaim @ ErrorCode::GameNotReadyForClaim,
-        constraint = game.winner.unwrap() == winner.key() @ ErrorCode::NotWinner,
+        constraint = game.get_winner() == winner.key() @ ErrorCode::NotWinner,
         close = creator
     )]
     pub game: Account<'info, Game>,
@@ -250,7 +248,7 @@ pub struct CancelGame<'info> {
     #[account(
         mut,
         constraint = game.status == GameStatus::Active @ ErrorCode::InvalidGameStatus,
-        constraint = Clock::get().unwrap().unix_timestamp >= game.created_at + game.timeout_duration @ ErrorCode::TimeoutNotReached,
+        constraint = Clock::get().unwrap().unix_timestamp >= game.created_at + game.timeout @ ErrorCode::TimeoutNotReached,
         constraint = game.game_type == GameType::Giveaway || game.participants.is_empty() @ ErrorCode::GameNotEmpty,
         close = creator
     )]

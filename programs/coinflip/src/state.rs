@@ -44,12 +44,11 @@ pub struct Game {
     pub max_participants: u16,
     pub min_participants: u16,
     pub participants: Vec<Pubkey>,
-    pub winner: Option<Pubkey>,
+    pub winner: u16,
     pub status: GameStatus,
     pub token_mint: Pubkey,
-    pub oracle_hash: [u8; 32],
     pub created_at: i64,
-    pub timeout_duration: i64,
+    pub timeout: i64,
     pub is_private: bool,
 }
 
@@ -59,12 +58,12 @@ impl Game {
     }
 
     pub fn is_ready_for_oracle(&self) -> bool {
-        self.participants.len() == (self.max_participants as usize)
-            || (self.participants.len() >= (self.min_participants as usize)
-                && Clock::get().unwrap().unix_timestamp >= self.created_at + self.timeout_duration)
+        self.participants.len() >= self.min_participants as usize
+            && (Clock::get().unwrap().unix_timestamp >= self.created_at + self.timeout
+                || self.participants.len() == self.max_participants as usize)
     }
 
-    pub fn has_oracle_hash(&self) -> bool {
-        self.oracle_hash != [0u8; 32]
+    pub fn get_winner(&self) -> Pubkey {
+        self.participants[self.winner as usize]
     }
 }
