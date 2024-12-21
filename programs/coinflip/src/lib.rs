@@ -28,7 +28,7 @@ pub mod coinflip {
         amount: u64,
         max_participants: u16,
         min_participants: u16,
-        timeout_duration: i64,
+        timeout: i64,
         is_private: bool,
     ) -> Result<()> {
         instructions::initialize_game::handler(
@@ -37,7 +37,7 @@ pub mod coinflip {
             amount,
             max_participants,
             min_participants,
-            timeout_duration,
+            timeout,
             is_private,
         )
     }
