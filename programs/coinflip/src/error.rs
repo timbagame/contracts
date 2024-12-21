@@ -24,8 +24,6 @@ pub enum ErrorCode {
     NotWinner,
     #[msg("Signature required for private game")]
     SignatureRequired,
-    #[msg("Invalid operator")]
-    InvalidOperator,
     #[msg("Timeout reached")]
     TimeoutReached,
     #[msg("Timeout not reached yet")]
