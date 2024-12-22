@@ -97,13 +97,15 @@ pub struct InitializeGame<'info> {
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
     pub associated_token_program: Program<'info, AssociatedToken>,
-    pub rent: Sysvar<'info, Rent>,
 }
 
 #[derive(Accounts)]
+#[instruction(game_id: u64)]
 pub struct JoinGame<'info> {
     #[account(
         mut,
+        seeds = [b"game", game_id.to_le_bytes().as_ref()],
+        bump,
         constraint = game.status == GameStatus::Active @ ErrorCode::InvalidGameStatus,
         constraint = Clock::get().unwrap().unix_timestamp < game.created_at + game.timeout @ ErrorCode::TimeoutReached,
         constraint = !game.participants.contains(&player.key()) @ ErrorCode::AlreadyJoined,
@@ -142,9 +144,12 @@ pub struct JoinGame<'info> {
 }
 
 #[derive(Accounts)]
+#[instruction(game_id: u64)]
 pub struct SetOracleHash<'info> {
     #[account(
         mut,
+        seeds = [b"game", game_id.to_le_bytes().as_ref()],
+        bump,
         constraint = game.status == GameStatus::Active @ ErrorCode::GameNotActive,
         constraint = game.is_ready_for_oracle() @ ErrorCode::GameNotFull
     )]
@@ -159,9 +164,12 @@ pub struct SetOracleHash<'info> {
 }
 
 #[derive(Accounts)]
+#[instruction(game_id: u64)]
 pub struct ClaimWinnings<'info> {
     #[account(
         mut,
+        seeds = [b"game", game_id.to_le_bytes().as_ref()],
+        bump,
         constraint = game.status == GameStatus::ReadyForClaim @ ErrorCode::GameNotReadyForClaim,
         constraint = game.get_winner() == winner.key() @ ErrorCode::NotWinner,
         close = creator
@@ -210,9 +218,12 @@ pub struct ClaimWinnings<'info> {
 }
 
 #[derive(Accounts)]
+#[instruction(game_id: u64)]
 pub struct UnjoinGame<'info> {
     #[account(
         mut,
+        seeds = [b"game", game_id.to_le_bytes().as_ref()],
+        bump,
         constraint = game.status != GameStatus::ReadyForClaim @ ErrorCode::GameReadyForClaim,
         constraint = game.status != GameStatus::Completed @ ErrorCode::GameCompleted,
         constraint = game.participants.contains(&participant.key()) @ ErrorCode::InvalidParticipant,
@@ -244,9 +255,12 @@ pub struct UnjoinGame<'info> {
 }
 
 #[derive(Accounts)]
+#[instruction(game_id: u64)]
 pub struct CancelGame<'info> {
     #[account(
         mut,
+        seeds = [b"game", game_id.to_le_bytes().as_ref()],
+        bump,
         constraint = game.status == GameStatus::Active @ ErrorCode::InvalidGameStatus,
         constraint = Clock::get().unwrap().unix_timestamp >= game.created_at + game.timeout @ ErrorCode::TimeoutNotReached,
         constraint = game.game_type == GameType::Giveaway || game.participants.is_empty() @ ErrorCode::GameNotEmpty,
