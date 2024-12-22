@@ -43,6 +43,7 @@ pub struct InitializeGame<'info> {
         init, 
         payer = creator, 
         space = 8 + // discriminator
+            8 + // id
             32 + // creator
             1 + // game_type
             8 + // amount

@@ -13,6 +13,7 @@ pub fn handler(
     is_private: bool,
 ) -> Result<()> {
     let mut new_game = Game {
+        id: ctx.accounts.config.game_counter,
         creator: ctx.accounts.creator.key(),
         game_type,
         amount,
@@ -48,7 +49,7 @@ pub fn handler(
 
     // Increment game counter
     let config = &mut ctx.accounts.config;
-    config.game_counter = config.game_counter.checked_add(1).unwrap();
+    config.game_counter += 1;
 
     Ok(())
 }

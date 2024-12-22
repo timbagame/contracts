@@ -38,6 +38,7 @@ impl Default for GameStatus {
 #[account]
 #[derive(Default)]
 pub struct Game {
+    pub id: u64,
     pub creator: Pubkey,
     pub game_type: GameType,
     pub amount: u64,
