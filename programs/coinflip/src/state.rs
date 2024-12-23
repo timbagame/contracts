@@ -44,9 +44,9 @@ pub struct Game {
     pub telegram_group_id: Option<String>,
     pub game_type: GameType,
     pub amount: u64,
-    pub max_participants: u16,
-    pub min_participants: u16,
-    pub participants: Vec<Pubkey>,
+    pub max_players: u16,
+    pub min_players: u16,
+    pub players: Vec<Pubkey>,
     pub winner: u16,
     pub status: GameStatus,
     pub token_mint: Pubkey,
@@ -56,18 +56,18 @@ pub struct Game {
 }
 
 impl Game {
-    pub fn add_participant(&mut self, player: Pubkey) {
-        self.participants.push(player);
+    pub fn add_player(&mut self, player: Pubkey) {
+        self.players.push(player);
     }
 
     pub fn is_ready_for_oracle(&self) -> bool {
-        self.participants.len() >= self.min_participants as usize
+        self.players.len() >= self.min_players as usize
             && (Clock::get().unwrap().unix_timestamp >= self.created_at + self.timeout
-                || self.participants.len() == self.max_participants as usize)
+                || self.players.len() == self.max_players as usize)
     }
 
     pub fn get_winner(&self) -> Pubkey {
-        self.participants[self.winner as usize]
+        self.players[self.winner as usize]
     }
 }
 

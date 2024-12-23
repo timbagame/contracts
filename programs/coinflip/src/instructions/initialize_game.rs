@@ -9,8 +9,8 @@ pub fn handler(
     telegram_group_id: Option<String>,
     game_type: GameType,
     amount: u64,
-    max_participants: u16,
-    min_participants: u16,
+    max_players: u16,
+    min_players: u16,
     timeout: i64,
     is_private: bool,
 ) -> Result<()> {
@@ -21,9 +21,9 @@ pub fn handler(
         telegram_group_id,
         game_type,
         amount,
-        max_participants,
-        min_participants,
-        participants: Vec::with_capacity(max_participants as usize),
+        max_players,
+        min_players,
+        players: Vec::with_capacity(max_players as usize),
         status: crate::state::GameStatus::Active,
         token_mint: ctx.accounts.token_mint.key(),
         created_at: Clock::get()?.unix_timestamp,
@@ -33,7 +33,7 @@ pub fn handler(
     };
 
     if game_type == GameType::Coinflip {
-        new_game.add_participant(ctx.accounts.creator.key());
+        new_game.add_player(ctx.accounts.creator.key());
     }
 
     *ctx.accounts.game = new_game;

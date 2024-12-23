@@ -6,13 +6,13 @@ use crate::state::GameType;
 pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
     let game = &mut ctx.accounts.game;
 
-    // Remove participant
+    // Remove player
     if let Some(pos) = game
-        .participants
+        .players
         .iter()
         .position(|x| x == &ctx.accounts.player.key())
     {
-        game.participants.remove(pos);
+        game.players.remove(pos);
     }
 
     // Only return tokens if it's a coinflip game
@@ -22,7 +22,7 @@ pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
                 ctx.accounts.token_program.to_account_info(),
                 token::Transfer {
                     from: ctx.accounts.vault_token_account.to_account_info(),
-                    to: ctx.accounts.participant_token_account.to_account_info(),
+                    to: ctx.accounts.player_token_account.to_account_info(),
                     authority: ctx.accounts.vault.to_account_info(),
                 },
                 &[&[b"vault", game.token_mint.as_ref(), &[ctx.bumps.vault]]],
