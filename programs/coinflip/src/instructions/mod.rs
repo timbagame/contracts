@@ -9,5 +9,6 @@ pub mod cancel_game;
 pub mod initialize_telegram_user;
 pub mod initialize_token_config;
 pub mod update_token_config;
+pub mod update_config;
 
 pub use accounts::*;

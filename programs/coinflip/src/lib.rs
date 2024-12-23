@@ -15,27 +15,34 @@ pub mod coinflip {
 
     pub fn initialize_config(
         ctx: Context<InitializeConfig>,
-        treasury: Pubkey,
         fee_percentage: u8,
         operator: Pubkey,
     ) -> Result<()> {
-        instructions::initialize_config::handler(ctx, treasury, fee_percentage, operator)
+        instructions::initialize_config::handler(ctx, fee_percentage, operator)
+    }
+
+    pub fn update_config(
+        ctx: Context<UpdateConfig>,
+        fee_percentage: u8,
+        operator: Pubkey,
+    ) -> Result<()> {
+        instructions::update_config::handler(ctx, fee_percentage, operator)
     }
 
     pub fn initialize_token_config(
         ctx: Context<InitializeTokenConfig>,
         ticker: String,
-        allowed : bool,
+        enabled: bool,
     ) -> Result<()> {
-        instructions::initialize_token_config::handler(ctx, ticker, allowed)
+        instructions::initialize_token_config::handler(ctx, ticker, enabled)
     }
 
     pub fn update_token_config(
         ctx: Context<UpdateTokenConfig>,
         ticker: String,
-        allowed: bool,
+        enabled: bool,
     ) -> Result<()> {
-        instructions::update_token_config::handler(ctx, ticker, allowed)
+        instructions::update_token_config::handler(ctx, ticker, enabled)
     }
 
     pub fn initialize_game(

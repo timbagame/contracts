@@ -35,7 +35,6 @@ pub struct InitializeTelegramUser<'info> {
 
 #[derive(Accounts)]
 #[instruction(
-    treasury: Pubkey,
     fee_percentage: u8,
     operator: Pubkey
 )]
@@ -44,7 +43,6 @@ pub struct InitializeConfig<'info> {
         init,
         payer = payer,
         space = 8 + // discriminator
-            32 + // treasury
             1 + // fee_percentage
             32 + // operator
             8, // game_counter
@@ -58,7 +56,23 @@ pub struct InitializeConfig<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(ticker: String, allowed: bool)]
+#[instruction(
+    fee_percentage: u8,
+    operator: Pubkey
+)]
+pub struct UpdateConfig<'info> {
+    #[account(
+        mut,
+        seeds = [b"config"],
+        bump,
+        constraint = config.operator == operator.key() @ ErrorCode::UnauthorizedOperator
+    )]
+    pub config: Account<'info, Config>,
+    pub operator: Signer<'info>,
+}
+
+#[derive(Accounts)]
+#[instruction(ticker: String, enabled: bool)]
 pub struct InitializeTokenConfig<'info> {
     #[account(
         init,
@@ -66,7 +80,7 @@ pub struct InitializeTokenConfig<'info> {
         space = 8 + // discriminator
             4 + ticker.len() + // ticker (String)
             32 + // token_mint
-            1, // allowed
+            1, // enabled
         seeds = [b"token_config", token_mint.key().as_ref()],
         bump
     )]
@@ -85,7 +99,7 @@ pub struct InitializeTokenConfig<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(ticker: String, allowed: bool)]
+#[instruction(ticker: String, enabled: bool)]
 pub struct UpdateTokenConfig<'info> {
     #[account(
         mut,
@@ -323,9 +337,9 @@ pub struct ClaimWinnings<'info> {
     pub winner_token_account: Account<'info, TokenAccount>,
     #[account(
         associated_token::mint = game.token_mint,
-        associated_token::authority = config.treasury
+        associated_token::authority = config.operator
     )]
-    pub treasury_token_account: Account<'info, TokenAccount>,
+    pub operator_token_account: Account<'info, TokenAccount>,
     /// CHECK: Vault PDA for token authority, seeds checked in constraints
     #[account(
         seeds = [b"vault", game.token_mint.as_ref()],
