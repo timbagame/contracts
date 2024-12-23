@@ -58,7 +58,7 @@ pub struct InitializeConfig<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(ticker: String)]
+#[instruction(ticker: String, allowed: bool)]
 pub struct InitializeTokenConfig<'info> {
     #[account(
         init,
@@ -66,7 +66,7 @@ pub struct InitializeTokenConfig<'info> {
         space = 8 + // discriminator
             4 + ticker.len() + // ticker (String)
             32 + // token_mint
-            1, // enabled
+            1, // allowed
         seeds = [b"token_config", token_mint.key().as_ref()],
         bump
     )]
@@ -85,6 +85,7 @@ pub struct InitializeTokenConfig<'info> {
 }
 
 #[derive(Accounts)]
+#[instruction(ticker: String, allowed: bool)]
 pub struct UpdateTokenConfig<'info> {
     #[account(
         mut,

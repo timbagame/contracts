@@ -22,6 +22,22 @@ pub mod coinflip {
         instructions::initialize_config::handler(ctx, treasury, fee_percentage, operator)
     }
 
+    pub fn initialize_token_config(
+        ctx: Context<InitializeTokenConfig>,
+        ticker: String,
+        allowed : bool,
+    ) -> Result<()> {
+        instructions::initialize_token_config::handler(ctx, ticker, allowed)
+    }
+
+    pub fn update_token_config(
+        ctx: Context<UpdateTokenConfig>,
+        ticker: String,
+        allowed: bool,
+    ) -> Result<()> {
+        instructions::update_token_config::handler(ctx, ticker, allowed)
+    }
+
     pub fn initialize_game(
         ctx: Context<InitializeGame>,
         creator_telegram_id: Option<String>,
