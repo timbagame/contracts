@@ -7,7 +7,7 @@ use crate::state::*;
 
 #[derive(Accounts)]
 #[instruction(telegram_id: String)]
-pub struct InitializeTelegramAccount<'info> {
+pub struct InitializeTelegramUser<'info> {
     #[account(
         init,
         payer = payer,
@@ -16,10 +16,10 @@ pub struct InitializeTelegramAccount<'info> {
             33 + // Option<Pubkey> (1 byte for option + 32 for pubkey)
             1 + // bot_auth
             8, // created_at
-        seeds = [b"telegram", telegram_id.as_bytes()],
+        seeds = [b"telegram_user", telegram_id.as_bytes()],
         bump
     )]
-    pub telegram_account: Account<'info, TelegramAccount>,
+    pub telegram_user: Account<'info, TelegramUser>,
     #[account(mut)]
     pub payer: Signer<'info>,
     pub system_program: Program<'info, System>,
@@ -93,18 +93,18 @@ pub struct InitializeGame<'info> {
     pub game: Account<'info, Game>,
     #[account(
         mut,
-        seeds = [b"telegram", creator_telegram_id.unwrap().as_bytes()],
+        seeds = [b"telegram_user", creator_telegram_id.unwrap().as_bytes()],
         bump,
-        constraint = (signer.key() == config.operator && telegram_account.bot_auth) ||
-                     (signer.key() == telegram_account.owner.unwrap())
+        constraint = (signer.key() == config.operator && telegram_user.bot_auth) ||
+                     (signer.key() == telegram_user.owner.unwrap())
                      @ ErrorCode::UnauthorizedJoin
     )]
-    pub telegram_account: Option<Account<'info, TelegramAccount>>,
+    pub telegram_user: Option<Account<'info, TelegramUser>>,
     #[account(mut)]
     pub signer: Signer<'info>,
     #[account(
         mut,
-        address = if let Some(account) = &telegram_account {
+        address = if let Some(account) = &telegram_user {
             account.key()
         } else {
             signer.key()
@@ -159,18 +159,18 @@ pub struct JoinGame<'info> {
     pub game: Account<'info, Game>,
     #[account(
         mut,
-        seeds = [b"telegram", telegram_id.as_bytes()],
+        seeds = [b"telegram_user", telegram_id.as_bytes()],
         bump,
-        constraint = (signer.key() == config.operator && telegram_account.bot_auth) ||
-                     (signer.key() == telegram_account.owner.unwrap())
+        constraint = (signer.key() == config.operator && telegram_user.bot_auth) ||
+                     (signer.key() == telegram_user.owner.unwrap())
                      @ ErrorCode::UnauthorizedJoin
     )]
-    pub telegram_account: Option<Account<'info, TelegramAccount>>,
+    pub telegram_user: Option<Account<'info, TelegramUser>>,
     #[account(mut)]
     pub signer: Signer<'info>,
     #[account(
         mut,
-        address = if let Some(account) = &telegram_account {
+        address = if let Some(account) = &telegram_user {
             account.key()
         } else {
             signer.key()
@@ -251,18 +251,18 @@ pub struct ClaimWinnings<'info> {
     pub config: Account<'info, Config>,
     #[account(
         mut,
-        seeds = [b"telegram", telegram_id.as_bytes()],
+        seeds = [b"telegram_user", telegram_id.as_bytes()],
         bump,
-        constraint = (signer.key() == config.operator && telegram_account.bot_auth) ||
-                     (signer.key() == telegram_account.owner.unwrap())
+        constraint = (signer.key() == config.operator && telegram_user.bot_auth) ||
+                     (signer.key() == telegram_user.owner.unwrap())
                      @ ErrorCode::UnauthorizedJoin
     )]
-    pub telegram_account: Option<Account<'info, TelegramAccount>>,
+    pub telegram_user: Option<Account<'info, TelegramUser>>,
     #[account(mut)]
     pub signer: Signer<'info>,
     #[account(
         mut,
-        address = if let Some(account) = &telegram_account {
+        address = if let Some(account) = &telegram_user {
             account.key()
         } else {
             signer.key()
@@ -313,18 +313,18 @@ pub struct UnjoinGame<'info> {
     pub game: Account<'info, Game>,
     #[account(
         mut,
-        seeds = [b"telegram", telegram_id.as_bytes()],
+        seeds = [b"telegram_user", telegram_id.as_bytes()],
         bump,
-        constraint = (signer.key() == config.operator && telegram_account.bot_auth) ||
-                     (signer.key() == telegram_account.owner.unwrap())
+        constraint = (signer.key() == config.operator && telegram_user.bot_auth) ||
+                     (signer.key() == telegram_user.owner.unwrap())
                      @ ErrorCode::UnauthorizedJoin
     )]
-    pub telegram_account: Option<Account<'info, TelegramAccount>>,
+    pub telegram_user: Option<Account<'info, TelegramUser>>,
     #[account(mut)]
     pub signer: Signer<'info>,
     #[account(
         mut,
-        address = if let Some(account) = &telegram_account {
+        address = if let Some(account) = &telegram_user {
             account.key()
         } else {
             signer.key()
@@ -374,18 +374,18 @@ pub struct CancelGame<'info> {
     pub game: Account<'info, Game>,
     #[account(
         mut,
-        seeds = [b"telegram", telegram_id.as_bytes()],
+        seeds = [b"telegram_user", telegram_id.as_bytes()],
         bump,
-        constraint = (signer.key() == config.operator && telegram_account.bot_auth) ||
-                     (signer.key() == telegram_account.owner.unwrap())
+        constraint = (signer.key() == config.operator && telegram_user.bot_auth) ||
+                     (signer.key() == telegram_user.owner.unwrap())
                      @ ErrorCode::UnauthorizedJoin
     )]
-    pub telegram_account: Option<Account<'info, TelegramAccount>>,
+    pub telegram_user: Option<Account<'info, TelegramUser>>,
     #[account(mut)]
     pub signer: Signer<'info>,
     #[account(
         mut,
-        address = if let Some(account) = &telegram_account {
+        address = if let Some(account) = &telegram_user {
             account.key()
         } else {
             signer.key()
