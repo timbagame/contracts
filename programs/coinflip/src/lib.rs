@@ -16,17 +16,15 @@ pub mod coinflip {
     pub fn initialize_config(
         ctx: Context<InitializeConfig>,
         fee_percentage: u8,
-        operator: Pubkey,
     ) -> Result<()> {
-        instructions::initialize_config::handler(ctx, fee_percentage, operator)
+        instructions::initialize_config::handler(ctx, fee_percentage)
     }
 
     pub fn update_config(
         ctx: Context<UpdateConfig>,
         fee_percentage: u8,
-        operator: Pubkey,
     ) -> Result<()> {
-        instructions::update_config::handler(ctx, fee_percentage, operator)
+        instructions::update_config::handler(ctx, fee_percentage)
     }
 
     pub fn initialize_token_config(

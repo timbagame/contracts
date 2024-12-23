@@ -50,4 +50,6 @@ pub enum ErrorCode {
     UnauthorizedOperator,
     #[msg("Token is not enabled for use in games")]
     TokenNotEnabled,
+    #[msg("Fee percentage must be 5% or less")]
+    InvalidFeePercentage,
 }
