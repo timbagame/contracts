@@ -36,7 +36,6 @@ pub struct InitializeTelegramUser<'info> {
 #[derive(Accounts)]
 #[instruction(
     fee_percentage: u8,
-    operator: Pubkey
 )]
 pub struct InitializeConfig<'info> {
     #[account(
@@ -47,28 +46,31 @@ pub struct InitializeConfig<'info> {
             32 + // operator
             8, // game_counter
         seeds = [b"config"],
-        bump
+        bump,
+        constraint = fee_percentage <= 5 @ ErrorCode::InvalidFeePercentage
     )]
     pub config: Account<'info, Config>,
     #[account(mut)]
     pub payer: Signer<'info>,
+    pub operator: Signer<'info>,
     pub system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
 #[instruction(
     fee_percentage: u8,
-    operator: Pubkey
 )]
 pub struct UpdateConfig<'info> {
     #[account(
         mut,
         seeds = [b"config"],
         bump,
-        constraint = config.operator == operator.key() @ ErrorCode::UnauthorizedOperator
+        constraint = config.operator == old_operator.key() @ ErrorCode::UnauthorizedOperator,
+        constraint = fee_percentage <= 5 @ ErrorCode::InvalidFeePercentage
     )]
     pub config: Account<'info, Config>,
-    pub operator: Signer<'info>,
+    pub old_operator: Signer<'info>,
+    pub new_operator: Signer<'info>,
 }
 
 #[derive(Accounts)]
