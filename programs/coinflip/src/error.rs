@@ -28,22 +28,24 @@ pub enum ErrorCode {
     TimeoutReached,
     #[msg("Timeout not reached yet")]
     TimeoutNotReached,
-    #[msg("Invalid participant count")]
-    InvalidParticipantCount,
+    #[msg("Invalid players count")]
+    InvalidPlayersCount,
     #[msg("Game is not active")]
     GameNotActive,
     #[msg("Game is completed")]
     GameCompleted,
-    #[msg("Invalid participant")]
-    InvalidParticipant,
+    #[msg("Invalid player")]
+    InvalidPlayer,
     #[msg("Invalid timeout duration")]
     InvalidTimeout,
     #[msg("Insufficient balance in vault")]
     InsufficientVaultBalance,
-    #[msg("Cannot cancel game with participants")]
+    #[msg("Cannot cancel game with players")]
     GameNotEmpty,
     #[msg("Unauthorized join attempt - must be owner or authorized operator")]
     UnauthorizedJoin,
     #[msg("Invalid telegram group id")]
     InvalidTelegramGroupId,
+    #[msg("Only the operator can perform this action")]
+    UnauthorizedOperator,
 }

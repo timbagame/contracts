@@ -28,8 +28,8 @@ pub mod coinflip {
         telegram_group_id: Option<String>,
         game_type: GameType,
         amount: u64,
-        max_participants: u16,
-        min_participants: u16,
+        max_players: u16,
+        min_players: u16,
         timeout: i64,
         is_private: bool,
     ) -> Result<()> {
@@ -39,8 +39,8 @@ pub mod coinflip {
             telegram_group_id,
             game_type,
             amount,
-            max_participants,
-            min_participants,
+            max_players,
+            min_players,
             timeout,
             is_private,
         )

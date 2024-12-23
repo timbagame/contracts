@@ -21,6 +21,6 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
         )?;
     }
 
-    game.add_participant(ctx.accounts.player.key());
+    game.add_player(ctx.accounts.player.key());
     Ok(())
 }

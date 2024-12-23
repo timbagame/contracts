@@ -7,7 +7,7 @@ pub fn handler(ctx: Context<super::ClaimWinnings>) -> Result<()> {
     let game = &mut ctx.accounts.game;
 
     let total_pot = match game.game_type {
-        GameType::Coinflip => game.amount * (game.participants.len() as u64),
+        GameType::Coinflip => game.amount * (game.players.len() as u64),
         GameType::Giveaway => game.amount,
     };
     let fee_amount = total_pot * (ctx.accounts.config.fee_percentage as u64) / 100;
