@@ -42,4 +42,8 @@ pub enum ErrorCode {
     InsufficientVaultBalance,
     #[msg("Cannot cancel game with participants")]
     GameNotEmpty,
+    #[msg("Unauthorized join attempt - must be owner or authorized operator")]
+    UnauthorizedJoin,
+    #[msg("Invalid telegram group id")]
+    InvalidTelegramGroupId,
 }

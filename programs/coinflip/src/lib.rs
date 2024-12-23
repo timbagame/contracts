@@ -24,6 +24,8 @@ pub mod coinflip {
 
     pub fn initialize_game(
         ctx: Context<InitializeGame>,
+        creator_telegram_id: Option<String>,
+        telegram_group_id: Option<String>,
         game_type: GameType,
         amount: u64,
         max_participants: u16,
@@ -33,6 +35,8 @@ pub mod coinflip {
     ) -> Result<()> {
         instructions::initialize_game::handler(
             ctx,
+            creator_telegram_id,
+            telegram_group_id,
             game_type,
             amount,
             max_participants,
@@ -60,5 +64,12 @@ pub mod coinflip {
 
     pub fn cancel_game(ctx: Context<CancelGame>) -> Result<()> {
         instructions::cancel_game::handler(ctx)
+    }
+
+    pub fn initialize_telegram_account(
+        ctx: Context<InitializeTelegramAccount>,
+        telegram_id: String,
+    ) -> Result<()> {
+        instructions::initialize_telegram::handler(ctx, telegram_id)
     }
 }

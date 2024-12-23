@@ -5,6 +5,8 @@ use crate::state::{Game, GameType};
 
 pub fn handler(
     ctx: Context<super::InitializeGame>,
+    creator_telegram_id: Option<String>,
+    telegram_group_id: Option<String>,
     game_type: GameType,
     amount: u64,
     max_participants: u16,
@@ -15,6 +17,8 @@ pub fn handler(
     let mut new_game = Game {
         id: ctx.accounts.config.game_counter,
         creator: ctx.accounts.creator.key(),
+        creator_telegram_id,
+        telegram_group_id,
         game_type,
         amount,
         max_participants,

@@ -1,20 +1,10 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token;
 
-use crate::error::ErrorCode;
 use crate::state::GameType;
 
 pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
     let game = &mut ctx.accounts.game;
-
-    if game.is_private {
-        require!(
-            !ctx.remaining_accounts.is_empty()
-                && ctx.remaining_accounts[0].is_signer
-                && ctx.remaining_accounts[0].key() == ctx.accounts.config.operator,
-            ErrorCode::SignatureRequired
-        );
-    }
 
     // Only transfer tokens if it's a coinflip game
     if game.game_type == GameType::Coinflip {
