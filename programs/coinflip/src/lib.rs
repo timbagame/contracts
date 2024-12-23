@@ -66,10 +66,10 @@ pub mod coinflip {
         instructions::cancel_game::handler(ctx)
     }
 
-    pub fn initialize_telegram_account(
-        ctx: Context<InitializeTelegramAccount>,
+    pub fn initialize_telegram_user(
+        ctx: Context<InitializeTelegramUser>,
         telegram_id: String,
     ) -> Result<()> {
-        instructions::initialize_telegram::handler(ctx, telegram_id)
+        instructions::initialize_telegram_user::handler(ctx, telegram_id)
     }
 }

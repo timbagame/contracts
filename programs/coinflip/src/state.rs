@@ -73,7 +73,7 @@ impl Game {
 
 #[account]
 #[derive(Default)]
-pub struct TelegramAccount {
+pub struct TelegramUser {
     pub telegram_id: String,
     pub owner: Option<Pubkey>,
     pub bot_auth: bool,
