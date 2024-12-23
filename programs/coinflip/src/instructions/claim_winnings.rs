@@ -29,13 +29,13 @@ pub fn handler(ctx: Context<super::ClaimWinnings>) -> Result<()> {
         winner_amount,
     )?;
 
-    // Transfer fees to treasury
+    // Transfer fees to operator
     token::transfer(
         CpiContext::new_with_signer(
             ctx.accounts.token_program.to_account_info(),
             token::Transfer {
                 from: ctx.accounts.vault_token_account.to_account_info(),
-                to: ctx.accounts.treasury_token_account.to_account_info(),
+                to: ctx.accounts.operator_token_account.to_account_info(),
                 authority: ctx.accounts.vault.to_account_info(),
             },
             &[&[b"vault", game.token_mint.as_ref(), &[ctx.bumps.vault]]],
