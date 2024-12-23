@@ -9,6 +9,14 @@ pub struct Config {
     pub game_counter: u64,
 }
 
+#[account]
+#[derive(Default)]
+pub struct TokenConfig {
+    pub ticker: String,
+    pub token_mint: Pubkey,
+    pub enabled: bool,
+}
+
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Copy)]
 pub enum GameType {
     Coinflip,
