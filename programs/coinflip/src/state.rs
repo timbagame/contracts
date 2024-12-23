@@ -40,6 +40,8 @@ impl Default for GameStatus {
 pub struct Game {
     pub id: u64,
     pub creator: Pubkey,
+    pub creator_telegram_id: Option<String>,
+    pub telegram_group_id: Option<String>,
     pub game_type: GameType,
     pub amount: u64,
     pub max_participants: u16,
@@ -67,4 +69,13 @@ impl Game {
     pub fn get_winner(&self) -> Pubkey {
         self.participants[self.winner as usize]
     }
+}
+
+#[account]
+#[derive(Default)]
+pub struct TelegramAccount {
+    pub telegram_id: String,
+    pub owner: Option<Pubkey>,
+    pub bot_auth: bool,
+    pub created_at: i64,
 }

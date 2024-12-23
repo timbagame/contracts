@@ -10,7 +10,7 @@ pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
     if let Some(pos) = game
         .participants
         .iter()
-        .position(|x| x == &ctx.accounts.participant.key())
+        .position(|x| x == &ctx.accounts.player.key())
     {
         game.participants.remove(pos);
     }
