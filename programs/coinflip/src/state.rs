@@ -77,5 +77,4 @@ pub struct TelegramUser {
     pub telegram_id: String,
     pub owner: Option<Pubkey>,
     pub bot_auth: bool,
-    pub created_at: i64,
 }

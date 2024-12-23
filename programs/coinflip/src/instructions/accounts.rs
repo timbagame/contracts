@@ -14,8 +14,7 @@ pub struct InitializeTelegramUser<'info> {
         space = 8 + // discriminator
             4 + telegram_id.len() + // telegram_id (String)
             33 + // Option<Pubkey> (1 byte for option + 32 for pubkey)
-            1 + // bot_auth
-            8, // created_at
+            1, // bot_auth
         seeds = [b"telegram_user", telegram_id.as_bytes()],
         bump
     )]
