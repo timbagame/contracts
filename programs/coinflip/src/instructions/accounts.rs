@@ -230,14 +230,14 @@ pub struct ClaimWinnings<'info> {
         bump,
         constraint = game.status == GameStatus::ReadyForClaim @ ErrorCode::GameNotReadyForClaim,
         constraint = game.get_winner() == player.key() @ ErrorCode::NotWinner,
-        close = payer
+        close = creator
     )]
     pub game: Account<'info, Game>,
     /// CHECK: Game creator receiving rent refund, verified by address constraint
     #[account(
         address = game.creator
     )]
-    pub payer: AccountInfo<'info>,
+    pub creator: AccountInfo<'info>,
     #[account(
         seeds = [b"config"],
         bump
@@ -361,10 +361,8 @@ pub struct CancelGame<'info> {
                      @ ErrorCode::UnauthorizedJoin
     )]
     pub telegram_user: Option<Account<'info, TelegramUser>>,
-    #[account(mut)]
     pub signer: Signer<'info>,
     #[account(
-        mut,
         address = if let Some(account) = &telegram_user {
             account.key()
         } else {
@@ -373,12 +371,10 @@ pub struct CancelGame<'info> {
     )]
     pub player: AccountInfo<'info>,
     #[account(
-        mut,
         address = game.creator
     )]
     pub creator: AccountInfo<'info>,
     #[account(
-        mut,
         associated_token::mint = game.token_mint,
         associated_token::authority = creator
     )]
@@ -391,7 +387,6 @@ pub struct CancelGame<'info> {
     pub vault_token_account: Account<'info, TokenAccount>,
     /// CHECK: Vault PDA for token authority, seeds checked in constraints
     #[account(
-        mut,
         seeds = [b"vault", game.token_mint.as_ref()],
         bump
     )]
