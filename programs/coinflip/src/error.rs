@@ -48,4 +48,6 @@ pub enum ErrorCode {
     InvalidTelegramGroupId,
     #[msg("Only the operator can perform this action")]
     UnauthorizedOperator,
+    #[msg("Token is not enabled for use in games")]
+    TokenNotEnabled,
 }

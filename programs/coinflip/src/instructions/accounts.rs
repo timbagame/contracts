@@ -58,6 +58,50 @@ pub struct InitializeConfig<'info> {
 }
 
 #[derive(Accounts)]
+#[instruction(ticker: String)]
+pub struct InitializeTokenConfig<'info> {
+    #[account(
+        init,
+        payer = payer,
+        space = 8 + // discriminator
+            4 + ticker.len() + // ticker (String)
+            32 + // token_mint
+            1, // enabled
+        seeds = [b"token_config", token_mint.key().as_ref()],
+        bump
+    )]
+    pub token_config: Account<'info, TokenConfig>,
+    pub token_mint: Account<'info, anchor_spl::token::Mint>,
+    #[account(mut)]
+    pub payer: Signer<'info>,
+    #[account(
+        seeds = [b"config"],
+        bump,
+        constraint = config.operator == operator.key()
+    )]
+    pub config: Account<'info, Config>,
+    pub operator: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct UpdateTokenConfig<'info> {
+    #[account(
+        mut,
+        seeds = [b"token_config", token_config.token_mint.as_ref()],
+        bump
+    )]
+    pub token_config: Account<'info, TokenConfig>,
+    #[account(
+        seeds = [b"config"],
+        bump,
+        constraint = config.operator == operator.key()
+    )]
+    pub config: Account<'info, Config>,
+    pub operator: Signer<'info>,
+}
+
+#[derive(Accounts)]
 #[instruction(
     creator_telegram_id: Option<String>,
     telegram_group_id: Option<String>,
@@ -124,6 +168,12 @@ pub struct InitializeGame<'info> {
     )]
     pub config: Account<'info, Config>,
     pub token_mint: Account<'info, anchor_spl::token::Mint>,
+    #[account(
+        seeds = [b"token_config", token_mint.key().as_ref()],
+        bump,
+        constraint = token_config.enabled @ ErrorCode::TokenNotEnabled
+    )]
+    pub token_config: Account<'info, TokenConfig>,
     #[account(
         associated_token::mint = token_mint,
         associated_token::authority = creator,
