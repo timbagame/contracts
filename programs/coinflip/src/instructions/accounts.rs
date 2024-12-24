@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{Token, TokenAccount};
+use anchor_spl::token::{Token, TokenAccount, Mint};
 use anchor_spl::associated_token::AssociatedToken;
 
 use crate::error::ErrorCode;
@@ -22,14 +22,14 @@ pub struct InitializeTelegramUser<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
     #[account(
-        address = config.operator
+        address = oracle.authority
     )]
-    pub operator: Signer<'info>,
+    pub authority: Signer<'info>,
     #[account(
         seeds = [b"config"],
         bump,
     )]
-    pub config: Account<'info, Config>,
+    pub oracle: Account<'info, Oracle>,
     pub system_program: Program<'info, System>,
 }
 
@@ -37,22 +37,22 @@ pub struct InitializeTelegramUser<'info> {
 #[instruction(
     fee_percentage: u8,
 )]
-pub struct InitializeConfig<'info> {
+pub struct InitializeOracle<'info> {
     #[account(
         init,
         payer = payer,
         space = 8 + // discriminator
             1 + // fee_percentage
-            32 + // operator
+            32 + // authority
             8, // game_counter
-        seeds = [b"config"],
+        seeds = [b"oracle"],
         bump,
         constraint = fee_percentage <= 5 @ ErrorCode::InvalidFeePercentage
     )]
-    pub config: Account<'info, Config>,
+    pub oracle: Account<'info, Oracle>,
     #[account(mut)]
     pub payer: Signer<'info>,
-    pub operator: Signer<'info>,
+    pub authority: Signer<'info>,
     pub system_program: Program<'info, System>,
 }
 
@@ -60,22 +60,22 @@ pub struct InitializeConfig<'info> {
 #[instruction(
     fee_percentage: u8,
 )]
-pub struct UpdateConfig<'info> {
+pub struct UpdateOracle<'info> {
     #[account(
         mut,
-        seeds = [b"config"],
+        seeds = [b"oracle"],
         bump,
-        constraint = config.operator == old_operator.key() @ ErrorCode::UnauthorizedOperator,
+        constraint = oracle.authority == old_authority.key() @ ErrorCode::UnauthorizedOperator,
         constraint = fee_percentage <= 5 @ ErrorCode::InvalidFeePercentage
     )]
-    pub config: Account<'info, Config>,
-    pub old_operator: Signer<'info>,
-    pub new_operator: Signer<'info>,
+    pub oracle: Account<'info, Oracle>,
+    pub old_authority: Signer<'info>,
+    pub new_authority: Signer<'info>,
 }
 
 #[derive(Accounts)]
 #[instruction(ticker: String, enabled: bool)]
-pub struct InitializeTokenConfig<'info> {
+pub struct InitializeToken<'info> {
     #[account(
         init,
         payer = payer,
@@ -86,36 +86,36 @@ pub struct InitializeTokenConfig<'info> {
         seeds = [b"token_config", token_mint.key().as_ref()],
         bump
     )]
-    pub token_config: Account<'info, TokenConfig>,
-    pub token_mint: Account<'info, anchor_spl::token::Mint>,
+    pub game_token: Account<'info, GameToken>,
+    pub token_mint: Account<'info, Mint>,
     #[account(mut)]
     pub payer: Signer<'info>,
     #[account(
-        seeds = [b"config"],
+        seeds = [b"oracle"],
         bump,
-        constraint = config.operator == operator.key()
+        constraint = oracle.authority == authority.key()
     )]
-    pub config: Account<'info, Config>,
-    pub operator: Signer<'info>,
+    pub oracle: Account<'info, Oracle>,
+    pub authority: Signer<'info>,
     pub system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
 #[instruction(ticker: String, enabled: bool)]
-pub struct UpdateTokenConfig<'info> {
+pub struct UpdateToken<'info> {
     #[account(
         mut,
-        seeds = [b"token_config", token_config.token_mint.as_ref()],
+        seeds = [b"token", game_token.token_mint.as_ref()],
         bump
     )]
-    pub token_config: Account<'info, TokenConfig>,
+    pub game_token: Account<'info, GameToken>,
     #[account(
-        seeds = [b"config"],
+        seeds = [b"oracle"],
         bump,
-        constraint = config.operator == operator.key()
+        constraint = oracle.authority == authority.key()
     )]
-    pub config: Account<'info, Config>,
-    pub operator: Signer<'info>,
+    pub oracle: Account<'info, Oracle>,
+    pub authority: Signer<'info>,
 }
 
 #[derive(Accounts)]
@@ -149,10 +149,9 @@ pub struct InitializeGame<'info> {
             8 + // created_at
             8 + // timeout
             1, // is_private
-        seeds = [b"game", config.game_counter.to_le_bytes().as_ref()],
+        seeds = [b"game", oracle.game_counter.to_le_bytes().as_ref()],
         bump,
         constraint = timeout > 0 @ ErrorCode::InvalidTimeout,
-        constraint = amount <= u64::MAX / (max_players as u64) @ ErrorCode::InvalidPlayersCount,
         constraint = min_players <= max_players && match game_type {
             GameType::Coinflip => max_players >= 2 && min_players >= 2,
             GameType::Giveaway => max_players >= 1 && min_players >= 1,
@@ -163,7 +162,7 @@ pub struct InitializeGame<'info> {
     #[account(
         seeds = [b"telegram_user", creator_telegram_id.unwrap().as_bytes()],
         bump,
-        constraint = (signer.key() == config.operator && telegram_user.bot_auth) ||
+        constraint = (signer.key() == oracle.authority && telegram_user.bot_auth) ||
                      (signer.key() == telegram_user.owner.unwrap())
                      @ ErrorCode::UnauthorizedJoin
     )]
@@ -180,17 +179,17 @@ pub struct InitializeGame<'info> {
     )]
     pub creator: AccountInfo<'info>,
     #[account(
-        seeds = [b"config"],
+        seeds = [b"oracle"],
         bump
     )]
-    pub config: Account<'info, Config>,
+    pub oracle: Account<'info, Oracle>,
     pub token_mint: Account<'info, anchor_spl::token::Mint>,
     #[account(
-        seeds = [b"token_config", token_mint.key().as_ref()],
+        seeds = [b"token", game_token.token_mint.as_ref()],
         bump,
-        constraint = token_config.enabled @ ErrorCode::TokenNotEnabled
+        constraint = game_token.enabled @ ErrorCode::TokenNotEnabled
     )]
-    pub token_config: Account<'info, TokenConfig>,
+    pub game_token: Account<'info, GameToken>,
     #[account(
         associated_token::mint = token_mint,
         associated_token::authority = creator,
@@ -223,13 +222,13 @@ pub struct JoinGame<'info> {
         constraint = Clock::get().unwrap().unix_timestamp < game.created_at + game.timeout @ ErrorCode::TimeoutReached,
         constraint = !game.players.contains(&player.key()) @ ErrorCode::AlreadyJoined,
         constraint = game.players.len() < (game.max_players as usize) @ ErrorCode::GameFull,
-        constraint = !game.is_private || signer.key() == config.operator @ ErrorCode::UnauthorizedJoin
+        constraint = !game.is_private || signer.key() == oracle.authority @ ErrorCode::UnauthorizedJoin
     )]
     pub game: Account<'info, Game>,
     #[account(
         seeds = [b"telegram_user", telegram_id.as_bytes()],
         bump,
-        constraint = (signer.key() == config.operator && telegram_user.bot_auth) ||
+        constraint = (signer.key() == oracle.authority && telegram_user.bot_auth) ||
                      (signer.key() == telegram_user.owner.unwrap())
                      @ ErrorCode::UnauthorizedJoin
     )]
@@ -261,10 +260,10 @@ pub struct JoinGame<'info> {
     )]
     pub vault: AccountInfo<'info>,
     #[account(
-        seeds = [b"config"],
+        seeds = [b"oracle"],
         bump
     )]
-    pub config: Account<'info, Config>,
+    pub oracle: Account<'info, Oracle>,
     pub token_program: Program<'info, Token>,
     pub associated_token_program: Program<'info, AssociatedToken>,
 }
@@ -280,12 +279,12 @@ pub struct SetOracleHash<'info> {
     )]
     pub game: Account<'info, Game>,
     #[account(
-        seeds = [b"config"],
+        seeds = [b"oracle"],
         bump
     )]
-    pub config: Account<'info, Config>,
-    #[account(address = config.operator)]
-    pub oracle: Signer<'info>,
+    pub oracle: Account<'info, Oracle>,
+    #[account(address = oracle.authority)]
+    pub authority: Signer<'info>,
 }
 
 #[derive(Accounts)]
@@ -306,14 +305,14 @@ pub struct ClaimWinnings<'info> {
     )]
     pub creator: AccountInfo<'info>,
     #[account(
-        seeds = [b"config"],
+        seeds = [b"oracle"],
         bump
     )]
-    pub config: Account<'info, Config>,
+    pub oracle: Account<'info, Oracle>,
     #[account(
         seeds = [b"telegram_user", telegram_id.as_bytes()],
         bump,
-        constraint = (signer.key() == config.operator && telegram_user.bot_auth) ||
+        constraint = (signer.key() == oracle.authority && telegram_user.bot_auth) ||
                      (signer.key() == telegram_user.owner.unwrap())
                      @ ErrorCode::UnauthorizedJoin
     )]
@@ -339,7 +338,7 @@ pub struct ClaimWinnings<'info> {
     pub winner_token_account: Account<'info, TokenAccount>,
     #[account(
         associated_token::mint = game.token_mint,
-        associated_token::authority = config.operator
+        associated_token::authority = oracle.authority
     )]
     pub operator_token_account: Account<'info, TokenAccount>,
     /// CHECK: Vault PDA for token authority, seeds checked in constraints
@@ -367,7 +366,7 @@ pub struct UnjoinGame<'info> {
     #[account(
         seeds = [b"telegram_user", telegram_id.as_bytes()],
         bump,
-        constraint = (signer.key() == config.operator && telegram_user.bot_auth) ||
+        constraint = (signer.key() == oracle.authority && telegram_user.bot_auth) ||
                      (signer.key() == telegram_user.owner.unwrap())
                      @ ErrorCode::UnauthorizedJoin
     )]
@@ -398,16 +397,16 @@ pub struct UnjoinGame<'info> {
     )]
     pub vault: AccountInfo<'info>,
     #[account(
-        seeds = [b"config"],
+        seeds = [b"oracle"],
         bump
     )]
-    pub config: Account<'info, Config>,
+    pub oracle: Account<'info, Oracle>,
     pub token_program: Program<'info, Token>,
     pub associated_token_program: Program<'info, AssociatedToken>,
 }
 
 #[derive(Accounts)]
-#[instruction(game_id: u64, telegram_id: String)]
+#[instruction(game_id: u64)]
 pub struct CancelGame<'info> {
     #[account(
         mut,
@@ -419,24 +418,6 @@ pub struct CancelGame<'info> {
         close = creator
     )]
     pub game: Account<'info, Game>,
-    #[account(
-        mut,
-        seeds = [b"telegram_user", telegram_id.as_bytes()],
-        bump,
-        constraint = (signer.key() == config.operator && telegram_user.bot_auth) ||
-                     (signer.key() == telegram_user.owner.unwrap())
-                     @ ErrorCode::UnauthorizedJoin
-    )]
-    pub telegram_user: Option<Account<'info, TelegramUser>>,
-    pub signer: Signer<'info>,
-    #[account(
-        address = if let Some(account) = &telegram_user {
-            account.key()
-        } else {
-            signer.key()
-        }
-    )]
-    pub player: AccountInfo<'info>,
     #[account(
         address = game.creator
     )]
@@ -459,10 +440,10 @@ pub struct CancelGame<'info> {
     )]
     pub vault: AccountInfo<'info>,
     #[account(
-        seeds = [b"config"],
+        seeds = [b"oracle"],
         bump
     )]
-    pub config: Account<'info, Config>,
+    pub oracle: Account<'info, Oracle>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
 }

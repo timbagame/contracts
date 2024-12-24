@@ -13,34 +13,34 @@ declare_id!("BzU9WwzqMoDSTTdTurweMLp2tAciFpZaNL2bPUitwNyy");
 pub mod coinflip {
     use super::*;
 
-    pub fn initialize_config(
-        ctx: Context<InitializeConfig>,
+    pub fn initialize_oracle(
+        ctx: Context<InitializeOracle>,
         fee_percentage: u8,
     ) -> Result<()> {
-        instructions::initialize_config::handler(ctx, fee_percentage)
+        instructions::initialize_oracle::handler(ctx, fee_percentage)
     }
 
-    pub fn update_config(
-        ctx: Context<UpdateConfig>,
+    pub fn update_oracle(
+        ctx: Context<UpdateOracle>,
         fee_percentage: u8,
     ) -> Result<()> {
-        instructions::update_config::handler(ctx, fee_percentage)
+        instructions::update_oracle::handler(ctx, fee_percentage)
     }
 
-    pub fn initialize_token_config(
-        ctx: Context<InitializeTokenConfig>,
+    pub fn initialize_token(
+        ctx: Context<InitializeToken>,
         ticker: String,
         enabled: bool,
     ) -> Result<()> {
-        instructions::initialize_token_config::handler(ctx, ticker, enabled)
+        instructions::initialize_token::handler(ctx, ticker, enabled)
     }
 
-    pub fn update_token_config(
-        ctx: Context<UpdateTokenConfig>,
+    pub fn update_token(
+        ctx: Context<UpdateToken>,
         ticker: String,
         enabled: bool,
     ) -> Result<()> {
-        instructions::update_token_config::handler(ctx, ticker, enabled)
+        instructions::update_token::handler(ctx, ticker, enabled)
     }
 
     pub fn initialize_game(
