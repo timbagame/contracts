@@ -44,7 +44,7 @@ pub fn handler(
             ctx.accounts.token_program.to_account_info(),
             token::Transfer {
                 from: ctx.accounts.creator_token_account.to_account_info(),
-                to: ctx.accounts.vault_token_account.to_account_info(),
+                to: ctx.accounts.oracle_token_account.to_account_info(),
                 authority: ctx.accounts.creator.to_account_info(),
             },
         ),
