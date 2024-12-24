@@ -26,7 +26,7 @@ pub struct InitializeTelegramUser<'info> {
     )]
     pub authority: Signer<'info>,
     #[account(
-        seeds = [b"config"],
+        seeds = [b"oracle"],
         bump,
     )]
     pub oracle: Account<'info, Oracle>,
@@ -83,11 +83,16 @@ pub struct InitializeToken<'info> {
             4 + ticker.len() + // ticker (String)
             32 + // token_mint
             1, // enabled
-        seeds = [b"token_config", token_mint.key().as_ref()],
+        seeds = [b"game_token", token_mint.key().as_ref()],
         bump
     )]
     pub game_token: Account<'info, GameToken>,
     pub token_mint: Account<'info, Mint>,
+    #[account(
+        associated_token::mint = token_mint,
+        associated_token::authority = game_token,
+    )]
+    pub token_account: Account<'info, TokenAccount>,
     #[account(mut)]
     pub payer: Signer<'info>,
     #[account(
@@ -97,7 +102,9 @@ pub struct InitializeToken<'info> {
     )]
     pub oracle: Account<'info, Oracle>,
     pub authority: Signer<'info>,
+    pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
 }
 
 #[derive(Accounts)]
@@ -105,7 +112,7 @@ pub struct InitializeToken<'info> {
 pub struct UpdateToken<'info> {
     #[account(
         mut,
-        seeds = [b"token", game_token.token_mint.as_ref()],
+        seeds = [b"game_token", game_token.token_mint.as_ref()],
         bump
     )]
     pub game_token: Account<'info, GameToken>,
@@ -183,9 +190,9 @@ pub struct InitializeGame<'info> {
         bump
     )]
     pub oracle: Account<'info, Oracle>,
-    pub token_mint: Account<'info, anchor_spl::token::Mint>,
+    pub token_mint: Account<'info, Mint>,
     #[account(
-        seeds = [b"token", game_token.token_mint.as_ref()],
+        seeds = [b"game_token", token_mint.key().as_ref()],
         bump,
         constraint = game_token.enabled @ ErrorCode::TokenNotEnabled
     )]
@@ -197,16 +204,9 @@ pub struct InitializeGame<'info> {
     )]
     pub creator_token_account: Account<'info, TokenAccount>,
     #[account(
-        associated_token::mint = token_mint,
-        associated_token::authority = vault
+        address = game_token.token_account
     )]
-    pub vault_token_account: Account<'info, TokenAccount>,
-    /// CHECK: Vault PDA for token authority, seeds checked in constraints
-    #[account(
-        seeds = [b"vault", token_mint.key().as_ref()],
-        bump
-    )]
-    pub vault: AccountInfo<'info>,
+    pub oracle_token_account: Account<'info, TokenAccount>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
     pub associated_token_program: Program<'info, AssociatedToken>,
@@ -235,6 +235,12 @@ pub struct JoinGame<'info> {
     pub telegram_user: Option<Account<'info, TelegramUser>>,
     pub signer: Signer<'info>,
     #[account(
+        seeds = [b"game_token", game.token_mint.as_ref()],
+        bump,
+        constraint = game_token.enabled @ ErrorCode::TokenNotEnabled
+    )]
+    pub game_token: Account<'info, GameToken>,
+    #[account(
         address = if let Some(account) = &telegram_user {
             account.key()
         } else {
@@ -249,16 +255,9 @@ pub struct JoinGame<'info> {
     )]
     pub player_token_account: Account<'info, TokenAccount>,
     #[account(
-        associated_token::mint = game.token_mint,
-        associated_token::authority = vault
+        address = game_token.token_account
     )]
-    pub vault_token_account: Account<'info, TokenAccount>,
-    /// CHECK: Vault PDA for token authority, seeds checked in constraints
-    #[account(
-        seeds = [b"vault", game.token_mint.as_ref()],
-        bump
-    )]
-    pub vault: AccountInfo<'info>,
+    pub oracle_token_account: Account<'info, TokenAccount>,
     #[account(
         seeds = [b"oracle"],
         bump

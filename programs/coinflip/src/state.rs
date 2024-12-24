@@ -13,6 +13,7 @@ pub struct Oracle {
 pub struct GameToken {
     pub ticker: String,
     pub token_mint: Pubkey,
+    pub token_account: Pubkey,
     pub enabled: bool,
 }
 
