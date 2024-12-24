@@ -15,7 +15,7 @@ pub fn handler(
     is_private: bool,
 ) -> Result<()> {
     let mut new_game = Game {
-        id: ctx.accounts.config.game_counter,
+        id: ctx.accounts.oracle.game_counter,
         creator: ctx.accounts.creator.key(),
         creator_telegram_id,
         telegram_group_id,
@@ -52,8 +52,8 @@ pub fn handler(
     )?;
 
     // Increment game counter
-    let config = &mut ctx.accounts.config;
-    config.game_counter += 1;
+    let oracle = &mut ctx.accounts.oracle;
+    oracle.game_counter += 1;
 
     Ok(())
 }

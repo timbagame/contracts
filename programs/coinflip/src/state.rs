@@ -2,15 +2,15 @@ use anchor_lang::prelude::*;
 
 #[account]
 #[derive(Default)]
-pub struct Config {
+pub struct Oracle {
+    pub authority: Pubkey,
     pub fee_percentage: u8,
-    pub operator: Pubkey,
     pub game_counter: u64,
 }
 
 #[account]
 #[derive(Default)]
-pub struct TokenConfig {
+pub struct GameToken {
     pub ticker: String,
     pub token_mint: Pubkey,
     pub enabled: bool,
