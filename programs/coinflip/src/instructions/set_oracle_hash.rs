@@ -7,6 +7,9 @@ use crate::state::GameStatus;
 pub fn handler(ctx: Context<super::SetOracleHash>, hash_value: [u8; 32]) -> Result<()> {
     let game = &mut ctx.accounts.game;
 
+    let fee_amount = game.amount * (ctx.accounts.oracle.fee_percentage as u64) / 100;
+    game.fee_amount = fee_amount;
+
     // Get slot hash for on-chain randomness
     let slot_hash = slot_hashes::id().to_bytes();
 
@@ -17,7 +20,7 @@ pub fn handler(ctx: Context<super::SetOracleHash>, hash_value: [u8; 32]) -> Resu
     let final_hash = hash(&combined).to_bytes();
 
     let random_index = (final_hash[0] as usize) % game.players.len();
-    game.winner = random_index as u16;
+    game.winner = random_index as u64;
     game.status = GameStatus::ReadyForClaim;
 
     Ok(())

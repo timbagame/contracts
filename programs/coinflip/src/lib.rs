@@ -13,17 +13,11 @@ declare_id!("BzU9WwzqMoDSTTdTurweMLp2tAciFpZaNL2bPUitwNyy");
 pub mod coinflip {
     use super::*;
 
-    pub fn initialize_oracle(
-        ctx: Context<InitializeOracle>,
-        fee_percentage: u8,
-    ) -> Result<()> {
+    pub fn initialize_oracle(ctx: Context<InitializeOracle>, fee_percentage: u8) -> Result<()> {
         instructions::initialize_oracle::handler(ctx, fee_percentage)
     }
 
-    pub fn update_oracle(
-        ctx: Context<UpdateOracle>,
-        fee_percentage: u8,
-    ) -> Result<()> {
+    pub fn update_oracle(ctx: Context<UpdateOracle>, fee_percentage: u8) -> Result<()> {
         instructions::update_oracle::handler(ctx, fee_percentage)
     }
 
@@ -35,18 +29,12 @@ pub mod coinflip {
         instructions::initialize_token::handler(ctx, ticker, enabled)
     }
 
-    pub fn update_token(
-        ctx: Context<UpdateToken>,
-        ticker: String,
-        enabled: bool,
-    ) -> Result<()> {
+    pub fn update_token(ctx: Context<UpdateToken>, ticker: String, enabled: bool) -> Result<()> {
         instructions::update_token::handler(ctx, ticker, enabled)
     }
 
     pub fn initialize_game(
         ctx: Context<InitializeGame>,
-        creator_telegram_id: Option<String>,
-        telegram_group_id: Option<String>,
         game_type: GameType,
         amount: u64,
         max_players: u16,
@@ -56,8 +44,6 @@ pub mod coinflip {
     ) -> Result<()> {
         instructions::initialize_game::handler(
             ctx,
-            creator_telegram_id,
-            telegram_group_id,
             game_type,
             amount,
             max_players,
@@ -79,18 +65,17 @@ pub mod coinflip {
         instructions::set_oracle_hash::handler(ctx, hash_value)
     }
 
-    pub fn claim_winnings(ctx: Context<ClaimWinnings>) -> Result<()> {
-        instructions::claim_winnings::handler(ctx)
+    pub fn claim_win(ctx: Context<ClaimWin>, max_transfers: u64) -> Result<()> {
+        instructions::claim_win::handler(ctx, max_transfers)
     }
 
-    pub fn cancel_game(ctx: Context<CancelGame>) -> Result<()> {
-        instructions::cancel_game::handler(ctx)
-    }
-
-    pub fn initialize_telegram_user(
-        ctx: Context<InitializeTelegramUser>,
-        telegram_id: String,
+    pub fn initialize_player(
+        ctx: Context<InitializePlayer>,
+        owner: Pubkey,
+        bot_type: u8,
+        bot_seed: String,
+        bot_auth: bool,
     ) -> Result<()> {
-        instructions::initialize_telegram_user::handler(ctx, telegram_id)
+        instructions::initialize_player::handler(ctx, owner, bot_type, bot_seed, bot_auth)
     }
 }

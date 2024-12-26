@@ -5,8 +5,6 @@ use crate::state::{Game, GameType};
 
 pub fn handler(
     ctx: Context<super::InitializeGame>,
-    creator_telegram_id: Option<String>,
-    telegram_group_id: Option<String>,
     game_type: GameType,
     amount: u64,
     max_players: u16,
@@ -15,10 +13,8 @@ pub fn handler(
     is_private: bool,
 ) -> Result<()> {
     let mut new_game = Game {
-        id: ctx.accounts.oracle.game_counter,
-        creator: ctx.accounts.creator.key(),
-        creator_telegram_id,
-        telegram_group_id,
+        id: ctx.accounts.oracle.games_counter,
+        creator: ctx.accounts.creator.id,
         game_type,
         amount,
         max_players,
@@ -33,27 +29,14 @@ pub fn handler(
     };
 
     if game_type == GameType::Coinflip {
-        new_game.add_player(ctx.accounts.creator.key());
+        new_game.players.push(ctx.accounts.creator.id);
     }
 
     *ctx.accounts.game = new_game;
 
-    // Transfer initial amount
-    token::transfer(
-        CpiContext::new(
-            ctx.accounts.token_program.to_account_info(),
-            token::Transfer {
-                from: ctx.accounts.creator_token_account.to_account_info(),
-                to: ctx.accounts.oracle_token_account.to_account_info(),
-                authority: ctx.accounts.creator.to_account_info(),
-            },
-        ),
-        amount,
-    )?;
-
     // Increment game counter
     let oracle = &mut ctx.accounts.oracle;
-    oracle.game_counter += 1;
+    oracle.games_counter += 1;
 
     Ok(())
 }
