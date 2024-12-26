@@ -42,14 +42,18 @@ pub enum ErrorCode {
     InsufficientVaultBalance,
     #[msg("Cannot cancel game with players")]
     GameNotEmpty,
+    #[msg("Unauthorized creator")]
+    UnauthorizedCreator,
     #[msg("Unauthorized join attempt - must be owner or authorized operator")]
     UnauthorizedJoin,
     #[msg("Invalid telegram group id")]
     InvalidTelegramGroupId,
-    #[msg("Only the operator can perform this action")]
-    UnauthorizedOperator,
+    #[msg("Only the oracle can perform this action")]
+    UnauthorizedOracle,
     #[msg("Token is not enabled for use in games")]
     TokenNotEnabled,
     #[msg("Fee percentage must be 5% or less")]
     InvalidFeePercentage,
+    #[msg("Unauthorized owner")]
+    UnauthorizedOwner,
 }
