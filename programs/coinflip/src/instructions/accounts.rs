@@ -417,3 +417,72 @@ pub struct UnjoinGame<'info> {
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub rent: Sysvar<'info, Rent>,
 }
+
+#[derive(Accounts)]
+#[instruction(amount: u64)]
+pub struct DepositPlayer<'info> {
+    pub player: Account<'info, Player>,
+    pub token_mint: Account<'info, Mint>,
+    #[account(
+        seeds = [b"token", token_mint.key().as_ref()],
+        bump,
+        constraint = game_token.enabled @ ErrorCode::TokenNotEnabled
+    )]
+    pub game_token: Account<'info, GameToken>,
+    #[account(
+        seeds = [b"player_vault", player.key().as_ref(), token_mint.key().as_ref()],
+        bump,
+    )]
+    pub player_vault: AccountInfo<'info>,
+    #[account(
+        associated_token::mint = token_mint,
+        associated_token::authority = player,
+    )]
+    pub player_token_account: Account<'info, TokenAccount>,
+    pub depositor: Signer<'info>,
+    #[account(
+        associated_token::mint = token_mint,
+        associated_token::authority = depositor,
+    )]
+    pub depositor_token_account: Account<'info, TokenAccount>,
+    pub token_program: Program<'info, Token>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+#[instruction(amount: u64)]
+pub struct WithdrawPlayer<'info> {
+    #[account(
+        constraint = (signer.key() == oracle.authority && player.bot_auth) ||
+                     (signer.key() == player.owner)
+                     @ ErrorCode::UnauthorizedPlayer,
+    )]
+    pub player: Account<'info, Player>,
+    pub signer: Signer<'info>,
+    #[account(
+        seeds = [b"oracle"],
+        bump,
+    )]
+    pub oracle: Account<'info, Oracle>,
+    pub token_mint: Account<'info, Mint>,
+    #[account(
+        associated_token::mint = token_mint,
+        associated_token::authority = player_vault,
+    )]
+    pub player_token_account: Account<'info, TokenAccount>,
+    #[account(
+        seeds = [b"player_vault", player.key().as_ref(), token_mint.key().as_ref()],
+        bump,
+    )]
+    pub player_vault: AccountInfo<'info>,
+    pub receiver: AccountInfo<'info>,
+    #[account(
+        associated_token::mint = token_mint,
+        associated_token::authority = receiver,
+    )]
+    pub receiver_token_account: Account<'info, TokenAccount>,
+    pub token_program: Program<'info, Token>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
+    pub system_program: Program<'info, System>,
+}
