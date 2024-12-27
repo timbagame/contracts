@@ -80,4 +80,12 @@ pub mod coinflip {
     ) -> Result<()> {
         instructions::initialize_player::handler_bot(ctx, bot_type, bot_seed)
     }
+
+    pub fn update_player_bot(
+        ctx: Context<UpdatePlayerBot>,
+        owner: Pubkey,
+        bot_auth: bool,
+    ) -> Result<()> {
+        instructions::update_player_bot::handler(ctx, owner, bot_auth)
+    }
 }
