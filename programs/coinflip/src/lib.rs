@@ -69,17 +69,15 @@ pub mod coinflip {
         instructions::claim_win::handler(ctx)
     }
 
-    pub fn initialize_player(ctx: Context<InitializePlayer>, owner: Pubkey) -> Result<()> {
-        instructions::initialize_player::handler_regular(ctx, owner)
+    pub fn initialize_player(ctx: Context<InitializePlayer>) -> Result<()> {
+        instructions::initialize_player::handler_regular(ctx)
     }
 
     pub fn initialize_player_bot(
         ctx: Context<InitializePlayerBot>,
-        owner: Pubkey,
         bot_type: u8,
         bot_seed: String,
-        bot_auth: bool,
     ) -> Result<()> {
-        instructions::initialize_player::handler_bot(ctx, owner, bot_type, bot_seed, bot_auth)
+        instructions::initialize_player::handler_bot(ctx, bot_type, bot_seed)
     }
 }

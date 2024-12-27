@@ -6,9 +6,6 @@ use crate::error::ErrorCode;
 use crate::state::*;
 
 #[derive(Accounts)]
-#[instruction(
-    owner: Pubkey,
-)]
 pub struct InitializePlayer<'info> {
     #[account(
         init,
@@ -22,14 +19,13 @@ pub struct InitializePlayer<'info> {
             1 + // bot_auth
             8 + // games_won
             8, // games_lost
-        seeds = [b"player", owner.as_ref()],
+        seeds = [b"player", owner.key().as_ref()],
         bump,
-        constraint = owner == signer.key() || owner == Pubkey::default() @ ErrorCode::UnauthorizedOwner,
     )]
     pub player: Account<'info, Player>,
     #[account(mut)]
     pub payer: Signer<'info>,
-    pub signer: Signer<'info>,
+    pub owner: Signer<'info>,
     #[account(
         seeds = [b"oracle"],
         bump,
@@ -206,7 +202,7 @@ pub struct InitializeGame<'info> {
     #[account(
         constraint = (signer.key() == oracle.authority && creator.bot_auth) ||
                      (signer.key() == creator.owner)
-                     @ ErrorCode::UnauthorizedCreator,
+                     @ ErrorCode::UnauthorizedPlayer,
     )]
     pub creator: Account<'info, Player>,
     pub signer: Signer<'info>,
@@ -246,13 +242,13 @@ pub struct JoinGame<'info> {
         constraint = Clock::get().unwrap().unix_timestamp < game.created_at + game.timeout @ ErrorCode::TimeoutReached,
         constraint = !game.players.contains(&player.key()) @ ErrorCode::AlreadyJoined,
         constraint = game.players.len() < (game.max_players as usize) @ ErrorCode::GameFull,
-        constraint = !game.is_private || signer.key() == oracle.authority @ ErrorCode::UnauthorizedJoin
+        constraint = !game.is_private || signer.key() == oracle.authority @ ErrorCode::UnauthorizedPlayer
     )]
     pub game: Account<'info, Game>,
     #[account(
         constraint = (signer.key() == oracle.authority && player.bot_auth) ||
                      (signer.key() == player.owner)
-                     @ ErrorCode::UnauthorizedCreator,
+                     @ ErrorCode::UnauthorizedPlayer,
     )]
     pub player: Account<'info, Player>,
     pub signer: Signer<'info>,
@@ -311,7 +307,7 @@ pub struct ClaimWin<'info> {
         seeds = [b"game", game_id.to_le_bytes().as_ref()],
         bump,
         constraint = game.status == GameStatus::ReadyForClaim @ ErrorCode::GameNotReadyForClaim,
-        constraint = game.winner == player.id @ ErrorCode::NotWinner,
+        constraint = game.winner == player.key() @ ErrorCode::NotWinner,
     )]
     pub game: Account<'info, Game>,
     #[account(
@@ -342,23 +338,22 @@ pub struct ClaimWin<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(game_id: u64, telegram_id: String)]
+#[instruction(game_id: u64, player_key: Pubkey)]
 pub struct UnjoinGame<'info> {
     #[account(
         seeds = [b"game", game_id.to_le_bytes().as_ref()],
         bump,
         constraint = game.status != GameStatus::ReadyForClaim @ ErrorCode::GameReadyForClaim,
         constraint = game.status != GameStatus::Completed @ ErrorCode::GameCompleted,
-        constraint = game.players.contains(&player.id) @ ErrorCode::InvalidPlayer,
+        constraint = game.players.contains(&player.key()) @ ErrorCode::InvalidPlayer,
         constraint = !game.is_ready_for_oracle() @ ErrorCode::GameReadyForOracle
     )]
     pub game: Account<'info, Game>,
     #[account(
-        seeds = [b"telegram_user", telegram_id.as_bytes()],
-        bump,
+        address = player_key,
         constraint = (signer.key() == oracle.authority && player.bot_auth) ||
                      (signer.key() == player.owner)
-                     @ ErrorCode::UnauthorizedJoin
+                     @ ErrorCode::UnauthorizedPlayer
     )]
     pub player: Account<'info, Player>,
     pub signer: Signer<'info>,
