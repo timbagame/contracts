@@ -16,9 +16,13 @@ pub struct InitializePlayer<'info> {
         space = 8 + // discriminator
             8 + // id
             32 + // owner
+            1 + // is_bot
+            1 + // bot_type
+            32 + // bot_seed
+            1 + // bot_auth
             8 + // games_won
             8, // games_lost
-        seeds = [b"player", oracle.players_counter.to_le_bytes().as_ref()],
+        seeds = [b"player", owner.as_ref()],
         bump,
         constraint = owner == signer.key() || owner == Pubkey::default() @ ErrorCode::UnauthorizedOwner,
     )]
@@ -36,7 +40,7 @@ pub struct InitializePlayer<'info> {
 
 #[derive(Accounts)]
 #[instruction(
-    player_id: u64,
+    owner: Pubkey,
     bot_type: u8,
     bot_seed: String,
 )]
@@ -45,25 +49,27 @@ pub struct InitializePlayerBot<'info> {
         init,
         payer = payer,
         space = 8 + // discriminator
-                8 + // player_id
-                1 + // bot_type
-                32 + // bot_seed
-                1, // bot_auth
+            8 + // id
+            32 + // owner
+            1 + // is_bot
+            1 + // bot_type
+            32 + // bot_seed
+            1 + // bot_auth
+            8 + // games_won
+            8, // games_lost
         seeds = [b"player_bot", bot_type.to_le_bytes().as_ref(), bot_seed.as_bytes()],
         bump,
+        constraint = owner == signer.key() || owner == Pubkey::default() @ ErrorCode::UnauthorizedOwner,
     )]
-    pub player_bot: Account<'info, PlayerBot>,
+    pub player: Account<'info, Player>,
     #[account(mut)]
     pub payer: Signer<'info>,
+    pub signer: Signer<'info>,
     #[account(
         seeds = [b"oracle"],
         bump,
     )]
     pub oracle: Account<'info, Oracle>,
-    #[account(
-        address = oracle.authority
-    )]
-    pub authority: Signer<'info>,
     pub system_program: Program<'info, System>,
 }
 
