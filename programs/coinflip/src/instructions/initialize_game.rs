@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-use crate::state::{Game, GameType};
+use crate::state::GameType;
 
 pub fn handler(
     ctx: Context<super::InitializeGame>,
@@ -11,28 +11,23 @@ pub fn handler(
     timeout: i64,
     is_private: bool,
 ) -> Result<()> {
-    let mut new_game = Game {
-        id: ctx.accounts.oracle.games_counter,
-        creator: ctx.accounts.creator.key(),
-        game_type,
-        amount,
-        max_players,
-        min_players,
-        players: Vec::with_capacity(max_players as usize),
-        status: crate::state::GameStatus::Active,
-        token_mint: ctx.accounts.token_mint.key(),
-        created_at: Clock::get()?.unix_timestamp,
-        timeout,
-        is_private,
-        winner: Pubkey::default(),
-        ..Default::default()
-    };
+    let game = &mut ctx.accounts.game;
+    game.id = ctx.accounts.oracle.games_counter;
+    game.creator = ctx.accounts.creator.key();
+    game.game_type = game_type;
+    game.amount = amount;
+    game.max_players = max_players;
+    game.min_players = min_players;
+    game.players = Vec::with_capacity(max_players as usize);
+    game.status = crate::state::GameStatus::Active;
+    game.token_mint = ctx.accounts.token_mint.key();
+    game.created_at = Clock::get()?.unix_timestamp;
+    game.timeout = timeout;
+    game.is_private = is_private;
 
-    if game_type == GameType::Coinflip {
-        new_game.players.push(ctx.accounts.creator.key());
+    if game.game_type == GameType::Coinflip {
+        game.players.push(ctx.accounts.creator.key());
     }
-
-    *ctx.accounts.game = new_game;
 
     // Increment game counter
     let oracle = &mut ctx.accounts.oracle;
