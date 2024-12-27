@@ -65,17 +65,19 @@ pub mod coinflip {
         instructions::set_oracle_hash::handler(ctx, hash_value)
     }
 
-    pub fn claim_win(ctx: Context<ClaimWin>, max_transfers: u64) -> Result<()> {
-        instructions::claim_win::handler(ctx, max_transfers)
+    pub fn claim_win(ctx: Context<ClaimWin>) -> Result<()> {
+        instructions::claim_win::handler(ctx)
     }
 
-    pub fn initialize_player(
-        ctx: Context<InitializePlayer>,
-        owner: Pubkey,
+    pub fn initialize_player(ctx: Context<InitializePlayer>, owner: Pubkey) -> Result<()> {
+        instructions::initialize_player::handler(ctx, owner)
+    }
+
+    pub fn initialize_player_bot(
+        ctx: Context<InitializePlayerBot>,
         bot_type: u8,
         bot_seed: String,
-        bot_auth: bool,
     ) -> Result<()> {
-        instructions::initialize_player::handler(ctx, owner, bot_type, bot_seed, bot_auth)
+        instructions::initialize_player_bot::handler(ctx, bot_type, bot_seed)
     }
 }
