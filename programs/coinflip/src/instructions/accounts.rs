@@ -78,15 +78,15 @@ pub struct UpdatePlayerBot<'info> {
         mut,
         seeds = [b"player_bot", bot_id.to_le_bytes().as_ref(), bot_seed.as_bytes()],
         bump,
+        constraint = player.bot_auth && signer.key() == oracle.authority || signer.key() == player.owner @ ErrorCode::UnauthorizedPlayer
     )]
     pub player: Account<'info, Player>,
     #[account(
         seeds = [b"oracle"],
         bump,
-        constraint = oracle.authority == authority.key()
     )]
     pub oracle: Account<'info, Oracle>,
-    pub authority: Signer<'info>,
+    pub signer: Signer<'info>,
 }
 
 #[derive(Accounts)]
