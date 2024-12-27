@@ -133,7 +133,7 @@ pub struct UpdateOracle<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(ticker: String, enabled: bool)]
+#[instruction(token_mint_key: Pubkey, ticker: String, enabled: bool)]
 pub struct InitializeToken<'info> {
     #[account(
         init,
@@ -146,6 +146,9 @@ pub struct InitializeToken<'info> {
         bump
     )]
     pub game_token: Account<'info, GameToken>,
+    #[account(
+        address = token_mint_key,
+    )]
     pub token_mint: Account<'info, Mint>,
     #[account(
         associated_token::mint = token_mint,
@@ -194,6 +197,7 @@ pub struct UpdateToken<'info> {
     timeout: i64,
     is_private: bool,
     player_key: Pubkey,
+    token_mint_key: Pubkey,
 )]
 pub struct InitializeGame<'info> {
     #[account(
@@ -238,6 +242,9 @@ pub struct InitializeGame<'info> {
         bump
     )]
     pub oracle: Account<'info, Oracle>,
+    #[account(
+        address = token_mint_key,
+    )]
     pub token_mint: Account<'info, Mint>,
     #[account(
         seeds = [b"token", token_mint.key().as_ref()],
@@ -419,12 +426,15 @@ pub struct UnjoinGame<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(player_key: Pubkey, amount: u64)]
+#[instruction(depositor_address: Pubkey, player_key: Pubkey, token_mint_key: Pubkey, amount: u64)]
 pub struct DepositPlayer<'info> {
     #[account(
         address = player_key,
     )]
     pub player: Account<'info, Player>,
+    #[account(
+        address = token_mint_key,
+    )]
     pub token_mint: Account<'info, Mint>,
     #[account(
         seeds = [b"token", token_mint.key().as_ref()],
@@ -442,6 +452,9 @@ pub struct DepositPlayer<'info> {
         associated_token::authority = player,
     )]
     pub player_token_account: Account<'info, TokenAccount>,
+    #[account(
+        address = depositor_address,
+    )]
     pub depositor: Signer<'info>,
     #[account(
         associated_token::mint = token_mint,
@@ -454,7 +467,7 @@ pub struct DepositPlayer<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(player_key: Pubkey, amount: u64)]
+#[instruction(receiver_address: Pubkey, player_key: Pubkey, token_mint_key: Pubkey, amount: u64)]
 pub struct WithdrawPlayer<'info> {
     #[account(
         address = player_key,
@@ -469,6 +482,9 @@ pub struct WithdrawPlayer<'info> {
         bump,
     )]
     pub oracle: Account<'info, Oracle>,
+    #[account(
+        address = token_mint_key,
+    )]
     pub token_mint: Account<'info, Mint>,
     #[account(
         associated_token::mint = token_mint,
@@ -480,10 +496,62 @@ pub struct WithdrawPlayer<'info> {
         bump,
     )]
     pub player_vault: AccountInfo<'info>,
+    #[account(
+        address = receiver_address,
+    )]
     pub receiver: AccountInfo<'info>,
     #[account(
         associated_token::mint = token_mint,
         associated_token::authority = receiver,
+    )]
+    pub receiver_token_account: Account<'info, TokenAccount>,
+    pub token_program: Program<'info, Token>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+#[instruction(receiver_key: Pubkey, tipper_key: Pubkey, token_mint_key: Pubkey, amount: u64)]
+pub struct TipPlayer<'info> {
+    #[account(
+        address = tipper_key,
+        constraint = (signer.key() == oracle.authority && tipper.bot_auth) ||
+                     (signer.key() == tipper.owner)
+                     @ ErrorCode::UnauthorizedPlayer,
+    )]
+    pub tipper: Account<'info, Player>,
+    #[account(
+        address = receiver_key,
+    )]
+    pub receiver: Account<'info, Player>,
+    pub signer: Signer<'info>,
+    #[account(
+        seeds = [b"oracle"],
+        bump,
+    )]
+    pub oracle: Account<'info, Oracle>,
+    #[account(
+        address = token_mint_key,
+    )]
+    pub token_mint: Account<'info, Mint>,
+    #[account(
+        seeds = [b"player_vault", tipper.key().as_ref(), token_mint.key().as_ref()],
+        bump,
+    )]
+    pub tipper_vault: AccountInfo<'info>,
+    #[account(
+        seeds = [b"player_vault", receiver.key().as_ref(), token_mint.key().as_ref()],
+        bump,
+    )]
+    pub receiver_vault: AccountInfo<'info>,
+    #[account(
+        associated_token::mint = token_mint,
+        associated_token::authority = tipper_vault,
+    )]
+    pub tipper_token_account: Account<'info, TokenAccount>,
+    #[account(
+        associated_token::mint = token_mint,
+        associated_token::authority = receiver_vault,
     )]
     pub receiver_token_account: Account<'info, TokenAccount>,
     pub token_program: Program<'info, Token>,
