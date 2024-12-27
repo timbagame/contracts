@@ -8,9 +8,6 @@ use crate::state::*;
 #[derive(Accounts)]
 #[instruction(
     owner: Pubkey,
-    bot_type: u8,
-    bot_seed: String,
-    bot_auth: bool,
 )]
 pub struct InitializePlayer<'info> {
     #[account(
@@ -20,14 +17,10 @@ pub struct InitializePlayer<'info> {
             8 + // id
             32 + // owner
             8 + // games_won
-            8 + // games_lost
-            1 + // bot_type
-            32 + // bot_seed
-            1, // bot_auth
+            8, // games_lost
         seeds = [b"player", oracle.players_counter.to_le_bytes().as_ref()],
         bump,
         constraint = owner == signer.key() || owner == Pubkey::default() @ ErrorCode::UnauthorizedOwner,
-        constraint = oracle.authority == signer.key() || bot_type == 0u8 && bot_seed.is_empty() && !bot_auth @ ErrorCode::UnauthorizedOracle
     )]
     pub player: Account<'info, Player>,
     #[account(mut)]
@@ -52,7 +45,10 @@ pub struct InitializePlayerBot<'info> {
         init,
         payer = payer,
         space = 8 + // discriminator
-                8, // player_id
+                8 + // player_id
+                1 + // bot_type
+                32 + // bot_seed
+                1, // bot_auth
         seeds = [b"player_bot", bot_type.to_le_bytes().as_ref(), bot_seed.as_bytes()],
         bump,
     )]
