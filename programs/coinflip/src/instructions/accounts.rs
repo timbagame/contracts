@@ -68,6 +68,29 @@ pub struct InitializePlayerBot<'info> {
 
 #[derive(Accounts)]
 #[instruction(
+    bot_type: u8,
+    bot_seed: String,
+    owner: Pubkey,
+    bot_auth: bool,
+)]
+pub struct UpdatePlayerBot<'info> {
+    #[account(
+        mut,
+        seeds = [b"player_bot", player.bot_type.to_le_bytes().as_ref(), player.bot_seed.as_bytes()],
+        bump,
+    )]
+    pub player: Account<'info, Player>,
+    #[account(
+        seeds = [b"oracle"],
+        bump,
+        constraint = oracle.authority == authority.key()
+    )]
+    pub oracle: Account<'info, Oracle>,
+    pub authority: Signer<'info>,
+}
+
+#[derive(Accounts)]
+#[instruction(
     fee_percentage: u8,
 )]
 pub struct InitializeOracle<'info> {
