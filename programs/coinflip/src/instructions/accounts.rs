@@ -419,8 +419,11 @@ pub struct UnjoinGame<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(amount: u64)]
+#[instruction(player_key: Pubkey, amount: u64)]
 pub struct DepositPlayer<'info> {
+    #[account(
+        address = player_key,
+    )]
     pub player: Account<'info, Player>,
     pub token_mint: Account<'info, Mint>,
     #[account(
@@ -451,9 +454,10 @@ pub struct DepositPlayer<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(amount: u64)]
+#[instruction(player_key: Pubkey, amount: u64)]
 pub struct WithdrawPlayer<'info> {
     #[account(
+        address = player_key,
         constraint = (signer.key() == oracle.authority && player.bot_auth) ||
                      (signer.key() == player.owner)
                      @ ErrorCode::UnauthorizedPlayer,
