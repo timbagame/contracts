@@ -119,7 +119,7 @@ pub struct InitializeToken<'info> {
             4 + ticker.len() + // ticker (String)
             32 + // token_mint
             1, // enabled
-        seeds = [b"game_token", token_mint.key().as_ref()],
+        seeds = [b"token", token_mint.key().as_ref()],
         bump
     )]
     pub game_token: Account<'info, GameToken>,
@@ -149,7 +149,7 @@ pub struct InitializeToken<'info> {
 pub struct UpdateToken<'info> {
     #[account(
         mut,
-        seeds = [b"game_token", game_token.token_mint.as_ref()],
+        seeds = [b"token", game_token.token_mint.as_ref()],
         bump
     )]
     pub game_token: Account<'info, GameToken>,
@@ -164,6 +164,7 @@ pub struct UpdateToken<'info> {
 
 #[derive(Accounts)]
 #[instruction(
+    creator_key: Pubkey,
     game_type: GameType,
     amount: u64,
     max_players: u16,
@@ -177,18 +178,19 @@ pub struct InitializeGame<'info> {
         payer = payer, 
         space = 8 + // discriminator
             8 + // id
-            8 + // creator
+            32 + // creator
             1 + // game_type
             8 + // amount
             2 + // max_players
             2 + // min_players
             4 + (32 * max_players as usize) + // players vec (4 for vec len + 32 bytes per pubkey)
-            8 + // winner
+            32 + // winner
             1 + // status
             32 + // token_mint
             8 + // created_at
             8 + // timeout
-            1, // is_private
+            1 + // is_private
+            8, // fee_amount
         seeds = [b"game", oracle.games_counter.to_le_bytes().as_ref()],
         bump,
         constraint = timeout > 0 @ ErrorCode::InvalidTimeout,
@@ -199,6 +201,7 @@ pub struct InitializeGame<'info> {
     )]
     pub game: Account<'info, Game>,
     #[account(
+        address = creator_key,
         constraint = (signer.key() == oracle.authority && creator.bot_auth) ||
                      (signer.key() == creator.owner)
                      @ ErrorCode::UnauthorizedPlayer,
@@ -214,7 +217,7 @@ pub struct InitializeGame<'info> {
     pub oracle: Account<'info, Oracle>,
     pub token_mint: Account<'info, Mint>,
     #[account(
-        seeds = [b"game_token", token_mint.key().as_ref()],
+        seeds = [b"token", token_mint.key().as_ref()],
         bump,
         constraint = game_token.enabled @ ErrorCode::TokenNotEnabled
     )]
@@ -232,19 +235,20 @@ pub struct InitializeGame<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(game_id: u64, telegram_id: String)]
+#[instruction(game_id: u64, player_key: Pubkey)]
 pub struct JoinGame<'info> {
     #[account(
         seeds = [b"game", game_id.to_le_bytes().as_ref()],
         bump,
         constraint = game.status == GameStatus::Active @ ErrorCode::InvalidGameStatus,
         constraint = Clock::get().unwrap().unix_timestamp < game.created_at + game.timeout @ ErrorCode::TimeoutReached,
-        constraint = !game.players.contains(&player.key()) @ ErrorCode::AlreadyJoined,
+        constraint = !game.players.contains(&player_key) @ ErrorCode::AlreadyJoined,
         constraint = game.players.len() < (game.max_players as usize) @ ErrorCode::GameFull,
         constraint = !game.is_private || signer.key() == oracle.authority @ ErrorCode::UnauthorizedPlayer
     )]
     pub game: Account<'info, Game>,
     #[account(
+        address = player_key,
         constraint = (signer.key() == oracle.authority && player.bot_auth) ||
                      (signer.key() == player.owner)
                      @ ErrorCode::UnauthorizedPlayer,
@@ -252,9 +256,8 @@ pub struct JoinGame<'info> {
     pub player: Account<'info, Player>,
     pub signer: Signer<'info>,
     #[account(
-        seeds = [b"game_token", game.token_mint.as_ref()],
+        seeds = [b"token", game.token_mint.as_ref()],
         bump,
-        constraint = game_token.enabled @ ErrorCode::TokenNotEnabled
     )]
     pub game_token: Account<'info, GameToken>,
     #[account(
