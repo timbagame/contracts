@@ -99,10 +99,12 @@ pub struct UpdateOracle<'info> {
         mut,
         seeds = [b"oracle"],
         bump,
-        constraint = oracle.authority == old_authority.key() @ ErrorCode::UnauthorizedOracle,
         constraint = fee_percentage <= 5 @ ErrorCode::InvalidFeePercentage
     )]
     pub oracle: Account<'info, Oracle>,
+    #[account(
+        address = oracle.authority,
+    )]
     pub old_authority: Signer<'info>,
     pub new_authority: Signer<'info>,
 }
