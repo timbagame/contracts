@@ -59,7 +59,6 @@ pub struct Game {
     pub created_at: i64,
     pub timeout: i64,
     pub is_private: bool,
-    pub processed_transfers: usize,
 }
 
 impl Game {
@@ -77,13 +76,13 @@ pub struct Player {
     pub owner: Pubkey,
     pub games_won: u64,
     pub games_lost: u64,
-    pub bot_type: u8,
-    pub bot_seed: String,
-    pub bot_auth: bool,
 }
 
 #[account]
 #[derive(Default)]
 pub struct PlayerBot {
     pub player_id: u64,
+    pub bot_type: u8,
+    pub bot_seed: String,
+    pub bot_auth: bool,
 }
