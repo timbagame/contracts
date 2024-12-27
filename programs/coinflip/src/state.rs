@@ -74,15 +74,10 @@ impl Game {
 pub struct Player {
     pub id: u64,
     pub owner: Pubkey,
-    pub games_won: u64,
-    pub games_lost: u64,
-}
-
-#[account]
-#[derive(Default)]
-pub struct PlayerBot {
-    pub player_id: u64,
+    pub is_bot: bool,
     pub bot_type: u8,
     pub bot_seed: String,
     pub bot_auth: bool,
+    pub games_won: u64,
+    pub games_lost: u64,
 }
