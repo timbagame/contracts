@@ -88,4 +88,12 @@ pub mod coinflip {
     ) -> Result<()> {
         instructions::update_player_bot::handler(ctx, owner, bot_auth)
     }
+
+    pub fn deposit_player(ctx: Context<DepositPlayer>, amount: u64) -> Result<()> {
+        instructions::deposit_player::handler(ctx, amount)
+    }
+
+    pub fn withdraw_player(ctx: Context<WithdrawPlayer>, amount: u64) -> Result<()> {
+        instructions::withdraw_player::handler(ctx, amount)
+    }
 }
