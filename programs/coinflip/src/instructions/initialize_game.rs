@@ -13,7 +13,7 @@ pub fn handler(
 ) -> Result<()> {
     let game = &mut ctx.accounts.game;
     game.id = ctx.accounts.oracle.games_counter;
-    game.creator = ctx.accounts.creator.key();
+    game.creator = ctx.accounts.player.key();
     game.game_type = game_type;
     game.amount = amount;
     game.max_players = max_players;
@@ -26,7 +26,7 @@ pub fn handler(
     game.is_private = is_private;
 
     if game.game_type == GameType::Coinflip {
-        game.players.push(ctx.accounts.creator.key());
+        game.players.push(ctx.accounts.player.key());
     }
 
     // Increment game counter
