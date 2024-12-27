@@ -164,7 +164,7 @@ pub struct UpdateToken<'info> {
 
 #[derive(Accounts)]
 #[instruction(
-    creator_key: Pubkey,
+    player_key: Pubkey,
     game_type: GameType,
     amount: u64,
     max_players: u16,
@@ -201,12 +201,12 @@ pub struct InitializeGame<'info> {
     )]
     pub game: Account<'info, Game>,
     #[account(
-        address = creator_key,
-        constraint = (signer.key() == oracle.authority && creator.bot_auth) ||
-                     (signer.key() == creator.owner)
+        address = player_key,
+        constraint = (signer.key() == oracle.authority && player.bot_auth) ||
+                     (signer.key() == player.owner)
                      @ ErrorCode::UnauthorizedPlayer,
     )]
-    pub creator: Account<'info, Player>,
+    pub player: Account<'info, Player>,
     pub signer: Signer<'info>,
     #[account(mut)]
     pub payer: Signer<'info>,
@@ -224,10 +224,25 @@ pub struct InitializeGame<'info> {
     pub game_token: Account<'info, GameToken>,
     #[account(
         associated_token::mint = token_mint,
-        associated_token::authority = creator,
-        constraint = creator_token_account.amount >= amount @ ErrorCode::InsufficientVaultBalance
+        associated_token::authority = player_vault,
+        constraint = player_token_account.amount >= amount @ ErrorCode::InsufficientVaultBalance
     )]
-    pub creator_token_account: Account<'info, TokenAccount>,
+    pub player_token_account: Account<'info, TokenAccount>,
+    #[account(
+        associated_token::mint = token_mint,
+        associated_token::authority = game_vault,
+    )]
+    pub game_token_account: Account<'info, TokenAccount>,
+    #[account(
+        seeds = [b"game_vault", token_mint.key().as_ref()],
+        bump,
+    )]
+    pub game_vault: AccountInfo<'info>,
+    #[account(
+        seeds = [b"player_vault", player.key().as_ref(), token_mint.key().as_ref()],
+        bump,
+    )]
+    pub player_vault: AccountInfo<'info>,
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
     pub associated_token_program: Program<'info, AssociatedToken>,
