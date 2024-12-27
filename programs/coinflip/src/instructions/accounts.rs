@@ -244,7 +244,7 @@ pub struct JoinGame<'info> {
         bump,
         constraint = game.status == GameStatus::Active @ ErrorCode::InvalidGameStatus,
         constraint = Clock::get().unwrap().unix_timestamp < game.created_at + game.timeout @ ErrorCode::TimeoutReached,
-        constraint = !game.players.contains(&player.id) @ ErrorCode::AlreadyJoined,
+        constraint = !game.players.contains(&player.key()) @ ErrorCode::AlreadyJoined,
         constraint = game.players.len() < (game.max_players as usize) @ ErrorCode::GameFull,
         constraint = !game.is_private || signer.key() == oracle.authority @ ErrorCode::UnauthorizedJoin
     )]
@@ -268,6 +268,11 @@ pub struct JoinGame<'info> {
         constraint = game.game_type != GameType::Coinflip || player_token_account.amount >= game.amount @ ErrorCode::InsufficientVaultBalance
     )]
     pub player_token_account: Account<'info, TokenAccount>,
+    #[account(
+        associated_token::mint = game.token_mint,
+        associated_token::authority = oracle
+    )]
+    pub oracle_token_account: Account<'info, TokenAccount>,
     #[account(
         seeds = [b"oracle"],
         bump
