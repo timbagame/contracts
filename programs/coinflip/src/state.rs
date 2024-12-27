@@ -47,18 +47,19 @@ impl Default for GameStatus {
 #[derive(Default)]
 pub struct Game {
     pub id: u64,
-    pub creator: u64,
+    pub creator: Pubkey,
     pub game_type: GameType,
     pub amount: u64,
     pub max_players: u16,
     pub min_players: u16,
-    pub players: Vec<u64>,
-    pub winner: u64,
+    pub players: Vec<Pubkey>,
+    pub winner: Pubkey,
     pub status: GameStatus,
     pub token_mint: Pubkey,
     pub created_at: i64,
     pub timeout: i64,
     pub is_private: bool,
+    pub fee_amount: u64,
 }
 
 impl Game {

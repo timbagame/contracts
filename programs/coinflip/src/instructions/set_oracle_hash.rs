@@ -20,7 +20,7 @@ pub fn handler(ctx: Context<super::SetOracleHash>, hash_value: [u8; 32]) -> Resu
     let final_hash = hash(&combined).to_bytes();
 
     let random_index = (final_hash[0] as usize) % game.players.len();
-    game.winner = random_index as u64;
+    game.winner = game.players[random_index];
     game.status = GameStatus::ReadyForClaim;
 
     Ok(())

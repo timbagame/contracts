@@ -14,7 +14,7 @@ pub fn handler(
 ) -> Result<()> {
     let mut new_game = Game {
         id: ctx.accounts.oracle.games_counter,
-        creator: ctx.accounts.creator.id,
+        creator: ctx.accounts.creator.key(),
         game_type,
         amount,
         max_players,
@@ -25,11 +25,12 @@ pub fn handler(
         created_at: Clock::get()?.unix_timestamp,
         timeout,
         is_private,
+        winner: Pubkey::default(),
         ..Default::default()
     };
 
     if game_type == GameType::Coinflip {
-        new_game.players.push(ctx.accounts.creator.id);
+        new_game.players.push(ctx.accounts.creator.key());
     }
 
     *ctx.accounts.game = new_game;
