@@ -68,15 +68,15 @@ pub struct InitializePlayerBot<'info> {
 
 #[derive(Accounts)]
 #[instruction(
-    bot_id: u8,
-    bot_seed: String,
     owner: Pubkey,
     bot_auth: bool,
+    bot_id: u8,
+    bot_seed: String,
 )]
 pub struct UpdatePlayerBot<'info> {
     #[account(
         mut,
-        seeds = [b"player_bot", player.bot_id.to_le_bytes().as_ref(), player.bot_seed.as_bytes()],
+        seeds = [b"player_bot", bot_id.to_le_bytes().as_ref(), bot_seed.as_bytes()],
         bump,
     )]
     pub player: Account<'info, Player>,
@@ -187,13 +187,13 @@ pub struct UpdateToken<'info> {
 
 #[derive(Accounts)]
 #[instruction(
-    player_key: Pubkey,
     game_type: GameType,
     amount: u64,
     max_players: u16,
     min_players: u16,
     timeout: i64,
     is_private: bool,
+    player_key: Pubkey,
 )]
 pub struct InitializeGame<'info> {
     #[account(
