@@ -46,8 +46,6 @@ pub enum ErrorCode {
     UnauthorizedCreator,
     #[msg("Unauthorized join attempt - must be owner or authorized operator")]
     UnauthorizedJoin,
-    #[msg("Invalid telegram group id")]
-    InvalidTelegramGroupId,
     #[msg("Only the oracle can perform this action")]
     UnauthorizedOracle,
     #[msg("Token is not enabled for use in games")]
