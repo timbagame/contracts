@@ -42,10 +42,8 @@ pub enum ErrorCode {
     InsufficientVaultBalance,
     #[msg("Cannot cancel game with players")]
     GameNotEmpty,
-    #[msg("Unauthorized creator")]
-    UnauthorizedCreator,
-    #[msg("Unauthorized join attempt - must be owner or authorized operator")]
-    UnauthorizedJoin,
+    #[msg("Unauthorized player")]
+    UnauthorizedPlayer,
     #[msg("Only the oracle can perform this action")]
     UnauthorizedOracle,
     #[msg("Token is not enabled for use in games")]
