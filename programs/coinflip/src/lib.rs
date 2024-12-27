@@ -75,10 +75,10 @@ pub mod coinflip {
 
     pub fn initialize_player_bot(
         ctx: Context<InitializePlayerBot>,
-        bot_type: u8,
+        bot_id: u8,
         bot_seed: String,
     ) -> Result<()> {
-        instructions::initialize_player::handler_bot(ctx, bot_type, bot_seed)
+        instructions::initialize_player::handler_bot(ctx, bot_id, bot_seed)
     }
 
     pub fn update_player_bot(

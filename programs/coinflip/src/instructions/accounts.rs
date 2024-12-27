@@ -32,7 +32,7 @@ pub struct InitializePlayer<'info> {
 
 #[derive(Accounts)]
 #[instruction(
-    bot_type: u8,
+    bot_id: u8,
     bot_seed: String,
 )]
 pub struct InitializePlayerBot<'info> {
@@ -43,12 +43,12 @@ pub struct InitializePlayerBot<'info> {
             8 + // id
             32 + // owner
             1 + // is_bot
-            1 + // bot_type
+            1 + // bot_id
             4 + bot_seed.len() + // bot_seed
             1 + // bot_auth
             8 + // games_won
             8, // games_lost
-        seeds = [b"player_bot", bot_type.to_le_bytes().as_ref(), bot_seed.as_bytes()],
+        seeds = [b"player_bot", bot_id.to_le_bytes().as_ref(), bot_seed.as_bytes()],
         bump,
     )]
     pub player: Account<'info, Player>,
@@ -68,7 +68,7 @@ pub struct InitializePlayerBot<'info> {
 
 #[derive(Accounts)]
 #[instruction(
-    bot_type: u8,
+    bot_id: u8,
     bot_seed: String,
     owner: Pubkey,
     bot_auth: bool,
@@ -76,7 +76,7 @@ pub struct InitializePlayerBot<'info> {
 pub struct UpdatePlayerBot<'info> {
     #[account(
         mut,
-        seeds = [b"player_bot", player.bot_type.to_le_bytes().as_ref(), player.bot_seed.as_bytes()],
+        seeds = [b"player_bot", player.bot_id.to_le_bytes().as_ref(), player.bot_seed.as_bytes()],
         bump,
     )]
     pub player: Account<'info, Player>,

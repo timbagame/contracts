@@ -76,7 +76,7 @@ pub struct Player {
     pub id: u64,
     pub owner: Pubkey,
     pub is_bot: bool,
-    pub bot_type: u8,
+    pub bot_id: u8,
     pub bot_seed: String,
     pub bot_auth: bool,
     pub games_won: u64,
