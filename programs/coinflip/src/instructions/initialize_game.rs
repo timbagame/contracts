@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use anchor_spl::token;
 
 use crate::state::GameType;
 
@@ -28,6 +29,19 @@ pub fn handler(
     if game.game_type == GameType::Coinflip {
         game.players.push(ctx.accounts.player.key());
     }
+
+    // Transfer tokens from creator to game account
+    token::transfer(
+        CpiContext::new(
+            ctx.accounts.token_program.to_account_info(),
+            token::Transfer {
+                from: ctx.accounts.player_token_account.to_account_info(),
+                to: ctx.accounts.game_token_account.to_account_info(),
+                authority: ctx.accounts.player_vault.to_account_info(),
+            },
+        ),
+        amount,
+    )?;
 
     // Increment game counter
     let oracle = &mut ctx.accounts.oracle;
