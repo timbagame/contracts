@@ -314,7 +314,7 @@ pub struct JoinGame<'info> {
         bump,
         constraint = game.status == GameStatus::Active @ ErrorCode::InvalidGameStatus,
         constraint = Clock::get().unwrap().unix_timestamp < game.created_at + game.timeout @ ErrorCode::TimeoutReached,
-        constraint = !game.players.contains(&player_key) @ ErrorCode::AlreadyJoined,
+        constraint = !game.players.contains(&player.key()) @ ErrorCode::AlreadyJoined,
         constraint = game.players.len() < (game.max_players as usize) @ ErrorCode::GameFull,
         constraint = !game.is_private || signer.key() == oracle.authority @ ErrorCode::UnauthorizedPlayer
     )]
@@ -498,7 +498,7 @@ pub struct DepositPlayer<'info> {
     pub player_vault: AccountInfo<'info>,
     #[account(
         associated_token::mint = token_mint,
-        associated_token::authority = player,
+        associated_token::authority = player_vault,
     )]
     pub player_token_account: Account<'info, TokenAccount>,
     #[account(
