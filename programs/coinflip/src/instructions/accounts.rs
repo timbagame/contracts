@@ -252,6 +252,7 @@ pub struct InitializeGame<'info> {
             8, // fee_amount
         seeds = [b"game", oracle.games_counter.to_le_bytes().as_ref()],
         bump,
+        constraint = amount >= game_token.min_amount @ ErrorCode::InvalidAmount,
         constraint = timeout > 0 @ ErrorCode::InvalidTimeout,
         constraint = min_players <= max_players && match game_type {
             GameType::Coinflip => max_players >= 2 && min_players >= 2,
@@ -387,6 +388,25 @@ pub struct SetOracleHash<'info> {
     pub oracle: Account<'info, Oracle>,
     #[account(address = oracle.authority)]
     pub authority: Signer<'info>,
+    #[account(
+        seeds = [b"game_vault", game.token_mint.as_ref()],
+        bump,
+    )]
+    pub game_vault: AccountInfo<'info>,
+    #[account(
+        associated_token::mint = game.token_mint,
+        associated_token::authority = game_vault
+    )]
+    pub game_token_account: Account<'info, TokenAccount>,
+    #[account(
+        associated_token::mint = game.token_mint,
+        associated_token::authority = oracle.authority
+    )]
+    pub oracle_token_account: Account<'info, TokenAccount>,
+    pub system_program: Program<'info, System>,
+    pub token_program: Program<'info, Token>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
+    pub rent: Sysvar<'info, Rent>,
 }
 
 #[derive(Accounts)]
@@ -407,12 +427,12 @@ pub struct ClaimWin<'info> {
     #[account(
         address = game.winner,
     )]
-    pub player: Account<'info, Player>,
+    pub winner: Account<'info, Player>,
     #[account(
-        seeds = [b"player_vault", player.key().as_ref(), game.token_mint.as_ref()],
+        seeds = [b"player_vault", winner.key().as_ref(), game.token_mint.as_ref()],
         bump,
     )]
-    pub player_vault: AccountInfo<'info>,
+    pub winner_vault: AccountInfo<'info>,
     #[account(
         seeds = [b"game_vault", game.token_mint.as_ref()],
         bump,
@@ -425,14 +445,9 @@ pub struct ClaimWin<'info> {
     pub game_token_account: Account<'info, TokenAccount>,
     #[account(
         associated_token::mint = game.token_mint,
-        associated_token::authority = player_vault
+        associated_token::authority = winner_vault
     )]
-    pub player_token_account: Account<'info, TokenAccount>,
-    #[account(
-        associated_token::mint = game.token_mint,
-        associated_token::authority = oracle.authority
-    )]
-    pub oracle_token_account: Account<'info, TokenAccount>,
+    pub winner_token_account: Account<'info, TokenAccount>,
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
     pub associated_token_program: Program<'info, AssociatedToken>,
