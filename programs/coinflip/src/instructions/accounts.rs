@@ -391,7 +391,6 @@ pub struct ClaimWin<'info> {
         seeds = [b"game", game_id.to_le_bytes().as_ref()],
         bump,
         constraint = game.status == GameStatus::ReadyForClaim @ ErrorCode::GameNotReadyForClaim,
-        constraint = game.winner == player.key() @ ErrorCode::NotWinner,
     )]
     pub game: Account<'info, Game>,
     #[account(
@@ -399,22 +398,35 @@ pub struct ClaimWin<'info> {
         bump
     )]
     pub oracle: Account<'info, Oracle>,
+    #[account(
+        address = game.winner,
+    )]
     pub player: Account<'info, Player>,
     #[account(
-        associated_token::mint = game.token_mint,
-        associated_token::authority = oracle
+        seeds = [b"player_vault", player.key().as_ref(), game.token_mint.key().as_ref()],
+        bump,
     )]
-    pub vault_token_account: Account<'info, TokenAccount>,
+    pub player_vault: AccountInfo<'info>,
+    #[account(
+        seeds = [b"game_vault", game.token_mint.key().as_ref()],
+        bump,
+    )]
+    pub game_vault: AccountInfo<'info>,
     #[account(
         associated_token::mint = game.token_mint,
-        associated_token::authority = player
+        associated_token::authority = game_vault
     )]
-    pub winner_token_account: Account<'info, TokenAccount>,
+    pub game_token_account: Account<'info, TokenAccount>,
+    #[account(
+        associated_token::mint = game.token_mint,
+        associated_token::authority = player_vault
+    )]
+    pub player_token_account: Account<'info, TokenAccount>,
     #[account(
         associated_token::mint = game.token_mint,
         associated_token::authority = oracle.authority
     )]
-    pub operator_token_account: Account<'info, TokenAccount>,
+    pub oracle_token_account: Account<'info, TokenAccount>,
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
     pub associated_token_program: Program<'info, AssociatedToken>,
