@@ -52,4 +52,6 @@ pub enum ErrorCode {
     InvalidFeePercentage,
     #[msg("Unauthorized owner")]
     UnauthorizedOwner,
+    #[msg("Invalid amount")]
+    InvalidAmount,
 }
