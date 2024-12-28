@@ -69,6 +69,10 @@ pub mod coinflip {
         instructions::unjoin_game::handler(ctx)
     }
 
+    pub fn cancel_game(ctx: Context<CancelGame>) -> Result<()> {
+        instructions::cancel_game::handler(ctx)
+    }
+
     pub fn set_oracle_hash(ctx: Context<SetOracleHash>, hash_value: [u8; 32]) -> Result<()> {
         instructions::set_oracle_hash::handler(ctx, hash_value)
     }

@@ -205,14 +205,10 @@ pub struct InitializeToken<'info> {
 pub struct UpdateToken<'info> {
     #[account(
         mut,
-        seeds = [b"token", token_mint.key().as_ref()],
+        seeds = [b"token", token_mint_key.as_ref()],
         bump
     )]
     pub game_token: Account<'info, GameToken>,
-    #[account(
-        address = token_mint_key,
-    )]
-    pub token_mint: Account<'info, Mint>,
     #[account(
         seeds = [b"oracle"],
         bump,
@@ -343,7 +339,7 @@ pub struct JoinGame<'info> {
     )]
     pub game_token: Account<'info, GameToken>,
     #[account(
-        seeds = [b"player_vault", player.key().as_ref(), game.token_mint.key().as_ref()],
+        seeds = [b"player_vault", player.key().as_ref(), game.token_mint.as_ref()],
         bump,
     )]
     pub player_vault: AccountInfo<'info>,
@@ -354,7 +350,7 @@ pub struct JoinGame<'info> {
     )]
     pub player_token_account: Account<'info, TokenAccount>,
     #[account(
-        seeds = [b"game_vault", game.token_mint.key().as_ref()],
+        seeds = [b"game_vault", game.token_mint.as_ref()],
         bump,
     )]
     pub game_vault: AccountInfo<'info>,
@@ -413,12 +409,12 @@ pub struct ClaimWin<'info> {
     )]
     pub player: Account<'info, Player>,
     #[account(
-        seeds = [b"player_vault", player.key().as_ref(), game.token_mint.key().as_ref()],
+        seeds = [b"player_vault", player.key().as_ref(), game.token_mint.as_ref()],
         bump,
     )]
     pub player_vault: AccountInfo<'info>,
     #[account(
-        seeds = [b"game_vault", game.token_mint.key().as_ref()],
+        seeds = [b"game_vault", game.token_mint.as_ref()],
         bump,
     )]
     pub game_vault: AccountInfo<'info>,
@@ -453,19 +449,19 @@ pub struct UnjoinGame<'info> {
         constraint = game.status != GameStatus::ReadyForClaim @ ErrorCode::GameReadyForClaim,
         constraint = game.status != GameStatus::Completed @ ErrorCode::GameCompleted,
         constraint = game.players.contains(&player.key()) @ ErrorCode::InvalidPlayer,
-        constraint = !game.is_ready_for_oracle() || Clock::get().unwrap().unix_timestamp >= game.created_at + game.timeout + oracle.oracle_buffer_time @ ErrorCode::GameReadyForOracle
+        constraint = game.should_allow_unjoin(oracle.oracle_buffer_time) @ ErrorCode::GameReadyForOracle
     )]
     pub game: Account<'info, Game>,
     #[account(
         address = player_key,
         constraint = (signer.key() == oracle.authority && player.bot_auth) ||
                      (signer.key() == player.owner)
-                     @ ErrorCode::UnauthorizedPlayer
+                     @ ErrorCode::UnauthorizedPlayer,
     )]
     pub player: Account<'info, Player>,
     pub signer: Signer<'info>,
     #[account(
-        seeds = [b"player_vault", player.key().as_ref(), game.token_mint.key().as_ref()],
+        seeds = [b"player_vault", player.key().as_ref(), game.token_mint.as_ref()],
         bump,
     )]
     pub player_vault: AccountInfo<'info>,
@@ -475,7 +471,7 @@ pub struct UnjoinGame<'info> {
     )]
     pub player_token_account: Account<'info, TokenAccount>,
     #[account(
-        seeds = [b"game_vault", game.token_mint.key().as_ref()],
+        seeds = [b"game_vault", game.token_mint.as_ref()],
         bump,
     )]
     pub game_vault: AccountInfo<'info>,
@@ -503,22 +499,18 @@ pub struct DepositPlayer<'info> {
     )]
     pub player: Account<'info, Player>,
     #[account(
-        address = token_mint_key,
-    )]
-    pub token_mint: Account<'info, Mint>,
-    #[account(
-        seeds = [b"token", token_mint.key().as_ref()],
+        seeds = [b"token", token_mint_key.as_ref()],
         bump,
         constraint = game_token.enabled @ ErrorCode::TokenNotEnabled
     )]
     pub game_token: Account<'info, GameToken>,
     #[account(
-        seeds = [b"player_vault", player.key().as_ref(), token_mint.key().as_ref()],
+        seeds = [b"player_vault", player.key().as_ref(), game_token.token_mint.as_ref()],
         bump,
     )]
     pub player_vault: AccountInfo<'info>,
     #[account(
-        associated_token::mint = token_mint,
+        associated_token::mint = game_token.token_mint,
         associated_token::authority = player_vault,
     )]
     pub player_token_account: Account<'info, TokenAccount>,
@@ -527,7 +519,7 @@ pub struct DepositPlayer<'info> {
     )]
     pub depositor: Signer<'info>,
     #[account(
-        associated_token::mint = token_mint,
+        associated_token::mint = game_token.token_mint,
         associated_token::authority = depositor,
     )]
     pub depositor_token_account: Account<'info, TokenAccount>,
@@ -603,35 +595,75 @@ pub struct TipPlayer<'info> {
     )]
     pub oracle: Account<'info, Oracle>,
     #[account(
-        address = token_mint_key,
-    )]
-    pub token_mint: Account<'info, Mint>,
-    #[account(
-        seeds = [b"player_vault", tipper.key().as_ref(), token_mint.key().as_ref()],
+        seeds = [b"player_vault", tipper.key().as_ref(), game_token.token_mint.as_ref()],
         bump,
     )]
     pub tipper_vault: AccountInfo<'info>,
     #[account(
-        seeds = [b"player_vault", receiver.key().as_ref(), token_mint.key().as_ref()],
+        seeds = [b"player_vault", receiver.key().as_ref(), game_token.token_mint.as_ref()],
         bump,
     )]
     pub receiver_vault: AccountInfo<'info>,
     #[account(
-        seeds = [b"token", token_mint.key().as_ref()],
+        seeds = [b"token", token_mint_key.as_ref()],
         bump,
         constraint = game_token.enabled @ ErrorCode::TokenNotEnabled
     )]
     pub game_token: Account<'info, GameToken>,
     #[account(
-        associated_token::mint = token_mint,
+        associated_token::mint = game_token.token_mint,
         associated_token::authority = tipper_vault,
     )]
     pub tipper_token_account: Account<'info, TokenAccount>,
     #[account(
-        associated_token::mint = token_mint,
+        associated_token::mint = game_token.token_mint,
         associated_token::authority = receiver_vault,
     )]
     pub receiver_token_account: Account<'info, TokenAccount>,
+    pub system_program: Program<'info, System>,
+    pub token_program: Program<'info, Token>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
+    pub rent: Sysvar<'info, Rent>,
+}
+
+#[derive(Accounts)]
+#[instruction(game_id: u64)]
+pub struct CancelGame<'info> {
+    #[account(
+        mut,
+        seeds = [b"game", game_id.to_le_bytes().as_ref()],
+        bump,
+        constraint = game.status != GameStatus::ReadyForClaim @ ErrorCode::GameReadyForClaim,
+        constraint = game.status != GameStatus::Completed @ ErrorCode::GameCompleted,
+        constraint = game.should_allow_unjoin(oracle.oracle_buffer_time) @ ErrorCode::GameReadyForOracle
+    )]
+    pub game: Account<'info, Game>,
+    #[account(
+        seeds = [b"oracle"],
+        bump,
+    )]
+    pub oracle: Account<'info, Oracle>,
+    #[account(
+        seeds = [b"player_vault", game.creator.as_ref(), game.token_mint.as_ref()],
+        bump,
+    )]
+    pub creator_vault: AccountInfo<'info>,
+    #[account(
+        associated_token::mint = game.token_mint,
+        associated_token::authority = creator_vault,
+    )]
+    pub creator_token_account: Account<'info, TokenAccount>,
+    #[account(
+        seeds = [b"game_vault", game.token_mint.as_ref()],
+        bump,
+    )]
+    pub game_vault: AccountInfo<'info>,
+    #[account(
+        mut,
+        associated_token::mint = game.token_mint,
+        associated_token::authority = game_vault,
+    )]
+    pub game_token_account: Account<'info, TokenAccount>,
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
     pub associated_token_program: Program<'info, AssociatedToken>,
