@@ -510,9 +510,10 @@ pub struct DepositPlayer<'info> {
         associated_token::authority = depositor,
     )]
     pub depositor_token_account: Account<'info, TokenAccount>,
+    pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
     pub associated_token_program: Program<'info, AssociatedToken>,
-    pub system_program: Program<'info, System>,
+    pub rent: Sysvar<'info, Rent>,
 }
 
 #[derive(Accounts)]
@@ -554,9 +555,10 @@ pub struct WithdrawPlayer<'info> {
         associated_token::authority = receiver,
     )]
     pub receiver_token_account: Account<'info, TokenAccount>,
+    pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
     pub associated_token_program: Program<'info, AssociatedToken>,
-    pub system_program: Program<'info, System>,
+    pub rent: Sysvar<'info, Rent>,
 }
 
 #[derive(Accounts)]
@@ -603,7 +605,8 @@ pub struct TipPlayer<'info> {
         associated_token::authority = receiver_vault,
     )]
     pub receiver_token_account: Account<'info, TokenAccount>,
+    pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
     pub associated_token_program: Program<'info, AssociatedToken>,
-    pub system_program: Program<'info, System>,
+    pub rent: Sysvar<'info, Rent>,
 }
