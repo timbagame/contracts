@@ -8,8 +8,7 @@ pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
 
     // If game is active and buffer time has passed, cancel it
     if game.status == GameStatus::Active
-        && Clock::get()?.unix_timestamp
-            >= game.created_at + game.timeout + ctx.accounts.oracle.oracle_buffer_time
+        && game.buffer_passed(ctx.accounts.oracle.oracle_buffer_time)
     {
         game.status = GameStatus::Cancelled;
     }

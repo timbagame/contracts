@@ -377,7 +377,7 @@ pub struct SetOracleHash<'info> {
         seeds = [b"game", game_id.to_le_bytes().as_ref()],
         bump,
         constraint = game.status == GameStatus::Active @ ErrorCode::GameNotActive,
-        constraint = game.is_ready_for_oracle() @ ErrorCode::GameNotFull
+        constraint = game.ready_for_oracle() @ ErrorCode::GameNotFull
     )]
     pub game: Account<'info, Game>,
     #[account(
@@ -449,7 +449,7 @@ pub struct UnjoinGame<'info> {
         constraint = game.status != GameStatus::ReadyForClaim @ ErrorCode::GameReadyForClaim,
         constraint = game.status != GameStatus::Completed @ ErrorCode::GameCompleted,
         constraint = game.players.contains(&player.key()) @ ErrorCode::InvalidPlayer,
-        constraint = game.should_allow_unjoin(oracle.oracle_buffer_time) @ ErrorCode::GameReadyForOracle
+        constraint = !game.ready_for_oracle() || game.buffer_passed(oracle.oracle_buffer_time) @ ErrorCode::GameReadyForOracle
     )]
     pub game: Account<'info, Game>,
     #[account(
@@ -635,7 +635,7 @@ pub struct CancelGame<'info> {
         bump,
         constraint = game.status != GameStatus::ReadyForClaim @ ErrorCode::GameReadyForClaim,
         constraint = game.status != GameStatus::Completed @ ErrorCode::GameCompleted,
-        constraint = game.should_allow_unjoin(oracle.oracle_buffer_time) @ ErrorCode::GameReadyForOracle
+        constraint = !game.ready_for_oracle() || game.buffer_passed(oracle.oracle_buffer_time) @ ErrorCode::GameReadyForOracle
     )]
     pub game: Account<'info, Game>,
     #[account(
