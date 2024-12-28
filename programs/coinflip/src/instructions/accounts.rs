@@ -102,6 +102,7 @@ pub struct UpdatePlayerBot<'info> {
 #[derive(Accounts)]
 #[instruction(
     fee_percentage: u8,
+    oracle_buffer_time: i64,
     authority_address: Pubkey,
 )]
 pub struct InitializeOracle<'info> {
@@ -110,12 +111,14 @@ pub struct InitializeOracle<'info> {
         payer = payer,
         space = 8 + // discriminator
             1 + // fee_percentage
+            8 + // oracle_buffer_time
             32 + // authority
             8 + // games_counter
             8, // players_counter
         seeds = [b"oracle"],
         bump,
-        constraint = fee_percentage <= 5 @ ErrorCode::InvalidFeePercentage
+        constraint = fee_percentage <= 5 @ ErrorCode::InvalidFeePercentage,
+        constraint = oracle_buffer_time >= 0 @ ErrorCode::InvalidTimeout
     )]
     pub oracle: Account<'info, Oracle>,
     #[account(mut)]
@@ -130,14 +133,16 @@ pub struct InitializeOracle<'info> {
 #[derive(Accounts)]
 #[instruction(
     fee_percentage: u8,
-    new_authority_address: Pubkey,
+    oracle_buffer_time: i64,
+    authority_address: Pubkey,
 )]
 pub struct UpdateOracle<'info> {
     #[account(
         mut,
         seeds = [b"oracle"],
         bump,
-        constraint = fee_percentage <= 5 @ ErrorCode::InvalidFeePercentage
+        constraint = fee_percentage <= 5 @ ErrorCode::InvalidFeePercentage,
+        constraint = oracle_buffer_time >= 0 @ ErrorCode::InvalidTimeout
     )]
     pub oracle: Account<'info, Oracle>,
     #[account(
@@ -145,7 +150,7 @@ pub struct UpdateOracle<'info> {
     )]
     pub old_authority: Signer<'info>,
     #[account(
-        address = new_authority_address,
+        address = authority_address,
     )]
     pub new_authority: Signer<'info>,
 }
@@ -442,12 +447,13 @@ pub struct ClaimWin<'info> {
 #[instruction(game_id: u64, player_key: Pubkey)]
 pub struct UnjoinGame<'info> {
     #[account(
+        mut,
         seeds = [b"game", game_id.to_le_bytes().as_ref()],
         bump,
         constraint = game.status != GameStatus::ReadyForClaim @ ErrorCode::GameReadyForClaim,
         constraint = game.status != GameStatus::Completed @ ErrorCode::GameCompleted,
         constraint = game.players.contains(&player.key()) @ ErrorCode::InvalidPlayer,
-        constraint = !game.is_ready_for_oracle() @ ErrorCode::GameReadyForOracle
+        constraint = !game.is_ready_for_oracle() || Clock::get().unwrap().unix_timestamp >= game.created_at + game.timeout + oracle.oracle_buffer_time @ ErrorCode::GameReadyForOracle
     )]
     pub game: Account<'info, Game>,
     #[account(

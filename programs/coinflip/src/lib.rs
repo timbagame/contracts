@@ -13,12 +13,20 @@ declare_id!("BzU9WwzqMoDSTTdTurweMLp2tAciFpZaNL2bPUitwNyy");
 pub mod coinflip {
     use super::*;
 
-    pub fn initialize_oracle(ctx: Context<InitializeOracle>, fee_percentage: u8) -> Result<()> {
-        instructions::initialize_oracle::handler(ctx, fee_percentage)
+    pub fn initialize_oracle(
+        ctx: Context<InitializeOracle>,
+        fee_percentage: u8,
+        oracle_buffer_time: i64,
+    ) -> Result<()> {
+        instructions::initialize_oracle::handler(ctx, fee_percentage, oracle_buffer_time)
     }
 
-    pub fn update_oracle(ctx: Context<UpdateOracle>, fee_percentage: u8) -> Result<()> {
-        instructions::update_oracle::handler(ctx, fee_percentage)
+    pub fn update_oracle(
+        ctx: Context<UpdateOracle>,
+        fee_percentage: u8,
+        oracle_buffer_time: i64,
+    ) -> Result<()> {
+        instructions::update_oracle::handler(ctx, fee_percentage, oracle_buffer_time)
     }
 
     pub fn initialize_token(
