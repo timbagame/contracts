@@ -65,9 +65,19 @@ pub struct Game {
 
 impl Game {
     pub fn is_ready_for_oracle(&self) -> bool {
-        self.players.len() >= self.min_players as usize
-            && (Clock::get().unwrap().unix_timestamp >= self.created_at + self.timeout
-                || self.players.len() == self.max_players as usize)
+        let current_time = Clock::get().unwrap().unix_timestamp;
+        let has_min_players = self.players.len() >= self.min_players as usize;
+        let has_max_players = self.players.len() == self.max_players as usize;
+        let timeout_met = current_time >= self.created_at + self.timeout;
+
+        (has_min_players && timeout_met) || has_max_players
+    }
+
+    pub fn should_allow_unjoin(&self, oracle_buffer_time: i64) -> bool {
+        let current_time = Clock::get().unwrap().unix_timestamp;
+        let buffer_passed = current_time >= self.created_at + self.timeout + oracle_buffer_time;
+
+        buffer_passed || self.is_ready_for_oracle()
     }
 }
 

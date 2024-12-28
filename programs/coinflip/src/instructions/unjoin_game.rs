@@ -1,7 +1,18 @@
 use anchor_lang::prelude::*;
+use anchor_spl::token;
+
+use crate::state::{GameStatus, GameType};
 
 pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
     let game = &mut ctx.accounts.game;
+
+    // If game is active and buffer time has passed, cancel it
+    if game.status == GameStatus::Active
+        && Clock::get()?.unix_timestamp
+            >= game.created_at + game.timeout + ctx.accounts.oracle.oracle_buffer_time
+    {
+        game.status = GameStatus::Cancelled;
+    }
 
     // Remove player
     if let Some(pos) = game
@@ -10,6 +21,21 @@ pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
         .position(|x| *x == ctx.accounts.player.key())
     {
         game.players.remove(pos);
+
+        // Return funds if it's a coinflip game
+        if game.game_type == GameType::Coinflip {
+            token::transfer(
+                CpiContext::new(
+                    ctx.accounts.token_program.to_account_info(),
+                    token::Transfer {
+                        from: ctx.accounts.game_token_account.to_account_info(),
+                        to: ctx.accounts.player_token_account.to_account_info(),
+                        authority: ctx.accounts.game_vault.to_account_info(),
+                    },
+                ),
+                game.amount,
+            )?;
+        }
     }
 
     Ok(())
