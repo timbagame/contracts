@@ -126,6 +126,7 @@ pub struct InitializeOracle<'info> {
 #[derive(Accounts)]
 #[instruction(
     fee_percentage: u8,
+    new_authority_address: Pubkey,
 )]
 pub struct UpdateOracle<'info> {
     #[account(
@@ -139,6 +140,9 @@ pub struct UpdateOracle<'info> {
         address = oracle.authority,
     )]
     pub old_authority: Signer<'info>,
+    #[account(
+        address = new_authority_address,
+    )]
     pub new_authority: Signer<'info>,
 }
 
@@ -149,7 +153,7 @@ pub struct InitializeToken<'info> {
         init,
         payer = payer,
         space = 8 + // discriminator
-            4 + ticker.len() + // ticker (String)
+            4 + ticker.len() + // ticker
             32 + // token_mint
             1, // enabled
         seeds = [b"token", token_mint.key().as_ref()],
@@ -161,8 +165,13 @@ pub struct InitializeToken<'info> {
     )]
     pub token_mint: Account<'info, Mint>,
     #[account(
+        seeds = [b"game_vault", token_mint.key().as_ref()],
+        bump,
+    )]
+    pub game_vault: AccountInfo<'info>,
+    #[account(
         associated_token::mint = token_mint,
-        associated_token::authority = game_token,
+        associated_token::authority = game_vault,
     )]
     pub token_account: Account<'info, TokenAccount>,
     #[account(mut)]
@@ -170,9 +179,11 @@ pub struct InitializeToken<'info> {
     #[account(
         seeds = [b"oracle"],
         bump,
-        constraint = oracle.authority == authority.key()
     )]
     pub oracle: Account<'info, Oracle>,
+    #[account(
+        address = oracle.authority,
+    )]
     pub authority: Signer<'info>,
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
