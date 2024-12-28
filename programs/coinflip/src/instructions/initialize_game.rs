@@ -14,7 +14,7 @@ pub fn handler(
 ) -> Result<()> {
     let game = &mut ctx.accounts.game;
     game.id = ctx.accounts.oracle.games_counter;
-    game.creator = ctx.accounts.player.key();
+    game.creator = ctx.accounts.creator.key();
     game.game_type = game_type;
     game.amount = amount;
     game.max_players = max_players;
@@ -27,7 +27,7 @@ pub fn handler(
     game.is_private = is_private;
 
     if game.game_type == GameType::Coinflip {
-        game.players.push(ctx.accounts.player.key());
+        game.players.push(ctx.accounts.creator.key());
     }
 
     // Transfer tokens from creator to game account
@@ -35,9 +35,9 @@ pub fn handler(
         CpiContext::new(
             ctx.accounts.token_program.to_account_info(),
             token::Transfer {
-                from: ctx.accounts.player_token_account.to_account_info(),
+                from: ctx.accounts.creator_token_account.to_account_info(),
                 to: ctx.accounts.game_token_account.to_account_info(),
-                authority: ctx.accounts.player_vault.to_account_info(),
+                authority: ctx.accounts.creator_vault.to_account_info(),
             },
         ),
         amount,
