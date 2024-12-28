@@ -13,8 +13,8 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
                 ctx.accounts.token_program.to_account_info(),
                 token::Transfer {
                     from: ctx.accounts.player_token_account.to_account_info(),
-                    to: ctx.accounts.oracle_token_account.to_account_info(),
-                    authority: ctx.accounts.player.to_account_info(),
+                    to: ctx.accounts.game_token_account.to_account_info(),
+                    authority: ctx.accounts.player_vault.to_account_info(),
                 },
             ),
             game.amount,

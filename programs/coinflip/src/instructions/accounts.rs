@@ -333,16 +333,26 @@ pub struct JoinGame<'info> {
     )]
     pub game_token: Account<'info, GameToken>,
     #[account(
+        seeds = [b"player_vault", player.key().as_ref(), game.token_mint.key().as_ref()],
+        bump,
+    )]
+    pub player_vault: AccountInfo<'info>,
+    #[account(
         associated_token::mint = game.token_mint,
-        associated_token::authority = player,
+        associated_token::authority = player_vault,
         constraint = game.game_type != GameType::Coinflip || player_token_account.amount >= game.amount @ ErrorCode::InsufficientVaultBalance
     )]
     pub player_token_account: Account<'info, TokenAccount>,
     #[account(
-        associated_token::mint = game.token_mint,
-        associated_token::authority = oracle
+        seeds = [b"game_vault", game.token_mint.key().as_ref()],
+        bump,
     )]
-    pub oracle_token_account: Account<'info, TokenAccount>,
+    pub game_vault: AccountInfo<'info>,
+    #[account(
+        associated_token::mint = game.token_mint,
+        associated_token::authority = game_vault,
+    )]
+    pub game_token_account: Account<'info, TokenAccount>,
     #[account(
         seeds = [b"oracle"],
         bump
