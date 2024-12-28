@@ -38,8 +38,8 @@ pub enum ErrorCode {
     InvalidPlayer,
     #[msg("Invalid timeout duration")]
     InvalidTimeout,
-    #[msg("Insufficient balance in vault")]
-    InsufficientVaultBalance,
+    #[msg("Insufficient balance")]
+    InsufficientBalance,
     #[msg("Cannot cancel game with players")]
     GameNotEmpty,
     #[msg("Unauthorized player")]
