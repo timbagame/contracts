@@ -6,6 +6,9 @@ use crate::error::ErrorCode;
 use crate::state::*;
 
 #[derive(Accounts)]
+#[instruction(
+    owner_address: Pubkey,
+)]
 pub struct InitializePlayer<'info> {
     #[account(
         init,
@@ -21,6 +24,9 @@ pub struct InitializePlayer<'info> {
     pub player: Account<'info, Player>,
     #[account(mut)]
     pub payer: Signer<'info>,
+    #[account(
+        address = owner_address,
+    )]
     pub owner: Signer<'info>,
     #[account(
         seeds = [b"oracle"],
@@ -92,6 +98,7 @@ pub struct UpdatePlayerBot<'info> {
 #[derive(Accounts)]
 #[instruction(
     fee_percentage: u8,
+    authority_address: Pubkey,
 )]
 pub struct InitializeOracle<'info> {
     #[account(
@@ -109,6 +116,9 @@ pub struct InitializeOracle<'info> {
     pub oracle: Account<'info, Oracle>,
     #[account(mut)]
     pub payer: Signer<'info>,
+    #[account(
+        address = authority_address,
+    )]
     pub authority: Signer<'info>,
     pub system_program: Program<'info, System>,
 }
