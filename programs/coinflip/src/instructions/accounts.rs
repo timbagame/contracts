@@ -192,20 +192,26 @@ pub struct InitializeToken<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(ticker: String, enabled: bool)]
+#[instruction(token_mint_key: Pubkey, ticker: String, enabled: bool)]
 pub struct UpdateToken<'info> {
     #[account(
         mut,
-        seeds = [b"token", game_token.token_mint.as_ref()],
+        seeds = [b"token", token_mint.key().as_ref()],
         bump
     )]
     pub game_token: Account<'info, GameToken>,
     #[account(
+        address = token_mint_key,
+    )]
+    pub token_mint: Account<'info, Mint>,
+    #[account(
         seeds = [b"oracle"],
         bump,
-        constraint = oracle.authority == authority.key()
     )]
     pub oracle: Account<'info, Oracle>,
+    #[account(
+        address = oracle.authority,
+    )]
     pub authority: Signer<'info>,
 }
 
