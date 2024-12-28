@@ -16,6 +16,10 @@ pub struct InitializePlayer<'info> {
         space = 8 + // discriminator
             8 + // id
             32 + // owner
+            1 + // is_bot
+            1 + // bot_id
+            4 + // bot_seed (String prefix)
+            1 + // bot_auth
             8 + // games_won
             8, // games_lost
         seeds = [b"player", owner.key().as_ref()],
@@ -310,6 +314,7 @@ pub struct InitializeGame<'info> {
 #[instruction(game_id: u64, player_key: Pubkey)]
 pub struct JoinGame<'info> {
     #[account(
+        mut,
         seeds = [b"game", game_id.to_le_bytes().as_ref()],
         bump,
         constraint = game.status == GameStatus::Active @ ErrorCode::InvalidGameStatus,
@@ -454,15 +459,25 @@ pub struct UnjoinGame<'info> {
     pub player: Account<'info, Player>,
     pub signer: Signer<'info>,
     #[account(
+        seeds = [b"player_vault", player.key().as_ref(), game.token_mint.key().as_ref()],
+        bump,
+    )]
+    pub player_vault: AccountInfo<'info>,
+    #[account(
         associated_token::mint = game.token_mint,
-        associated_token::authority = player
+        associated_token::authority = player_vault
     )]
     pub player_token_account: Account<'info, TokenAccount>,
     #[account(
-        associated_token::mint = game.token_mint,
-        associated_token::authority = player
+        seeds = [b"game_vault", game.token_mint.key().as_ref()],
+        bump,
     )]
-    pub vault_token_account: Account<'info, TokenAccount>,
+    pub game_vault: AccountInfo<'info>,
+    #[account(
+        associated_token::mint = game.token_mint,
+        associated_token::authority = game_vault
+    )]
+    pub game_token_account: Account<'info, TokenAccount>,
     #[account(
         seeds = [b"oracle"],
         bump
@@ -595,6 +610,12 @@ pub struct TipPlayer<'info> {
         bump,
     )]
     pub receiver_vault: AccountInfo<'info>,
+    #[account(
+        seeds = [b"token", token_mint.key().as_ref()],
+        bump,
+        constraint = game_token.enabled @ ErrorCode::TokenNotEnabled
+    )]
+    pub game_token: Account<'info, GameToken>,
     #[account(
         associated_token::mint = token_mint,
         associated_token::authority = tipper_vault,
