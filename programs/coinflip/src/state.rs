@@ -77,7 +77,7 @@ impl Game {
         let current_time = Clock::get().unwrap().unix_timestamp;
         let buffer_passed = current_time >= self.created_at + self.timeout + oracle_buffer_time;
 
-        buffer_passed || self.is_ready_for_oracle()
+        buffer_passed || !self.is_ready_for_oracle()
     }
 }
 
