@@ -96,4 +96,8 @@ pub mod coinflip {
     pub fn withdraw_player(ctx: Context<WithdrawPlayer>, amount: u64) -> Result<()> {
         instructions::withdraw_player::handler(ctx, amount)
     }
+
+    pub fn tip_player(ctx: Context<TipPlayer>, amount: u64) -> Result<()> {
+        instructions::tip_player::handler(ctx, amount)
+    }
 }
