@@ -288,7 +288,7 @@ pub struct InitializeGame<'info> {
     #[account(
         associated_token::mint = token_mint,
         associated_token::authority = player_vault,
-        constraint = player_token_account.amount >= amount @ ErrorCode::InsufficientVaultBalance
+        constraint = player_token_account.amount >= amount @ ErrorCode::InsufficientBalance
     )]
     pub player_token_account: Account<'info, TokenAccount>,
     #[account(
@@ -347,7 +347,7 @@ pub struct JoinGame<'info> {
     #[account(
         associated_token::mint = game.token_mint,
         associated_token::authority = player_vault,
-        constraint = game.game_type != GameType::Coinflip || player_token_account.amount >= game.amount @ ErrorCode::InsufficientVaultBalance
+        constraint = game.game_type != GameType::Coinflip || player_token_account.amount >= game.amount @ ErrorCode::InsufficientBalance
     )]
     pub player_token_account: Account<'info, TokenAccount>,
     #[account(
@@ -511,6 +511,7 @@ pub struct UnjoinGame<'info> {
 #[instruction(depositor_address: Pubkey, player_key: Pubkey, token_mint_key: Pubkey, amount: u64)]
 pub struct DepositPlayer<'info> {
     #[account(
+        constraint = amount > 0 @ ErrorCode::InvalidAmount,
         address = player_key,
     )]
     pub player: Account<'info, Player>,
@@ -537,6 +538,7 @@ pub struct DepositPlayer<'info> {
     #[account(
         associated_token::mint = game_token.token_mint,
         associated_token::authority = depositor,
+        constraint = depositor_token_account.amount >= amount @ ErrorCode::InsufficientBalance
     )]
     pub depositor_token_account: Account<'info, TokenAccount>,
     pub system_program: Program<'info, System>,
@@ -550,6 +552,7 @@ pub struct DepositPlayer<'info> {
 pub struct WithdrawPlayer<'info> {
     #[account(
         address = player_key,
+        constraint = amount > 0 @ ErrorCode::InvalidAmount,
         constraint = (signer.key() == oracle.authority && player.bot_auth) ||
                      (signer.key() == player.owner)
                      @ ErrorCode::UnauthorizedPlayer,
@@ -568,6 +571,7 @@ pub struct WithdrawPlayer<'info> {
     #[account(
         associated_token::mint = token_mint,
         associated_token::authority = player_vault,
+        constraint = player_token_account.amount >= amount @ ErrorCode::InsufficientBalance
     )]
     pub player_token_account: Account<'info, TokenAccount>,
     #[account(
@@ -595,6 +599,7 @@ pub struct WithdrawPlayer<'info> {
 pub struct TipPlayer<'info> {
     #[account(
         address = tipper_key,
+        constraint = amount > 0 @ ErrorCode::InvalidAmount,
         constraint = (signer.key() == oracle.authority && tipper.bot_auth) ||
                      (signer.key() == tipper.owner)
                      @ ErrorCode::UnauthorizedPlayer,
@@ -629,6 +634,7 @@ pub struct TipPlayer<'info> {
     #[account(
         associated_token::mint = game_token.token_mint,
         associated_token::authority = tipper_vault,
+        constraint = tipper_token_account.amount >= amount @ ErrorCode::InsufficientBalance
     )]
     pub tipper_token_account: Account<'info, TokenAccount>,
     #[account(
