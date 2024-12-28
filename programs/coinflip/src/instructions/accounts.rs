@@ -375,6 +375,7 @@ pub struct JoinGame<'info> {
 #[instruction(game_id: u64)]
 pub struct SetOracleHash<'info> {
     #[account(
+        mut,
         seeds = [b"game", game_id.to_le_bytes().as_ref()],
         bump,
         constraint = game.status == GameStatus::Active @ ErrorCode::GameNotActive,
