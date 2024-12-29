@@ -166,7 +166,7 @@ describe("coinflip", () => {
   }
 
   it("Initialize Oracle Successfully", async () => {
-    const { authority, feePercentage, oracleBufferTime } = await createOracleAccount();
+    const { authority, feePercentage, oracleBufferTime, gamesCounter, playersCounter } = await createOracleAccount();
 
     // Get the oracle PDA
     const [oraclePDA] = PublicKey.findProgramAddressSync(
@@ -178,7 +178,7 @@ describe("coinflip", () => {
     const oracleData = await program.account.oracle.fetch(oraclePDA);
 
     // Verify the oracle was initialized with correct values
-    expect(oracleData.authority.toString()).to.equal(authority.publicKey.toString());
+    expect(oracleData.authority.toString()).to.equal(authority.toString());
     expect(oracleData.feePercentage.toString()).to.equal(feePercentage.toString());
     expect(oracleData.oracleBufferTime.toString()).to.equal(oracleBufferTime.toString());
     expect(oracleData.gamesCounter.toString()).to.equal(gamesCounter.toString());
@@ -186,7 +186,7 @@ describe("coinflip", () => {
   });
 
   it("Initialize Game with Invalid Parameters", async () => {
-    await createConfigAccount();
+    await createOracleAccount();
     const {
       mint,
     } = await createSplTokenMint();
