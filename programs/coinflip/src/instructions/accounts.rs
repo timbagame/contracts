@@ -189,17 +189,17 @@ pub struct InitializeToken<'info> {
 
 #[derive(Accounts)]
 #[instruction(
-    token_mint_key: Pubkey,
     ticker: String,
     enabled: bool,
 )]
 pub struct UpdateToken<'info> {
     #[account(
         mut,
-        seeds = [b"token", token_mint_key.as_ref()],
+        seeds = [b"token", token_mint.key().as_ref()],
         bump
     )]
     pub game_token: Account<'info, GameToken>,
+    pub token_mint: Account<'info, Mint>,
     #[account(
         seeds = [b"oracle"],
         bump,
@@ -510,15 +510,15 @@ pub struct UnjoinGame<'info> {
 #[derive(Accounts)]
 #[instruction(
     amount: u64,
-    token_mint_key: Pubkey,
 )]
 pub struct DepositPlayer<'info> {
     #[account(
         constraint = amount > 0 @ ErrorCode::InvalidAmount,
     )]
     pub player: Account<'info, Player>,
+    pub token_mint: Account<'info, Mint>,
     #[account(
-        seeds = [b"token", token_mint_key.as_ref()],
+        seeds = [b"token", token_mint.key().as_ref()],
         bump,
         constraint = game_token.enabled @ ErrorCode::TokenNotEnabled
     )]
@@ -594,7 +594,6 @@ pub struct WithdrawPlayer<'info> {
 #[derive(Accounts)]
 #[instruction(
     amount: u64,
-    token_mint_key: Pubkey,
 )]
 pub struct TipPlayer<'info> {
     #[account(
@@ -623,8 +622,9 @@ pub struct TipPlayer<'info> {
         bump,
     )]
     pub receiver_vault: AccountInfo<'info>,
+    pub token_mint: Account<'info, Mint>,
     #[account(
-        seeds = [b"token", token_mint_key.as_ref()],
+        seeds = [b"token", token_mint.key().as_ref()],
         bump,
         constraint = game_token.enabled @ ErrorCode::TokenNotEnabled
     )]
