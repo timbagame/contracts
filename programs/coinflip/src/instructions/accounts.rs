@@ -6,9 +6,6 @@ use crate::error::ErrorCode;
 use crate::state::*;
 
 #[derive(Accounts)]
-#[instruction(
-    owner_address: Pubkey,
-)]
 pub struct InitializePlayer<'info> {
     #[account(
         init,
@@ -28,9 +25,6 @@ pub struct InitializePlayer<'info> {
     pub player: Account<'info, Player>,
     #[account(mut)]
     pub payer: Signer<'info>,
-    #[account(
-        address = owner_address,
-    )]
     pub owner: Signer<'info>,
     #[account(
         seeds = [b"oracle"],
@@ -103,7 +97,6 @@ pub struct UpdatePlayerBot<'info> {
 #[instruction(
     fee_percentage: u8,
     oracle_buffer_time: i64,
-    authority_address: Pubkey,
 )]
 pub struct InitializeOracle<'info> {
     #[account(
@@ -123,9 +116,6 @@ pub struct InitializeOracle<'info> {
     pub oracle: Account<'info, Oracle>,
     #[account(mut)]
     pub payer: Signer<'info>,
-    #[account(
-        address = authority_address,
-    )]
     pub authority: Signer<'info>,
     pub system_program: Program<'info, System>,
 }
@@ -134,7 +124,6 @@ pub struct InitializeOracle<'info> {
 #[instruction(
     fee_percentage: u8,
     oracle_buffer_time: i64,
-    authority_address: Pubkey,
 )]
 pub struct UpdateOracle<'info> {
     #[account(
@@ -149,15 +138,11 @@ pub struct UpdateOracle<'info> {
         address = oracle.authority,
     )]
     pub old_authority: Signer<'info>,
-    #[account(
-        address = authority_address,
-    )]
     pub new_authority: Signer<'info>,
 }
 
 #[derive(Accounts)]
 #[instruction(
-    token_mint_key: Pubkey,
     ticker: String,
     enabled: bool,
 )]
@@ -173,9 +158,6 @@ pub struct InitializeToken<'info> {
         bump
     )]
     pub game_token: Account<'info, GameToken>,
-    #[account(
-        address = token_mint_key,
-    )]
     pub token_mint: Account<'info, Mint>,
     /// CHECK: This is a PDA that serves as the authority for the game's token accounts
     #[account(
@@ -237,8 +219,6 @@ pub struct UpdateToken<'info> {
     min_players: u16,
     timeout: i64,
     is_private: bool,
-    creator_key: Pubkey,
-    token_mint_key: Pubkey,
 )]
 pub struct InitializeGame<'info> {
     #[account(
@@ -270,7 +250,6 @@ pub struct InitializeGame<'info> {
     )]
     pub game: Account<'info, Game>,
     #[account(
-        address = creator_key,
         constraint = (signer.key() == oracle.authority && creator.bot_auth) ||
                      (signer.key() == creator.owner)
                      @ ErrorCode::UnauthorizedPlayer,
@@ -284,9 +263,6 @@ pub struct InitializeGame<'info> {
         bump
     )]
     pub oracle: Account<'info, Oracle>,
-    #[account(
-        address = token_mint_key,
-    )]
     pub token_mint: Account<'info, Mint>,
     #[account(
         seeds = [b"token", token_mint.key().as_ref()],
@@ -326,7 +302,6 @@ pub struct InitializeGame<'info> {
 #[derive(Accounts)]
 #[instruction(
     game_id: u64,
-    player_key: Pubkey,
 )]
 pub struct JoinGame<'info> {
     #[account(
@@ -341,7 +316,6 @@ pub struct JoinGame<'info> {
     )]
     pub game: Account<'info, Game>,
     #[account(
-        address = player_key,
         constraint = (signer.key() == oracle.authority && player.bot_auth) ||
                      (signer.key() == player.owner)
                      @ ErrorCode::UnauthorizedPlayer,
@@ -481,7 +455,6 @@ pub struct ClaimWin<'info> {
 #[derive(Accounts)]
 #[instruction(
     game_id: u64,
-    player_key: Pubkey,
 )]
 pub struct UnjoinGame<'info> {
     #[account(
@@ -495,7 +468,6 @@ pub struct UnjoinGame<'info> {
     )]
     pub game: Account<'info, Game>,
     #[account(
-        address = player_key,
         constraint = (signer.key() == oracle.authority && player.bot_auth) ||
                      (signer.key() == player.owner)
                      @ ErrorCode::UnauthorizedPlayer,
@@ -538,14 +510,11 @@ pub struct UnjoinGame<'info> {
 #[derive(Accounts)]
 #[instruction(
     amount: u64,
-    player_key: Pubkey,
     token_mint_key: Pubkey,
-    depositor_address: Pubkey,
 )]
 pub struct DepositPlayer<'info> {
     #[account(
         constraint = amount > 0 @ ErrorCode::InvalidAmount,
-        address = player_key,
     )]
     pub player: Account<'info, Player>,
     #[account(
@@ -565,9 +534,6 @@ pub struct DepositPlayer<'info> {
         associated_token::authority = player_vault,
     )]
     pub player_token_account: Account<'info, TokenAccount>,
-    #[account(
-        address = depositor_address,
-    )]
     pub depositor: Signer<'info>,
     #[account(
         associated_token::mint = game_token.token_mint,
@@ -584,13 +550,9 @@ pub struct DepositPlayer<'info> {
 #[derive(Accounts)]
 #[instruction(
     amount: u64,
-    player_key: Pubkey,
-    token_mint_key: Pubkey,
-    receiver_address: Pubkey,
 )]
 pub struct WithdrawPlayer<'info> {
     #[account(
-        address = player_key,
         constraint = amount > 0 @ ErrorCode::InvalidAmount,
         constraint = (signer.key() == oracle.authority && player.bot_auth) ||
                      (signer.key() == player.owner)
@@ -603,9 +565,6 @@ pub struct WithdrawPlayer<'info> {
         bump,
     )]
     pub oracle: Account<'info, Oracle>,
-    #[account(
-        address = token_mint_key,
-    )]
     pub token_mint: Account<'info, Mint>,
     #[account(
         associated_token::mint = token_mint,
@@ -620,9 +579,6 @@ pub struct WithdrawPlayer<'info> {
     )]
     pub player_vault: AccountInfo<'info>,
     /// CHECK: This is the receiver's account that will receive the tokens
-    #[account(
-        address = receiver_address,
-    )]
     pub receiver: AccountInfo<'info>,
     #[account(
         associated_token::mint = token_mint,
@@ -638,22 +594,16 @@ pub struct WithdrawPlayer<'info> {
 #[derive(Accounts)]
 #[instruction(
     amount: u64,
-    tipper_key: Pubkey,
-    receiver_key: Pubkey,
     token_mint_key: Pubkey,
 )]
 pub struct TipPlayer<'info> {
     #[account(
-        address = tipper_key,
         constraint = amount > 0 @ ErrorCode::InvalidAmount,
         constraint = (signer.key() == oracle.authority && tipper.bot_auth) ||
                      (signer.key() == tipper.owner)
                      @ ErrorCode::UnauthorizedPlayer,
     )]
     pub tipper: Account<'info, Player>,
-    #[account(
-        address = receiver_key,
-    )]
     pub receiver: Account<'info, Player>,
     pub signer: Signer<'info>,
     #[account(
