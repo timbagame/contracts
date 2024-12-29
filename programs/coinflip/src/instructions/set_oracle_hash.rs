@@ -1,4 +1,5 @@
 use crate::state::GameStatus;
+use crate::state::GameType;
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::hash::hash;
 use anchor_lang::solana_program::sysvar::slot_hashes;
@@ -7,8 +8,16 @@ use anchor_spl::token;
 pub fn handler(ctx: Context<super::SetOracleHash>, hash_value: [u8; 32]) -> Result<()> {
     let game = &mut ctx.accounts.game;
 
-    let fee_amount = game.amount * (ctx.accounts.oracle.fee_percentage as u64) / 100;
-    game.fee_amount = fee_amount;
+    // Calculate winner amount and fee amount checking game type
+    if game.game_type == GameType::Coinflip {
+        let total_amount = game.amount * game.players.len() as u64;
+        game.fee_amount = total_amount * (ctx.accounts.oracle.fee_percentage as u64) / 100;
+        game.winner_amount = total_amount - game.fee_amount;
+    } else {
+        let total_amount = game.amount;
+        game.fee_amount = total_amount * (ctx.accounts.oracle.fee_percentage as u64) / 100;
+        game.winner_amount = total_amount - game.fee_amount;
+    }
 
     // Get slot hash for on-chain randomness
     let slot_hash = slot_hashes::id().to_bytes();

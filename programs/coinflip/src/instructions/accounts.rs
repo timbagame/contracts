@@ -238,6 +238,7 @@ pub struct InitializeGame<'info> {
             8 + // created_at
             8 + // timeout
             1 + // is_private
+            8 + // winner_amount
             8, // fee_amount
         seeds = [b"game", oracle.games_counter.to_le_bytes().as_ref()],
         bump,

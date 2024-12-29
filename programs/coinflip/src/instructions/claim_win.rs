@@ -16,7 +16,7 @@ pub fn handler(ctx: Context<super::ClaimWin>) -> Result<()> {
                 authority: ctx.accounts.game_vault.to_account_info(),
             },
         ),
-        game.amount,
+        game.winner_amount,
     )?;
 
     Ok(())
