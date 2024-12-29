@@ -72,6 +72,8 @@ describe("coinflip", () => {
       authority: oracleAccount.authority,
       feePercentage: oracleAccount.feePercentage,
       oracleBufferTime: oracleAccount.oracleBufferTime,
+      gamesCounter: oracleAccount.gamesCounter,
+      playersCounter: oracleAccount.playersCounter,
     };
   }
 
