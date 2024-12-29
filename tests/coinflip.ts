@@ -18,9 +18,10 @@ import { PublicKey } from "@solana/web3.js";
  * Several accounts DO NOT need to be explicitly passed to instructions because Anchor handles them automatically:
  * 
  * 1. PDAs (Program Derived Addresses):
- *    - config: Derived from seeds ["config"]
+ *    - oracle: Derived from seeds ["oracle"]
  *    - game: Derived from seeds ["game", gameCounter]
- *    - vault: Derived from seeds ["vault", gamePDA]
+ *    - game_vault: Derived from seeds ["game_vault", tokenMint]
+ *    - player_vault: Derived from seeds ["player_vault", player.key(), tokenMint]
  *    Anchor can derive these from the seeds defined in the program
  * 
  * 2. System-level accounts:
@@ -30,7 +31,6 @@ import { PublicKey } from "@solana/web3.js";
  * 
  * Only pass accounts that are:
  *    - Signers (who's paying or authorizing)
- *    - Token accounts (where tokens are stored)
  *    - Accounts that can't be derived (like user wallets)
  */
 
@@ -41,36 +41,37 @@ describe("coinflip", () => {
 
   // Add this before all tests
   before(async () => {
-    // Initialize config once for all tests
-    const treasury = anchor.web3.Keypair.generate().publicKey;
+    // Initialize oracle once for all tests
+    const authority = anchor.web3.Keypair.generate().publicKey;
     const feePercentage = 1;
-    const operator = program.provider.publicKey;
+    const oracleBufferTime = 3600;
 
     try {
       await program.methods
-        .initializeConfig(treasury, feePercentage, operator)
+        .initializeOracle(feePercentage, new BN(oracleBufferTime))
         .accounts({
-          signer: program.provider.publicKey,
+          payer: authority,
+          authority: authority,
         })
         .rpc();
     } catch (e) {
-      // If config already exists, that's fine
-      console.log("Config initialization failed, may already exist:", e);
+      // If oracle already exists, that's fine
+      console.log("Oracle initialization failed, may already exist:", e);
     }
   });
 
-  // Modify createConfigAccount to return just what we need
-  async function createConfigAccount() {
-    const [configPDA] = PublicKey.findProgramAddressSync(
-      [Buffer.from("config")],
+  // Modify createOracleAccount to return just what we need
+  async function createOracleAccount() {
+    const [oraclePDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("oracle")],
       program.programId
     );
 
-    const configAccount = await program.account.config.fetch(configPDA);
+    const oracleAccount = await program.account.oracle.fetch(oraclePDA);
     return {
-      treasury: configAccount.treasury,
-      feePercentage: configAccount.feePercentage,
-      operator: configAccount.operator
+      authority: oracleAccount.authority,
+      feePercentage: oracleAccount.feePercentage,
+      oracleBufferTime: oracleAccount.oracleBufferTime,
     };
   }
 
