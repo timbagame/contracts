@@ -46,6 +46,13 @@ describe("coinflip", () => {
     const feePercentage = 1;
     const oracleBufferTime = 3600;
 
+    // Airdrop SOL to authority for rent
+    const signature = await program.provider.connection.requestAirdrop(
+      authority.publicKey,
+      2 * anchor.web3.LAMPORTS_PER_SOL,
+    );
+    await program.provider.connection.confirmTransaction(signature);
+
     try {
       await program.methods
         .initializeOracle(feePercentage, new BN(oracleBufferTime))
