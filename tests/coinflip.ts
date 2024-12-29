@@ -42,7 +42,7 @@ describe("coinflip", () => {
   // Add this before all tests
   before(async () => {
     // Initialize oracle once for all tests
-    const authority = anchor.web3.Keypair.generate().publicKey;
+    const authority = anchor.web3.Keypair.generate();
     const feePercentage = 1;
     const oracleBufferTime = 3600;
 
@@ -50,9 +50,10 @@ describe("coinflip", () => {
       await program.methods
         .initializeOracle(feePercentage, new BN(oracleBufferTime))
         .accounts({
-          payer: authority,
-          authority: authority,
+          payer: authority.publicKey,
+          authority: authority.publicKey,
         })
+        .signers([authority])
         .rpc();
     } catch (e) {
       // If oracle already exists, that's fine
@@ -157,22 +158,24 @@ describe("coinflip", () => {
     )[0];
   }
 
-  it("Initialize Config Successfully", async () => {
-    const { treasury, feePercentage, operator } = await createConfigAccount();
+  it("Initialize Oracle Successfully", async () => {
+    const { authority, feePercentage, oracleBufferTime } = await createOracleAccount();
 
-    // Get the config PDA
-    const [configPDA] = PublicKey.findProgramAddressSync(
-      [Buffer.from("config")],
+    // Get the oracle PDA
+    const [oraclePDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("oracle")],
       program.programId
     );
 
-    // Fetch the created config account
-    const configData = await program.account.config.fetch(configPDA);
+    // Fetch the created oracle account
+    const oracleData = await program.account.oracle.fetch(oraclePDA);
 
-    // Verify the config was initialized with correct values
-    expect(configData.treasury.toString()).to.equal(treasury.toString());
-    expect(configData.feePercentage.toString()).to.equal(feePercentage.toString());
-    expect(configData.operator.toString()).to.equal(operator.toString());
+    // Verify the oracle was initialized with correct values
+    expect(oracleData.authority.toString()).to.equal(authority.publicKey.toString());
+    expect(oracleData.feePercentage.toString()).to.equal(feePercentage.toString());
+    expect(oracleData.oracleBufferTime.toString()).to.equal(oracleBufferTime.toString());
+    expect(oracleData.gamesCounter.toString()).to.equal(gamesCounter.toString());
+    expect(oracleData.playersCounter.toString()).to.equal(playersCounter.toString());
   });
 
   it("Initialize Game with Invalid Parameters", async () => {
