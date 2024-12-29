@@ -61,6 +61,7 @@ pub struct Game {
     pub created_at: i64,
     pub timeout: i64,
     pub is_private: bool,
+    pub winner_amount: u64,
     pub fee_amount: u64,
 }
 
