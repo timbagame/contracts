@@ -273,23 +273,25 @@ pub struct InitializeGame<'info> {
     pub payer: Signer<'info>,
     #[account(
         seeds = [b"oracle"],
-        bump
+        bump,
     )]
     pub oracle: Account<'info, Oracle>,
     pub token_mint: Account<'info, Mint>,
     #[account(
         seeds = [b"token", token_mint.key().as_ref()],
         bump,
-        constraint = game_token.enabled @ ErrorCode::TokenNotEnabled
+        constraint = game_token.enabled @ ErrorCode::TokenNotEnabled,
     )]
     pub game_token: Account<'info, GameToken>,
     #[account(
+        mut,
         associated_token::mint = token_mint,
         associated_token::authority = creator_vault,
-        constraint = creator_token_account.amount >= amount @ ErrorCode::InsufficientBalance
+        constraint = creator_token_account.amount >= amount @ ErrorCode::InsufficientBalance,
     )]
     pub creator_token_account: Account<'info, TokenAccount>,
     #[account(
+        mut,
         associated_token::mint = token_mint,
         associated_token::authority = game_vault,
     )]
@@ -319,7 +321,7 @@ pub struct JoinGame<'info> {
         constraint = Clock::get().unwrap().unix_timestamp < game.created_at + game.timeout @ ErrorCode::TimeoutReached,
         constraint = !game.players.contains(&player.key()) @ ErrorCode::AlreadyJoined,
         constraint = game.players.len() < (game.max_players as usize) @ ErrorCode::GameFull,
-        constraint = !game.is_private || authority.key() == oracle.authority @ ErrorCode::UnauthorizedPlayer
+        constraint = !game.is_private || authority.key() == oracle.authority @ ErrorCode::UnauthorizedPlayer,
     )]
     pub game: Account<'info, Game>,
     #[account(
@@ -342,9 +344,10 @@ pub struct JoinGame<'info> {
     )]
     pub player_vault: AccountInfo<'info>,
     #[account(
+        mut,
         associated_token::mint = game.token_mint,
         associated_token::authority = player_vault,
-        constraint = game.game_type != GameType::Coinflip || player_token_account.amount >= game.amount @ ErrorCode::InsufficientBalance
+        constraint = game.game_type != GameType::Coinflip || player_token_account.amount >= game.amount @ ErrorCode::InsufficientBalance,
     )]
     pub player_token_account: Account<'info, TokenAccount>,
     /// CHECK: This is a PDA that serves as the authority for the game's token accounts
@@ -354,13 +357,14 @@ pub struct JoinGame<'info> {
     )]
     pub game_vault: AccountInfo<'info>,
     #[account(
+        mut,
         associated_token::mint = game.token_mint,
         associated_token::authority = game_vault,
     )]
     pub game_token_account: Account<'info, TokenAccount>,
     #[account(
         seeds = [b"oracle"],
-        bump
+        bump,
     )]
     pub oracle: Account<'info, Oracle>,
     pub system_program: Program<'info, System>,

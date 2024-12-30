@@ -32,15 +32,21 @@ pub fn handler(
 
     // Transfer tokens from creator to game account
     token::transfer(
-        CpiContext::new(
+        CpiContext::new_with_signer(
             ctx.accounts.token_program.to_account_info(),
             token::Transfer {
                 from: ctx.accounts.creator_token_account.to_account_info(),
                 to: ctx.accounts.game_token_account.to_account_info(),
                 authority: ctx.accounts.creator_vault.to_account_info(),
             },
+            &[&[
+                b"player_vault",
+                ctx.accounts.creator.key().as_ref(),
+                ctx.accounts.game_token.token_mint.as_ref(),
+                &[ctx.bumps.creator_vault],
+            ]],
         ),
-        amount,
+        game.amount,
     )?;
 
     // Increment game counter
