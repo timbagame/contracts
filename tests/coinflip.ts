@@ -388,7 +388,7 @@ describe("coinflip", () => {
 
     const gamePDA = await getGamePDA(gameId);
 
-    // Join game with both player and operator signatures
+    // Join game with both player and oracle signatures
     await program.methods
       .joinGame()
       .accounts({
@@ -578,7 +578,7 @@ describe("coinflip", () => {
     }
   });
 
-  it("Fail to Join Private Game with Wrong Operator", async () => {
+  it("Fail to Join Private Game with Wrong Oracle", async () => {
     // Initialize config
     await createOracleAccount();
 
@@ -632,15 +632,15 @@ describe("coinflip", () => {
     // Mint tokens to player
     await mintTokens(mintAuthority, mint, playerTokenAccount.address, amount);
 
-    // Create fake operator
-    const fakeOperator = anchor.web3.Keypair.generate();
-    const fakeOperatorAirdrop = await program.provider.connection.requestAirdrop(
-      fakeOperator.publicKey,
+    // Create fake oracle
+    const fakeOracle = anchor.web3.Keypair.generate();
+    const fakeOracleAirdrop = await program.provider.connection.requestAirdrop(
+      fakeOracle.publicKey,
       anchor.web3.LAMPORTS_PER_SOL,
     );
-    await program.provider.connection.confirmTransaction(fakeOperatorAirdrop);
+    await program.provider.connection.confirmTransaction(fakeOracleAirdrop);
 
-    // Try to join game with fake operator signature
+    // Try to join game with fake oracle signature
     try {
       await program.methods
         .joinGame()
@@ -648,9 +648,9 @@ describe("coinflip", () => {
           game: gamePDA,
           player: playerPDA,
           owner: player.publicKey,
-          authority: fakeOperator.publicKey,
+          authority: fakeOracle.publicKey,
         })
-        .signers([player, fakeOperator])
+        .signers([player, fakeOracle])
         .rpc();
 
       expect.fail("Should have thrown SignatureRequired error");
@@ -660,7 +660,7 @@ describe("coinflip", () => {
   });
 
   it("Set Oracle Hash Successfully", async () => {
-    // Get current config and operator
+    // Get current config and oracle
     await createOracleAccount();
 
     // Create SPL token setup
@@ -718,7 +718,7 @@ describe("coinflip", () => {
     expect(gameData.winner).to.not.be.null;
   });
 
-  it("Fail to Set Oracle Hash Without Operator Authority", async () => {
+  it("Fail to Set Oracle Hash Without Oracle Authority", async () => {
     await createOracleAccount();
     const {
       mint,
@@ -786,8 +786,8 @@ describe("coinflip", () => {
       .signers([player])
       .rpc();
 
-    // Try to set oracle hash with fake operator
-    const fakeOperator = anchor.web3.Keypair.generate();
+    // Try to set oracle hash with fake oracle
+    const fakeOracle = anchor.web3.Keypair.generate();
     try {
       const hashValue = Array.from({ length: 32 }, () =>
         Math.floor(Math.random() * 256),
@@ -797,17 +797,17 @@ describe("coinflip", () => {
         .accounts({
           game: gamePDA,
         })
-        .signers([fakeOperator])
+        .signers([fakeOracle])
         .rpc();
 
-      expect.fail("Should have thrown InvalidOperator error");
+      expect.fail("Should have thrown InvalidOracle error");
     } catch (error) {
-      expect(error.toString()).to.include("InvalidOperator");
+      expect(error.toString()).to.include("InvalidOracle");
     }
   });
 
   it("Fail to Set Oracle Hash Before Game is Full", async () => {
-    // Get current config and operator
+    // Get current config and oracle
     const { authority } = await createOracleAccount();
     const authorityKeypair = program.provider.publicKey;
 
@@ -875,7 +875,7 @@ describe("coinflip", () => {
   });
 
   it("Fail to Set Oracle Hash Twice", async () => {
-    // Get current config and operator
+    // Get current config and oracle
     await createOracleAccount();
 
     const {
@@ -974,7 +974,7 @@ describe("coinflip", () => {
   });
 
   it("Claim Winnings Successfully", async () => {
-    // Get current config and operator
+    // Get current config and oracle
     const { feePercentage } = await createOracleAccount();
 
     const {
@@ -1090,7 +1090,7 @@ describe("coinflip", () => {
   });
 
   it("Fail to Claim as Non-Winner", async () => {
-    // Get current config and operator
+    // Get current config and oracle
     await createOracleAccount();
 
     const {
