@@ -319,16 +319,17 @@ pub struct JoinGame<'info> {
         constraint = Clock::get().unwrap().unix_timestamp < game.created_at + game.timeout @ ErrorCode::TimeoutReached,
         constraint = !game.players.contains(&player.key()) @ ErrorCode::AlreadyJoined,
         constraint = game.players.len() < (game.max_players as usize) @ ErrorCode::GameFull,
-        constraint = !game.is_private || signer.key() == oracle.authority @ ErrorCode::UnauthorizedPlayer
+        constraint = !game.is_private || authority.key() == oracle.authority @ ErrorCode::UnauthorizedPlayer
     )]
     pub game: Account<'info, Game>,
     #[account(
-        constraint = (signer.key() == oracle.authority && player.bot_auth) ||
-                     (signer.key() == player.owner)
+        constraint = (authority.key() == oracle.authority && player.bot_auth) ||
+                     (owner.key() == player.owner)
                      @ ErrorCode::UnauthorizedPlayer,
     )]
     pub player: Account<'info, Player>,
-    pub signer: Signer<'info>,
+    pub owner: Signer<'info>,
+    pub authority: Signer<'info>,
     #[account(
         seeds = [b"token", game.token_mint.as_ref()],
         bump,
