@@ -62,9 +62,32 @@ describe("coinflip", () => {
         })
         .signers([authority])
         .rpc();
+
+      // Create token mint and initialize token
+      const { mint } = await createSplTokenMint();
+      await program.methods
+        .initializeToken("TEST", true)
+        .accounts({
+          tokenMint: mint,
+          payer: authority.publicKey,
+          authority: authority.publicKey,
+        })
+        .signers([authority])
+        .rpc();
+
+      // Initialize player for tests
+      await program.methods
+        .initializePlayer()
+        .accounts({
+          payer: authority.publicKey,
+          owner: program.provider.publicKey,
+        })
+        .signers([authority])
+        .rpc();
+
     } catch (e) {
       // If oracle already exists, that's fine
-      console.log("Oracle initialization failed, may already exist:", e);
+      console.log("Initialization failed, may already exist:", e);
     }
   });
 
