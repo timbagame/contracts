@@ -8,13 +8,18 @@ pub fn handler(ctx: Context<super::ClaimWin>) -> Result<()> {
 
     // Transfer funds to winner
     token::transfer(
-        CpiContext::new(
+        CpiContext::new_with_signer(
             ctx.accounts.token_program.to_account_info(),
             token::Transfer {
                 from: ctx.accounts.game_token_account.to_account_info(),
                 to: ctx.accounts.winner_token_account.to_account_info(),
                 authority: ctx.accounts.game_vault.to_account_info(),
             },
+            &[&[
+                b"game_vault",
+                game.token_mint.as_ref(),
+                &[ctx.bumps.game_vault],
+            ]],
         ),
         game.winner_amount,
     )?;

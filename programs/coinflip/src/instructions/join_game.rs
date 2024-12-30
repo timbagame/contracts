@@ -19,7 +19,7 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
                 &[&[
                     b"player_vault",
                     ctx.accounts.player.key().as_ref(),
-                    ctx.accounts.game_token.token_mint.as_ref(),
+                    game.token_mint.as_ref(),
                     &[ctx.bumps.player_vault],
                 ]],
             ),
