@@ -5,7 +5,6 @@ pub fn handler_regular(ctx: Context<super::InitializePlayer>) -> Result<()> {
     player.id = ctx.accounts.oracle.players_counter;
     player.owner = ctx.accounts.owner.key();
     player.games_won = 0;
-    player.games_lost = 0;
 
     let oracle = &mut ctx.accounts.oracle;
     oracle.players_counter += 1;
@@ -25,7 +24,6 @@ pub fn handler_bot(
     player.bot_seed = bot_seed;
     player.bot_auth = true;
     player.games_won = 0;
-    player.games_lost = 0;
 
     let oracle = &mut ctx.accounts.oracle;
     oracle.players_counter += 1;

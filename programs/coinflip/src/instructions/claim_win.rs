@@ -6,6 +6,9 @@ pub fn handler(ctx: Context<super::ClaimWin>) -> Result<()> {
     let game = &mut ctx.accounts.game;
     game.status = GameStatus::Completed;
 
+    let winner = &mut ctx.accounts.winner;
+    winner.games_won += 1;
+
     // Transfer funds to winner
     token::transfer(
         CpiContext::new_with_signer(
