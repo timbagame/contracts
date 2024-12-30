@@ -77,16 +77,7 @@ describe("coinflip", () => {
         .rpc();
 
       // Create token mint and initialize token
-      const { mint } = await createSplTokenMint();
-
-      await program.methods
-        .initializeToken("TEST", new BN(1000), true)
-        .accounts({
-          tokenMint: mint,
-          payer: program.provider.publicKey,
-          authority: program.provider.publicKey,
-        })
-        .rpc();
+      await createSplTokenMint();
 
       // Initialize player for tests
       await program.methods
