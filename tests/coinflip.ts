@@ -55,7 +55,7 @@ describe("coinflip", () => {
 
     try {
       await program.methods
-        .initializeOracle(feePercentage, new BN(oracleBufferTime))
+        .initializeOracle(feePercentage, new BN(oracleBufferTime), 100, new BN(3600), new BN(60))
         .accounts({
           payer: authority.publicKey,
           authority: authority.publicKey,
@@ -215,6 +215,12 @@ describe("coinflip", () => {
       mint,
     } = await createSplTokenMint();
 
+    // Get player PDA
+    const [playerPDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("player"), program.provider.publicKey.toBuffer()],
+      program.programId
+    );
+
     // Try to initialize game with invalid parameters
     const amount = new BN(1_000_000);
     const invalidMaxParticipants = 1; // Should be at least 2 for coinflip
@@ -233,14 +239,16 @@ describe("coinflip", () => {
           isPrivate,
         )
         .accounts({
-          creator: program.provider.publicKey,
+          creator: playerPDA,
+          signer: program.provider.publicKey,
+          payer: program.provider.publicKey,
           tokenMint: mint,
         })
         .rpc();
 
       expect.fail("Should have thrown an error");
     } catch (error) {
-      expect(error.toString()).to.include("InvalidParticipantCount");
+      expect(error.toString()).to.include("InvalidPlayersCount");
     }
   });
 
@@ -311,7 +319,7 @@ describe("coinflip", () => {
 
     // Verify game state
     const gameData = await program.account.game.fetch(gamePDA);
-    expect(gameData.participants[1].toString()).to.equal(player.publicKey.toString());
+    expect(gameData.players[1].toString()).to.equal(player.publicKey.toString());
   });
 
   it("Join Game Successfully", async () => {
@@ -383,7 +391,7 @@ describe("coinflip", () => {
 
     // Verify game state
     const gameData = await program.account.game.fetch(gamePDA);
-    expect(gameData.participants[1].toString()).to.equal(player.publicKey.toString());
+    expect(gameData.players[1].toString()).to.equal(player.publicKey.toString());
   });
 
   it("Join Private Game Successfully", async () => {
@@ -466,7 +474,7 @@ describe("coinflip", () => {
 
     // Verify game state
     const gameData = await program.account.game.fetch(gamePDA);
-    expect(gameData.participants[1].toString()).to.equal(player.publicKey.toString());
+    expect(gameData.players[1].toString()).to.equal(player.publicKey.toString());
   });
 
   it("Fail to Join Full Game", async () => {
@@ -1379,7 +1387,7 @@ describe("coinflip", () => {
 
     // Verify game state - creator should not be added as participant for giveaway
     const gameData = await program.account.game.fetch(gamePDA);
-    expect(gameData.participants.length).to.equal(0);
+    expect(gameData.players.length).to.equal(0);
     expect(gameData.gameType.giveaway).to.not.be.undefined;
   });
 
@@ -1495,7 +1503,7 @@ describe("coinflip", () => {
     // Verify game is cancelled after all claims
     const gameData = await program.account.game.fetch(gamePDA);
     expect(gameData.status.cancelled).to.not.be.undefined;
-    expect(gameData.participants.length).to.equal(0);
+    expect(gameData.players.length).to.equal(0);
   });
 
   it("Fail to Claim Timeout as Non-Participant", async () => {
@@ -2074,7 +2082,7 @@ describe("coinflip", () => {
 
     // Verify participant was removed
     const gameData = await program.account.game.fetch(gamePDA);
-    expect(gameData.participants.length).to.equal(0);
+    expect(gameData.players.length).to.equal(0);
   });
 
   it("Cannot Cancel Bet When Game is Full", async () => {
