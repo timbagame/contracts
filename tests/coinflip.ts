@@ -67,7 +67,7 @@ describe("coinflip", () => {
       const { mint } = await createSplTokenMint();
 
       await program.methods
-        .initializeToken("TEST", true)
+        .initializeToken("TEST", new BN(1000), true)
         .accounts({
           tokenMint: mint,
           payer: authority.publicKey,
