@@ -256,19 +256,11 @@ describe("coinflip", () => {
       mint,
     } = await createSplTokenMint();
 
-    // Get player PDA
-    const [playerPDA] = PublicKey.findProgramAddressSync(
-      [Buffer.from("player"), program.provider.publicKey.toBuffer()],
-      program.programId
-    );
-
-    // get or create player token account
-    const playerTokenAccount = await getOrCreateAssociatedTokenAccount(
-      program.provider.connection,
-      program.provider,
-      mint,
+    const {
+      player,
       playerPDA,
-    );
+      playerTokenAccount,
+    } = await createPlayer(mint);
 
     // Try to initialize game with invalid parameters
     const amount = new BN(1_000_000);
@@ -289,8 +281,8 @@ describe("coinflip", () => {
         )
         .accounts({
           creator: playerPDA,
-          signer: program.provider.publicKey,
-          payer: program.provider.publicKey,
+          signer: player.publicKey,
+          payer: player.publicKey,
           tokenMint: mint,
         })
         .rpc();
