@@ -312,14 +312,9 @@ pub struct InitializeGame<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(
-    game_id: u64,
-)]
 pub struct JoinGame<'info> {
     #[account(
         mut,
-        seeds = [b"game", game_id.to_le_bytes().as_ref()],
-        bump,
         constraint = game.status == GameStatus::Active @ ErrorCode::InvalidGameStatus,
         constraint = Clock::get().unwrap().unix_timestamp < game.created_at + game.timeout @ ErrorCode::TimeoutReached,
         constraint = !game.players.contains(&player.key()) @ ErrorCode::AlreadyJoined,
@@ -373,14 +368,9 @@ pub struct JoinGame<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(
-    game_id: u64,
-)]
 pub struct SetOracleHash<'info> {
     #[account(
         mut,
-        seeds = [b"game", game_id.to_le_bytes().as_ref()],
-        bump,
         constraint = game.status == GameStatus::Active @ ErrorCode::GameNotActive,
         constraint = game.ready_for_oracle() @ ErrorCode::GameNotFull
     )]
@@ -414,14 +404,9 @@ pub struct SetOracleHash<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(
-    game_id: u64,
-)]
 pub struct ClaimWin<'info> {
     #[account(
         mut,
-        seeds = [b"game", game_id.to_le_bytes().as_ref()],
-        bump,
         constraint = game.status == GameStatus::ReadyForClaim @ ErrorCode::GameNotReadyForClaim,
     )]
     pub game: Account<'info, Game>,
@@ -462,14 +447,9 @@ pub struct ClaimWin<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(
-    game_id: u64,
-)]
 pub struct UnjoinGame<'info> {
     #[account(
         mut,
-        seeds = [b"game", game_id.to_le_bytes().as_ref()],
-        bump,
         constraint = game.status != GameStatus::ReadyForClaim @ ErrorCode::GameReadyForClaim,
         constraint = game.status != GameStatus::Completed @ ErrorCode::GameCompleted,
         constraint = game.players.contains(&player.key()) @ ErrorCode::InvalidPlayer,
@@ -652,14 +632,9 @@ pub struct TipPlayer<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(
-    game_id: u64,
-)]
 pub struct CancelGame<'info> {
     #[account(
         mut,
-        seeds = [b"game", game_id.to_le_bytes().as_ref()],
-        bump,
         constraint = game.status != GameStatus::ReadyForClaim @ ErrorCode::GameReadyForClaim,
         constraint = game.status != GameStatus::Completed @ ErrorCode::GameCompleted,
         constraint = !game.ready_for_oracle() || game.buffer_passed(oracle.oracle_buffer_time) @ ErrorCode::GameReadyForOracle

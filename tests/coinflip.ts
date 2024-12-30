@@ -297,7 +297,6 @@ describe("coinflip", () => {
 
       expect.fail("Should have thrown an error");
     } catch (error) {
-      console.log("Full error:", error);
       expect(error.toString()).to.include("InvalidPlayersCount");
     }
   });
@@ -306,8 +305,19 @@ describe("coinflip", () => {
     await createOracleAccount();
     const {
       mint,
-      mintAuthority
     } = await createSplTokenMint();
+
+    const {
+      player: creator,
+      playerPDA: creatorPDA,
+    } = await createPlayer(mint);
+
+    const {
+      player,
+      playerPDA,
+    } = await createPlayer(mint);
+
+    const gameId = await getCurrentGameCounter();
 
     // Initialize game
     const amount = new BN(1_000_000);
@@ -321,48 +331,23 @@ describe("coinflip", () => {
         false, // isPrivate
       )
       .accounts({
-        creator: program.provider.publicKey,
+        creator: creatorPDA,
         tokenMint: mint,
+        signer: creator.publicKey,
+        payer: creator.publicKey,
       })
+      .signers([creator])
       .rpc();
 
-    // Get current game counter for PDA derivation
-    const gameCounter = await getCurrentGameCounter();
-    const [gamePDA] = PublicKey.findProgramAddressSync(
-      [Buffer.from("game"), gameCounter.subn(1).toArrayLike(Buffer, 'le', 8)],
-      program.programId
-    );
-
-    // Create and fund second player
-    const player = anchor.web3.Keypair.generate();
-    const playerAirdrop = await program.provider.connection.requestAirdrop(
-      player.publicKey,
-      2 * anchor.web3.LAMPORTS_PER_SOL,
-    );
-    await program.provider.connection.confirmTransaction(playerAirdrop);
-
-    // Create player's token account and mint tokens
-    const playerTokenAccount = await getOrCreateAssociatedTokenAccount(
-      program.provider.connection,
-      player, // payer
-      mint,
-      player.publicKey,
-    );
-
-    await mintTo(
-      program.provider.connection,
-      mintAuthority,
-      mint,
-      playerTokenAccount,
-      mintAuthority.publicKey,
-      amount.toNumber(),
-      [mintAuthority],
-    );
+    const gamePDA = await getGamePDA(gameId);
 
     // Join game
     await program.methods
-      .joinGame(gameId)
+      .joinGame()
       .accounts({
+        game: gamePDA,
+        player: playerPDA,
+        signer: player.publicKey,
       })
       .signers([player])
       .rpc();
