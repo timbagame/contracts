@@ -395,11 +395,13 @@ pub struct SetOracleHash<'info> {
     )]
     pub game_vault: AccountInfo<'info>,
     #[account(
+        mut,
         associated_token::mint = game.token_mint,
         associated_token::authority = game_vault
     )]
     pub game_token_account: Account<'info, TokenAccount>,
     #[account(
+        mut,
         associated_token::mint = game.token_mint,
         associated_token::authority = oracle.authority
     )]
