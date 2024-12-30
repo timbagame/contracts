@@ -211,7 +211,12 @@ describe("coinflip", () => {
 
     // Get player PDA
     const [playerPDA] = PublicKey.findProgramAddressSync(
-      [Buffer.from("player"), program.provider.publicKey.toBuffer()],
+      [Buffer.from("player"), player.publicKey.toBuffer()],
+      program.programId
+    );
+
+    const [playerVaultPDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("player_vault"), playerPDA.toBuffer(), tokenMint.toBuffer()],
       program.programId
     );
 
@@ -220,13 +225,14 @@ describe("coinflip", () => {
       program.provider.connection,
       player, // payer
       tokenMint,
-      playerPDA,
+      playerVaultPDA,
       true, // allowOwnerOffCurve
     );
 
     return {
       player,
       playerPDA,
+      playerVaultPDA,
       playerTokenAccount,
     };
   }
