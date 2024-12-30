@@ -144,6 +144,7 @@ pub struct UpdateOracle<'info> {
 #[derive(Accounts)]
 #[instruction(
     ticker: String,
+    min_amount: u64,
     enabled: bool,
 )]
 pub struct InitializeToken<'info> {
@@ -153,6 +154,7 @@ pub struct InitializeToken<'info> {
         space = 8 + // discriminator
             4 + ticker.len() + // ticker
             32 + // token_mint
+            8 + // min_amount
             1, // enabled
         seeds = [b"token", token_mint.key().as_ref()],
         bump
@@ -189,6 +191,7 @@ pub struct InitializeToken<'info> {
 #[derive(Accounts)]
 #[instruction(
     ticker: String,
+    min_amount: u64,
     enabled: bool,
 )]
 pub struct UpdateToken<'info> {
