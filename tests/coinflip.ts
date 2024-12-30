@@ -7,8 +7,7 @@ import {
   createMint,
   getAccount,
   mintTo,
-  createAssociatedTokenAccount,
-  getOrCreateAssociatedTokenAccount
+  getOrCreateAssociatedTokenAccount,
 } from "@solana/spl-token";
 import { PublicKey } from "@solana/web3.js";
 
@@ -39,28 +38,42 @@ describe("coinflip", () => {
   anchor.setProvider(anchor.AnchorProvider.env());
   const program = anchor.workspace.Coinflip as Program<Coinflip>;
 
+  // Add helper functions at the top level
+  async function getCurrentGameCounter() {
+    const [oraclePDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("oracle")],
+      program.programId
+    );
+    const oracleAccount = await program.account.oracle.fetch(oraclePDA);
+    return oracleAccount.gamesCounter;
+  }
+
+  async function getGamePDA(gameCounter: BN) {
+    return PublicKey.findProgramAddressSync(
+      [Buffer.from("game"), gameCounter.toArrayLike(Buffer, 'le', 8)],
+      program.programId
+    )[0];
+  }
   // Add this before all tests
   before(async () => {
     // Initialize oracle once for all tests
-    const authority = anchor.web3.Keypair.generate();
     const feePercentage = 1;
     const oracleBufferTime = 3600;
 
     // Airdrop SOL to authority for rent
     const signature = await program.provider.connection.requestAirdrop(
-      authority.publicKey,
+      program.provider.publicKey,
       2 * anchor.web3.LAMPORTS_PER_SOL,
     );
     await program.provider.connection.confirmTransaction(signature);
 
     try {
       await program.methods
-        .initializeOracle(feePercentage, new BN(oracleBufferTime), 100, new BN(3600), new BN(60))
+        .initializeOracle(feePercentage, new BN(oracleBufferTime), 100, new BN(36000), new BN(360))
         .accounts({
-          payer: authority.publicKey,
-          authority: authority.publicKey,
+          payer: program.provider.publicKey,
+          authority: program.provider.publicKey,
         })
-        .signers([authority])
         .rpc();
 
       // Create token mint and initialize token
@@ -70,20 +83,18 @@ describe("coinflip", () => {
         .initializeToken("TEST", new BN(1000), true)
         .accounts({
           tokenMint: mint,
-          payer: authority.publicKey,
-          authority: authority.publicKey,
+          payer: program.provider.publicKey,
+          authority: program.provider.publicKey,
         })
-        .signers([authority])
         .rpc();
 
       // Initialize player for tests
       await program.methods
         .initializePlayer()
         .accounts({
-          payer: authority.publicKey,
+          payer: program.provider.publicKey,
           owner: program.provider.publicKey,
         })
-        .signers([authority])
         .rpc();
 
     } catch (e) {
@@ -163,30 +174,27 @@ describe("coinflip", () => {
       [mintAuthority],
     );
 
+    // Try to initialize token, if it fails it may already exist
+    try {
+      await program.methods
+        .initializeToken("TEST", new BN(1000), true)
+        .accounts({
+          tokenMint: mint,
+          payer: program.provider.publicKey,
+          authority: program.provider.publicKey,
+        })
+        .rpc();
+    } catch (e) {
+      // Token may already be initialized, that's fine
+      console.log("Token initialization failed, may already exist:", e);
+    }
+
     return {
       mint,
       creatorTokenAccount: creatorTokenAccountInfo.address,
       vaultTokenAccount: vaultTokenAccountInfo.address,
       mintAuthority,
     };
-  }
-
-  // Add this helper function to get current game counter
-  async function getCurrentGameCounter() {
-    const [oraclePDA] = PublicKey.findProgramAddressSync(
-      [Buffer.from("oracle")],
-      program.programId
-    );
-    const oracleAccount = await program.account.oracle.fetch(oraclePDA);
-    return oracleAccount.gamesCounter;
-  }
-
-  // Add this helper function at the top level
-  async function getGamePDA(gameCounter: BN) {
-    return PublicKey.findProgramAddressSync(
-      [Buffer.from("game"), gameCounter.toArrayLike(Buffer, 'le', 8)],
-      program.programId
-    )[0];
   }
 
   it("Initialize Oracle Successfully", async () => {
@@ -221,6 +229,16 @@ describe("coinflip", () => {
       program.programId
     );
 
+    // Initialize token first
+    await program.methods
+      .initializeToken("TEST", new BN(1000), true)
+      .accounts({
+        tokenMint: mint,
+        payer: program.provider.publicKey,
+        authority: program.provider.publicKey,
+      })
+      .rpc();
+
     // Try to initialize game with invalid parameters
     const amount = new BN(1_000_000);
     const invalidMaxParticipants = 1; // Should be at least 2 for coinflip
@@ -248,6 +266,7 @@ describe("coinflip", () => {
 
       expect.fail("Should have thrown an error");
     } catch (error) {
+      console.log("Full error:", error);
       expect(error.toString()).to.include("InvalidPlayersCount");
     }
   });
@@ -396,7 +415,7 @@ describe("coinflip", () => {
 
   it("Join Private Game Successfully", async () => {
     // Get current config and operator
-    const { operator } = await createConfigAccount();
+    const { operator } = await createOracleAccount();
 
     // Create SPL token setup
     const {
@@ -478,7 +497,7 @@ describe("coinflip", () => {
   });
 
   it("Fail to Join Full Game", async () => {
-    await createConfigAccount();
+    await createOracleAccount();
     const {
       mint,
       mintAuthority
@@ -577,7 +596,7 @@ describe("coinflip", () => {
   });
 
   it("Fail to Join Game Twice", async () => {
-    await createConfigAccount();
+    await createOracleAccount();
     const {
       mint,
       mintAuthority
@@ -663,7 +682,7 @@ describe("coinflip", () => {
 
   it("Fail to Join Private Game with Wrong Operator", async () => {
     // Initialize config
-    await createConfigAccount();
+    await createOracleAccount();
 
     // Create SPL token setup
     const {
@@ -756,7 +775,7 @@ describe("coinflip", () => {
 
   it("Set Oracle Hash Successfully", async () => {
     // Get current config and operator
-    await createConfigAccount();
+    await createOracleAccount();
 
     // Create SPL token setup
     const {
@@ -844,7 +863,7 @@ describe("coinflip", () => {
   });
 
   it("Fail to Set Oracle Hash Without Operator Authority", async () => {
-    await createConfigAccount();
+    await createOracleAccount();
     const {
       mint,
       mintAuthority
@@ -933,7 +952,7 @@ describe("coinflip", () => {
 
   it("Fail to Set Oracle Hash Before Game is Full", async () => {
     // Get current config and operator
-    await createConfigAccount();
+    await createOracleAccount();
 
     const {
       mint,
@@ -984,7 +1003,7 @@ describe("coinflip", () => {
 
   it("Fail to Set Oracle Hash Twice", async () => {
     // Get current config and operator
-    await createConfigAccount();
+    await createOracleAccount();
 
     const {
       mint,
@@ -1083,7 +1102,7 @@ describe("coinflip", () => {
 
   it("Claim Winnings Successfully", async () => {
     // Get current config and operator
-    const { feePercentage } = await createConfigAccount();
+    const { feePercentage } = await createOracleAccount();
 
     const {
       mint,
@@ -1199,7 +1218,7 @@ describe("coinflip", () => {
 
   it("Fail to Claim as Non-Winner", async () => {
     // Get current config and operator
-    await createConfigAccount();
+    await createOracleAccount();
 
     const {
       mint,
@@ -1298,7 +1317,7 @@ describe("coinflip", () => {
 
   it("Claim Timeout When Game Expires", async () => {
     // Create game with short timeout
-    await createConfigAccount();
+    await createOracleAccount();
     const {
       mint,
       creatorTokenAccount,
@@ -1352,7 +1371,7 @@ describe("coinflip", () => {
   });
 
   it("Initialize and Join Giveaway Game Successfully", async () => {
-    await createConfigAccount();
+    await createOracleAccount();
     const {
       mint,
     } = await createSplTokenMint();
@@ -1392,7 +1411,7 @@ describe("coinflip", () => {
   });
 
   it("Multiple Participants Can Claim Timeout", async () => {
-    await createConfigAccount();
+    await createOracleAccount();
     const {
       mint,
       creatorTokenAccount,
@@ -1507,7 +1526,7 @@ describe("coinflip", () => {
   });
 
   it("Fail to Claim Timeout as Non-Participant", async () => {
-    await createConfigAccount();
+    await createOracleAccount();
     const {
       mint,
     } = await createSplTokenMint();
@@ -1761,7 +1780,7 @@ describe("coinflip", () => {
   });
 
   it("Cannot Join Game With Insufficient Funds", async () => {
-    await createConfigAccount();
+    await createOracleAccount();
     const {
       mint,
       mintAuthority
@@ -1836,7 +1855,7 @@ describe("coinflip", () => {
   });
 
   it("Cannot Initialize Game with Negative or Zero Timeout", async () => {
-    await createConfigAccount();
+    await createOracleAccount();
     const {
       mint,
     } = await createSplTokenMint();
@@ -1889,7 +1908,7 @@ describe("coinflip", () => {
   });
 
   it("Cannot Initialize Game with Amount Overflow", async () => {
-    await createConfigAccount();
+    await createOracleAccount();
     const {
       mint,
     } = await createSplTokenMint();
@@ -1947,7 +1966,7 @@ describe("coinflip", () => {
   });
 
   it("Cannot Join Game With Different Token Mint", async () => {
-    await createConfigAccount();
+    await createOracleAccount();
     const {
       mint,
     } = await createSplTokenMint();
@@ -2033,7 +2052,7 @@ describe("coinflip", () => {
   });
 
   it("Can Cancel Bet Before Game is Full", async () => {
-    await createConfigAccount();
+    await createOracleAccount();
     const {
       mint,
       creatorTokenAccount,
@@ -2086,7 +2105,7 @@ describe("coinflip", () => {
   });
 
   it("Cannot Cancel Bet When Game is Full", async () => {
-    await createConfigAccount();
+    await createOracleAccount();
     const {
       mint,
       mintAuthority
