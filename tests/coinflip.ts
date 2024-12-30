@@ -349,14 +349,15 @@ describe("coinflip", () => {
       .accounts({
         game: gamePDA,
         player: playerPDA,
-        signer: player.publicKey,
+        owner: player.publicKey,
+        authority: player.publicKey,
       })
       .signers([player])
       .rpc();
 
     // Verify game state
     const gameData = await program.account.game.fetch(gamePDA);
-    expect(gameData.players[1].toString()).to.equal(player.publicKey.toString());
+    expect(gameData.players[1].toString()).to.equal(playerPDA.toString());
   });
 
   it("Join Private Game Successfully", async () => {
