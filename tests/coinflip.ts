@@ -302,10 +302,8 @@ describe("coinflip", () => {
 
     // Join game
     await program.methods
-      .joinGame()
+      .joinGame(gameId)
       .accounts({
-        game: gamePDA,
-        player: player.publicKey,
       })
       .signers([player])
       .rpc();
