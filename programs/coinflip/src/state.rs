@@ -6,6 +6,9 @@ pub struct Oracle {
     pub authority: Pubkey,
     pub fee_percentage: u8,
     pub oracle_buffer_time: i64,
+    pub max_players: u16,
+    pub max_timeout: i64,
+    pub min_timeout: i64,
     pub games_counter: u64,
     pub players_counter: u64,
 }

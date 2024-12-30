@@ -17,16 +17,36 @@ pub mod coinflip {
         ctx: Context<InitializeOracle>,
         fee_percentage: u8,
         oracle_buffer_time: i64,
+        max_players: u16,
+        max_timeout: i64,
+        min_timeout: i64,
     ) -> Result<()> {
-        instructions::initialize_oracle::handler(ctx, fee_percentage, oracle_buffer_time)
+        instructions::initialize_oracle::handler(
+            ctx,
+            fee_percentage,
+            oracle_buffer_time,
+            max_players,
+            max_timeout,
+            min_timeout,
+        )
     }
 
     pub fn update_oracle(
         ctx: Context<UpdateOracle>,
         fee_percentage: u8,
         oracle_buffer_time: i64,
+        max_players: u16,
+        max_timeout: i64,
+        min_timeout: i64,
     ) -> Result<()> {
-        instructions::update_oracle::handler(ctx, fee_percentage, oracle_buffer_time)
+        instructions::update_oracle::handler(
+            ctx,
+            fee_percentage,
+            oracle_buffer_time,
+            max_players,
+            max_timeout,
+            min_timeout,
+        )
     }
 
     pub fn initialize_token(

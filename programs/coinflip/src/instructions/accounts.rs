@@ -97,15 +97,21 @@ pub struct UpdatePlayerBot<'info> {
 #[instruction(
     fee_percentage: u8,
     oracle_buffer_time: i64,
+    max_players: u16,
+    max_timeout: i64,
+    min_timeout: i64,
 )]
 pub struct InitializeOracle<'info> {
     #[account(
         init,
         payer = payer,
         space = 8 + // discriminator
+            32 + // authority
             1 + // fee_percentage
             8 + // oracle_buffer_time
-            32 + // authority
+            2 + // max_players
+            8 + // max_timeout
+            8 + // min_timeout
             8 + // games_counter
             8, // players_counter
         seeds = [b"oracle"],
@@ -124,6 +130,9 @@ pub struct InitializeOracle<'info> {
 #[instruction(
     fee_percentage: u8,
     oracle_buffer_time: i64,
+    max_players: u16,
+    max_timeout: i64,
+    min_timeout: i64,
 )]
 pub struct UpdateOracle<'info> {
     #[account(
@@ -245,8 +254,9 @@ pub struct InitializeGame<'info> {
         seeds = [b"game", oracle.games_counter.to_le_bytes().as_ref()],
         bump,
         constraint = amount >= game_token.min_amount @ ErrorCode::InvalidAmount,
-        constraint = timeout > 0 @ ErrorCode::InvalidTimeout,
-        constraint = min_players <= max_players && match game_type {
+        constraint = timeout >= oracle.min_timeout @ ErrorCode::InvalidTimeout,
+        constraint = timeout <= oracle.max_timeout @ ErrorCode::InvalidTimeout,
+        constraint = max_players <= oracle.max_players && min_players <= max_players && match game_type {
             GameType::Coinflip => max_players >= 2 && min_players >= 2,
             GameType::Giveaway => max_players >= 1 && min_players >= 1,
         } @ ErrorCode::InvalidPlayersCount,
