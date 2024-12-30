@@ -10,5 +10,6 @@ pub fn handler(
     game_token.ticker = ticker;
     game_token.min_amount = min_amount;
     game_token.enabled = enabled;
+
     Ok(())
 }
