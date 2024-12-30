@@ -515,6 +515,8 @@ describe("coinflip", () => {
     // Mint tokens to creator
     await mintTokens(mintAuthority, mint, creatorTokenAccount.address, amount);
 
+    const gameId = await getGamesCounter();
+
     await program.methods
       .initializeGame(
         { coinflip: {} },
@@ -533,7 +535,6 @@ describe("coinflip", () => {
       .signers([creator])
       .rpc();
 
-    const gameId = await getGamesCounter();
     const gamePDA = await getGamePDA(gameId);
 
     // Create player
