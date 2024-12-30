@@ -32,13 +32,19 @@ pub mod coinflip {
     pub fn initialize_token(
         ctx: Context<InitializeToken>,
         ticker: String,
+        min_amount: u64,
         enabled: bool,
     ) -> Result<()> {
-        instructions::initialize_token::handler(ctx, ticker, enabled)
+        instructions::initialize_token::handler(ctx, ticker, min_amount, enabled)
     }
 
-    pub fn update_token(ctx: Context<UpdateToken>, ticker: String, enabled: bool) -> Result<()> {
-        instructions::update_token::handler(ctx, ticker, enabled)
+    pub fn update_token(
+        ctx: Context<UpdateToken>,
+        ticker: String,
+        min_amount: u64,
+        enabled: bool,
+    ) -> Result<()> {
+        instructions::update_token::handler(ctx, ticker, min_amount, enabled)
     }
 
     pub fn initialize_game(

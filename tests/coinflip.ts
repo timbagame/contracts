@@ -64,19 +64,14 @@ describe("coinflip", () => {
         .rpc();
 
       // Create token mint and initialize token
-      const { mint, vaultTokenAccount } = await createSplTokenMint();
-
-      // Get game vault PDA
-      const [gameVault] = PublicKey.findProgramAddressSync(
-        [Buffer.from("game_vault"), mint.toBuffer()],
-        program.programId
-      );
+      const { mint } = await createSplTokenMint();
 
       await program.methods
         .initializeToken("TEST", true)
         .accounts({
           tokenMint: mint,
           payer: authority.publicKey,
+          authority: authority.publicKey,
         })
         .signers([authority])
         .rpc();
