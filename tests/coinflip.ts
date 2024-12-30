@@ -172,12 +172,12 @@ describe("coinflip", () => {
 
   // Add this helper function to get current game counter
   async function getCurrentGameCounter() {
-    const [configPDA] = PublicKey.findProgramAddressSync(
-      [Buffer.from("config")],
+    const [oraclePDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("oracle")],
       program.programId
     );
-    const configAccount = await program.account.config.fetch(configPDA);
-    return configAccount.gameCounter;
+    const oracleAccount = await program.account.oracle.fetch(oraclePDA);
+    return oracleAccount.gamesCounter;
   }
 
   // Add this helper function at the top level
@@ -244,7 +244,7 @@ describe("coinflip", () => {
   });
 
   it("Initialize Game Successfully", async () => {
-    await createConfigAccount();
+    await createOracleAccount();
     const {
       mint,
       mintAuthority
