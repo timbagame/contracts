@@ -96,5 +96,4 @@ pub struct Player {
     pub bot_seed: String,
     pub bot_auth: bool,
     pub games_won: u64,
-    pub games_lost: u64,
 }

@@ -17,8 +17,7 @@ pub struct InitializePlayer<'info> {
             1 + // bot_id
             4 + // bot_seed (String prefix)
             1 + // bot_auth
-            8 + // games_won
-            8, // games_lost
+            8, // games_won
         seeds = [b"player", owner.key().as_ref()],
         bump,
     )]
@@ -50,8 +49,7 @@ pub struct InitializePlayerBot<'info> {
             1 + // bot_id
             4 + bot_seed.len() + // bot_seed
             1 + // bot_auth
-            8 + // games_won
-            8, // games_lost
+            8, // games_won
         seeds = [b"player_bot", bot_id.to_le_bytes().as_ref(), bot_seed.as_bytes()],
         bump,
     )]
@@ -424,6 +422,7 @@ pub struct ClaimWin<'info> {
     )]
     pub oracle: Account<'info, Oracle>,
     #[account(
+        mut,
         address = game.winner,
     )]
     pub winner: Account<'info, Player>,
@@ -440,11 +439,13 @@ pub struct ClaimWin<'info> {
     )]
     pub game_vault: AccountInfo<'info>,
     #[account(
+        mut,
         associated_token::mint = game.token_mint,
         associated_token::authority = game_vault
     )]
     pub game_token_account: Account<'info, TokenAccount>,
     #[account(
+        mut,
         associated_token::mint = game.token_mint,
         associated_token::authority = winner_vault
     )]
