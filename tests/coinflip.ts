@@ -131,13 +131,6 @@ describe("coinflip", () => {
       6,  // decimals
     );
 
-    // Create token account for creator (using provider's wallet)
-    const creatorTokenAccountInfo = await getOrCreateAssociatedTokenAccount(
-      program.provider.connection,
-      mintAuthority, // payer
-      mint,
-      program.provider.publicKey,
-    );
 
     // Get vault PDA using token mint
     const [vaultPDA] = PublicKey.findProgramAddressSync(
@@ -152,17 +145,6 @@ describe("coinflip", () => {
       mint,
       vaultPDA,
       true, // allowOwnerOffCurve
-    );
-
-    // Mint tokens to creator
-    await mintTo(
-      program.provider.connection,
-      mintAuthority,
-      mint,
-      creatorTokenAccountInfo.address,
-      mintAuthority.publicKey,
-      1_000_000_000,
-      [mintAuthority],
     );
 
     // Try to initialize token, if it fails it may already exist
@@ -182,10 +164,21 @@ describe("coinflip", () => {
 
     return {
       mint,
-      creatorTokenAccount: creatorTokenAccountInfo.address,
       vaultTokenAccount: vaultTokenAccountInfo.address,
       mintAuthority,
     };
+  }
+
+  async function mintTokens(mintAuthority: anchor.web3.Keypair, tokenMint: PublicKey, playerTokenAccount: PublicKey, amount: BN) {
+    await mintTo(
+      program.provider.connection,
+      mintAuthority,
+      tokenMint,
+      playerTokenAccount,
+      mintAuthority.publicKey,
+      amount.toNumber(),
+      [mintAuthority],
+    );
   }
 
   async function createPlayer(tokenMint: PublicKey) {
@@ -262,12 +255,16 @@ describe("coinflip", () => {
     await createOracleAccount();
     const {
       mint,
+      mintAuthority
     } = await createSplTokenMint();
 
     const {
       player,
       playerPDA,
+      playerTokenAccount,
     } = await createPlayer(mint);
+
+    await mintTokens(mintAuthority, mint, playerTokenAccount.address, new BN(1_000_000));
 
     // Try to initialize game with invalid parameters
     const amount = new BN(1_000_000);
@@ -305,18 +302,23 @@ describe("coinflip", () => {
     await createOracleAccount();
     const {
       mint,
+      mintAuthority,
     } = await createSplTokenMint();
 
     const {
       player: creator,
       playerPDA: creatorPDA,
+      playerTokenAccount: creatorTokenAccount,
     } = await createPlayer(mint);
 
     const {
       player,
       playerPDA,
+      playerTokenAccount,
     } = await createPlayer(mint);
 
+    await mintTokens(mintAuthority, mint, creatorTokenAccount.address, new BN(1_000_000));
+    await mintTokens(mintAuthority, mint, playerTokenAccount.address, new BN(1_000_000));
     const gameId = await getCurrentGameCounter();
 
     // Initialize game
