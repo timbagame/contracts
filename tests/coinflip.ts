@@ -206,6 +206,7 @@ describe("coinflip", () => {
         payer: player.publicKey,
         owner: player.publicKey,
       })
+      .signers([player])
       .rpc();
 
     // Get player PDA
@@ -220,6 +221,7 @@ describe("coinflip", () => {
       player, // payer
       tokenMint,
       playerPDA,
+      true, // allowOwnerOffCurve
     );
 
     return {
@@ -259,7 +261,6 @@ describe("coinflip", () => {
     const {
       player,
       playerPDA,
-      playerTokenAccount,
     } = await createPlayer(mint);
 
     // Try to initialize game with invalid parameters
@@ -285,6 +286,7 @@ describe("coinflip", () => {
           payer: player.publicKey,
           tokenMint: mint,
         })
+        .signers([player])
         .rpc();
 
       expect.fail("Should have thrown an error");
