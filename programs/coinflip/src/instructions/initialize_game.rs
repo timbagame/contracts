@@ -12,6 +12,7 @@ pub fn handler(
     timeout: i64,
     is_private: bool,
 ) -> Result<()> {
+    // Initialize game
     let game = &mut ctx.accounts.game;
     game.id = ctx.accounts.oracle.games_counter;
     game.creator = ctx.accounts.creator.key();
@@ -29,6 +30,10 @@ pub fn handler(
     if game.game_type == GameType::Coinflip {
         game.players.push(ctx.accounts.creator.key());
     }
+
+    // Increment game counter
+    let oracle = &mut ctx.accounts.oracle;
+    oracle.games_counter += 1;
 
     // Transfer tokens from creator to game account
     token::transfer(
@@ -48,10 +53,6 @@ pub fn handler(
         ),
         game.amount,
     )?;
-
-    // Increment game counter
-    let oracle = &mut ctx.accounts.oracle;
-    oracle.games_counter += 1;
 
     Ok(())
 }
