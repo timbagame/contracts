@@ -188,6 +188,48 @@ describe("coinflip", () => {
     };
   }
 
+  async function createPlayer(tokenMint: PublicKey) {
+    // Create player keypair
+    const player = anchor.web3.Keypair.generate();
+
+    // Airdrop SOL to player for rent
+    const signature = await program.provider.connection.requestAirdrop(
+      player.publicKey,
+      2 * anchor.web3.LAMPORTS_PER_SOL,
+    );
+    await program.provider.connection.confirmTransaction(signature);
+
+    // Initialize player for tests
+    await program.methods
+      .initializePlayer()
+      .accounts({
+        payer: player.publicKey,
+        owner: player.publicKey,
+      })
+      .rpc();
+
+    // Get player PDA
+    const [playerPDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("player"), program.provider.publicKey.toBuffer()],
+      program.programId
+    );
+
+    // get or create player token account
+    const playerTokenAccount = await getOrCreateAssociatedTokenAccount(
+      program.provider.connection,
+      player, // payer
+      tokenMint,
+      playerPDA,
+    );
+
+    return {
+      player,
+      playerPDA,
+      playerTokenAccount,
+    };
+  }
+
+
   it("Initialize Oracle Successfully", async () => {
     const { authority, feePercentage, oracleBufferTime, gamesCounter, playersCounter } = await createOracleAccount();
 
@@ -220,15 +262,13 @@ describe("coinflip", () => {
       program.programId
     );
 
-    // Initialize token first
-    await program.methods
-      .initializeToken("TEST", new BN(1000), true)
-      .accounts({
-        tokenMint: mint,
-        payer: program.provider.publicKey,
-        authority: program.provider.publicKey,
-      })
-      .rpc();
+    // get or create player token account
+    const playerTokenAccount = await getOrCreateAssociatedTokenAccount(
+      program.provider.connection,
+      program.provider,
+      mint,
+      playerPDA,
+    );
 
     // Try to initialize game with invalid parameters
     const amount = new BN(1_000_000);
@@ -302,7 +342,7 @@ describe("coinflip", () => {
     await program.provider.connection.confirmTransaction(playerAirdrop);
 
     // Create player's token account and mint tokens
-    const playerTokenAccount = await createAssociatedTokenAccount(
+    const playerTokenAccount = await getOrCreateAssociatedTokenAccount(
       program.provider.connection,
       player, // payer
       mint,
@@ -372,7 +412,7 @@ describe("coinflip", () => {
     await program.provider.connection.confirmTransaction(playerAirdrop);
 
     // Create player's token account and mint tokens
-    const playerTokenAccount = await createAssociatedTokenAccount(
+    const playerTokenAccount = await getOrCreateAssociatedTokenAccount(
       program.provider.connection,
       player, // payer
       mint,
@@ -448,7 +488,7 @@ describe("coinflip", () => {
     await program.provider.connection.confirmTransaction(playerAirdrop);
 
     // Create player's token account and mint tokens
-    const playerTokenAccount = await createAssociatedTokenAccount(
+    const playerTokenAccount = await getOrCreateAssociatedTokenAccount(
       program.provider.connection,
       player,
       mint,
@@ -532,14 +572,14 @@ describe("coinflip", () => {
     }
 
     // Create token accounts for players and mint tokens
-    const player1TokenAccount = await createAssociatedTokenAccount(
+    const player1TokenAccount = await getOrCreateAssociatedTokenAccount(
       program.provider.connection,
       player1,
       mint,
       player1.publicKey,
     );
 
-    const player2TokenAccount = await createAssociatedTokenAccount(
+    const player2TokenAccount = await getOrCreateAssociatedTokenAccount(
       program.provider.connection,
       player2,
       mint,
@@ -626,7 +666,7 @@ describe("coinflip", () => {
     await program.provider.connection.confirmTransaction(airdrop);
 
     // Create player's token account
-    const playerTokenAccount = await createAssociatedTokenAccount(
+    const playerTokenAccount = await getOrCreateAssociatedTokenAccount(
       program.provider.connection,
       player,
       mint,
@@ -715,7 +755,7 @@ describe("coinflip", () => {
     await program.provider.connection.confirmTransaction(playerAirdrop);
 
     // Create player's token account and mint tokens
-    const playerTokenAccount = await createAssociatedTokenAccount(
+    const playerTokenAccount = await getOrCreateAssociatedTokenAccount(
       program.provider.connection,
       player,
       mint,
@@ -808,7 +848,7 @@ describe("coinflip", () => {
     await program.provider.connection.confirmTransaction(playerAirdrop);
 
     // Create player's token account and mint tokens
-    const playerTokenAccount = await createAssociatedTokenAccount(
+    const playerTokenAccount = await getOrCreateAssociatedTokenAccount(
       program.provider.connection,
       player,
       mint,
@@ -894,7 +934,7 @@ describe("coinflip", () => {
     await program.provider.connection.confirmTransaction(playerAirdrop);
 
     // Create player's token account and mint tokens
-    const playerTokenAccount = await createAssociatedTokenAccount(
+    const playerTokenAccount = await getOrCreateAssociatedTokenAccount(
       program.provider.connection,
       player,
       mint,
@@ -1035,7 +1075,7 @@ describe("coinflip", () => {
     await program.provider.connection.confirmTransaction(playerAirdrop);
 
     // Create player's token account and mint tokens
-    const playerTokenAccount = await createAssociatedTokenAccount(
+    const playerTokenAccount = await getOrCreateAssociatedTokenAccount(
       program.provider.connection,
       player,
       mint,
@@ -1136,7 +1176,7 @@ describe("coinflip", () => {
     await program.provider.connection.confirmTransaction(playerAirdrop);
 
     // Create player's token account and mint tokens
-    const playerTokenAccount = await createAssociatedTokenAccount(
+    const playerTokenAccount = await getOrCreateAssociatedTokenAccount(
       program.provider.connection,
       player,
       mint,
@@ -1251,7 +1291,7 @@ describe("coinflip", () => {
     await program.provider.connection.confirmTransaction(playerAirdrop);
 
     // Create player's token account and mint tokens
-    const playerTokenAccount = await createAssociatedTokenAccount(
+    const playerTokenAccount = await getOrCreateAssociatedTokenAccount(
       program.provider.connection,
       player,
       mint,
@@ -1437,7 +1477,7 @@ describe("coinflip", () => {
     );
     await program.provider.connection.confirmTransaction(playerAirdrop);
 
-    const playerTokenAccount = await createAssociatedTokenAccount(
+    const playerTokenAccount = await getOrCreateAssociatedTokenAccount(
       program.provider.connection,
       player,
       mint,
@@ -1613,7 +1653,7 @@ describe("coinflip", () => {
 
     // Create player's token accounts and mint tokens
     for (const player of players) {
-      const playerTokenAccount = await createAssociatedTokenAccount(
+      const playerTokenAccount = await getOrCreateAssociatedTokenAccount(
         program.provider.connection,
         player,
         mint,
@@ -1676,7 +1716,7 @@ describe("coinflip", () => {
     );
     await program.provider.connection.confirmTransaction(playerAirdrop);
 
-    const playerTokenAccount = await createAssociatedTokenAccount(
+    const playerTokenAccount = await getOrCreateAssociatedTokenAccount(
       program.provider.connection,
       player,
       mint,
@@ -1810,7 +1850,7 @@ describe("coinflip", () => {
     );
     await program.provider.connection.confirmTransaction(playerAirdrop);
 
-    const playerTokenAccount = await createAssociatedTokenAccount(
+    const playerTokenAccount = await getOrCreateAssociatedTokenAccount(
       program.provider.connection,
       player,
       mint,
@@ -2007,7 +2047,7 @@ describe("coinflip", () => {
     );
     await program.provider.connection.confirmTransaction(playerAirdrop);
 
-    const playerTokenAccount = await createAssociatedTokenAccount(
+    const playerTokenAccount = await getOrCreateAssociatedTokenAccount(
       program.provider.connection,
       player,
       differentMint,
@@ -2131,7 +2171,7 @@ describe("coinflip", () => {
     );
     await program.provider.connection.confirmTransaction(playerAirdrop);
 
-    const playerTokenAccount = await createAssociatedTokenAccount(
+    const playerTokenAccount = await getOrCreateAssociatedTokenAccount(
       program.provider.connection,
       player,
       mint,
