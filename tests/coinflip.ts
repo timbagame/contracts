@@ -65,7 +65,7 @@ describe("coinflip", () => {
 
       // Create token mint and initialize token
       const { mint, vaultTokenAccount } = await createSplTokenMint();
-      
+
       // Get game vault PDA
       const [gameVault] = PublicKey.findProgramAddressSync(
         [Buffer.from("game_vault"), mint.toBuffer()],
@@ -75,23 +75,8 @@ describe("coinflip", () => {
       await program.methods
         .initializeToken("TEST", true)
         .accounts({
-          game_token: await PublicKey.findProgramAddress(
-            [Buffer.from("token"), mint.toBuffer()],
-            program.programId
-          )[0],
-          token_mint: mint,
-          game_vault: gameVault,
-          token_account: vaultTokenAccount,
+          tokenMint: mint,
           payer: authority.publicKey,
-          oracle: await PublicKey.findProgramAddress(
-            [Buffer.from("oracle")],
-            program.programId
-          )[0],
-          authority: authority.publicKey,
-          system_program: anchor.web3.SystemProgram.programId,
-          token_program: anchor.utils.token.TOKEN_PROGRAM_ID,
-          associated_token_program: anchor.utils.token.ASSOCIATED_PROGRAM_ID,
-          rent: anchor.web3.SYSVAR_RENT_PUBKEY,
         })
         .signers([authority])
         .rpc();
@@ -335,7 +320,7 @@ describe("coinflip", () => {
   });
 
   it("Join Game Successfully", async () => {
-    await createConfigAccount();
+    await createOracleAccount();
     const {
       mint,
       mintAuthority
