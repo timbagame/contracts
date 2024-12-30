@@ -28,5 +28,6 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
     }
 
     game.players.push(ctx.accounts.player.key());
+
     Ok(())
 }
