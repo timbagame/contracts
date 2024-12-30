@@ -11,35 +11,13 @@ import {
 } from "@solana/spl-token";
 import { PublicKey } from "@solana/web3.js";
 
-/**
- * Important note about account handling in these tests:
- * 
- * Several accounts DO NOT need to be explicitly passed to instructions because Anchor handles them automatically:
- * 
- * 1. PDAs (Program Derived Addresses):
- *    - oracle: Derived from seeds ["oracle"]
- *    - game: Derived from seeds ["game", gameCounter]
- *    - game_vault: Derived from seeds ["game_vault", tokenMint]
- *    - player_vault: Derived from seeds ["player_vault", player.key(), tokenMint]
- *    Anchor can derive these from the seeds defined in the program
- * 
- * 2. System-level accounts:
- *    - systemProgram: Added automatically by Anchor when creating accounts
- *    - tokenProgram: Added automatically for token operations
- *    - rent: Added automatically for account creation
- * 
- * Only pass accounts that are:
- *    - Signers (who's paying or authorizing)
- *    - Accounts that can't be derived (like user wallets)
- */
-
 describe("coinflip", () => {
   // Configure the client to use the local cluster.
   anchor.setProvider(anchor.AnchorProvider.env());
   const program = anchor.workspace.Coinflip as Program<Coinflip>;
 
   // Add helper functions at the top level
-  async function getCurrentGameCounter() {
+  async function getGamesCounter() {
     const [oraclePDA] = PublicKey.findProgramAddressSync(
       [Buffer.from("oracle")],
       program.programId
@@ -319,7 +297,8 @@ describe("coinflip", () => {
 
     await mintTokens(mintAuthority, mint, creatorTokenAccount.address, new BN(1_000_000));
     await mintTokens(mintAuthority, mint, playerTokenAccount.address, new BN(1_000_000));
-    const gameId = await getCurrentGameCounter();
+
+    const gameId = await getGamesCounter();
 
     // Initialize game
     const amount = new BN(1_000_000);
@@ -362,16 +341,33 @@ describe("coinflip", () => {
 
   it("Join Private Game Successfully", async () => {
     await createOracleAccount();
-
-    // Create SPL token setup
     const {
       mint,
       mintAuthority
     } = await createSplTokenMint();
 
-    const amount = new BN(1_000_000);
+    // Create creator using helper
+    const {
+      player: creator,
+      playerPDA: creatorPDA,
+      playerTokenAccount: creatorTokenAccount,
+    } = await createPlayer(mint);
 
-    // Create game with isPrivate = true
+    // Create joiner using helper  
+    const {
+      player: joiner,
+      playerPDA: joinerPDA,
+      playerTokenAccount: joinerTokenAccount,
+    } = await createPlayer(mint);
+
+    // Mint tokens to both accounts
+    const amount = new BN(1_000_000);
+    await mintTokens(mintAuthority, mint, creatorTokenAccount.address, amount);
+    await mintTokens(mintAuthority, mint, joinerTokenAccount.address, amount);
+
+    const gameId = await getGamesCounter();
+
+    // Initialize game with isPrivate = true
     await program.methods
       .initializeGame(
         { coinflip: {} },
@@ -382,38 +378,31 @@ describe("coinflip", () => {
         true, // isPrivate
       )
       .accounts({
-        creator: program.provider.publicKey,
+        creator: creatorPDA,
         tokenMint: mint,
+        signer: creator.publicKey,
+        payer: creator.publicKey,
       })
+      .signers([creator])
       .rpc();
 
-    // Get current game counter for PDA derivation
-    const gameCounter = await getCurrentGameCounter();
-    const [gamePDA] = PublicKey.findProgramAddressSync(
-      [Buffer.from("game"), gameCounter.subn(1).toArrayLike(Buffer, 'le', 8)],
-      program.programId
-    );
+    const gamePDA = await getGamePDA(gameId);
 
     // Join game with both player and operator signatures
     await program.methods
       .joinGame()
       .accounts({
         game: gamePDA,
-        player: player.publicKey,
+        player: joinerPDA,
+        owner: joiner.publicKey,
+        authority: program.provider.publicKey,
       })
-      .remainingAccounts([
-        {
-          pubkey: operator,
-          isWritable: false,
-          isSigner: true,
-        },
-      ])
-      .signers([player])
+      .signers([joiner])
       .rpc();
 
     // Verify game state
     const gameData = await program.account.game.fetch(gamePDA);
-    expect(gameData.players[1].toString()).to.equal(player.publicKey.toString());
+    expect(gameData.players[1].toString()).to.equal(joinerPDA.toString());
   });
 
   it("Fail to Join Full Game", async () => {
@@ -424,6 +413,8 @@ describe("coinflip", () => {
     } = await createSplTokenMint();
 
     const amount = new BN(1_000_000);
+
+    const gameId = await getGamesCounter();
 
     // Create game with max 2 participants
     await program.methods
@@ -441,12 +432,7 @@ describe("coinflip", () => {
       })
       .rpc();
 
-    // Get current game counter for PDA derivation
-    const gameCounter = await getCurrentGameCounter();
-    const [gamePDA] = PublicKey.findProgramAddressSync(
-      [Buffer.from("game"), gameCounter.subn(1).toArrayLike(Buffer, 'le', 8)],
-      program.programId
-    );
+    const gamePDA = await getGamePDA(gameId);
 
     // Create and fund two more players
     const player1 = anchor.web3.Keypair.generate();
@@ -540,7 +526,7 @@ describe("coinflip", () => {
       .rpc();
 
     // Get current game counter for PDA derivation
-    const gameCounter = await getCurrentGameCounter();
+    const gameCounter = await getGamesCounter();
     const [gamePDA] = PublicKey.findProgramAddressSync(
       [Buffer.from("game"), gameCounter.subn(1).toArrayLike(Buffer, 'le', 8)],
       program.programId
@@ -629,7 +615,7 @@ describe("coinflip", () => {
       .rpc();
 
     // Get current game counter for PDA derivation
-    const gameCounter = await getCurrentGameCounter();
+    const gameCounter = await getGamesCounter();
     const [gamePDA] = PublicKey.findProgramAddressSync(
       [Buffer.from("game"), gameCounter.subn(1).toArrayLike(Buffer, 'le', 8)],
       program.programId
@@ -722,7 +708,7 @@ describe("coinflip", () => {
       .rpc();
 
     // Get current game counter for PDA derivation
-    const gameCounter = await getCurrentGameCounter();
+    const gameCounter = await getGamesCounter();
     const [gamePDA] = PublicKey.findProgramAddressSync(
       [Buffer.from("game"), gameCounter.subn(1).toArrayLike(Buffer, 'le', 8)],
       program.programId
@@ -808,7 +794,7 @@ describe("coinflip", () => {
       .rpc();
 
     // Get current game counter for PDA derivation
-    const gameCounter = await getCurrentGameCounter();
+    const gameCounter = await getGamesCounter();
     const [gamePDA] = PublicKey.findProgramAddressSync(
       [Buffer.from("game"), gameCounter.subn(1).toArrayLike(Buffer, 'le', 8)],
       program.programId
@@ -897,7 +883,7 @@ describe("coinflip", () => {
       .rpc();
 
     // Get current game counter for PDA derivation
-    const gameCounter = await getCurrentGameCounter();
+    const gameCounter = await getGamesCounter();
     const [gamePDA] = PublicKey.findProgramAddressSync(
       [Buffer.from("game"), gameCounter.subn(1).toArrayLike(Buffer, 'le', 8)],
       program.programId
@@ -949,7 +935,7 @@ describe("coinflip", () => {
       .rpc();
 
     // Get current game counter for PDA derivation
-    const gameCounter = await getCurrentGameCounter();
+    const gameCounter = await getGamesCounter();
     const [gamePDA] = PublicKey.findProgramAddressSync(
       [Buffer.from("game"), gameCounter.subn(1).toArrayLike(Buffer, 'le', 8)],
       program.programId
@@ -1050,7 +1036,7 @@ describe("coinflip", () => {
       .rpc();
 
     // Get current game counter for PDA derivation
-    const gameCounter = await getCurrentGameCounter();
+    const gameCounter = await getGamesCounter();
     const [gamePDA] = PublicKey.findProgramAddressSync(
       [Buffer.from("game"), gameCounter.subn(1).toArrayLike(Buffer, 'le', 8)],
       program.programId
@@ -1165,7 +1151,7 @@ describe("coinflip", () => {
       .rpc();
 
     // Get current game counter for PDA derivation
-    const gameCounter = await getCurrentGameCounter();
+    const gameCounter = await getGamesCounter();
     const [gamePDA] = PublicKey.findProgramAddressSync(
       [Buffer.from("game"), gameCounter.subn(1).toArrayLike(Buffer, 'le', 8)],
       program.programId
@@ -1246,7 +1232,7 @@ describe("coinflip", () => {
     const amount = new BN(1_000_000);
 
     // Get current game counter for PDA derivation
-    const gameCounter = await getCurrentGameCounter();
+    const gameCounter = await getGamesCounter();
 
     await program.methods
       .initializeGame(
@@ -1303,7 +1289,7 @@ describe("coinflip", () => {
     const isPrivate = false;
 
     // Get current game counter for PDA derivation
-    const gameCounter = await getCurrentGameCounter();
+    const gameCounter = await getGamesCounter();
 
     // Initialize giveaway game
     await program.methods
@@ -1339,7 +1325,7 @@ describe("coinflip", () => {
     } = await createSplTokenMint();
 
     const amount = new BN(1_000_000);
-    const gameCounter = await getCurrentGameCounter();
+    const gameCounter = await getGamesCounter();
 
     await program.methods
       .initializeGame(
@@ -1452,7 +1438,7 @@ describe("coinflip", () => {
     } = await createSplTokenMint();
 
     const amount = new BN(1_000_000);
-    const gameCounter = await getCurrentGameCounter();
+    const gameCounter = await getGamesCounter();
 
     // Create game with short timeout
     await program.methods
@@ -1508,7 +1494,7 @@ describe("coinflip", () => {
     } = await createSplTokenMint();
 
     const amount = new BN(1_000_000);
-    const gameCounter = await getCurrentGameCounter();
+    const gameCounter = await getGamesCounter();
 
     // Create game with min participants = 2 and max participants = 10
     await program.methods
@@ -1615,7 +1601,7 @@ describe("coinflip", () => {
     // Create treasury token account
 
     const amount = new BN(1_000_000);
-    const gameCounter = await getCurrentGameCounter();
+    const gameCounter = await getGamesCounter();
 
     // Initialize game
     await program.methods
@@ -1725,7 +1711,7 @@ describe("coinflip", () => {
       .rpc();
 
     // Get current game counter for PDA derivation
-    const gameCounter = await getCurrentGameCounter();
+    const gameCounter = await getGamesCounter();
     const [gamePDA] = PublicKey.findProgramAddressSync(
       [Buffer.from("game"), gameCounter.subn(1).toArrayLike(Buffer, 'le', 8)],
       program.programId
@@ -1892,7 +1878,7 @@ describe("coinflip", () => {
     } = await createSplTokenMint();
 
     const amount = new BN(1_000_000);
-    const gameCounter = await getCurrentGameCounter();
+    const gameCounter = await getGamesCounter();
 
     // Initialize game with first mint
     await program.methods
@@ -1979,7 +1965,7 @@ describe("coinflip", () => {
     } = await createSplTokenMint();
 
     const amount = new BN(1_000_000);
-    const gameCounter = await getCurrentGameCounter();
+    const gameCounter = await getGamesCounter();
 
     // Initialize game with long timeout
     await program.methods
@@ -2032,7 +2018,7 @@ describe("coinflip", () => {
     } = await createSplTokenMint();
 
     const amount = new BN(1_000_000);
-    const gameCounter = await getCurrentGameCounter();
+    const gameCounter = await getGamesCounter();
 
     // Initialize game
     await program.methods
