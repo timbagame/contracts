@@ -42,7 +42,7 @@ pub fn handler(
             &[&[
                 b"player_vault",
                 ctx.accounts.creator.key().as_ref(),
-                ctx.accounts.game_token.token_mint.as_ref(),
+                game.token_mint.as_ref(),
                 &[ctx.bumps.creator_vault],
             ]],
         ),

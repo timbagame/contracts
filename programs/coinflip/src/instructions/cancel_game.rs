@@ -13,13 +13,18 @@ pub fn handler(ctx: Context<super::CancelGame>) -> Result<()> {
     // Only return funds for giveaway games
     if game.game_type == GameType::Giveaway {
         token::transfer(
-            CpiContext::new(
+            CpiContext::new_with_signer(
                 ctx.accounts.token_program.to_account_info(),
                 token::Transfer {
                     from: ctx.accounts.game_token_account.to_account_info(),
                     to: ctx.accounts.creator_token_account.to_account_info(),
                     authority: ctx.accounts.game_vault.to_account_info(),
                 },
+                &[&[
+                    b"game_vault",
+                    game.token_mint.as_ref(),
+                    &[ctx.bumps.game_vault],
+                ]],
             ),
             game.amount,
         )?;
