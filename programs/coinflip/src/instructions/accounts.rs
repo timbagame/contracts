@@ -272,6 +272,7 @@ pub struct InitializeGame<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
     #[account(
+        mut,
         seeds = [b"oracle"],
         bump,
     )]
