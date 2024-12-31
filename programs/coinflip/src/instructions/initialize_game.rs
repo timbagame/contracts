@@ -1,6 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token;
 
+use crate::events::GameInitialized;
 use crate::state::GameType;
 
 pub fn handler(
@@ -53,6 +54,17 @@ pub fn handler(
         ),
         game.amount,
     )?;
+
+    emit!(GameInitialized {
+        game_id: game.id,
+        creator: ctx.accounts.creator.key(),
+        game_type: game.game_type,
+        amount: game.amount,
+        max_players: game.max_players,
+        min_players: game.min_players,
+        timeout: game.timeout,
+        is_private: game.is_private,
+    });
 
     Ok(())
 }
