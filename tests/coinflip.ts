@@ -109,7 +109,6 @@ describe("coinflip", () => {
       6,  // decimals
     );
 
-
     // Get vault PDA using token mint
     const [vaultPDA] = PublicKey.findProgramAddressSync(
       [Buffer.from("game_vault"), mint.toBuffer()],
@@ -123,6 +122,14 @@ describe("coinflip", () => {
       mint,
       vaultPDA,
       true, // allowOwnerOffCurve
+    );
+
+    // Create token account for oracle authority
+    const oracleAuthorityTokenAccount = await getOrCreateAssociatedTokenAccount(
+      program.provider.connection,
+      mintAuthority, // payer
+      mint,
+      program.provider.publicKey, // oracle authority
     );
 
     // Try to initialize token, if it fails it may already exist
