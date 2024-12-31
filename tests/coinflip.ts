@@ -1057,7 +1057,14 @@ describe("coinflip", () => {
     const gameData = await program.account.game.fetch(gamePDA);
     const winner = gameData.winner;
     expect(winner).to.not.be.null;
-    const winnerOwner = winner == creatorPDA ? creator : player;
+    let winnerOwner;
+    if (winner.equals(creatorPDA)) {
+      winnerOwner = creator;
+    } else if (winner.equals(playerPDA)) {
+      winnerOwner = player;
+    } else {
+      expect.fail("Invalid winner");
+    }
 
     // Get winner's token account
     const winnerTokenAccount = winner.equals(creatorPDA)
@@ -1086,7 +1093,7 @@ describe("coinflip", () => {
     ).amount;
 
     // Calculate expected winnings (amount * 2 - fees)
-    const totalPot = amount.toNumber() * 2;
+    const totalPot = amount.toNumber() * 2 * 0.99;
     const expectedWinnings = BigInt(totalPot);
     expect(finalBalance - initialBalance).to.equal(expectedWinnings);
   });
