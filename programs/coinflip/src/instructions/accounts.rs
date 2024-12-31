@@ -57,7 +57,7 @@ pub struct InitializePlayerBot<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
     #[account(
-        address = oracle.authority,
+        address = oracle.authority @ ErrorCode::UnauthorizedOracle,
     )]
     pub authority: Signer<'info>,
     #[account(
@@ -142,7 +142,7 @@ pub struct UpdateOracle<'info> {
     )]
     pub oracle: Account<'info, Oracle>,
     #[account(
-        address = oracle.authority,
+        address = oracle.authority @ ErrorCode::UnauthorizedOracle,
     )]
     pub old_authority: Signer<'info>,
     pub new_authority: Signer<'info>,
@@ -187,7 +187,7 @@ pub struct InitializeToken<'info> {
     )]
     pub oracle: Account<'info, Oracle>,
     #[account(
-        address = oracle.authority,
+        address = oracle.authority @ ErrorCode::UnauthorizedOracle,
     )]
     pub authority: Signer<'info>,
     pub system_program: Program<'info, System>,
@@ -215,7 +215,7 @@ pub struct UpdateToken<'info> {
     )]
     pub oracle: Account<'info, Oracle>,
     #[account(
-        address = oracle.authority,
+        address = oracle.authority @ ErrorCode::UnauthorizedOracle,
     )]
     pub authority: Signer<'info>,
 }
@@ -384,7 +384,7 @@ pub struct SetOracleHash<'info> {
         bump
     )]
     pub oracle: Account<'info, Oracle>,
-    #[account(address = oracle.authority)]
+    #[account(address = oracle.authority @ ErrorCode::UnauthorizedOracle)]
     pub authority: Signer<'info>,
     /// CHECK: This is a PDA that serves as the authority for the game's token accounts
     #[account(
@@ -423,7 +423,7 @@ pub struct ClaimWin<'info> {
     pub oracle: Account<'info, Oracle>,
     #[account(
         mut,
-        address = game.winner,
+        address = game.winner @ ErrorCode::NotWinner,
     )]
     pub winner: Account<'info, Player>,
     /// CHECK: This is a PDA that serves as the authority for the winner's token accounts
