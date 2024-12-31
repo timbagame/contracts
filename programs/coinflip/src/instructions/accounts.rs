@@ -316,7 +316,7 @@ pub struct InitializeGame<'info> {
 pub struct JoinGame<'info> {
     #[account(
         mut,
-        constraint = game.status == GameStatus::Active @ ErrorCode::InvalidGameStatus,
+        constraint = game.status == GameStatus::Active @ ErrorCode::GameNotActive,
         constraint = Clock::get().unwrap().unix_timestamp < game.created_at + game.timeout @ ErrorCode::TimeoutReached,
         constraint = !game.players.contains(&player.key()) @ ErrorCode::AlreadyJoined,
         constraint = game.players.len() < (game.max_players as usize) @ ErrorCode::GameFull,
@@ -423,7 +423,7 @@ pub struct ClaimWin<'info> {
     pub oracle: Account<'info, Oracle>,
     #[account(
         mut,
-        address = game.winner @ ErrorCode::NotWinner,
+        address = game.winner @ ErrorCode::UnauthorizedPlayer,
         constraint = (signer.key() == oracle.authority && winner.bot_auth) ||
                      (signer.key() == winner.owner)
                      @ ErrorCode::UnauthorizedPlayer,

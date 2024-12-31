@@ -2,16 +2,10 @@ use anchor_lang::prelude::*;
 
 #[error_code]
 pub enum ErrorCode {
-    #[msg("Invalid game status for this action")]
-    InvalidGameStatus,
     #[msg("Game is already full")]
     GameFull,
     #[msg("Player has already joined")]
     AlreadyJoined,
-    #[msg("Invalid oracle address")]
-    InvalidOracle,
-    #[msg("Oracle hash already set")]
-    OracleHashAlreadySet,
     #[msg("Game not full yet")]
     GameNotFull,
     #[msg("Game ready for claim")]
@@ -20,14 +14,8 @@ pub enum ErrorCode {
     GameNotReadyForClaim,
     #[msg("Game ready for oracle")]
     GameReadyForOracle,
-    #[msg("Not the winner")]
-    NotWinner,
-    #[msg("Signature required for private game")]
-    SignatureRequired,
     #[msg("Timeout reached")]
     TimeoutReached,
-    #[msg("Timeout not reached yet")]
-    TimeoutNotReached,
     #[msg("Invalid players count")]
     InvalidPlayersCount,
     #[msg("Game is not active")]
@@ -40,8 +28,6 @@ pub enum ErrorCode {
     InvalidTimeout,
     #[msg("Insufficient balance")]
     InsufficientBalance,
-    #[msg("Cannot cancel game with players")]
-    GameNotEmpty,
     #[msg("Unauthorized player")]
     UnauthorizedPlayer,
     #[msg("Only the oracle can perform this action")]
@@ -50,8 +36,6 @@ pub enum ErrorCode {
     TokenNotEnabled,
     #[msg("Fee percentage must be 5% or less")]
     InvalidFeePercentage,
-    #[msg("Unauthorized owner")]
-    UnauthorizedOwner,
     #[msg("Invalid amount")]
     InvalidAmount,
 }
