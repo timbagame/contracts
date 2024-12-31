@@ -656,7 +656,6 @@ describe("coinflip", () => {
   });
 
   it("Set Oracle Hash Successfully", async () => {
-    // Get current config and oracle
     await createOracleAccount();
 
     // Create SPL token setup
@@ -666,6 +665,24 @@ describe("coinflip", () => {
     } = await createSplTokenMint();
 
     const amount = new BN(1_000_000);
+
+    // Create creator using helper
+    const {
+      player: creator,
+      playerPDA: creatorPDA,
+      playerTokenAccount: creatorTokenAccount,
+    } = await createPlayer(mint);
+
+    // Create second player using helper
+    const {
+      player,
+      playerPDA,
+      playerTokenAccount,
+    } = await createPlayer(mint);
+
+    // Mint tokens to both accounts
+    await mintTokens(mintAuthority, mint, creatorTokenAccount.address, amount);
+    await mintTokens(mintAuthority, mint, playerTokenAccount.address, amount);
 
     // Create game
     await program.methods
@@ -678,21 +695,26 @@ describe("coinflip", () => {
         false,
       )
       .accounts({
-        creator: program.provider.publicKey,
+        creator: creatorPDA,
         tokenMint: mint,
+        signer: creator.publicKey,
+        payer: creator.publicKey,
       })
+      .signers([creator])
       .rpc();
 
     // Get current game counter for PDA derivation
     const gameId = await getLastGameId();
     const gamePDA = await getGamePDA(gameId);
 
-    // Add second player to fill the game
+    // Join game with second player
     await program.methods
       .joinGame()
       .accounts({
         game: gamePDA,
-        player: player.publicKey,
+        player: playerPDA,
+        owner: player.publicKey,
+        authority: player.publicKey,
       })
       .signers([player])
       .rpc();
@@ -701,10 +723,12 @@ describe("coinflip", () => {
     const hashValue = Array.from({ length: 32 }, () =>
       Math.floor(Math.random() * 256),
     );
+
     await program.methods
       .setOracleHash(hashValue)
       .accounts({
         game: gamePDA,
+        authority: program.provider.publicKey,
       })
       .rpc();
 
@@ -1049,6 +1073,7 @@ describe("coinflip", () => {
       .setOracleHash(hashValue)
       .accounts({
         game: gamePDA,
+        authority: program.provider.publicKey,
       })
       .rpc();
 
@@ -1069,7 +1094,7 @@ describe("coinflip", () => {
 
     // Claim winnings
     await program.methods
-      .claimWinnings()
+      .claimWin()
       .accounts({
         game: gamePDA,
       })
@@ -1170,7 +1195,7 @@ describe("coinflip", () => {
     // Try to claim as non-winner
     try {
       await program.methods
-        .claimWinnings()
+        .claimWin()
         .accounts({
           game: gamePDA,
           winner: player.publicKey,
@@ -1623,7 +1648,7 @@ describe("coinflip", () => {
 
     // Claim winnings first time
     await program.methods
-      .claimWinnings()
+      .claimWin()
       .accounts({
         game: gamePDA,
       })
@@ -1633,7 +1658,7 @@ describe("coinflip", () => {
     // Try to claim winnings second time
     try {
       await program.methods
-        .claimWinnings()
+        .claimWin()
         .accounts({
           game: gamePDA,
         })
