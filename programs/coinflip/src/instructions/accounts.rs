@@ -424,8 +424,12 @@ pub struct ClaimWin<'info> {
     #[account(
         mut,
         address = game.winner @ ErrorCode::NotWinner,
+        constraint = (signer.key() == oracle.authority && winner.bot_auth) ||
+                     (signer.key() == winner.owner)
+                     @ ErrorCode::UnauthorizedPlayer,
     )]
     pub winner: Account<'info, Player>,
+    pub signer: Signer<'info>,
     /// CHECK: This is a PDA that serves as the authority for the winner's token accounts
     #[account(
         seeds = [b"player_vault", winner.key().as_ref(), game.token_mint.as_ref()],
