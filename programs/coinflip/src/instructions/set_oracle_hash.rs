@@ -27,8 +27,8 @@ pub fn handler(ctx: Context<super::SetOracleHash>, hash_value: [u8; 32]) -> Resu
     combined.extend_from_slice(&hash_value);
     combined.extend_from_slice(&slot_hash);
     let final_hash = hash(&combined).to_bytes();
-
-    let random_index = (final_hash[0] as usize) % game.players.len();
+    let random_number = usize::from_le_bytes(final_hash[0..8].try_into().unwrap());
+    let random_index = random_number % game.players.len();
     game.winner = game.players[random_index];
     game.status = GameStatus::ReadyForClaim;
 
