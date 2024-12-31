@@ -1057,6 +1057,7 @@ describe("coinflip", () => {
     const gameData = await program.account.game.fetch(gamePDA);
     const winner = gameData.winner;
     expect(winner).to.not.be.null;
+    const winnerOwner = winner == creatorPDA ? creator : player;
 
     // Get winner's token account
     const winnerTokenAccount = winner.equals(creatorPDA)
@@ -1074,8 +1075,9 @@ describe("coinflip", () => {
       .accounts({
         game: gamePDA,
         winner: winner,
+        signer: winnerOwner.publicKey,
       })
-      .signers(winner.equals(creatorPDA) ? [creator] : [player])
+      .signers([winnerOwner])
       .rpc();
 
     // Verify winner received funds
