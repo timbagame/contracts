@@ -974,9 +974,9 @@ describe("coinflip", () => {
         })
         .rpc();
 
-      expect.fail("Should have thrown OracleHashAlreadySet error");
+      expect.fail("Should have thrown GameNotActive error");
     } catch (error) {
-      expect(error.toString()).to.include("OracleHashAlreadySet");
+      expect(error.toString()).to.include("GameNotActive");
     }
   });
 
