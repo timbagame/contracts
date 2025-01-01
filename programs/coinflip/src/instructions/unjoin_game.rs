@@ -33,7 +33,6 @@ pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
                     },
                     &[&[
                         b"game_vault",
-                        ctx.accounts.player.key().as_ref(),
                         game.token_mint.as_ref(),
                         &[ctx.bumps.game_vault],
                     ]],

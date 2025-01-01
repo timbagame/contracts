@@ -483,6 +483,7 @@ pub struct UnjoinGame<'info> {
     )]
     pub player_vault: AccountInfo<'info>,
     #[account(
+        mut,
         associated_token::mint = game.token_mint,
         associated_token::authority = player_vault
     )]
@@ -494,6 +495,7 @@ pub struct UnjoinGame<'info> {
     )]
     pub game_vault: AccountInfo<'info>,
     #[account(
+        mut,
         associated_token::mint = game.token_mint,
         associated_token::authority = game_vault
     )]
