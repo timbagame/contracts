@@ -1617,12 +1617,31 @@ describe("coinflip", () => {
   });
 
   it("Cannot Claim Winnings Multiple Times", async () => {
+    await createOracleAccount();
     const {
       mint,
       mintAuthority
     } = await createSplTokenMint();
 
     const amount = new BN(1_000_000);
+
+    // Create creator using helper
+    const {
+      player: creator,
+      playerPDA: creatorPDA,
+      playerTokenAccount: creatorTokenAccount,
+    } = await createPlayer(mint);
+
+    // Create second player using helper
+    const {
+      player: player1,
+      playerPDA: player1PDA,
+      playerTokenAccount: player1TokenAccount,
+    } = await createPlayer(mint);
+
+    // Mint tokens to both accounts
+    await mintTokens(mintAuthority, mint, creatorTokenAccount.address, amount);
+    await mintTokens(mintAuthority, mint, player1TokenAccount.address, amount);
 
     // Initialize game
     await program.methods
@@ -1635,29 +1654,39 @@ describe("coinflip", () => {
         false,
       )
       .accounts({
-        creator: program.provider.publicKey,
+        creator: creatorPDA,
         tokenMint: mint,
+        signer: creator.publicKey,
+        payer: creator.publicKey,
       })
+      .signers([creator])
       .rpc();
 
+    // Get game PDA
+    const gameId = await getLastGameId();
+    const gamePDA = await getGamePDA(gameId);
+
+    // Join game with player1
     await program.methods
       .joinGame()
       .accounts({
         game: gamePDA,
-        player: player.publicKey,
+        player: player1PDA,
+        owner: player1.publicKey,
+        authority: player1.publicKey,
       })
-      .signers([player])
+      .signers([player1])
       .rpc();
 
     // Set oracle hash
     const hashValue = Array.from({ length: 32 }, () =>
       Math.floor(Math.random() * 256),
     );
-
     await program.methods
       .setOracleHash(hashValue)
       .accounts({
         game: gamePDA,
+        authority: program.provider.publicKey,
       })
       .rpc();
 
@@ -1666,13 +1695,18 @@ describe("coinflip", () => {
     const winner = gameData.winner;
     expect(winner).to.not.be.null;
 
+    // Get winner's keypair and PDA
+    const winnerKeypair = winner.equals(creatorPDA) ? creator : player1;
+
     // Claim winnings first time
     await program.methods
       .claimWin()
       .accounts({
         game: gamePDA,
+        winner: winner,
+        signer: winnerKeypair.publicKey,
       })
-      .signers(winner.equals(program.provider.publicKey) ? [] : [player])
+      .signers([winnerKeypair])
       .rpc();
 
     // Try to claim winnings second time
@@ -1681,8 +1715,10 @@ describe("coinflip", () => {
         .claimWin()
         .accounts({
           game: gamePDA,
+          winner: winner,
+          signer: winnerKeypair.publicKey,
         })
-        .signers(winner.equals(program.provider.publicKey) ? [] : [player])
+        .signers([winnerKeypair])
         .rpc();
 
       expect.fail("Should not be able to claim winnings twice");
@@ -1700,6 +1736,16 @@ describe("coinflip", () => {
 
     const amount = new BN(1_000_000);
 
+    // Create creator using helper
+    const {
+      player: creator,
+      playerPDA: creatorPDA,
+      playerTokenAccount: creatorTokenAccount,
+    } = await createPlayer(mint);
+
+    // Mint tokens to creator
+    await mintTokens(mintAuthority, mint, creatorTokenAccount.address, amount);
+
     // Initialize game
     await program.methods
       .initializeGame(
@@ -1711,43 +1757,27 @@ describe("coinflip", () => {
         false,
       )
       .accounts({
-        creator: program.provider.publicKey,
+        creator: creatorPDA,
         tokenMint: mint,
+        signer: creator.publicKey,
+        payer: creator.publicKey,
       })
+      .signers([creator])
       .rpc();
 
-    // Get current game counter for PDA derivation
-    const gameCounter = await getLastGameId();
-    const [gamePDA] = PublicKey.findProgramAddressSync(
-      [Buffer.from("game"), gameCounter.subn(1).toArrayLike(Buffer, 'le', 8)],
-      program.programId
-    );
+    // Get game PDA
+    const gameId = await getLastGameId();
+    const gamePDA = await getGamePDA(gameId);
 
     // Create player with insufficient funds
-    const player = anchor.web3.Keypair.generate();
-    const playerAirdrop = await program.provider.connection.requestAirdrop(
-      player.publicKey,
-      2 * anchor.web3.LAMPORTS_PER_SOL,
-    );
-    await program.provider.connection.confirmTransaction(playerAirdrop);
-
-    const playerTokenAccount = await getOrCreateAssociatedTokenAccount(
-      program.provider.connection,
+    const {
       player,
-      mint,
-      player.publicKey,
-    );
+      playerPDA,
+      playerTokenAccount,
+    } = await createPlayer(mint);
 
     // Mint insufficient tokens to player (half of required amount)
-    await mintTo(
-      program.provider.connection,
-      mintAuthority,
-      mint,
-      playerTokenAccount,
-      mintAuthority.publicKey,
-      amount.toNumber() / 2,
-      [mintAuthority],
-    );
+    await mintTokens(mintAuthority, mint, playerTokenAccount.address, amount.divn(2));
 
     // Attempt to join game
     try {
@@ -1755,14 +1785,16 @@ describe("coinflip", () => {
         .joinGame()
         .accounts({
           game: gamePDA,
-          player: player.publicKey,
+          player: playerPDA,
+          owner: player.publicKey,
+          authority: player.publicKey,
         })
         .signers([player])
         .rpc();
 
       expect.fail("Should not be able to join with insufficient funds");
     } catch (error) {
-      expect(error.toString()).to.include("insufficient funds");
+      expect(error.toString()).to.include("InsufficientBalance");
     }
   });
 
