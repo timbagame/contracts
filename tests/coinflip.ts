@@ -152,8 +152,9 @@ describe("coinflip", () => {
 
     return {
       mint,
-      vaultTokenAccount: vaultTokenAccountInfo.address,
+      vaultTokenAccountInfo,
       mintAuthority,
+      oracleAuthorityTokenAccount,
     };
   }
 
@@ -1483,7 +1484,6 @@ describe("coinflip", () => {
     const {
       player: nonParticipant,
       playerPDA: nonParticipantPDA,
-      playerTokenAccount: nonParticipantTokenAccount,
     } = await createPlayer(mint);
 
     // Mint tokens to creator
@@ -1802,11 +1802,20 @@ describe("coinflip", () => {
     await createOracleAccount();
     const {
       mint,
-      creatorTokenAccount,
+      mintAuthority
     } = await createSplTokenMint();
 
     const amount = new BN(1_000_000);
-    const gameCounter = await getLastGameId();
+
+    // Create creator using helper
+    const {
+      player: creator,
+      playerPDA: creatorPDA,
+      playerTokenAccount: creatorTokenAccount,
+    } = await createPlayer(mint);
+
+    // Mint tokens to creator
+    await mintTokens(mintAuthority, mint, creatorTokenAccount.address, amount);
 
     // Initialize game with long timeout
     await program.methods
@@ -1819,16 +1828,20 @@ describe("coinflip", () => {
         false,
       )
       .accounts({
-        creator: program.provider.publicKey,
+        creator: creatorPDA,
         tokenMint: mint,
+        signer: creator.publicKey,
+        payer: creator.publicKey,
       })
+      .signers([creator])
       .rpc();
 
-    const gamePDA = await getGamePDA(gameCounter);
+    const gameId = await getLastGameId();
+    const gamePDA = await getGamePDA(gameId);
 
     // Get initial balance
     const initialBalance = (
-      await getAccount(program.provider.connection, creatorTokenAccount)
+      await getAccount(program.provider.connection, creatorTokenAccount.address)
     ).amount;
 
     // Claim timeout (cancel bet) before game is full
@@ -1836,13 +1849,15 @@ describe("coinflip", () => {
       .unjoinGame()
       .accounts({
         game: gamePDA,
-        participant: program.provider.publicKey,
+        player: creatorPDA,
+        signer: creator.publicKey,
       })
+      .signers([creator])
       .rpc();
 
     // Verify funds were returned
     const finalBalance = (
-      await getAccount(program.provider.connection, creatorTokenAccount)
+      await getAccount(program.provider.connection, creatorTokenAccount.address)
     ).amount;
     expect(finalBalance - initialBalance).to.equal(BigInt(amount.toString()));
 
@@ -1859,7 +1874,24 @@ describe("coinflip", () => {
     } = await createSplTokenMint();
 
     const amount = new BN(1_000_000);
-    const gameCounter = await getLastGameId();
+
+    // Create creator using helper
+    const {
+      player: creator,
+      playerPDA: creatorPDA,
+      playerTokenAccount: creatorTokenAccount,
+    } = await createPlayer(mint);
+
+    // Create second player using helper
+    const {
+      player: player2,
+      playerPDA: player2PDA,
+      playerTokenAccount: player2TokenAccount,
+    } = await createPlayer(mint);
+
+    // Mint tokens to both players
+    await mintTokens(mintAuthority, mint, creatorTokenAccount.address, amount);
+    await mintTokens(mintAuthority, mint, player2TokenAccount.address, amount);
 
     // Initialize game
     await program.methods
@@ -1872,47 +1904,27 @@ describe("coinflip", () => {
         false,
       )
       .accounts({
-        creator: program.provider.publicKey,
+        creator: creatorPDA,
         tokenMint: mint,
+        signer: creator.publicKey,
+        payer: creator.publicKey,
       })
+      .signers([creator])
       .rpc();
 
-    const gamePDA = await getGamePDA(gameCounter);
-
-    // Create and fund second player
-    const player = anchor.web3.Keypair.generate();
-    const playerAirdrop = await program.provider.connection.requestAirdrop(
-      player.publicKey,
-      2 * anchor.web3.LAMPORTS_PER_SOL,
-    );
-    await program.provider.connection.confirmTransaction(playerAirdrop);
-
-    const playerTokenAccount = await getOrCreateAssociatedTokenAccount(
-      program.provider.connection,
-      player,
-      mint,
-      player.publicKey,
-    );
-
-    // Mint tokens to player
-    await mintTo(
-      program.provider.connection,
-      mintAuthority,
-      mint,
-      playerTokenAccount,
-      mintAuthority.publicKey,
-      amount.toNumber(),
-      [mintAuthority],
-    );
+    const gameId = await getLastGameId();
+    const gamePDA = await getGamePDA(gameId);
 
     // Join game with second player to make it full
     await program.methods
       .joinGame()
       .accounts({
         game: gamePDA,
-        player: player.publicKey,
+        player: player2PDA,
+        owner: player2.publicKey,
+        authority: player2.publicKey,
       })
-      .signers([player])
+      .signers([player2])
       .rpc();
 
     // Try to cancel bet when game is full
@@ -1921,8 +1933,10 @@ describe("coinflip", () => {
         .unjoinGame()
         .accounts({
           game: gamePDA,
-          participant: program.provider.publicKey,
+          player: creatorPDA,
+          signer: creator.publicKey,
         })
+        .signers([creator])
         .rpc();
 
       expect.fail("Should not be able to cancel when game is full");
