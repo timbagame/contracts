@@ -1,6 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token;
 
+use crate::events::GameCancelled;
 use crate::state::{GameStatus, GameType};
 
 pub fn handler(ctx: Context<super::CancelGame>) -> Result<()> {
@@ -29,6 +30,8 @@ pub fn handler(ctx: Context<super::CancelGame>) -> Result<()> {
             game.amount,
         )?;
     }
+
+    emit!(GameCancelled { game_id: game.id });
 
     Ok(())
 }

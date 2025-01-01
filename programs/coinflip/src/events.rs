@@ -25,3 +25,14 @@ pub struct WinClaimed {
     pub winner: Pubkey,
     pub amount: u64,
 }
+
+#[event]
+pub struct GameCancelled {
+    pub game_id: u64,
+}
+
+#[event]
+pub struct PlayerUnjoined {
+    pub game_id: u64,
+    pub player: Pubkey,
+}
