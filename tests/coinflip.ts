@@ -1207,6 +1207,16 @@ describe("coinflip", () => {
 
     const amount = new BN(1_000_000);
 
+    // Create creator using helper
+    const {
+      player: creator,
+      playerPDA: creatorPDA,
+      playerTokenAccount: creatorTokenAccount,
+    } = await createPlayer(mint);
+
+    // Mint tokens to creator
+    await mintTokens(mintAuthority, mint, creatorTokenAccount.address, amount);
+
     await program.methods
       .initializeGame(
         { coinflip: {} },
@@ -1217,9 +1227,12 @@ describe("coinflip", () => {
         false,
       )
       .accounts({
-        creator: program.provider.publicKey,
+        creator: creatorPDA,
         tokenMint: mint,
+        signer: creator.publicKey,
+        payer: creator.publicKey,
       })
+      .signers([creator])
       .rpc();
 
     // Get game PDA
@@ -1231,7 +1244,7 @@ describe("coinflip", () => {
 
     // Get initial balance
     const initialBalance = (
-      await getAccount(program.provider.connection, creatorTokenAccount)
+      await getAccount(program.provider.connection, creatorTokenAccount.address)
     ).amount;
 
     // Claim timeout
@@ -1239,13 +1252,15 @@ describe("coinflip", () => {
       .unjoinGame()
       .accounts({
         game: gamePDA,
-        participant: program.provider.publicKey,
+        player: creatorPDA,
+        signer: creator.publicKey,
       })
+      .signers([creator])
       .rpc();
 
     // Verify funds returned
     const finalBalance = (
-      await getAccount(program.provider.connection, creatorTokenAccount)
+      await getAccount(program.provider.connection, creatorTokenAccount.address)
     ).amount;
     expect(finalBalance - initialBalance).to.equal(BigInt(amount.toString()));
   });
@@ -1254,6 +1269,7 @@ describe("coinflip", () => {
     await createOracleAccount();
     const {
       mint,
+      mintAuthority
     } = await createSplTokenMint();
 
     const amount = new BN(1_000_000);
@@ -1261,6 +1277,16 @@ describe("coinflip", () => {
     const minParticipants = 1;
     const timeoutDuration = new BN(3600);
     const isPrivate = false;
+
+    // Create creator using helper
+    const {
+      player: creator,
+      playerPDA: creatorPDA,
+      playerTokenAccount: creatorTokenAccount,
+    } = await createPlayer(mint);
+
+    // Mint tokens to creator
+    await mintTokens(mintAuthority, mint, creatorTokenAccount.address, amount);
 
     // Get current game counter for PDA derivation
     const gameCounter = await getLastGameId();
@@ -1276,9 +1302,12 @@ describe("coinflip", () => {
         isPrivate,
       )
       .accounts({
-        creator: program.provider.publicKey,
+        creator: creatorPDA,
         tokenMint: mint,
+        signer: creator.publicKey,
+        payer: creator.publicKey,
       })
+      .signers([creator])
       .rpc();
 
     // Get game PDA
