@@ -1099,18 +1099,33 @@ describe("coinflip", () => {
   });
 
   it("Fail to Claim as Non-Winner", async () => {
-    // Get current config and oracle
     await createOracleAccount();
-
     const {
       mint,
       mintAuthority
     } = await createSplTokenMint();
 
-    // Create treasury token account
     const amount = new BN(1_000_000);
 
-    // Create game
+    // Create creator using helper
+    const {
+      player: creator,
+      playerPDA: creatorPDA,
+      playerTokenAccount: creatorTokenAccount,
+    } = await createPlayer(mint);
+
+    // Create second player using helper
+    const {
+      player,
+      playerPDA,
+      playerTokenAccount,
+    } = await createPlayer(mint);
+
+    // Mint tokens to both players
+    await mintTokens(mintAuthority, mint, creatorTokenAccount.address, amount);
+    await mintTokens(mintAuthority, mint, playerTokenAccount.address, amount);
+
+    // Initialize game
     await program.methods
       .initializeGame(
         { coinflip: {} },
@@ -1121,17 +1136,25 @@ describe("coinflip", () => {
         false,
       )
       .accounts({
-        creator: program.provider.publicKey,
+        creator: creatorPDA,
         tokenMint: mint,
+        signer: creator.publicKey,
+        payer: creator.publicKey,
       })
+      .signers([creator])
       .rpc();
+
+    const gameId = await getLastGameId();
+    const gamePDA = await getGamePDA(gameId);
 
     // Join game
     await program.methods
       .joinGame()
       .accounts({
         game: gamePDA,
-        player: player.publicKey,
+        player: playerPDA,
+        owner: player.publicKey,
+        authority: player.publicKey,
       })
       .signers([player])
       .rpc();
@@ -1144,23 +1167,33 @@ describe("coinflip", () => {
       .setOracleHash(hashValue)
       .accounts({
         game: gamePDA,
+        authority: program.provider.publicKey,
       })
       .rpc();
 
-    // Try to claim as non-winner
+    // Get game data to find winner
+    const gameData = await program.account.game.fetch(gamePDA);
+    const winner = gameData.winner;
+    expect(winner).to.not.be.null;
+
+    // Try to claim as non-winner (the player who didn't win)
+    const nonWinner = winner.equals(creatorPDA) ? playerPDA : creatorPDA;
+    const nonWinnerKeypair = winner.equals(creatorPDA) ? player : creator;
+
     try {
       await program.methods
         .claimWin()
         .accounts({
           game: gamePDA,
-          winner: player.publicKey,
+          winner: nonWinner,
+          signer: nonWinnerKeypair.publicKey,
         })
-        .signers([player])
+        .signers([nonWinnerKeypair])
         .rpc();
 
-      expect.fail("Should have thrown NotWinner error");
+      expect.fail("Should have thrown UnauthorizedPlayer error");
     } catch (error) {
-      expect(error.toString()).to.include("NotWinner");
+      expect(error.toString()).to.include("UnauthorizedPlayer");
     }
   });
 
