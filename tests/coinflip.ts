@@ -1941,7 +1941,7 @@ describe("coinflip", () => {
 
       expect.fail("Should not be able to cancel when game is full");
     } catch (error) {
-      expect(error.toString()).to.include("GameFull");
+      expect(error.toString()).to.include("GameReadyForOracle");
     }
   });
 });
