@@ -37,6 +37,9 @@ describe("coinflip", () => {
     // Initialize oracle once for all tests
     const feePercentage = 1;
     const oracleBufferTime = 3600;
+    const maxPlayers = 100;
+    const maxTimeout = 86400;
+    const minTimeout = 1;
 
     // Airdrop SOL to authority for rent
     const signature = await program.provider.connection.requestAirdrop(
@@ -47,7 +50,7 @@ describe("coinflip", () => {
 
     try {
       await program.methods
-        .initializeOracle(feePercentage, new BN(oracleBufferTime), 100, new BN(36000), new BN(360))
+        .initializeOracle(feePercentage, new BN(oracleBufferTime), maxPlayers, new BN(maxTimeout), new BN(minTimeout))
         .accounts({
           payer: program.provider.publicKey,
           authority: program.provider.publicKey,
