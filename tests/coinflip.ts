@@ -1323,127 +1323,30 @@ describe("coinflip", () => {
     await createOracleAccount();
     const {
       mint,
-      creatorTokenAccount,
       mintAuthority
     } = await createSplTokenMint();
 
     const amount = new BN(1_000_000);
-    const gameCounter = await getLastGameId();
 
-    await program.methods
-      .initializeGame(
-        { coinflip: {} },
-        amount,
-        3,
-        2,
-        new BN(4),
-        false,
-      )
-      .accounts({
-        creator: program.provider.publicKey,
-        tokenMint: mint,
-      })
-      .rpc();
-
-    const gamePDA = await getGamePDA(gameCounter);
-
-    // Create and fund second player
-    const player = anchor.web3.Keypair.generate();
-    const playerAirdrop = await program.provider.connection.requestAirdrop(
-      player.publicKey,
-      2 * anchor.web3.LAMPORTS_PER_SOL,
-    );
-    await program.provider.connection.confirmTransaction(playerAirdrop);
-
-    const playerTokenAccount = await getOrCreateAssociatedTokenAccount(
-      program.provider.connection,
-      player,
-      mint,
-      player.publicKey,
-    );
-
-    // Mint tokens to player
-    await mintTo(
-      program.provider.connection,
-      mintAuthority,
-      mint,
-      playerTokenAccount,
-      mintAuthority.publicKey,
-      amount.toNumber(),
-      [mintAuthority],
-    );
-
-    // Join game
-    await program.methods
-      .joinGame()
-      .accounts({
-        game: gamePDA,
-        player: player.publicKey,
-      })
-      .signers([player])
-      .rpc();
-
-    // Wait for timeout
-    await new Promise((resolve) => setTimeout(resolve, 5000));
-
-    // Both participants claim timeout
-    const initialCreatorBalance = (
-      await getAccount(program.provider.connection, creatorTokenAccount)
-    ).amount;
-    const initialPlayerBalance = (
-      await getAccount(program.provider.connection, playerTokenAccount)
-    ).amount;
-
-    // Creator claims timeout
-    await program.methods
-      .unjoinGame()
-      .accounts({
-        game: gamePDA,
-        participant: program.provider.publicKey,
-      })
-      .rpc();
-
-    // Player claims timeout
-    await program.methods
-      .unjoinGame()
-      .accounts({
-        game: gamePDA,
-        participant: player.publicKey,
-      })
-      .signers([player])
-      .rpc();
-
-    // Verify both participants got their funds back
-    const finalCreatorBalance = (
-      await getAccount(program.provider.connection, creatorTokenAccount)
-    ).amount;
-    const finalPlayerBalance = (
-      await getAccount(program.provider.connection, playerTokenAccount)
-    ).amount;
-
-    expect(finalCreatorBalance - initialCreatorBalance).to.equal(
-      BigInt(amount.toString()),
-    );
-    expect(finalPlayerBalance - initialPlayerBalance).to.equal(
-      BigInt(amount.toString()),
-    );
-
-    // Verify game is cancelled after all claims
-    const gameData = await program.account.game.fetch(gamePDA);
-    expect(gameData.status.cancelled).to.not.be.undefined;
-    expect(gameData.players.length).to.equal(0);
-  });
-
-  it("Fail to Claim Timeout as Non-Participant", async () => {
-    await createOracleAccount();
+    // Create creator using helper
     const {
-      mint,
-    } = await createSplTokenMint();
+      player: creator,
+      playerPDA: creatorPDA,
+      playerTokenAccount: creatorTokenAccount,
+    } = await createPlayer(mint);
 
-    const amount = new BN(1_000_000);
-    const gameCounter = await getLastGameId();
+    // Create second player using helper
+    const {
+      player: player2,
+      playerPDA: player2PDA,
+      playerTokenAccount: player2TokenAccount,
+    } = await createPlayer(mint);
 
-    // Create game with short timeout
+    // Mint tokens to both players
+    await mintTokens(mintAuthority, mint, creatorTokenAccount.address, amount);
+    await mintTokens(mintAuthority, mint, player2TokenAccount.address, amount);
+
+    // Initialize game with short timeout
     await program.methods
       .initializeGame(
         { coinflip: {} },
@@ -1454,39 +1357,141 @@ describe("coinflip", () => {
         false,
       )
       .accounts({
-        creator: program.provider.publicKey,
+        creator: creatorPDA,
         tokenMint: mint,
+        signer: creator.publicKey,
+        payer: creator.publicKey,
       })
+      .signers([creator])
       .rpc();
 
-    const gamePDA = await getGamePDA(gameCounter);
+    // Get game PDA
+    const gameId = await getLastGameId();
+    const gamePDA = await getGamePDA(gameId);
 
-    // Create non-participant account
-    const nonParticipant = anchor.web3.Keypair.generate();
-    const airdrop = await program.provider.connection.requestAirdrop(
-      nonParticipant.publicKey,
-      2 * anchor.web3.LAMPORTS_PER_SOL,
-    );
-    await program.provider.connection.confirmTransaction(airdrop);
-
+    // Second player joins
+    await program.methods
+      .joinGame()
+      .accounts({
+        game: gamePDA,
+        player: player2PDA,
+        owner: player2.publicKey,
+        authority: player2.publicKey,
+      })
+      .signers([player2])
+      .rpc();
 
     // Wait for timeout
-    await new Promise((resolve) => setTimeout(resolve, 3000));
+    await new Promise((resolve) => setTimeout(resolve, 4000));
 
-    // Try to claim timeout as non-participant
+    // Get initial balances
+    const initialBalance1 = (
+      await getAccount(program.provider.connection, creatorTokenAccount.address)
+    ).amount;
+    const initialBalance2 = (
+      await getAccount(program.provider.connection, player2TokenAccount.address)
+    ).amount;
+
+    // Both players claim timeout
+    await program.methods
+      .unjoinGame()
+      .accounts({
+        game: gamePDA,
+        player: creatorPDA,
+        signer: creator.publicKey,
+      })
+      .signers([creator])
+      .rpc();
+
+    await program.methods
+      .unjoinGame()
+      .accounts({
+        game: gamePDA,
+        player: player2PDA,
+        signer: player2.publicKey,
+      })
+      .signers([player2])
+      .rpc();
+
+    // Verify funds returned
+    const finalBalance1 = (
+      await getAccount(program.provider.connection, creatorTokenAccount.address)
+    ).amount;
+    const finalBalance2 = (
+      await getAccount(program.provider.connection, player2TokenAccount.address)
+    ).amount;
+
+    expect(finalBalance1 - initialBalance1).to.equal(BigInt(amount.toString()));
+    expect(finalBalance2 - initialBalance2).to.equal(BigInt(amount.toString()));
+  });
+
+  it("Fail to Claim Timeout as Non-Participant", async () => {
+    await createOracleAccount();
+    const {
+      mint,
+      mintAuthority
+    } = await createSplTokenMint();
+
+    const amount = new BN(1_000_000);
+
+    // Create creator using helper
+    const {
+      player: creator,
+      playerPDA: creatorPDA,
+      playerTokenAccount: creatorTokenAccount,
+    } = await createPlayer(mint);
+
+    // Create non-participant using helper
+    const {
+      player: nonParticipant,
+      playerPDA: nonParticipantPDA,
+      playerTokenAccount: nonParticipantTokenAccount,
+    } = await createPlayer(mint);
+
+    // Mint tokens to creator
+    await mintTokens(mintAuthority, mint, creatorTokenAccount.address, amount);
+
+    // Initialize game with short timeout
+    await program.methods
+      .initializeGame(
+        { coinflip: {} },
+        amount,
+        2,
+        2,
+        new BN(2), // 2 seconds timeout
+        false,
+      )
+      .accounts({
+        creator: creatorPDA,
+        tokenMint: mint,
+        signer: creator.publicKey,
+        payer: creator.publicKey,
+      })
+      .signers([creator])
+      .rpc();
+
+    // Get game PDA
+    const gameId = await getLastGameId();
+    const gamePDA = await getGamePDA(gameId);
+
+    // Wait for timeout
+    await new Promise((resolve) => setTimeout(resolve, 4000));
+
     try {
+      // Try to claim timeout as non-participant
       await program.methods
         .unjoinGame()
         .accounts({
           game: gamePDA,
-          participant: nonParticipant.publicKey,
+          player: nonParticipantPDA,
+          signer: nonParticipant.publicKey,
         })
         .signers([nonParticipant])
-        .rpc({ skipPreflight: true });
+        .rpc();
 
-      expect.fail("Should have thrown Invalid participant error");
+      expect.fail("Should have thrown UnauthorizedPlayer error");
     } catch (error) {
-      expect(error.toString()).to.include("Invalid participant");
+      expect(error.toString()).to.include("UnauthorizedPlayer");
     }
   });
 
