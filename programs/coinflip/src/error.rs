@@ -22,8 +22,6 @@ pub enum ErrorCode {
     GameNotActive,
     #[msg("Game is completed")]
     GameCompleted,
-    #[msg("Invalid player")]
-    InvalidPlayer,
     #[msg("Invalid timeout duration")]
     InvalidTimeout,
     #[msg("Insufficient balance")]

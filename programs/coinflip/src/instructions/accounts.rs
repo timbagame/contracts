@@ -465,7 +465,7 @@ pub struct UnjoinGame<'info> {
         mut,
         constraint = game.status != GameStatus::ReadyForClaim @ ErrorCode::GameReadyForClaim,
         constraint = game.status != GameStatus::Completed @ ErrorCode::GameCompleted,
-        constraint = game.players.contains(&player.key()) @ ErrorCode::InvalidPlayer,
+        constraint = game.players.contains(&player.key()) @ ErrorCode::UnauthorizedPlayer,
         constraint = !game.ready_for_oracle() || game.buffer_passed(oracle.oracle_buffer_time) @ ErrorCode::GameReadyForOracle
     )]
     pub game: Account<'info, Game>,
