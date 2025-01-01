@@ -1,3 +1,4 @@
+use crate::events::PlayerWithdrawn;
 use anchor_lang::prelude::*;
 use anchor_spl::token;
 
@@ -19,6 +20,13 @@ pub fn handler(ctx: Context<super::WithdrawPlayer>, amount: u64) -> Result<()> {
         ),
         amount,
     )?;
+
+    emit!(PlayerWithdrawn {
+        player: ctx.accounts.player.key(),
+        receiver: ctx.accounts.receiver.key(),
+        token_mint: ctx.accounts.token_mint.key(),
+        amount,
+    });
 
     Ok(())
 }

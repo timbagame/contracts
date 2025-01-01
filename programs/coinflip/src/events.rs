@@ -36,3 +36,36 @@ pub struct PlayerUnjoined {
     pub game_id: u64,
     pub player: Pubkey,
 }
+
+#[event]
+pub struct OracleHashSet {
+    pub game_id: u64,
+    pub winner: Pubkey,
+    pub winner_amount: u64,
+    pub fee_amount: u64,
+    pub total_players: u16,
+}
+
+#[event]
+pub struct PlayerDeposited {
+    pub player: Pubkey,
+    pub depositor: Pubkey,
+    pub token_mint: Pubkey,
+    pub amount: u64,
+}
+
+#[event]
+pub struct PlayerWithdrawn {
+    pub player: Pubkey,
+    pub receiver: Pubkey,
+    pub token_mint: Pubkey,
+    pub amount: u64,
+}
+
+#[event]
+pub struct PlayerTipped {
+    pub tipper: Pubkey,
+    pub receiver: Pubkey,
+    pub token_mint: Pubkey,
+    pub amount: u64,
+}

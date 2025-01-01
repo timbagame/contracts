@@ -1,3 +1,4 @@
+use crate::events::PlayerTipped;
 use anchor_lang::prelude::*;
 use anchor_spl::token;
 
@@ -19,6 +20,13 @@ pub fn handler(ctx: Context<super::TipPlayer>, amount: u64) -> Result<()> {
         ),
         amount,
     )?;
+
+    emit!(PlayerTipped {
+        tipper: ctx.accounts.tipper.key(),
+        receiver: ctx.accounts.receiver.key(),
+        token_mint: ctx.accounts.token_mint.key(),
+        amount,
+    });
 
     Ok(())
 }
