@@ -1,6 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token;
 
+use crate::events::PlayerUnjoined;
 use crate::state::{GameStatus, GameType};
 
 pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
@@ -40,6 +41,11 @@ pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
                 game.amount,
             )?;
         }
+
+        emit!(PlayerUnjoined {
+            game_id: game.id,
+            player: ctx.accounts.player.key(),
+        });
     }
 
     Ok(())
