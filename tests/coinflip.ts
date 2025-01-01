@@ -1276,7 +1276,7 @@ describe("coinflip", () => {
     } = await createSplTokenMint();
 
     const amount = new BN(1_000_000);
-    const maxParticipants = 5;
+    const maxParticipants = 2;
     const minParticipants = 1;
     const timeoutDuration = new BN(3600);
     const isPrivate = false;
@@ -1288,11 +1288,22 @@ describe("coinflip", () => {
       playerTokenAccount: creatorTokenAccount,
     } = await createPlayer(mint);
 
+    // Create first player using helper
+    const {
+      player: player1,
+      playerPDA: player1PDA,
+      playerTokenAccount: player1TokenAccount,
+    } = await createPlayer(mint);
+
+    // Create second player using helper
+    const {
+      player: player2,
+      playerPDA: player2PDA,
+      playerTokenAccount: player2TokenAccount,
+    } = await createPlayer(mint);
+
     // Mint tokens to creator
     await mintTokens(mintAuthority, mint, creatorTokenAccount.address, amount);
-
-    // Get current game counter for PDA derivation
-    const gameCounter = await getLastGameId();
 
     // Initialize giveaway game
     await program.methods
@@ -1314,12 +1325,38 @@ describe("coinflip", () => {
       .rpc();
 
     // Get game PDA
-    const gamePDA = await getGamePDA(gameCounter);
+    const gameId = await getLastGameId();
+    const gamePDA = await getGamePDA(gameId);
 
-    // Verify game state - creator should not be added as participant for giveaway
+    // First player joins
+    await program.methods
+      .joinGame()
+      .accounts({
+        game: gamePDA,
+        player: player1PDA,
+        owner: player1.publicKey,
+        authority: player1.publicKey,
+      })
+      .signers([player1])
+      .rpc();
+
+    // Second player joins
+    await program.methods
+      .joinGame()
+      .accounts({
+        game: gamePDA,
+        player: player2PDA,
+        owner: player2.publicKey,
+        authority: player2.publicKey,
+      })
+      .signers([player2])
+      .rpc();
+
+    // Verify game state
     const gameData = await program.account.game.fetch(gamePDA);
-    expect(gameData.players.length).to.equal(0);
+    expect(gameData.players.length).to.equal(2);
     expect(gameData.gameType.giveaway).to.not.be.undefined;
+    expect(gameData.creator.equals(creatorPDA)).to.be.true;
   });
 
   it("Multiple Participants Can Claim Timeout", async () => {
