@@ -36,7 +36,7 @@ describe("coinflip", () => {
   before(async () => {
     // Initialize oracle once for all tests
     const feePercentage = 1;
-    const oracleBufferTime = 3600;
+    const oracleBufferTime = 2;
     const maxPlayers = 100;
     const maxTimeout = 86400;
     const minTimeout = 1;
