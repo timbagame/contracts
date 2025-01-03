@@ -1,6 +1,6 @@
 pub mod accounts;
-pub mod claim_win;
 pub mod cancel_game;
+pub mod claim_win;
 pub mod deposit_player;
 pub mod initialize_game;
 pub mod initialize_oracle;
