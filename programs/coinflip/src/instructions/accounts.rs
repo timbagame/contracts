@@ -261,11 +261,11 @@ pub struct InitializeGame<'info> {
     )]
     pub game: Account<'info, Game>,
     #[account(
-        constraint = (signer.key() == oracle.authority && creator.bot_auth) ||
-                     (signer.key() == creator.owner)
+        constraint = (signer.key() == oracle.authority && player.bot_auth) ||
+                     (signer.key() == player.owner)
                      @ ErrorCode::UnauthorizedPlayer,
     )]
-    pub creator: Account<'info, Player>,
+    pub player: Account<'info, Player>,
     pub signer: Signer<'info>,
     #[account(mut)]
     pub payer: Signer<'info>,
@@ -284,14 +284,14 @@ pub struct InitializeGame<'info> {
     pub game_token: Account<'info, GameToken>,
     #[account(
         mut,
-        associated_token::mint = game_token.token_mint,
-        associated_token::authority = creator_vault,
-        constraint = creator_token_account.amount >= amount @ ErrorCode::InsufficientBalance,
+        associated_token::mint = token_mint,
+        associated_token::authority = player_vault,
+        constraint = player_token_account.amount >= amount @ ErrorCode::InsufficientBalance,
     )]
-    pub creator_token_account: Account<'info, TokenAccount>,
+    pub player_token_account: Account<'info, TokenAccount>,
     #[account(
         mut,
-        associated_token::mint = game_token.token_mint,
+        associated_token::mint = token_mint,
         associated_token::authority = game_vault,
     )]
     pub game_token_account: Account<'info, TokenAccount>,
@@ -303,10 +303,10 @@ pub struct InitializeGame<'info> {
     pub game_vault: AccountInfo<'info>,
     /// CHECK: This is a PDA that serves as the authority for the player's token accounts
     #[account(
-        seeds = [b"player_vault", creator.key().as_ref(), token_mint.key().as_ref()],
+        seeds = [b"player_vault", player.key().as_ref()],
         bump,
     )]
-    pub creator_vault: AccountInfo<'info>,
+    pub player_vault: AccountInfo<'info>,
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
     pub associated_token_program: Program<'info, AssociatedToken>,
@@ -338,7 +338,7 @@ pub struct JoinGame<'info> {
     pub game_token: Account<'info, GameToken>,
     /// CHECK: This is a PDA that serves as the authority for the player's token accounts
     #[account(
-        seeds = [b"player_vault", player.key().as_ref(), game.token_mint.as_ref()],
+        seeds = [b"player_vault", player.key().as_ref()],
         bump,
     )]
     pub player_vault: AccountInfo<'info>,
@@ -424,18 +424,18 @@ pub struct ClaimWin<'info> {
     #[account(
         mut,
         address = game.winner @ ErrorCode::UnauthorizedPlayer,
-        constraint = (signer.key() == oracle.authority && winner.bot_auth) ||
-                     (signer.key() == winner.owner)
+        constraint = (signer.key() == oracle.authority && player.bot_auth) ||
+                     (signer.key() == player.owner)
                      @ ErrorCode::UnauthorizedPlayer,
     )]
-    pub winner: Account<'info, Player>,
+    pub player: Account<'info, Player>,
     pub signer: Signer<'info>,
-    /// CHECK: This is a PDA that serves as the authority for the winner's token accounts
+    /// CHECK: This is a PDA that serves as the authority for the player's token accounts
     #[account(
-        seeds = [b"player_vault", winner.key().as_ref(), game.token_mint.as_ref()],
+        seeds = [b"player_vault", player.key().as_ref()],
         bump,
     )]
-    pub winner_vault: AccountInfo<'info>,
+    pub player_vault: AccountInfo<'info>,
     /// CHECK: This is a PDA that serves as the authority for the game's token accounts
     #[account(
         seeds = [b"game_vault", game.token_mint.as_ref()],
@@ -451,9 +451,9 @@ pub struct ClaimWin<'info> {
     #[account(
         mut,
         associated_token::mint = game.token_mint,
-        associated_token::authority = winner_vault
+        associated_token::authority = player_vault
     )]
-    pub winner_token_account: Account<'info, TokenAccount>,
+    pub player_token_account: Account<'info, TokenAccount>,
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
     pub associated_token_program: Program<'info, AssociatedToken>,
@@ -478,7 +478,7 @@ pub struct UnjoinGame<'info> {
     pub signer: Signer<'info>,
     /// CHECK: This is a PDA that serves as the authority for the player's token accounts
     #[account(
-        seeds = [b"player_vault", player.key().as_ref(), game.token_mint.as_ref()],
+        seeds = [b"player_vault", player.key().as_ref()],
         bump,
     )]
     pub player_vault: AccountInfo<'info>,
@@ -528,7 +528,7 @@ pub struct DepositPlayer<'info> {
     pub game_token: Account<'info, GameToken>,
     /// CHECK: This is a PDA that serves as the authority for the player's token accounts
     #[account(
-        seeds = [b"player_vault", player.key().as_ref(), game_token.token_mint.as_ref()],
+        seeds = [b"player_vault", player.key().as_ref()],
         bump,
     )]
     pub player_vault: AccountInfo<'info>,
@@ -579,7 +579,7 @@ pub struct WithdrawPlayer<'info> {
     pub player_token_account: Account<'info, TokenAccount>,
     /// CHECK: This is a PDA that serves as the authority for the player's token accounts
     #[account(
-        seeds = [b"player_vault", player.key().as_ref(), token_mint.key().as_ref()],
+        seeds = [b"player_vault", player.key().as_ref()],
         bump,
     )]
     pub player_vault: AccountInfo<'info>,
@@ -617,13 +617,13 @@ pub struct TipPlayer<'info> {
     pub oracle: Account<'info, Oracle>,
     /// CHECK: This is a PDA that serves as the authority for the tipper's token accounts
     #[account(
-        seeds = [b"player_vault", tipper.key().as_ref(), game_token.token_mint.as_ref()],
+        seeds = [b"player_vault", tipper.key().as_ref()],
         bump,
     )]
     pub tipper_vault: AccountInfo<'info>,
     /// CHECK: This is a PDA that serves as the authority for the receiver's token accounts
     #[account(
-        seeds = [b"player_vault", receiver.key().as_ref(), game_token.token_mint.as_ref()],
+        seeds = [b"player_vault", receiver.key().as_ref()],
         bump,
     )]
     pub receiver_vault: AccountInfo<'info>,
@@ -636,14 +636,14 @@ pub struct TipPlayer<'info> {
     pub game_token: Account<'info, GameToken>,
     #[account(
         mut,
-        associated_token::mint = game_token.token_mint,
+        associated_token::mint = token_mint,
         associated_token::authority = tipper_vault,
         constraint = tipper_token_account.amount >= amount @ ErrorCode::InsufficientBalance
     )]
     pub tipper_token_account: Account<'info, TokenAccount>,
     #[account(
         mut,
-        associated_token::mint = game_token.token_mint,
+        associated_token::mint = token_mint,
         associated_token::authority = receiver_vault,
     )]
     pub receiver_token_account: Account<'info, TokenAccount>,
@@ -658,33 +658,34 @@ pub struct CancelGame<'info> {
         mut,
         constraint = game.status != GameStatus::ReadyForClaim @ ErrorCode::GameReadyForClaim,
         constraint = game.status != GameStatus::Completed @ ErrorCode::GameCompleted,
-        constraint = !game.ready_for_oracle() || game.buffer_passed(oracle.oracle_buffer_time) @ ErrorCode::GameReadyForOracle
+        constraint = !game.ready_for_oracle() || game.buffer_passed(oracle.oracle_buffer_time) @ ErrorCode::GameReadyForOracle,
     )]
     pub game: Account<'info, Game>,
     #[account(
-        constraint = (signer.key() == oracle.authority && creator.bot_auth) ||
-                     (signer.key() == creator.owner)
+        constraint = game.creator == player.key() @ ErrorCode::UnauthorizedPlayer,
+        constraint = (signer.key() == oracle.authority && player.bot_auth) ||
+                     (signer.key() == player.owner)
                      @ ErrorCode::UnauthorizedPlayer,
     )]
-    pub creator: Account<'info, Player>,
+    pub player: Account<'info, Player>,
     pub signer: Signer<'info>,
     #[account(
         seeds = [b"oracle"],
         bump,
     )]
     pub oracle: Account<'info, Oracle>,
-    /// CHECK: This is a PDA that serves as the authority for the creator's token accounts
+    /// CHECK: This is a PDA that serves as the authority for the player's token accounts
     #[account(
-        seeds = [b"player_vault", game.creator.as_ref(), game.token_mint.as_ref()],
+        seeds = [b"player_vault", player.key().as_ref()],
         bump,
     )]
-    pub creator_vault: AccountInfo<'info>,
+    pub player_vault: AccountInfo<'info>,
     #[account(
         mut,
         associated_token::mint = game.token_mint,
-        associated_token::authority = creator_vault,
+        associated_token::authority = player_vault,
     )]
-    pub creator_token_account: Account<'info, TokenAccount>,
+    pub player_token_account: Account<'info, TokenAccount>,
     /// CHECK: This is a PDA that serves as the authority for the game's token accounts
     #[account(
         seeds = [b"game_vault", game.token_mint.as_ref()],
