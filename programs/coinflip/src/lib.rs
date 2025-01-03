@@ -133,7 +133,11 @@ pub mod coinflip {
     }
 
     pub fn withdraw_player(ctx: Context<WithdrawPlayer>, amount: u64) -> Result<()> {
-        instructions::withdraw_player::handler(ctx, amount)
+        instructions::withdraw_player::handler_regular(ctx, amount)
+    }
+
+    pub fn withdraw_sol_player(ctx: Context<WithdrawSolPlayer>, amount: u64) -> Result<()> {
+        instructions::withdraw_player::handler_sol(ctx, amount)
     }
 
     pub fn tip_player(ctx: Context<TipPlayer>, amount: u64) -> Result<()> {

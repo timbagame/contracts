@@ -596,6 +596,36 @@ pub struct WithdrawPlayer<'info> {
     pub associated_token_program: Program<'info, AssociatedToken>,
 }
 
+
+#[derive(Accounts)]
+#[instruction(
+    amount: u64,
+)]
+pub struct WithdrawSolPlayer<'info> {
+    #[account(
+        constraint = amount > 0 @ ErrorCode::InvalidAmount,
+        constraint = (signer.key() == oracle.authority && player.bot_auth) ||
+                     (signer.key() == player.owner)
+                     @ ErrorCode::UnauthorizedPlayer,
+    )]
+    pub player: Account<'info, Player>,
+    pub signer: Signer<'info>,
+    #[account(
+        seeds = [b"oracle"],
+        bump,
+    )]
+    pub oracle: Account<'info, Oracle>,
+    /// CHECK: This is a PDA that serves as the authority for the player's token accounts
+    #[account(
+        seeds = [b"player_vault", player.key().as_ref()],
+        bump,
+    )]
+    pub player_vault: AccountInfo<'info>,
+    /// CHECK: This is the receiver's account that will receive the tokens
+    pub receiver: AccountInfo<'info>,
+    pub system_program: Program<'info, System>,
+}
+
 #[derive(Accounts)]
 #[instruction(
     amount: u64,
