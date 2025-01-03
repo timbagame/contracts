@@ -198,7 +198,7 @@ describe("coinflip", () => {
     );
 
     const [playerVaultPDA] = PublicKey.findProgramAddressSync(
-      [Buffer.from("player_vault"), playerPDA.toBuffer(), tokenMint.toBuffer()],
+      [Buffer.from("player_vault"), playerPDA.toBuffer()],
       program.programId
     );
 
@@ -273,7 +273,7 @@ describe("coinflip", () => {
           isPrivate,
         )
         .accounts({
-          creator: playerPDA,
+          player: playerPDA,
           signer: player.publicKey,
           payer: player.publicKey,
           tokenMint: mint,
@@ -321,7 +321,7 @@ describe("coinflip", () => {
         false, // isPrivate
       )
       .accounts({
-        creator: creatorPDA,
+        player: creatorPDA,
         tokenMint: mint,
         signer: creator.publicKey,
         payer: creator.publicKey,
@@ -386,7 +386,7 @@ describe("coinflip", () => {
         true, // isPrivate
       )
       .accounts({
-        creator: creatorPDA,
+        player: creatorPDA,
         tokenMint: mint,
         signer: creator.publicKey,
         payer: creator.publicKey,
@@ -444,7 +444,7 @@ describe("coinflip", () => {
         false,
       )
       .accounts({
-        creator: creatorPDA,
+        player: creatorPDA,
         tokenMint: mint,
         signer: creator.publicKey,
         payer: creator.publicKey,
@@ -533,7 +533,7 @@ describe("coinflip", () => {
         false,
       )
       .accounts({
-        creator: creatorPDA,
+        player: creatorPDA,
         tokenMint: mint,
         signer: creator.publicKey,
         payer: creator.publicKey,
@@ -618,7 +618,7 @@ describe("coinflip", () => {
         true, // isPrivate
       )
       .accounts({
-        creator: creatorPDA,
+        player: creatorPDA,
         tokenMint: mint,
         signer: creator.publicKey,
         payer: creator.publicKey,
@@ -701,7 +701,7 @@ describe("coinflip", () => {
         false,
       )
       .accounts({
-        creator: creatorPDA,
+        player: creatorPDA,
         tokenMint: mint,
         signer: creator.publicKey,
         payer: creator.publicKey,
@@ -784,7 +784,7 @@ describe("coinflip", () => {
         false,
       )
       .accounts({
-        creator: creatorPDA,
+        player: creatorPDA,
         tokenMint: mint,
         signer: creator.publicKey,
         payer: creator.publicKey,
@@ -860,7 +860,7 @@ describe("coinflip", () => {
         false,
       )
       .accounts({
-        creator: creatorPDA,
+        player: creatorPDA,
         tokenMint: mint,
         signer: creator.publicKey,
         payer: creator.publicKey,
@@ -920,7 +920,7 @@ describe("coinflip", () => {
         false,
       )
       .accounts({
-        creator: creatorPDA,
+        player: creatorPDA,
         tokenMint: mint,
         signer: creator.publicKey,
         payer: creator.publicKey,
@@ -1022,7 +1022,7 @@ describe("coinflip", () => {
         false,
       )
       .accounts({
-        creator: creatorPDA,
+        player: creatorPDA,
         tokenMint: mint,
         signer: creator.publicKey,
         payer: creator.publicKey,
@@ -1085,7 +1085,7 @@ describe("coinflip", () => {
       .claimWin()
       .accounts({
         game: gamePDA,
-        winner: winner,
+        player: winner,
         signer: winnerOwner.publicKey,
       })
       .signers([winnerOwner])
@@ -1140,7 +1140,7 @@ describe("coinflip", () => {
         false,
       )
       .accounts({
-        creator: creatorPDA,
+        player: creatorPDA,
         tokenMint: mint,
         signer: creator.publicKey,
         payer: creator.publicKey,
@@ -1189,7 +1189,7 @@ describe("coinflip", () => {
         .claimWin()
         .accounts({
           game: gamePDA,
-          winner: nonWinner,
+          player: nonWinner,
           signer: nonWinnerKeypair.publicKey,
         })
         .signers([nonWinnerKeypair])
@@ -1231,7 +1231,7 @@ describe("coinflip", () => {
         false,
       )
       .accounts({
-        creator: creatorPDA,
+        player: creatorPDA,
         tokenMint: mint,
         signer: creator.publicKey,
         payer: creator.publicKey,
@@ -1315,7 +1315,7 @@ describe("coinflip", () => {
         isPrivate,
       )
       .accounts({
-        creator: creatorPDA,
+        player: creatorPDA,
         tokenMint: mint,
         signer: creator.publicKey,
         payer: creator.publicKey,
@@ -1396,7 +1396,7 @@ describe("coinflip", () => {
         false,
       )
       .accounts({
-        creator: creatorPDA,
+        player: creatorPDA,
         tokenMint: mint,
         signer: creator.publicKey,
         payer: creator.publicKey,
@@ -1500,7 +1500,7 @@ describe("coinflip", () => {
         false,
       )
       .accounts({
-        creator: creatorPDA,
+        player: creatorPDA,
         tokenMint: mint,
         signer: creator.publicKey,
         payer: creator.publicKey,
@@ -1571,7 +1571,7 @@ describe("coinflip", () => {
         false,
       )
       .accounts({
-        creator: creatorPDA,
+        player: creatorPDA,
         tokenMint: mint,
         signer: creator.publicKey,
         payer: creator.publicKey,
@@ -1654,7 +1654,7 @@ describe("coinflip", () => {
         false,
       )
       .accounts({
-        creator: creatorPDA,
+        player: creatorPDA,
         tokenMint: mint,
         signer: creator.publicKey,
         payer: creator.publicKey,
@@ -1703,7 +1703,7 @@ describe("coinflip", () => {
       .claimWin()
       .accounts({
         game: gamePDA,
-        winner: winner,
+        player: winner,
         signer: winnerKeypair.publicKey,
       })
       .signers([winnerKeypair])
@@ -1715,7 +1715,7 @@ describe("coinflip", () => {
         .claimWin()
         .accounts({
           game: gamePDA,
-          winner: winner,
+          player: winner,
           signer: winnerKeypair.publicKey,
         })
         .signers([winnerKeypair])
@@ -1757,7 +1757,7 @@ describe("coinflip", () => {
         false,
       )
       .accounts({
-        creator: creatorPDA,
+        player: creatorPDA,
         tokenMint: mint,
         signer: creator.publicKey,
         payer: creator.publicKey,
@@ -1828,7 +1828,7 @@ describe("coinflip", () => {
         false,
       )
       .accounts({
-        creator: creatorPDA,
+        player: creatorPDA,
         tokenMint: mint,
         signer: creator.publicKey,
         payer: creator.publicKey,
@@ -1904,7 +1904,7 @@ describe("coinflip", () => {
         false,
       )
       .accounts({
-        creator: creatorPDA,
+        player: creatorPDA,
         tokenMint: mint,
         signer: creator.publicKey,
         payer: creator.publicKey,
