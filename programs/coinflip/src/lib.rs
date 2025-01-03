@@ -109,7 +109,7 @@ pub mod coinflip {
     }
 
     pub fn initialize_player(ctx: Context<InitializePlayer>) -> Result<()> {
-        instructions::initialize_player::handler_regular(ctx)
+        instructions::initialize_player::handler(ctx)
     }
 
     pub fn initialize_player_bot(
@@ -117,7 +117,7 @@ pub mod coinflip {
         bot_id: u8,
         bot_seed: String,
     ) -> Result<()> {
-        instructions::initialize_player::handler_bot(ctx, bot_id, bot_seed)
+        instructions::initialize_player_bot::handler(ctx, bot_id, bot_seed)
     }
 
     pub fn update_player_bot(
@@ -133,11 +133,11 @@ pub mod coinflip {
     }
 
     pub fn withdraw_player(ctx: Context<WithdrawPlayer>, amount: u64) -> Result<()> {
-        instructions::withdraw_player::handler_regular(ctx, amount)
+        instructions::withdraw_player::handler(ctx, amount)
     }
 
     pub fn withdraw_sol_player(ctx: Context<WithdrawSolPlayer>, amount: u64) -> Result<()> {
-        instructions::withdraw_player::handler_sol(ctx, amount)
+        instructions::withdraw_sol_player::handler(ctx, amount)
     }
 
     pub fn tip_player(ctx: Context<TipPlayer>, amount: u64) -> Result<()> {
