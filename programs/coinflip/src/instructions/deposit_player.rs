@@ -1,4 +1,4 @@
-use crate::events::PlayerDeposited;
+use crate::events::PlayerTransfer;
 use anchor_lang::prelude::*;
 use anchor_spl::token;
 
@@ -15,9 +15,9 @@ pub fn handler(ctx: Context<super::DepositPlayer>, amount: u64) -> Result<()> {
         amount,
     )?;
 
-    emit!(PlayerDeposited {
-        player: ctx.accounts.player.key(),
-        depositor: ctx.accounts.depositor.key(),
+    emit!(PlayerTransfer {
+        source: ctx.accounts.depositor.key(),
+        destination: ctx.accounts.player.key(),
         token_mint: ctx.accounts.token_mint.key(),
         amount,
     });

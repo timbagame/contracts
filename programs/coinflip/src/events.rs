@@ -47,25 +47,9 @@ pub struct OracleHashSet {
 }
 
 #[event]
-pub struct PlayerDeposited {
-    pub player: Pubkey,
-    pub depositor: Pubkey,
-    pub token_mint: Pubkey,
-    pub amount: u64,
-}
-
-#[event]
-pub struct PlayerWithdrawn {
-    pub player: Pubkey,
-    pub receiver: Pubkey,
-    pub token_mint: Pubkey,
-    pub amount: u64,
-}
-
-#[event]
-pub struct PlayerTipped {
-    pub tipper: Pubkey,
-    pub receiver: Pubkey,
+pub struct PlayerTransfer {
+    pub source: Pubkey,
+    pub destination: Pubkey,
     pub token_mint: Pubkey,
     pub amount: u64,
 }
