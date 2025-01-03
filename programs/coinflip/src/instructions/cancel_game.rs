@@ -18,7 +18,7 @@ pub fn handler(ctx: Context<super::CancelGame>) -> Result<()> {
                 ctx.accounts.token_program.to_account_info(),
                 token::Transfer {
                     from: ctx.accounts.game_token_account.to_account_info(),
-                    to: ctx.accounts.creator_token_account.to_account_info(),
+                    to: ctx.accounts.player_token_account.to_account_info(),
                     authority: ctx.accounts.game_vault.to_account_info(),
                 },
                 &[&[

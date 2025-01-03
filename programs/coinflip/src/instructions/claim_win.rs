@@ -7,8 +7,8 @@ pub fn handler(ctx: Context<super::ClaimWin>) -> Result<()> {
     let game = &mut ctx.accounts.game;
     game.status = GameStatus::Completed;
 
-    let winner = &mut ctx.accounts.winner;
-    winner.games_won += 1;
+    let player = &mut ctx.accounts.player;
+    player.games_won += 1;
 
     // Transfer funds to winner
     token::transfer(
@@ -16,7 +16,7 @@ pub fn handler(ctx: Context<super::ClaimWin>) -> Result<()> {
             ctx.accounts.token_program.to_account_info(),
             token::Transfer {
                 from: ctx.accounts.game_token_account.to_account_info(),
-                to: ctx.accounts.winner_token_account.to_account_info(),
+                to: ctx.accounts.player_token_account.to_account_info(),
                 authority: ctx.accounts.game_vault.to_account_info(),
             },
             &[&[
@@ -30,7 +30,7 @@ pub fn handler(ctx: Context<super::ClaimWin>) -> Result<()> {
 
     emit!(WinClaimed {
         game_id: game.id,
-        winner: winner.key(),
+        winner: game.winner,
         amount: game.winner_amount,
     });
 

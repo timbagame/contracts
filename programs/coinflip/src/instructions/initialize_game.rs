@@ -16,7 +16,7 @@ pub fn handler(
     // Initialize game
     let game = &mut ctx.accounts.game;
     game.id = ctx.accounts.oracle.games_counter;
-    game.creator = ctx.accounts.creator.key();
+    game.creator = ctx.accounts.player.key();
     game.game_type = game_type;
     game.amount = amount;
     game.max_players = max_players;
@@ -29,7 +29,7 @@ pub fn handler(
     game.is_private = is_private;
 
     if game.game_type == GameType::Coinflip {
-        game.players.push(ctx.accounts.creator.key());
+        game.players.push(ctx.accounts.player.key());
     }
 
     // Increment game counter
@@ -41,15 +41,15 @@ pub fn handler(
         CpiContext::new_with_signer(
             ctx.accounts.token_program.to_account_info(),
             token::Transfer {
-                from: ctx.accounts.creator_token_account.to_account_info(),
+                from: ctx.accounts.player_token_account.to_account_info(),
                 to: ctx.accounts.game_token_account.to_account_info(),
-                authority: ctx.accounts.creator_vault.to_account_info(),
+                authority: ctx.accounts.player_vault.to_account_info(),
             },
             &[&[
                 b"player_vault",
-                ctx.accounts.creator.key().as_ref(),
+                ctx.accounts.player.key().as_ref(),
                 game.token_mint.as_ref(),
-                &[ctx.bumps.creator_vault],
+                &[ctx.bumps.player_vault],
             ]],
         ),
         game.amount,
@@ -57,7 +57,7 @@ pub fn handler(
 
     emit!(GameInitialized {
         game_id: game.id,
-        creator: ctx.accounts.creator.key(),
+        creator: ctx.accounts.player.key(),
         game_type: game.game_type,
         amount: game.amount,
         max_players: game.max_players,
