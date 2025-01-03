@@ -1,4 +1,4 @@
-use crate::events::PlayerWithdrawn;
+use crate::events::PlayerTransfer;
 use anchor_lang::prelude::*;
 use anchor_lang::system_program;
 
@@ -8,7 +8,7 @@ pub fn handler(ctx: Context<super::WithdrawSolPlayer>, amount: u64) -> Result<()
             ctx.accounts.system_program.to_account_info(),
             system_program::Transfer {
                 from: ctx.accounts.player_vault.to_account_info(),
-                to: ctx.accounts.receiver.to_account_info(),
+                to: ctx.accounts.destination.to_account_info(),
             },
             &[&[
                 b"player_vault",
@@ -19,9 +19,9 @@ pub fn handler(ctx: Context<super::WithdrawSolPlayer>, amount: u64) -> Result<()
         amount,
     )?;
 
-    emit!(PlayerWithdrawn {
-        player: ctx.accounts.player.key(),
-        receiver: ctx.accounts.receiver.key(),
+    emit!(PlayerTransfer {
+        source: ctx.accounts.player.key(),
+        destination: ctx.accounts.destination.key(),
         token_mint: Pubkey::default(),
         amount,
     });

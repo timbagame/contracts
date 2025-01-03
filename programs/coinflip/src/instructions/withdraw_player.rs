@@ -1,4 +1,4 @@
-use crate::events::PlayerWithdrawn;
+use crate::events::PlayerTransfer;
 use anchor_lang::prelude::*;
 use anchor_spl::token;
 
@@ -8,7 +8,7 @@ pub fn handler(ctx: Context<super::WithdrawPlayer>, amount: u64) -> Result<()> {
             ctx.accounts.token_program.to_account_info(),
             token::Transfer {
                 from: ctx.accounts.player_token_account.to_account_info(),
-                to: ctx.accounts.receiver_token_account.to_account_info(),
+                to: ctx.accounts.destination_token_account.to_account_info(),
                 authority: ctx.accounts.player_vault.to_account_info(),
             },
             &[&[
@@ -20,9 +20,9 @@ pub fn handler(ctx: Context<super::WithdrawPlayer>, amount: u64) -> Result<()> {
         amount,
     )?;
 
-    emit!(PlayerWithdrawn {
-        player: ctx.accounts.player.key(),
-        receiver: ctx.accounts.receiver.key(),
+    emit!(PlayerTransfer {
+        source: ctx.accounts.player.key(),
+        destination: ctx.accounts.destination.key(),
         token_mint: ctx.accounts.token_mint.key(),
         amount,
     });

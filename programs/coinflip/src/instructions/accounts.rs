@@ -583,14 +583,14 @@ pub struct WithdrawPlayer<'info> {
         bump,
     )]
     pub player_vault: AccountInfo<'info>,
-    /// CHECK: This is the receiver's account that will receive the tokens
-    pub receiver: AccountInfo<'info>,
+    /// CHECK: This is the destination account that will receive the tokens
+    pub destination: AccountInfo<'info>,
     #[account(
         mut,
         associated_token::mint = token_mint,
-        associated_token::authority = receiver,
+        associated_token::authority = destination,
     )]
-    pub receiver_token_account: Account<'info, TokenAccount>,
+    pub destination_token_account: Account<'info, TokenAccount>,
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
     pub associated_token_program: Program<'info, AssociatedToken>,
@@ -621,8 +621,8 @@ pub struct WithdrawSolPlayer<'info> {
         bump,
     )]
     pub player_vault: AccountInfo<'info>,
-    /// CHECK: This is the receiver's account that will receive the tokens
-    pub receiver: AccountInfo<'info>,
+    /// CHECK: This is the destination account that will receive the tokens
+    pub destination: AccountInfo<'info>,
     pub system_program: Program<'info, System>,
 }
 
@@ -638,7 +638,7 @@ pub struct TipPlayer<'info> {
                      @ ErrorCode::UnauthorizedPlayer,
     )]
     pub tipper: Account<'info, Player>,
-    pub receiver: Account<'info, Player>,
+    pub destination: Account<'info, Player>,
     pub signer: Signer<'info>,
     #[account(
         seeds = [b"oracle"],
@@ -651,12 +651,12 @@ pub struct TipPlayer<'info> {
         bump,
     )]
     pub tipper_vault: AccountInfo<'info>,
-    /// CHECK: This is a PDA that serves as the authority for the receiver's token accounts
+    /// CHECK: This is a PDA that serves as the authority for the destination token account
     #[account(
-        seeds = [b"player_vault", receiver.key().as_ref()],
+        seeds = [b"player_vault", destination.key().as_ref()],
         bump,
     )]
-    pub receiver_vault: AccountInfo<'info>,
+    pub destination_vault: AccountInfo<'info>,
     pub token_mint: Account<'info, Mint>,
     #[account(
         seeds = [b"token", token_mint.key().as_ref()],
@@ -674,9 +674,9 @@ pub struct TipPlayer<'info> {
     #[account(
         mut,
         associated_token::mint = token_mint,
-        associated_token::authority = receiver_vault,
+        associated_token::authority = destination_vault,
     )]
-    pub receiver_token_account: Account<'info, TokenAccount>,
+    pub destination_token_account: Account<'info, TokenAccount>,
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
     pub associated_token_program: Program<'info, AssociatedToken>,
