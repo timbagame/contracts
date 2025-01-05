@@ -3,7 +3,6 @@ use crate::state::GameStatus;
 use crate::state::GameType;
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::hash::hash;
-use anchor_lang::solana_program::sysvar::slot_hashes;
 use anchor_spl::token;
 
 pub fn handler(ctx: Context<super::SetOracleHash>, hash_value: [u8; 32]) -> Result<()> {
@@ -20,13 +19,13 @@ pub fn handler(ctx: Context<super::SetOracleHash>, hash_value: [u8; 32]) -> Resu
         game.winner_amount = total_amount - game.fee_amount;
     }
 
-    // Get slot hash for on-chain randomness
-    let slot_hash = slot_hashes::id().to_bytes();
+    // Get current time for randomness
+    let current_time = Clock::get()?.unix_timestamp.to_le_bytes();
 
-    // Combine oracle hash with slot hash
-    let mut combined = Vec::with_capacity(64); // 32 + 32
+    // Combine oracle hash with current time
+    let mut combined = Vec::with_capacity(40); // 32 + 8
     combined.extend_from_slice(&hash_value);
-    combined.extend_from_slice(&slot_hash);
+    combined.extend_from_slice(&current_time);
     let final_hash = hash(&combined).to_bytes();
     let random_number = usize::from_le_bytes(final_hash[0..8].try_into().unwrap());
     let random_index = random_number % game.players.len();
