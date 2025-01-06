@@ -144,7 +144,7 @@ pub struct InitializeGame<'info> {
         init, 
         payer = player, 
         space = 8 + // discriminator
-            8 + // id
+            4 + // id
             32 + // creator
             1 + // game_type
             8 + // amount
