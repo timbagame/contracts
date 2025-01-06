@@ -311,7 +311,6 @@ pub struct ClaimWin<'info> {
     )]
     pub oracle: Account<'info, Oracle>,
     #[account(
-        mut,
         address = game.winner @ ErrorCode::UnauthorizedPlayer,
     )]
     pub player: Signer<'info>,
