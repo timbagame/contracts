@@ -1,4 +1,3 @@
-use crate::events::OracleHashSet;
 use crate::state::GameStatus;
 use crate::state::GameType;
 use anchor_lang::prelude::*;
@@ -49,8 +48,6 @@ pub fn handler(ctx: Context<super::SetOracleHash>, hash_value: [u8; 32]) -> Resu
             game.fee_amount,
         )?;
     }
-
-    emit!(OracleHashSet { game_id: game.id });
 
     Ok(())
 }

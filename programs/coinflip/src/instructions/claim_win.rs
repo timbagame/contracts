@@ -1,4 +1,3 @@
-use crate::events::WinClaimed;
 use crate::state::GameStatus;
 use anchor_lang::prelude::*;
 use anchor_spl::token;
@@ -24,11 +23,6 @@ pub fn handler(ctx: Context<super::ClaimWin>) -> Result<()> {
         ),
         game.winner_amount,
     )?;
-
-    emit!(WinClaimed {
-        game_id: game.id,
-        winner: game.winner,
-    });
 
     Ok(())
 }

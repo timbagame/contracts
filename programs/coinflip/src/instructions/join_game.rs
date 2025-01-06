@@ -1,7 +1,6 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token;
 
-use crate::events::PlayerJoined;
 use crate::state::GameType;
 
 pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
@@ -23,11 +22,6 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
     }
 
     game.players.push(ctx.accounts.player.key());
-
-    emit!(PlayerJoined {
-        game_id: game.id,
-        player: ctx.accounts.player.key(),
-    });
 
     Ok(())
 }

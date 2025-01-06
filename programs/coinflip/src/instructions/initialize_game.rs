@@ -1,7 +1,6 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token;
 
-use crate::events::GameInitialized;
 use crate::state::GameType;
 
 pub fn handler(
@@ -48,8 +47,6 @@ pub fn handler(
         ),
         game.amount,
     )?;
-
-    emit!(GameInitialized { game_id: game.id });
 
     Ok(())
 }
