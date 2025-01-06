@@ -107,40 +107,4 @@ pub mod coinflip {
     pub fn claim_win(ctx: Context<ClaimWin>) -> Result<()> {
         instructions::claim_win::handler(ctx)
     }
-
-    pub fn initialize_player(ctx: Context<InitializePlayer>) -> Result<()> {
-        instructions::initialize_player::handler(ctx)
-    }
-
-    pub fn initialize_player_bot(
-        ctx: Context<InitializePlayerBot>,
-        bot_id: u8,
-        bot_seed: String,
-    ) -> Result<()> {
-        instructions::initialize_player_bot::handler(ctx, bot_id, bot_seed)
-    }
-
-    pub fn update_player_bot(
-        ctx: Context<UpdatePlayerBot>,
-        owner: Pubkey,
-        bot_auth: bool,
-    ) -> Result<()> {
-        instructions::update_player_bot::handler(ctx, owner, bot_auth)
-    }
-
-    pub fn deposit_player(ctx: Context<DepositPlayer>, amount: u64) -> Result<()> {
-        instructions::deposit_player::handler(ctx, amount)
-    }
-
-    pub fn withdraw_player(ctx: Context<WithdrawPlayer>, amount: u64) -> Result<()> {
-        instructions::withdraw_player::handler(ctx, amount)
-    }
-
-    pub fn withdraw_sol_player(ctx: Context<WithdrawSolPlayer>, amount: u64) -> Result<()> {
-        instructions::withdraw_sol_player::handler(ctx, amount)
-    }
-
-    pub fn tip_player(ctx: Context<TipPlayer>, amount: u64) -> Result<()> {
-        instructions::tip_player::handler(ctx, amount)
-    }
 }

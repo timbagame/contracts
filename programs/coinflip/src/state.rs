@@ -10,7 +10,6 @@ pub struct Oracle {
     pub max_timeout: i64,
     pub min_timeout: i64,
     pub games_counter: u64,
-    pub players_counter: u64,
 }
 
 #[account]
@@ -84,16 +83,4 @@ impl Game {
 
         buffer_passed
     }
-}
-
-#[account]
-#[derive(Default)]
-pub struct Player {
-    pub id: u64,
-    pub owner: Pubkey,
-    pub is_bot: bool,
-    pub bot_id: u8,
-    pub bot_seed: String,
-    pub bot_auth: bool,
-    pub games_won: u64,
 }
