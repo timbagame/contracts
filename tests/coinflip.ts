@@ -28,7 +28,7 @@ describe("coinflip", () => {
 
   async function getGamePDA(gameCounter: number) {
     return PublicKey.findProgramAddressSync(
-      [Buffer.from("game"), Buffer.from(gameCounter.toString())],
+      [Buffer.from("game"), new BN(gameCounter).toArrayLike(Buffer, 'le', 4)],
       program.programId
     )[0];
   }
