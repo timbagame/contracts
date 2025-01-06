@@ -23,12 +23,12 @@ describe("coinflip", () => {
       program.programId
     );
     const oracleAccount = await program.account.oracle.fetch(oraclePDA);
-    return oracleAccount.gamesCounter.sub(new BN(1));
+    return oracleAccount.gamesCounter - 1;
   }
 
-  async function getGamePDA(gameCounter: BN) {
+  async function getGamePDA(gameCounter: number) {
     return PublicKey.findProgramAddressSync(
-      [Buffer.from("game"), gameCounter.toArrayLike(Buffer, 'le', 8)],
+      [Buffer.from("game"), Buffer.from(gameCounter.toString())],
       program.programId
     )[0];
   }
