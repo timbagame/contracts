@@ -28,7 +28,6 @@ pub fn handler(ctx: Context<super::ClaimWin>) -> Result<()> {
     emit!(WinClaimed {
         game_id: game.id,
         winner: game.winner,
-        amount: game.winner_amount,
     });
 
     Ok(())

@@ -9,23 +9,21 @@ pub fn handler(ctx: Context<super::SetOracleHash>, hash_value: [u8; 32]) -> Resu
     let game = &mut ctx.accounts.game;
 
     // Calculate winner amount and fee amount checking game type
-    if game.game_type == GameType::Coinflip {
-        let total_amount = game.amount * game.players.len() as u64;
-        game.fee_amount = total_amount * (ctx.accounts.oracle.fee_percentage as u64) / 100;
-        game.winner_amount = total_amount - game.fee_amount;
+    let total_amount = if game.game_type == GameType::Coinflip {
+        game.amount * game.players.len() as u64
     } else {
-        let total_amount = game.amount;
-        game.fee_amount = total_amount * (ctx.accounts.oracle.fee_percentage as u64) / 100;
-        game.winner_amount = total_amount - game.fee_amount;
-    }
+        game.amount
+    };
+    game.fee_amount = total_amount * (ctx.accounts.oracle.fee_percentage as u64) / 100;
+    game.winner_amount = total_amount - game.fee_amount;
 
     // Get current time for randomness
     let current_time = Clock::get()?.unix_timestamp.to_le_bytes();
 
     // Combine oracle hash with current time
-    let mut combined = Vec::with_capacity(40); // 32 + 8
-    combined.extend_from_slice(&hash_value);
-    combined.extend_from_slice(&current_time);
+    let mut combined = [0u8; 40];
+    combined[..32].copy_from_slice(&hash_value);
+    combined[32..].copy_from_slice(&current_time);
     let final_hash = hash(&combined).to_bytes();
     let random_number = usize::from_le_bytes(final_hash[0..8].try_into().unwrap());
     let random_index = random_number % game.players.len();
@@ -52,13 +50,7 @@ pub fn handler(ctx: Context<super::SetOracleHash>, hash_value: [u8; 32]) -> Resu
         )?;
     }
 
-    emit!(OracleHashSet {
-        game_id: game.id,
-        winner: game.winner,
-        winner_amount: game.winner_amount,
-        fee_amount: game.fee_amount,
-        total_players: game.players.len() as u16,
-    });
+    emit!(OracleHashSet { game_id: game.id });
 
     Ok(())
 }
