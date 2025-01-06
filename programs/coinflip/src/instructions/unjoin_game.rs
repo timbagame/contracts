@@ -1,17 +1,9 @@
+use crate::state::GameType;
 use anchor_lang::prelude::*;
 use anchor_spl::token;
 
-use crate::state::{GameStatus, GameType};
-
 pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
     let game = &mut ctx.accounts.game;
-
-    // If game is active and buffer time has passed, cancel it
-    if game.status == GameStatus::Active
-        && game.buffer_passed(ctx.accounts.oracle.oracle_buffer_time)
-    {
-        game.status = GameStatus::Cancelled;
-    }
 
     // Remove player
     if let Some(pos) = game

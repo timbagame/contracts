@@ -261,7 +261,10 @@ pub struct SetOracleHash<'info> {
     #[account(
         mut,
         constraint = game.status == GameStatus::Active @ ErrorCode::GameNotActive,
-        constraint = game.ready_for_oracle() @ ErrorCode::GameNotReadyForOracle
+        constraint = {
+            let current_time = Clock::get().unwrap().unix_timestamp;
+            game.ready_for_oracle(current_time)
+        } @ ErrorCode::GameNotReadyForOracle
     )]
     pub game: Account<'info, Game>,
     #[account(
@@ -341,7 +344,10 @@ pub struct UnjoinGame<'info> {
         constraint = game.status != GameStatus::ReadyForClaim @ ErrorCode::GameReadyForClaim,
         constraint = game.status != GameStatus::Completed @ ErrorCode::GameCompleted,
         constraint = game.players.contains(&player.key()) @ ErrorCode::UnauthorizedPlayer,
-        constraint = !game.ready_for_oracle() || game.buffer_passed(oracle.oracle_buffer_time) @ ErrorCode::GameReadyForOracle
+        constraint = {
+            let current_time = Clock::get().unwrap().unix_timestamp;
+            !game.ready_for_oracle(current_time) || game.buffer_passed(oracle.oracle_buffer_time, current_time)
+        } @ ErrorCode::GameReadyForOracle,
     )]
     pub game: Account<'info, Game>,
     pub player: Signer<'info>,
@@ -380,7 +386,10 @@ pub struct CancelGame<'info> {
         mut,
         constraint = game.status != GameStatus::ReadyForClaim @ ErrorCode::GameReadyForClaim,
         constraint = game.status != GameStatus::Completed @ ErrorCode::GameCompleted,
-        constraint = !game.ready_for_oracle() || game.buffer_passed(oracle.oracle_buffer_time) @ ErrorCode::GameReadyForOracle,
+        constraint = {
+            let current_time = Clock::get().unwrap().unix_timestamp;
+            !game.ready_for_oracle(current_time) || game.buffer_passed(oracle.oracle_buffer_time, current_time)
+        } @ ErrorCode::GameReadyForOracle,
     )]
     pub game: Account<'info, Game>,
     #[account(
