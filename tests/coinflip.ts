@@ -60,15 +60,6 @@ describe("coinflip", () => {
       // Create token mint and initialize token
       await createSplTokenMint();
 
-      // Initialize player for tests
-      await program.methods
-        .initializePlayer()
-        .accounts({
-          payer: program.provider.publicKey,
-          owner: program.provider.publicKey,
-        })
-        .rpc();
-
     } catch (e) {
       // If oracle already exists, that's fine
       console.log("Initialization failed, may already exist:", e);
@@ -88,7 +79,6 @@ describe("coinflip", () => {
       feePercentage: oracleAccount.feePercentage,
       oracleBufferTime: oracleAccount.oracleBufferTime,
       gamesCounter: oracleAccount.gamesCounter,
-      playersCounter: oracleAccount.playersCounter,
     };
   }
 
@@ -181,47 +171,23 @@ describe("coinflip", () => {
     );
     await program.provider.connection.confirmTransaction(signature);
 
-    // Initialize player for tests
-    await program.methods
-      .initializePlayer()
-      .accounts({
-        payer: player.publicKey,
-        owner: player.publicKey,
-      })
-      .signers([player])
-      .rpc();
-
-    // Get player PDA
-    const [playerPDA] = PublicKey.findProgramAddressSync(
-      [Buffer.from("player"), player.publicKey.toBuffer()],
-      program.programId
-    );
-
-    const [playerVaultPDA] = PublicKey.findProgramAddressSync(
-      [Buffer.from("player_vault"), playerPDA.toBuffer()],
-      program.programId
-    );
-
     // get or create player token account
     const playerTokenAccount = await getOrCreateAssociatedTokenAccount(
       program.provider.connection,
       player, // payer
       tokenMint,
-      playerVaultPDA,
-      true, // allowOwnerOffCurve
+      player.publicKey,
     );
 
     return {
       player,
-      playerPDA,
-      playerVaultPDA,
       playerTokenAccount,
     };
   }
 
 
   it("Initialize Oracle Successfully", async () => {
-    const { authority, feePercentage, oracleBufferTime, gamesCounter, playersCounter } = await createOracleAccount();
+    const { authority, feePercentage, oracleBufferTime, gamesCounter } = await createOracleAccount();
 
     // Get the oracle PDA
     const [oraclePDA] = PublicKey.findProgramAddressSync(
@@ -237,7 +203,6 @@ describe("coinflip", () => {
     expect(oracleData.feePercentage.toString()).to.equal(feePercentage.toString());
     expect(oracleData.oracleBufferTime.toString()).to.equal(oracleBufferTime.toString());
     expect(oracleData.gamesCounter.toString()).to.equal(gamesCounter.toString());
-    expect(oracleData.playersCounter.toString()).to.equal(playersCounter.toString());
   });
 
   it("Initialize Game with Invalid Parameters", async () => {
@@ -249,7 +214,6 @@ describe("coinflip", () => {
 
     const {
       player,
-      playerPDA,
       playerTokenAccount,
     } = await createPlayer(mint);
 
@@ -273,9 +237,7 @@ describe("coinflip", () => {
           isPrivate,
         )
         .accounts({
-          player: playerPDA,
-          signer: player.publicKey,
-          payer: player.publicKey,
+          player: player.publicKey,
           tokenMint: mint,
         })
         .signers([player])
