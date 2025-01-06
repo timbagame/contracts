@@ -9,7 +9,7 @@ pub struct Oracle {
     pub max_players: u16,
     pub max_timeout: i64,
     pub min_timeout: i64,
-    pub games_counter: u64,
+    pub games_counter: u32,
 }
 
 #[account]
@@ -50,7 +50,7 @@ impl Default for GameStatus {
 #[account]
 #[derive(Default)]
 pub struct Game {
-    pub id: u64,
+    pub id: u32,
     pub creator: Pubkey,
     pub game_type: GameType,
     pub amount: u64,
