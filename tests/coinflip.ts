@@ -738,9 +738,9 @@ describe("coinflip", () => {
         .signers([fakeAuthority])
         .rpc();
 
-      expect.fail("Should have thrown UnauthorizedOracle error");
+      expect.fail("Should have thrown UnauthorizedAuthority error");
     } catch (error) {
-      expect(error.toString()).to.include("UnauthorizedOracle");
+      expect(error.toString()).to.include("UnauthorizedAuthority");
     }
   });
 
@@ -796,9 +796,9 @@ describe("coinflip", () => {
         })
         .rpc();
 
-      expect.fail("Should have thrown GameNotFull error");
+      expect.fail("Should have thrown GameNotReadyForOracle error");
     } catch (error) {
-      expect(error.toString()).to.include("GameNotFull");
+      expect(error.toString()).to.include("GameNotReadyForOracle");
     }
   });
 
