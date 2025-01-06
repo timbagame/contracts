@@ -52,7 +52,6 @@ describe("coinflip", () => {
       await program.methods
         .initializeOracle(feePercentage, new BN(oracleBufferTime), maxPlayers, new BN(maxTimeout), new BN(minTimeout))
         .accounts({
-          payer: program.provider.publicKey,
           authority: program.provider.publicKey,
         })
         .rpc();
@@ -131,7 +130,6 @@ describe("coinflip", () => {
         .initializeToken("TEST", new BN(1000), true)
         .accounts({
           tokenMint: mint,
-          payer: program.provider.publicKey,
           authority: program.provider.publicKey,
         })
         .rpc();
@@ -258,13 +256,11 @@ describe("coinflip", () => {
 
     const {
       player: creator,
-      playerPDA: creatorPDA,
       playerTokenAccount: creatorTokenAccount,
     } = await createPlayer(mint);
 
     const {
       player,
-      playerPDA,
       playerTokenAccount,
     } = await createPlayer(mint);
 
@@ -283,10 +279,8 @@ describe("coinflip", () => {
         false, // isPrivate
       )
       .accounts({
-        player: creatorPDA,
+        player: creator.publicKey,
         tokenMint: mint,
-        signer: creator.publicKey,
-        payer: creator.publicKey,
       })
       .signers([creator])
       .rpc();
@@ -299,16 +293,14 @@ describe("coinflip", () => {
       .joinGame()
       .accounts({
         game: gamePDA,
-        player: playerPDA,
-        owner: player.publicKey,
-        authority: player.publicKey,
+        player: player.publicKey,
       })
       .signers([player])
       .rpc();
 
     // Verify game state
     const gameData = await program.account.game.fetch(gamePDA);
-    expect(gameData.players[1].toString()).to.equal(playerPDA.toString());
+    expect(gameData.players[1].toString()).to.equal(player.publicKey.toString());
   });
 
   it("Join Private Game Successfully", async () => {
@@ -321,14 +313,12 @@ describe("coinflip", () => {
     // Create creator using helper
     const {
       player: creator,
-      playerPDA: creatorPDA,
       playerTokenAccount: creatorTokenAccount,
     } = await createPlayer(mint);
 
     // Create joiner using helper  
     const {
       player: joiner,
-      playerPDA: joinerPDA,
       playerTokenAccount: joinerTokenAccount,
     } = await createPlayer(mint);
 
@@ -348,10 +338,8 @@ describe("coinflip", () => {
         true, // isPrivate
       )
       .accounts({
-        player: creatorPDA,
+        player: creator.publicKey,
         tokenMint: mint,
-        signer: creator.publicKey,
-        payer: creator.publicKey,
       })
       .signers([creator])
       .rpc();
@@ -364,8 +352,7 @@ describe("coinflip", () => {
       .joinGame()
       .accounts({
         game: gamePDA,
-        player: joinerPDA,
-        owner: joiner.publicKey,
+        player: joiner.publicKey,
         authority: program.provider.publicKey,
       })
       .signers([joiner])
@@ -373,7 +360,7 @@ describe("coinflip", () => {
 
     // Verify game state
     const gameData = await program.account.game.fetch(gamePDA);
-    expect(gameData.players[1].toString()).to.equal(joinerPDA.toString());
+    expect(gameData.players[1].toString()).to.equal(joiner.publicKey.toString());
   });
 
   it("Fail to Join Full Game", async () => {
@@ -388,7 +375,6 @@ describe("coinflip", () => {
     // Create creator using helper
     const {
       player: creator,
-      playerPDA: creatorPDA,
       playerTokenAccount: creatorTokenAccount,
     } = await createPlayer(mint);
 
@@ -406,10 +392,8 @@ describe("coinflip", () => {
         false,
       )
       .accounts({
-        player: creatorPDA,
+        player: creator.publicKey,
         tokenMint: mint,
-        signer: creator.publicKey,
-        payer: creator.publicKey,
       })
       .signers([creator])
       .rpc();
@@ -420,14 +404,12 @@ describe("coinflip", () => {
     // Create first player
     const {
       player: player1,
-      playerPDA: player1PDA,
       playerTokenAccount: player1TokenAccount,
     } = await createPlayer(mint);
 
     // Create second player
     const {
       player: player2,
-      playerPDA: player2PDA,
       playerTokenAccount: player2TokenAccount,
     } = await createPlayer(mint);
 
@@ -440,9 +422,7 @@ describe("coinflip", () => {
       .joinGame()
       .accounts({
         game: gamePDA,
-        player: player1PDA,
-        owner: player1.publicKey,
-        authority: player1.publicKey,
+        player: player1.publicKey,
       })
       .signers([player1])
       .rpc();
@@ -453,9 +433,7 @@ describe("coinflip", () => {
         .joinGame()
         .accounts({
           game: gamePDA,
-          player: player2PDA,
-          owner: player2.publicKey,
-          authority: player2.publicKey,
+          player: player2.publicKey,
         })
         .signers([player2])
         .rpc();
@@ -478,7 +456,6 @@ describe("coinflip", () => {
     // Create creator using helper
     const {
       player: creator,
-      playerPDA: creatorPDA,
       playerTokenAccount: creatorTokenAccount,
     } = await createPlayer(mint);
 
@@ -495,10 +472,8 @@ describe("coinflip", () => {
         false,
       )
       .accounts({
-        player: creatorPDA,
+        player: creator.publicKey,
         tokenMint: mint,
-        signer: creator.publicKey,
-        payer: creator.publicKey,
       })
       .signers([creator])
       .rpc();
@@ -509,7 +484,6 @@ describe("coinflip", () => {
     // Create player
     const {
       player,
-      playerPDA,
       playerTokenAccount,
     } = await createPlayer(mint);
 
@@ -521,9 +495,7 @@ describe("coinflip", () => {
       .joinGame()
       .accounts({
         game: gamePDA,
-        player: playerPDA,
-        owner: player.publicKey,
-        authority: player.publicKey,
+        player: player.publicKey,
       })
       .signers([player])
       .rpc();
@@ -534,9 +506,7 @@ describe("coinflip", () => {
         .joinGame()
         .accounts({
           game: gamePDA,
-          player: playerPDA,
-          owner: player.publicKey,
-          authority: player.publicKey,
+          player: player.publicKey,
         })
         .signers([player])
         .rpc();
@@ -562,7 +532,6 @@ describe("coinflip", () => {
     // Create creator using helper
     const {
       player: creator,
-      playerPDA: creatorPDA,
       playerTokenAccount: creatorTokenAccount,
     } = await createPlayer(mint);
 
@@ -580,10 +549,8 @@ describe("coinflip", () => {
         true, // isPrivate
       )
       .accounts({
-        player: creatorPDA,
+        player: creator.publicKey,
         tokenMint: mint,
-        signer: creator.publicKey,
-        payer: creator.publicKey,
       })
       .signers([creator])
       .rpc();
@@ -594,7 +561,6 @@ describe("coinflip", () => {
     // Create player
     const {
       player,
-      playerPDA,
       playerTokenAccount,
     } = await createPlayer(mint);
 
@@ -610,8 +576,7 @@ describe("coinflip", () => {
         .joinGame()
         .accounts({
           game: gamePDA,
-          player: playerPDA,
-          owner: player.publicKey,
+          player: player.publicKey,
           authority: fakeAuthority.publicKey,
         })
         .signers([player, fakeAuthority])
@@ -637,14 +602,12 @@ describe("coinflip", () => {
     // Create creator using helper
     const {
       player: creator,
-      playerPDA: creatorPDA,
       playerTokenAccount: creatorTokenAccount,
     } = await createPlayer(mint);
 
     // Create second player using helper
     const {
       player,
-      playerPDA,
       playerTokenAccount,
     } = await createPlayer(mint);
 
@@ -663,10 +626,8 @@ describe("coinflip", () => {
         false,
       )
       .accounts({
-        player: creatorPDA,
+        player: creator.publicKey,
         tokenMint: mint,
-        signer: creator.publicKey,
-        payer: creator.publicKey,
       })
       .signers([creator])
       .rpc();
@@ -680,9 +641,7 @@ describe("coinflip", () => {
       .joinGame()
       .accounts({
         game: gamePDA,
-        player: playerPDA,
-        owner: player.publicKey,
-        authority: player.publicKey,
+        player: player.publicKey,
       })
       .signers([player])
       .rpc();
@@ -720,14 +679,12 @@ describe("coinflip", () => {
     // Create creator using helper
     const {
       player: creator,
-      playerPDA: creatorPDA,
       playerTokenAccount: creatorTokenAccount,
     } = await createPlayer(mint);
 
     // Create second player using helper
     const {
       player,
-      playerPDA,
       playerTokenAccount,
     } = await createPlayer(mint);
 
@@ -746,10 +703,8 @@ describe("coinflip", () => {
         false,
       )
       .accounts({
-        player: creatorPDA,
+        player: creator.publicKey,
         tokenMint: mint,
-        signer: creator.publicKey,
-        payer: creator.publicKey,
       })
       .signers([creator])
       .rpc();
@@ -763,9 +718,7 @@ describe("coinflip", () => {
       .joinGame()
       .accounts({
         game: gamePDA,
-        player: playerPDA,
-        owner: player.publicKey,
-        authority: player.publicKey,
+        player: player.publicKey,
       })
       .signers([player])
       .rpc();
@@ -804,7 +757,6 @@ describe("coinflip", () => {
     // Create creator using helper
     const {
       player: creator,
-      playerPDA: creatorPDA,
       playerTokenAccount: creatorTokenAccount,
     } = await createPlayer(mint);
 
@@ -822,10 +774,8 @@ describe("coinflip", () => {
         false,
       )
       .accounts({
-        player: creatorPDA,
+        player: creator.publicKey,
         tokenMint: mint,
-        signer: creator.publicKey,
-        payer: creator.publicKey,
       })
       .signers([creator])
       .rpc();
@@ -864,7 +814,6 @@ describe("coinflip", () => {
     // Create creator using helper
     const {
       player: creator,
-      playerPDA: creatorPDA,
       playerTokenAccount: creatorTokenAccount,
     } = await createPlayer(mint);
 
@@ -882,10 +831,8 @@ describe("coinflip", () => {
         false,
       )
       .accounts({
-        player: creatorPDA,
+        player: creator.publicKey,
         tokenMint: mint,
-        signer: creator.publicKey,
-        payer: creator.publicKey,
       })
       .signers([creator])
       .rpc();
@@ -896,7 +843,6 @@ describe("coinflip", () => {
     // Create and join with second player
     const {
       player,
-      playerPDA,
       playerTokenAccount,
     } = await createPlayer(mint);
 
@@ -908,9 +854,7 @@ describe("coinflip", () => {
       .joinGame()
       .accounts({
         game: gamePDA,
-        player: playerPDA,
-        owner: player.publicKey,
-        authority: player.publicKey,
+        player: player.publicKey,
       })
       .signers([player])
       .rpc();
@@ -958,14 +902,12 @@ describe("coinflip", () => {
     // Create creator using helper
     const {
       player: creator,
-      playerPDA: creatorPDA,
       playerTokenAccount: creatorTokenAccount,
     } = await createPlayer(mint);
 
     // Create second player using helper
     const {
       player,
-      playerPDA,
       playerTokenAccount,
     } = await createPlayer(mint);
 
@@ -984,10 +926,8 @@ describe("coinflip", () => {
         false,
       )
       .accounts({
-        player: creatorPDA,
+        player: creator.publicKey,
         tokenMint: mint,
-        signer: creator.publicKey,
-        payer: creator.publicKey,
       })
       .signers([creator])
       .rpc();
@@ -1000,9 +940,7 @@ describe("coinflip", () => {
       .joinGame()
       .accounts({
         game: gamePDA,
-        player: playerPDA,
-        owner: player.publicKey,
-        authority: player.publicKey,
+        player: player.publicKey,
       })
       .signers([player])
       .rpc();
@@ -1023,17 +961,16 @@ describe("coinflip", () => {
     const gameData = await program.account.game.fetch(gamePDA);
     const winner = gameData.winner;
     expect(winner).to.not.be.null;
-    let winnerOwner;
-    if (winner.equals(creatorPDA)) {
-      winnerOwner = creator;
-    } else if (winner.equals(playerPDA)) {
-      winnerOwner = player;
+
+    let winnerKeypair;
+    if (winner.equals(creator.publicKey)) {
+      winnerKeypair = creator;
     } else {
-      expect.fail("Invalid winner");
+      winnerKeypair = player;
     }
 
     // Get winner's token account
-    const winnerTokenAccount = winner.equals(creatorPDA)
+    const winnerTokenAccount = winner.equals(creator.publicKey)
       ? creatorTokenAccount.address
       : playerTokenAccount.address;
 
@@ -1048,9 +985,8 @@ describe("coinflip", () => {
       .accounts({
         game: gamePDA,
         player: winner,
-        signer: winnerOwner.publicKey,
       })
-      .signers([winnerOwner])
+      .signers([winnerKeypair])
       .rpc();
 
     // Verify winner received funds
@@ -1076,14 +1012,12 @@ describe("coinflip", () => {
     // Create creator using helper
     const {
       player: creator,
-      playerPDA: creatorPDA,
       playerTokenAccount: creatorTokenAccount,
     } = await createPlayer(mint);
 
     // Create second player using helper
     const {
       player,
-      playerPDA,
       playerTokenAccount,
     } = await createPlayer(mint);
 
@@ -1102,10 +1036,8 @@ describe("coinflip", () => {
         false,
       )
       .accounts({
-        player: creatorPDA,
+        player: creator.publicKey,
         tokenMint: mint,
-        signer: creator.publicKey,
-        payer: creator.publicKey,
       })
       .signers([creator])
       .rpc();
@@ -1118,9 +1050,7 @@ describe("coinflip", () => {
       .joinGame()
       .accounts({
         game: gamePDA,
-        player: playerPDA,
-        owner: player.publicKey,
-        authority: player.publicKey,
+        player: player.publicKey,
       })
       .signers([player])
       .rpc();
@@ -1143,8 +1073,8 @@ describe("coinflip", () => {
     expect(winner).to.not.be.null;
 
     // Try to claim as non-winner (the player who didn't win)
-    const nonWinner = winner.equals(creatorPDA) ? playerPDA : creatorPDA;
-    const nonWinnerKeypair = winner.equals(creatorPDA) ? player : creator;
+    const nonWinner = winner.equals(creator.publicKey) ? player.publicKey : creator.publicKey;
+    const nonWinnerKeypair = winner.equals(creator.publicKey) ? player : creator;
 
     try {
       await program.methods
@@ -1152,7 +1082,6 @@ describe("coinflip", () => {
         .accounts({
           game: gamePDA,
           player: nonWinner,
-          signer: nonWinnerKeypair.publicKey,
         })
         .signers([nonWinnerKeypair])
         .rpc();
@@ -1176,7 +1105,6 @@ describe("coinflip", () => {
     // Create creator using helper
     const {
       player: creator,
-      playerPDA: creatorPDA,
       playerTokenAccount: creatorTokenAccount,
     } = await createPlayer(mint);
 
@@ -1193,10 +1121,8 @@ describe("coinflip", () => {
         false,
       )
       .accounts({
-        player: creatorPDA,
+        player: creator.publicKey,
         tokenMint: mint,
-        signer: creator.publicKey,
-        payer: creator.publicKey,
       })
       .signers([creator])
       .rpc();
@@ -1218,8 +1144,7 @@ describe("coinflip", () => {
       .unjoinGame()
       .accounts({
         game: gamePDA,
-        player: creatorPDA,
-        signer: creator.publicKey,
+        player: creator.publicKey,
       })
       .signers([creator])
       .rpc();
@@ -1247,20 +1172,17 @@ describe("coinflip", () => {
     // Create creator using helper
     const {
       player: creator,
-      playerPDA: creatorPDA,
       playerTokenAccount: creatorTokenAccount,
     } = await createPlayer(mint);
 
     // Create first player using helper
     const {
       player: player1,
-      playerPDA: player1PDA,
     } = await createPlayer(mint);
 
     // Create second player using helper
     const {
       player: player2,
-      playerPDA: player2PDA,
     } = await createPlayer(mint);
 
     // Mint tokens to creator
@@ -1277,10 +1199,8 @@ describe("coinflip", () => {
         isPrivate,
       )
       .accounts({
-        player: creatorPDA,
+        player: creator.publicKey,
         tokenMint: mint,
-        signer: creator.publicKey,
-        payer: creator.publicKey,
       })
       .signers([creator])
       .rpc();
@@ -1294,9 +1214,7 @@ describe("coinflip", () => {
       .joinGame()
       .accounts({
         game: gamePDA,
-        player: player1PDA,
-        owner: player1.publicKey,
-        authority: player1.publicKey,
+        player: player1.publicKey,
       })
       .signers([player1])
       .rpc();
@@ -1306,9 +1224,7 @@ describe("coinflip", () => {
       .joinGame()
       .accounts({
         game: gamePDA,
-        player: player2PDA,
-        owner: player2.publicKey,
-        authority: player2.publicKey,
+        player: player2.publicKey,
       })
       .signers([player2])
       .rpc();
@@ -1317,7 +1233,7 @@ describe("coinflip", () => {
     const gameData = await program.account.game.fetch(gamePDA);
     expect(gameData.players.length).to.equal(2);
     expect(gameData.gameType.giveaway).to.not.be.undefined;
-    expect(gameData.creator.equals(creatorPDA)).to.be.true;
+    expect(gameData.creator.equals(creator.publicKey)).to.be.true;
   });
 
   it("Multiple Participants Can Claim Timeout", async () => {
@@ -1332,14 +1248,12 @@ describe("coinflip", () => {
     // Create creator using helper
     const {
       player: creator,
-      playerPDA: creatorPDA,
       playerTokenAccount: creatorTokenAccount,
     } = await createPlayer(mint);
 
     // Create second player using helper
     const {
       player: player2,
-      playerPDA: player2PDA,
       playerTokenAccount: player2TokenAccount,
     } = await createPlayer(mint);
 
@@ -1358,10 +1272,8 @@ describe("coinflip", () => {
         false,
       )
       .accounts({
-        player: creatorPDA,
+        player: creator.publicKey,
         tokenMint: mint,
-        signer: creator.publicKey,
-        payer: creator.publicKey,
       })
       .signers([creator])
       .rpc();
@@ -1375,9 +1287,7 @@ describe("coinflip", () => {
       .joinGame()
       .accounts({
         game: gamePDA,
-        player: player2PDA,
-        owner: player2.publicKey,
-        authority: player2.publicKey,
+        player: player2.publicKey,
       })
       .signers([player2])
       .rpc();
@@ -1398,8 +1308,7 @@ describe("coinflip", () => {
       .unjoinGame()
       .accounts({
         game: gamePDA,
-        player: creatorPDA,
-        signer: creator.publicKey,
+        player: creator.publicKey,
       })
       .signers([creator])
       .rpc();
@@ -1408,8 +1317,7 @@ describe("coinflip", () => {
       .unjoinGame()
       .accounts({
         game: gamePDA,
-        player: player2PDA,
-        signer: player2.publicKey,
+        player: player2.publicKey,
       })
       .signers([player2])
       .rpc();
@@ -1438,14 +1346,12 @@ describe("coinflip", () => {
     // Create creator using helper
     const {
       player: creator,
-      playerPDA: creatorPDA,
       playerTokenAccount: creatorTokenAccount,
     } = await createPlayer(mint);
 
     // Create non-participant using helper
     const {
       player: nonParticipant,
-      playerPDA: nonParticipantPDA,
     } = await createPlayer(mint);
 
     // Mint tokens to creator
@@ -1462,10 +1368,8 @@ describe("coinflip", () => {
         false,
       )
       .accounts({
-        player: creatorPDA,
+        player: creator.publicKey,
         tokenMint: mint,
-        signer: creator.publicKey,
-        payer: creator.publicKey,
       })
       .signers([creator])
       .rpc();
@@ -1483,8 +1387,7 @@ describe("coinflip", () => {
         .unjoinGame()
         .accounts({
           game: gamePDA,
-          player: nonParticipantPDA,
-          signer: nonParticipant.publicKey,
+          player: nonParticipant.publicKey,
         })
         .signers([nonParticipant])
         .rpc();
@@ -1507,14 +1410,12 @@ describe("coinflip", () => {
     // Create creator using helper
     const {
       player: creator,
-      playerPDA: creatorPDA,
       playerTokenAccount: creatorTokenAccount,
     } = await createPlayer(mint);
 
     // Create player using helper
     const {
       player: player1,
-      playerPDA: player1PDA,
       playerTokenAccount: player1TokenAccount,
     } = await createPlayer(mint);
 
@@ -1533,10 +1434,8 @@ describe("coinflip", () => {
         false,
       )
       .accounts({
-        player: creatorPDA,
+        player: creator.publicKey,
         tokenMint: mint,
-        signer: creator.publicKey,
-        payer: creator.publicKey,
       })
       .signers([creator])
       .rpc();
@@ -1550,9 +1449,7 @@ describe("coinflip", () => {
       .joinGame()
       .accounts({
         game: gamePDA,
-        player: player1PDA,
-        owner: player1.publicKey,
-        authority: player1.publicKey,
+        player: player1.publicKey,
       })
       .signers([player1])
       .rpc();
@@ -1590,14 +1487,12 @@ describe("coinflip", () => {
     // Create creator using helper
     const {
       player: creator,
-      playerPDA: creatorPDA,
       playerTokenAccount: creatorTokenAccount,
     } = await createPlayer(mint);
 
     // Create second player using helper
     const {
       player: player1,
-      playerPDA: player1PDA,
       playerTokenAccount: player1TokenAccount,
     } = await createPlayer(mint);
 
@@ -1616,10 +1511,8 @@ describe("coinflip", () => {
         false,
       )
       .accounts({
-        player: creatorPDA,
+        player: creator.publicKey,
         tokenMint: mint,
-        signer: creator.publicKey,
-        payer: creator.publicKey,
       })
       .signers([creator])
       .rpc();
@@ -1633,9 +1526,7 @@ describe("coinflip", () => {
       .joinGame()
       .accounts({
         game: gamePDA,
-        player: player1PDA,
-        owner: player1.publicKey,
-        authority: player1.publicKey,
+        player: player1.publicKey,
       })
       .signers([player1])
       .rpc();
@@ -1658,7 +1549,7 @@ describe("coinflip", () => {
     expect(winner).to.not.be.null;
 
     // Get winner's keypair and PDA
-    const winnerKeypair = winner.equals(creatorPDA) ? creator : player1;
+    const winnerKeypair = winner.equals(creator.publicKey) ? creator : player1;
 
     // Claim winnings first time
     await program.methods
@@ -1666,7 +1557,6 @@ describe("coinflip", () => {
       .accounts({
         game: gamePDA,
         player: winner,
-        signer: winnerKeypair.publicKey,
       })
       .signers([winnerKeypair])
       .rpc();
@@ -1678,7 +1568,6 @@ describe("coinflip", () => {
         .accounts({
           game: gamePDA,
           player: winner,
-          signer: winnerKeypair.publicKey,
         })
         .signers([winnerKeypair])
         .rpc();
@@ -1701,7 +1590,6 @@ describe("coinflip", () => {
     // Create creator using helper
     const {
       player: creator,
-      playerPDA: creatorPDA,
       playerTokenAccount: creatorTokenAccount,
     } = await createPlayer(mint);
 
@@ -1719,10 +1607,8 @@ describe("coinflip", () => {
         false,
       )
       .accounts({
-        player: creatorPDA,
+        player: creator.publicKey,
         tokenMint: mint,
-        signer: creator.publicKey,
-        payer: creator.publicKey,
       })
       .signers([creator])
       .rpc();
@@ -1734,7 +1620,6 @@ describe("coinflip", () => {
     // Create player with insufficient funds
     const {
       player,
-      playerPDA,
       playerTokenAccount,
     } = await createPlayer(mint);
 
@@ -1747,9 +1632,7 @@ describe("coinflip", () => {
         .joinGame()
         .accounts({
           game: gamePDA,
-          player: playerPDA,
-          owner: player.publicKey,
-          authority: player.publicKey,
+          player: player.publicKey,
         })
         .signers([player])
         .rpc();
@@ -1772,7 +1655,6 @@ describe("coinflip", () => {
     // Create creator using helper
     const {
       player: creator,
-      playerPDA: creatorPDA,
       playerTokenAccount: creatorTokenAccount,
     } = await createPlayer(mint);
 
@@ -1790,10 +1672,8 @@ describe("coinflip", () => {
         false,
       )
       .accounts({
-        player: creatorPDA,
+        player: creator.publicKey,
         tokenMint: mint,
-        signer: creator.publicKey,
-        payer: creator.publicKey,
       })
       .signers([creator])
       .rpc();
@@ -1811,8 +1691,7 @@ describe("coinflip", () => {
       .unjoinGame()
       .accounts({
         game: gamePDA,
-        player: creatorPDA,
-        signer: creator.publicKey,
+        player: creator.publicKey,
       })
       .signers([creator])
       .rpc();
@@ -1840,14 +1719,12 @@ describe("coinflip", () => {
     // Create creator using helper
     const {
       player: creator,
-      playerPDA: creatorPDA,
       playerTokenAccount: creatorTokenAccount,
     } = await createPlayer(mint);
 
     // Create second player using helper
     const {
       player: player2,
-      playerPDA: player2PDA,
       playerTokenAccount: player2TokenAccount,
     } = await createPlayer(mint);
 
@@ -1866,10 +1743,8 @@ describe("coinflip", () => {
         false,
       )
       .accounts({
-        player: creatorPDA,
+        player: creator.publicKey,
         tokenMint: mint,
-        signer: creator.publicKey,
-        payer: creator.publicKey,
       })
       .signers([creator])
       .rpc();
@@ -1882,9 +1757,7 @@ describe("coinflip", () => {
       .joinGame()
       .accounts({
         game: gamePDA,
-        player: player2PDA,
-        owner: player2.publicKey,
-        authority: player2.publicKey,
+        player: player2.publicKey,
       })
       .signers([player2])
       .rpc();
@@ -1895,8 +1768,7 @@ describe("coinflip", () => {
         .unjoinGame()
         .accounts({
           game: gamePDA,
-          player: creatorPDA,
-          signer: creator.publicKey,
+          player: creator.publicKey,
         })
         .signers([creator])
         .rpc();

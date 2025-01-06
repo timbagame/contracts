@@ -16,7 +16,7 @@ use crate::state::*;
 pub struct InitializeOracle<'info> {
     #[account(
         init,
-        payer = payer,
+        payer = authority,
         space = 8 + // discriminator
             32 + // authority
             1 + // fee_percentage
@@ -33,7 +33,6 @@ pub struct InitializeOracle<'info> {
     )]
     pub oracle: Account<'info, Oracle>,
     #[account(mut)]
-    pub payer: Signer<'info>,
     pub authority: Signer<'info>,
     pub system_program: Program<'info, System>,
 }
@@ -71,7 +70,7 @@ pub struct UpdateOracle<'info> {
 pub struct InitializeToken<'info> {
     #[account(
         init,
-        payer = payer,
+        payer = authority,
         space = 8 + // discriminator
             4 + ticker.len() + // ticker
             32 + // token_mint
@@ -93,14 +92,13 @@ pub struct InitializeToken<'info> {
         associated_token::authority = game_vault,
     )]
     pub token_account: Account<'info, TokenAccount>,
-    #[account(mut)]
-    pub payer: Signer<'info>,
     #[account(
         seeds = [b"oracle"],
         bump,
     )]
     pub oracle: Account<'info, Oracle>,
     #[account(
+        mut,
         address = oracle.authority @ ErrorCode::UnauthorizedOracle,
     )]
     pub authority: Signer<'info>,
