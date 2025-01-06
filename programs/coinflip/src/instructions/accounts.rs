@@ -28,7 +28,6 @@ pub struct InitializeOracle<'info> {
             8, // players_counter
         seeds = [b"oracle"],
         bump,
-        constraint = fee_percentage <= 5 @ ErrorCode::InvalidFeePercentage,
         constraint = oracle_buffer_time >= 0 @ ErrorCode::InvalidTimeout
     )]
     pub oracle: Account<'info, Oracle>,
@@ -50,12 +49,11 @@ pub struct UpdateOracle<'info> {
         mut,
         seeds = [b"oracle"],
         bump,
-        constraint = fee_percentage <= 5 @ ErrorCode::InvalidFeePercentage,
         constraint = oracle_buffer_time >= 0 @ ErrorCode::InvalidTimeout
     )]
     pub oracle: Account<'info, Oracle>,
     #[account(
-        address = oracle.authority @ ErrorCode::UnauthorizedOracle,
+        address = oracle.authority @ ErrorCode::UnauthorizedAuthority,
     )]
     pub old_authority: Signer<'info>,
     pub new_authority: Signer<'info>,
@@ -99,7 +97,7 @@ pub struct InitializeToken<'info> {
     pub oracle: Account<'info, Oracle>,
     #[account(
         mut,
-        address = oracle.authority @ ErrorCode::UnauthorizedOracle,
+        address = oracle.authority @ ErrorCode::UnauthorizedAuthority,
     )]
     pub authority: Signer<'info>,
     pub system_program: Program<'info, System>,
@@ -127,7 +125,7 @@ pub struct UpdateToken<'info> {
     )]
     pub oracle: Account<'info, Oracle>,
     #[account(
-        address = oracle.authority @ ErrorCode::UnauthorizedOracle,
+        address = oracle.authority @ ErrorCode::UnauthorizedAuthority,
     )]
     pub authority: Signer<'info>,
 }
@@ -263,7 +261,7 @@ pub struct SetOracleHash<'info> {
     #[account(
         mut,
         constraint = game.status == GameStatus::Active @ ErrorCode::GameNotActive,
-        constraint = game.ready_for_oracle() @ ErrorCode::GameNotFull
+        constraint = game.ready_for_oracle() @ ErrorCode::GameNotReadyForOracle
     )]
     pub game: Account<'info, Game>,
     #[account(
@@ -271,7 +269,7 @@ pub struct SetOracleHash<'info> {
         bump
     )]
     pub oracle: Account<'info, Oracle>,
-    #[account(address = oracle.authority @ ErrorCode::UnauthorizedOracle)]
+    #[account(address = oracle.authority @ ErrorCode::UnauthorizedAuthority)]
     pub authority: Signer<'info>,
     /// CHECK: This is a PDA that serves as the authority for the game's token accounts
     #[account(
