@@ -223,6 +223,7 @@ pub struct JoinGame<'info> {
         mut,
         constraint = game.status == GameStatus::Active @ ErrorCode::GameNotActive,
         constraint = !game.players.contains(&player.key()) @ ErrorCode::AlreadyJoined,
+        constraint = game.creator != player.key() @ ErrorCode::UnauthorizedPlayer,
         constraint = game.players.len() < (game.max_players as usize) @ ErrorCode::GameFull,
         constraint = !game.is_private || authority.is_some() && authority.as_ref().unwrap().key() == oracle.authority @ ErrorCode::UnauthorizedPlayer,
     )]
