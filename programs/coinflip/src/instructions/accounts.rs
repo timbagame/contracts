@@ -334,7 +334,10 @@ pub struct CancelGame<'info> {
     #[account(
         mut,
         constraint = game.status == GameStatus::Active @ ErrorCode::GameNotActive,
-        constraint = game.creator == player.key() || (game.players.contains(&player.key()) && game.game_type != GameType::Giveaway) @ ErrorCode::UnauthorizedPlayer,
+        constraint = match game.game_type {
+            GameType::Coinflip => game.players.contains(&player.key()),
+            GameType::Giveaway => game.creator == player.key(),
+        } @ ErrorCode::UnauthorizedPlayer,
         constraint = game.buffer_passed(oracle.oracle_buffer_time, Clock::get()?.unix_timestamp) @ ErrorCode::GameReadyForOracle,
     )]
     pub game: Account<'info, Game>,
