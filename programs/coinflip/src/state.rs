@@ -96,6 +96,10 @@ impl Game {
         }
 
         let n_players = self.players.len();
+        if n_players == 1 {
+            return self.players[0];
+        }
+
         let max_valid = usize::MAX - (usize::MAX % n_players);
         let final_number = (random_number as usize + current_time as usize) % max_valid;
         let index = final_number % n_players;
