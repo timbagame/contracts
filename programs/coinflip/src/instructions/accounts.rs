@@ -175,7 +175,7 @@ pub struct InitializeGame<'info> {
             1 + // status
             32 + // token_mint
             8 + // created_at
-            4 + // timeout
+            2 + // timeout
             1, // is_private
         seeds = [b"game", oracle.games_counter.to_le_bytes().as_ref()],
         bump,

@@ -50,7 +50,7 @@ describe("coinflip", () => {
 
     try {
       await program.methods
-        .initializeOracle(feePercentage, new BN(oracleBufferTime), maxPlayers, new BN(maxTimeout), new BN(minTimeout))
+        .initializeOracle(feePercentage, oracleBufferTime, maxPlayers, maxTimeout, minTimeout)
         .accounts({
           authority: program.provider.publicKey,
         })
@@ -221,7 +221,7 @@ describe("coinflip", () => {
     const amount = new BN(1_000_000);
     const invalidMaxParticipants = 1; // Should be at least 2 for coinflip
     const invalidMinParticipants = 3; // Can't be greater than max
-    const timeoutDuration = new BN(3600);
+    const timeoutDuration = 3600;
     const isPrivate = false;
 
     try {
