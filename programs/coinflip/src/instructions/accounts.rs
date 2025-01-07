@@ -206,10 +206,6 @@ pub struct InitializeGame<'info> {
     )]
     pub game_token: Account<'info, GameToken>,
     #[account(
-        address = game_token.vault,
-    )]
-    pub vault: Account<'info, TokenAccount>,
-    #[account(
         mut,
         address = player_token.token_account,
         constraint = player_token_account.amount + player_token.amount >= amount @ ErrorCode::InsufficientBalance,
@@ -323,6 +319,7 @@ pub struct UnjoinGame<'info> {
         constraint = player_token.token_mint == game.token_mint @ ErrorCode::InvalidToken,
     )]
     pub player_token: Account<'info, PlayerToken>,
+    /// CHECK: This is a PDA that serves as the authority for the game's token accounts
     #[account(
         address = game_token.vault,
     )]
@@ -371,7 +368,10 @@ pub struct CancelGame<'info> {
         constraint = game_token.token_mint == game.token_mint @ ErrorCode::InvalidToken,
     )]
     pub game_token: Account<'info, GameToken>,
-    #[account(address = game_token.vault)]
+    /// CHECK: This is a PDA that serves as the authority for the game's token accounts
+    #[account(
+        address = game_token.vault,
+    )]
     pub vault: AccountInfo<'info>,
     #[account(
         mut,
@@ -410,7 +410,10 @@ pub struct ClaimWin<'info> {
         address = game_token.token_account,
     )]
     pub game_token_account: Account<'info, TokenAccount>,
-    #[account(address = game_token.vault)]
+    /// CHECK: This is a PDA that serves as the authority for the game's token accounts
+    #[account(
+        address = game_token.vault,
+    )]
     pub vault: AccountInfo<'info>,
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
@@ -420,7 +423,10 @@ pub struct ClaimWin<'info> {
 pub struct ClaimFee<'info> {
     #[account(mut)]
     pub game_token: Account<'info, GameToken>,
-    #[account(address = game_token.vault)]
+    /// CHECK: This is a PDA that serves as the authority for the game's token accounts
+    #[account(
+        address = game_token.vault,
+    )]
     pub vault: AccountInfo<'info>,
     #[account(mut)]
     pub oracle: Account<'info, Oracle>,
