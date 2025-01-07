@@ -22,7 +22,7 @@ pub fn handler(
     game.min_players = min_players;
     game.players = Vec::with_capacity(max_players as usize);
     game.status = crate::state::GameStatus::Active;
-    game.token_mint = ctx.accounts.token_mint.key();
+    game.token_mint = ctx.accounts.game_token.token_mint;
     game.created_at = Clock::get()?.unix_timestamp;
     game.timeout = timeout;
     game.is_private = is_private;
@@ -35,18 +35,31 @@ pub fn handler(
     let oracle = &mut ctx.accounts.oracle;
     oracle.games_counter += 1;
 
-    // Transfer tokens from creator to game account
-    token::transfer(
-        CpiContext::new(
-            ctx.accounts.token_program.to_account_info(),
-            token::Transfer {
-                from: ctx.accounts.player_token_account.to_account_info(),
-                to: ctx.accounts.game_token_account.to_account_info(),
-                authority: ctx.accounts.player.to_account_info(),
-            },
-        ),
-        game.amount,
-    )?;
+    // Check player token amount
+    let player_token = &mut ctx.accounts.player_token;
+    let needed_amount = if player_token.amount >= game.amount {
+        player_token.amount -= game.amount;
+        0
+    } else {
+        let needed = game.amount - player_token.amount;
+        player_token.amount = 0;
+        needed
+    };
+
+    // Only transfer if additional tokens are needed
+    if needed_amount > 0 {
+        token::transfer(
+            CpiContext::new(
+                ctx.accounts.token_program.to_account_info(),
+                token::Transfer {
+                    from: ctx.accounts.player_token_account.to_account_info(),
+                    to: ctx.accounts.game_token_account.to_account_info(),
+                    authority: ctx.accounts.player.to_account_info(),
+                },
+            ),
+            needed_amount,
+        )?;
+    }
 
     Ok(())
 }
