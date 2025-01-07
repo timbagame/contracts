@@ -9,7 +9,7 @@ pub fn handler(
     amount: u64,
     max_players: u16,
     min_players: u16,
-    timeout: i64,
+    timeout: u16,
     is_private: bool,
 ) -> Result<()> {
     // Initialize game
@@ -23,7 +23,7 @@ pub fn handler(
     game.players = Vec::with_capacity(max_players as usize);
     game.status = crate::state::GameStatus::Active;
     game.token_mint = ctx.accounts.game_token.token_mint;
-    game.created_at = Clock::get()?.unix_timestamp;
+    game.created_at = Clock::get()?.unix_timestamp as u64;
     game.timeout = timeout;
     game.is_private = is_private;
 

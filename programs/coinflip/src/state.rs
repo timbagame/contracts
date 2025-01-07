@@ -1,15 +1,14 @@
 use anchor_lang::prelude::*;
-use anchor_lang::solana_program::hash::hash;
 
 #[account]
 #[derive(Default)]
 pub struct Oracle {
     pub authority: Pubkey,
     pub fee_percentage: u8,
-    pub oracle_buffer_time: i64,
+    pub oracle_buffer_time: u16,
     pub max_players: u16,
-    pub max_timeout: i64,
-    pub min_timeout: i64,
+    pub max_timeout: u16,
+    pub min_timeout: u16,
     pub games_counter: u32,
 }
 
@@ -73,44 +72,46 @@ pub struct Game {
     pub winner: Pubkey,
     pub status: GameStatus,
     pub token_mint: Pubkey,
-    pub created_at: i64,
-    pub timeout: i64,
+    pub created_at: u64,
+    pub timeout: u16,
     pub is_private: bool,
 }
 
 impl Game {
-    pub fn ready_for_oracle(&self, current_time: i64) -> bool {
+    pub fn ready_for_oracle(&self, current_time: u64) -> bool {
         let has_min_players = self.players.len() >= self.min_players as usize;
         let has_max_players = self.players.len() == self.max_players as usize;
-        let timeout_met = current_time >= self.created_at + self.timeout;
+        let timeout_met = current_time >= self.created_at + self.timeout as u64;
 
         (has_min_players && timeout_met) || has_max_players
     }
 
-    pub fn buffer_passed(&self, oracle_buffer_time: i64, current_time: i64) -> bool {
-        current_time >= self.created_at + self.timeout + oracle_buffer_time
+    pub fn buffer_passed(&self, oracle_buffer_time: u16, current_time: u64) -> bool {
+        current_time >= self.created_at + self.timeout as u64 + oracle_buffer_time as u64
     }
 
-    pub fn calculate_winner(&self, hash_value: [u8; 32], current_time: i64) -> Pubkey {
-        let mut combined = [0u8; 40];
-        combined[..32].copy_from_slice(&hash_value);
-        combined[32..].copy_from_slice(&current_time.to_le_bytes());
-        let final_hash = hash(&combined).to_bytes();
-        let random_number = usize::from_le_bytes(final_hash[0..8].try_into().unwrap());
-        let random_index = random_number % self.players.len();
+    pub fn calculate_winner(&self, random_number: usize, current_time: u64) -> Pubkey {
+        if !self.ready_for_oracle(current_time) {
+            panic!("Game not ready for oracle");
+        }
 
-        self.players[random_index]
+        let n_players = self.players.len();
+        let max_valid = usize::MAX - (usize::MAX % n_players);
+        let final_number = (random_number + self.id as usize + current_time as usize) % max_valid;
+        let index = final_number % n_players;
+
+        self.players[index]
     }
 
-    pub fn calculate_total_amount(&self) -> u64 {
-        if self.game_type == GameType::Coinflip {
+    pub fn calculate_amounts(&self, fee_percentage: u8) -> (u64, u64) {
+        let total_amount = if self.game_type == GameType::Coinflip {
             self.amount * self.players.len() as u64
         } else {
             self.amount
-        }
-    }
+        };
+        let fee_amount = total_amount * fee_percentage as u64 / 100;
+        let winner_amount = total_amount - fee_amount;
 
-    pub fn calculate_fee_amount(&self, fee_percentage: u8, total_amount: u64) -> u64 {
-        total_amount * fee_percentage as u64 / 100
+        (winner_amount, fee_amount)
     }
 }

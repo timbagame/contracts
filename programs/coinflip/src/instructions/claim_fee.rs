@@ -6,7 +6,6 @@ pub fn handler(ctx: Context<super::ClaimFee>) -> Result<()> {
     let fee_amount = game_token.fee_amount;
     game_token.fee_amount = 0;
 
-    // Transfer funds to winner
     token::transfer(
         CpiContext::new_with_signer(
             ctx.accounts.token_program.to_account_info(),
