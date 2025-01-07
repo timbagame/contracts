@@ -6,16 +6,8 @@ pub enum ErrorCode {
     GameFull,
     #[msg("Player already joined")]
     AlreadyJoined,
-    #[msg("Game not ready for oracle")]
-    GameNotReadyForOracle,
-    #[msg("Game ready for claim")]
-    GameReadyForClaim,
-    #[msg("Game not ready for claim")]
-    GameNotReadyForClaim,
     #[msg("Game ready for oracle")]
     GameReadyForOracle,
-    #[msg("Timeout reached")]
-    TimeoutReached,
     #[msg("Invalid players count")]
     InvalidPlayersCount,
     #[msg("Game not active")]
