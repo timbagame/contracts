@@ -262,7 +262,7 @@ pub struct JoinGame<'info> {
 
 #[derive(Accounts)]
 #[instruction(
-    random_number: usize,
+    random_number: u64,
 )]
 pub struct SetOracleHash<'info> {
     #[account(
@@ -278,7 +278,7 @@ pub struct SetOracleHash<'info> {
         constraint = game_token.token_mint == game.token_mint @ ErrorCode::InvalidToken,
     )]
     #[account(
-        seeds = [b"player_token", game.calculate_winner(random_number, Clock::get()?.unix_timestamp as u64).as_ref(), game_token.token_mint.as_ref()],
+        seeds = [b"player_token", game.calculate_winner(random_number as usize, Clock::get()?.unix_timestamp as u64).as_ref(), game_token.token_mint.as_ref()],
         bump,
     )]
     pub player_token: Account<'info, PlayerToken>,
