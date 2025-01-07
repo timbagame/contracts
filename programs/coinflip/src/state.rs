@@ -78,26 +78,26 @@ pub struct Game {
 }
 
 impl Game {
-    pub fn ready_for_oracle(&self, current_time: u64) -> bool {
+    pub fn ready_for_oracle(&self, current_time: i64) -> bool {
         let has_min_players = self.players.len() >= self.min_players as usize;
         let has_max_players = self.players.len() == self.max_players as usize;
-        let timeout_met = current_time >= self.created_at + self.timeout as u64;
+        let timeout_met = current_time as u64 >= self.created_at + self.timeout as u64;
 
         (has_min_players && timeout_met) || has_max_players
     }
 
-    pub fn buffer_passed(&self, oracle_buffer_time: u16, current_time: u64) -> bool {
-        current_time >= self.created_at + self.timeout as u64 + oracle_buffer_time as u64
+    pub fn buffer_passed(&self, oracle_buffer_time: u16, current_time: i64) -> bool {
+        current_time as u64 >= self.created_at + self.timeout as u64 + oracle_buffer_time as u64
     }
 
-    pub fn calculate_winner(&self, random_number: usize, current_time: u64) -> Pubkey {
+    pub fn calculate_winner(&self, random_number: u64, current_time: i64) -> Pubkey {
         if !self.ready_for_oracle(current_time) {
             panic!("Game not ready for oracle");
         }
 
         let n_players = self.players.len();
         let max_valid = usize::MAX - (usize::MAX % n_players);
-        let final_number = (random_number + current_time as usize) % max_valid;
+        let final_number = (random_number as usize + current_time as usize) % max_valid;
         let index = final_number % n_players;
 
         self.players[index]

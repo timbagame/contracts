@@ -278,7 +278,7 @@ pub struct SetOracleHash<'info> {
         constraint = game_token.token_mint == game.token_mint @ ErrorCode::InvalidToken,
     )]
     #[account(
-        seeds = [b"player_token", game.calculate_winner(random_number as usize, Clock::get()?.unix_timestamp as u64).as_ref(), game_token.token_mint.as_ref()],
+        seeds = [b"player_token", game.calculate_winner(random_number, Clock::get()?.unix_timestamp).as_ref(), game_token.token_mint.as_ref()],
         bump,
     )]
     pub player_token: Account<'info, PlayerToken>,
@@ -293,7 +293,7 @@ pub struct UnjoinGame<'info> {
         mut,
         constraint = game.status == GameStatus::Active @ ErrorCode::GameNotActive,
         constraint = game.creator != player.key() && game.players.contains(&player.key()) @ ErrorCode::UnauthorizedPlayer,
-        constraint = !game.ready_for_oracle(Clock::get()?.unix_timestamp as u64) @ ErrorCode::GameReadyForOracle,
+        constraint = !game.ready_for_oracle(Clock::get()?.unix_timestamp) @ ErrorCode::GameReadyForOracle,
     )]
     pub game: Account<'info, Game>,
     pub player: Signer<'info>,
@@ -335,7 +335,7 @@ pub struct CancelGame<'info> {
         mut,
         constraint = game.status == GameStatus::Active @ ErrorCode::GameNotActive,
         constraint = game.creator == player.key() || (game.players.contains(&player.key()) && game.game_type != GameType::Giveaway) @ ErrorCode::UnauthorizedPlayer,
-        constraint = game.buffer_passed(oracle.oracle_buffer_time, Clock::get()?.unix_timestamp as u64) @ ErrorCode::GameReadyForOracle,
+        constraint = game.buffer_passed(oracle.oracle_buffer_time, Clock::get()?.unix_timestamp) @ ErrorCode::GameReadyForOracle,
     )]
     pub game: Account<'info, Game>,
     #[account()]
