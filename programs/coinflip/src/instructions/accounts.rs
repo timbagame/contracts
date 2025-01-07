@@ -291,16 +291,12 @@ pub struct SetOracleHash<'info> {
 pub struct UnjoinGame<'info> {
     #[account(
         mut,
-        constraint = game.status != GameStatus::Completed @ ErrorCode::GameCompleted,
-        constraint = game.players.contains(&player.key()) @ ErrorCode::UnauthorizedPlayer,
-        constraint = {
-            let current_time = Clock::get()?.unix_timestamp as u64;
-            !game.ready_for_oracle(current_time) || game.buffer_passed(oracle.oracle_buffer_time, current_time)
-        } @ ErrorCode::GameReadyForOracle,
+        constraint = game.status == GameStatus::Active @ ErrorCode::GameNotActive,
+        constraint = game.creator != player.key() && game.players.contains(&player.key()) @ ErrorCode::UnauthorizedPlayer,
+        constraint = !game.ready_for_oracle(Clock::get()?.unix_timestamp as u64) @ ErrorCode::GameReadyForOracle,
     )]
     pub game: Account<'info, Game>,
     pub player: Signer<'info>,
-    pub authority: Option<Signer<'info>>,
     #[account(
         constraint = game_token.token_mint == game.token_mint @ ErrorCode::InvalidToken,
     )]
@@ -337,16 +333,12 @@ pub struct UnjoinGame<'info> {
 pub struct CancelGame<'info> {
     #[account(
         mut,
-        constraint = game.status != GameStatus::Completed @ ErrorCode::GameCompleted,
-        constraint = {
-            let current_time = Clock::get()?.unix_timestamp as u64;
-            !game.ready_for_oracle(current_time) || game.buffer_passed(oracle.oracle_buffer_time, current_time)
-        } @ ErrorCode::GameReadyForOracle,
+        constraint = game.status == GameStatus::Active @ ErrorCode::GameNotActive,
+        constraint = game.creator == player.key() || (game.players.contains(&player.key()) && game.game_type != GameType::Giveaway) @ ErrorCode::UnauthorizedPlayer,
+        constraint = game.buffer_passed(oracle.oracle_buffer_time, Clock::get()?.unix_timestamp as u64) @ ErrorCode::GameReadyForOracle,
     )]
     pub game: Account<'info, Game>,
-    #[account(
-        address = game.creator @ ErrorCode::UnauthorizedPlayer,
-    )]
+    #[account()]
     pub player: Signer<'info>,
     #[account(
         mut,

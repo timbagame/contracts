@@ -5,15 +5,25 @@ use crate::state::{GameStatus, GameType};
 pub fn handler(ctx: Context<super::CancelGame>) -> Result<()> {
     let game = &mut ctx.accounts.game;
 
-    if game.status == GameStatus::Active {
+    // Remove player
+    if game.game_type == GameType::Coinflip {
+        if let Some(pos) = game
+            .players
+            .iter()
+            .position(|x| *x == ctx.accounts.player.key())
+        {
+            game.players.remove(pos);
+        }
+    }
+
+    // Cancel game if it's a giveaway or if there are no players left
+    if game.game_type == GameType::Giveaway || game.players.is_empty() {
         game.status = GameStatus::Cancelled;
     }
 
-    // Only return funds for giveaway games
-    if game.game_type == GameType::Giveaway {
-        let player_token = &mut ctx.accounts.player_token;
-        player_token.amount += game.amount;
-    }
+    // Return funds
+    let player_token = &mut ctx.accounts.player_token;
+    player_token.amount += game.amount;
 
     Ok(())
 }
