@@ -24,6 +24,8 @@ pub enum ErrorCode {
     GameCompleted,
     #[msg("Invalid timeout")]
     InvalidTimeout,
+    #[msg("Invalid token")]
+    InvalidToken,
     #[msg("Insufficient balance")]
     InsufficientBalance,
     #[msg("Unauthorized player")]

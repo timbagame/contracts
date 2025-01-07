@@ -103,7 +103,7 @@ describe("coinflip", () => {
 
     // Get vault PDA using token mint
     const [vaultPDA] = PublicKey.findProgramAddressSync(
-      [Buffer.from("game_vault"), mint.toBuffer()],
+      [Buffer.from("vault"), mint.toBuffer()],
       program.programId
     );
 

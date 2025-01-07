@@ -67,6 +67,10 @@ pub mod coinflip {
         instructions::update_token::handler(ctx, ticker, min_amount, enabled)
     }
 
+    pub fn initialize_player_token(ctx: Context<InitializePlayerToken>) -> Result<()> {
+        instructions::initialize_player_token::handler(ctx)
+    }
+
     pub fn initialize_game(
         ctx: Context<InitializeGame>,
         game_type: GameType,
@@ -99,11 +103,15 @@ pub mod coinflip {
         instructions::cancel_game::handler(ctx)
     }
 
-    pub fn set_oracle_hash(ctx: Context<SetOracleHash>, hash_value: [u8; 32]) -> Result<()> {
-        instructions::set_oracle_hash::handler(ctx, hash_value)
+    pub fn set_oracle_hash(ctx: Context<SetOracleHash>) -> Result<()> {
+        instructions::set_oracle_hash::handler(ctx)
     }
 
     pub fn claim_win(ctx: Context<ClaimWin>) -> Result<()> {
         instructions::claim_win::handler(ctx)
+    }
+
+    pub fn claim_fee(ctx: Context<ClaimFee>) -> Result<()> {
+        instructions::claim_fee::handler(ctx)
     }
 }
