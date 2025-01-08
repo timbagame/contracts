@@ -78,6 +78,7 @@ describe("coinflip", () => {
       feePercentage: oracleAccount.feePercentage,
       oracleBufferTime: oracleAccount.oracleBufferTime,
       gamesCounter: oracleAccount.gamesCounter,
+      oraclePDA: oraclePDA,
     };
   }
 
@@ -104,6 +105,13 @@ describe("coinflip", () => {
     // Get game_vault PDA using token mint
     const [gameVaultPDA] = PublicKey.findProgramAddressSync(
       [Buffer.from("game_vault"), mint.toBuffer()],
+      program.programId
+    );
+
+
+    // Get game_token PDA using token mint
+    const [gameTokenPDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("game_token"), mint.toBuffer()],
       program.programId
     );
 
@@ -150,6 +158,7 @@ describe("coinflip", () => {
       gameTokenAccount,
       mintAuthority,
       oracleAuthorityTokenAccount,
+      gameTokenPDA,
     };
   }
 
@@ -184,9 +193,32 @@ describe("coinflip", () => {
       player.publicKey,
     );
 
+    // Get game token PDA
+    const [gameTokenPDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("game_token"), tokenMint.toBuffer()],
+      program.programId
+    );
+
+    // Get player balance PDA
+    const [playerBalancePDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("player_balance"), player.publicKey.toBuffer(), tokenMint.toBuffer()],
+      program.programId
+    );
+
+    // Initialize player balance
+    await program.methods
+      .initializePlayerBalance()
+      .accounts({
+        player: player.publicKey,
+        gameToken: gameTokenPDA,
+      })
+      .signers([player])
+      .rpc();
+
     return {
       player,
       playerTokenAccount,
+      playerBalancePDA,
     };
   }
 
@@ -211,16 +243,21 @@ describe("coinflip", () => {
   });
 
   it("Initialize Game with Invalid Parameters", async () => {
-    await createOracleAccount();
+    const {
+      oraclePDA,
+    } = await createOracleAccount();
+
     const {
       mint,
       mintAuthority,
       gameTokenAccount,
+      gameTokenPDA,
     } = await createSplTokenMint();
 
     const {
       player,
       playerTokenAccount,
+      playerBalancePDA,
     } = await createPlayer(mint);
 
     await mintTokens(mintAuthority, mint, playerTokenAccount.address, new BN(1_000_000));
@@ -231,24 +268,6 @@ describe("coinflip", () => {
     const invalidMinParticipants = 3; // Can't be greater than max
     const timeoutDuration = 3600;
     const isPrivate = false;
-
-    // Get oracle PDA
-    const [oraclePDA] = PublicKey.findProgramAddressSync(
-      [Buffer.from("oracle")],
-      program.programId
-    );
-
-    // Get game token PDA
-    const [gameTokenPDA] = PublicKey.findProgramAddressSync(
-      [Buffer.from("token"), mint.toBuffer()],
-      program.programId
-    );
-
-    // Get player balance PDA
-    const [playerBalancePDA] = PublicKey.findProgramAddressSync(
-      [Buffer.from("player_balance"), player.publicKey.toBuffer(), mint.toBuffer()],
-      program.programId
-    );
 
     try {
       await program.methods
@@ -273,6 +292,7 @@ describe("coinflip", () => {
 
       expect.fail("Should have thrown an error");
     } catch (error) {
+      console.log("Error:", error);
       expect(error.toString()).to.include("InvalidPlayersCount");
     }
   });
