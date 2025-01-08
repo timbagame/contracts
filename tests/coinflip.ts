@@ -924,11 +924,15 @@ describe("coinflip", () => {
   });
 
   it("Fail to Set Oracle Random Number Before Game is Full", async () => {
-    await createOracleAccount();
+    const {
+      oraclePDA,
+    } = await createOracleAccount();
 
     const {
       mint,
-      mintAuthority
+      mintAuthority,
+      gameTokenAccount,
+      gameTokenPDA,
     } = await createSplTokenMint();
 
     const amount = new anchor.BN(1_000_000);
@@ -937,10 +941,13 @@ describe("coinflip", () => {
     const {
       player: creator,
       playerTokenAccount: creatorTokenAccount,
+      playerBalancePDA: creatorPlayerBalancePDA,
     } = await createPlayer(mint);
 
     // Mint tokens to creator
     await mintTokens(mintAuthority, mint, creatorTokenAccount.address, amount);
+
+    const { gamePDA, randomHash, secretKey } = await getGamePDA();
 
     // Create game
     await program.methods
@@ -951,27 +958,29 @@ describe("coinflip", () => {
         2,
         3600,
         false,
+        randomHash,
       )
       .accounts({
         player: creator.publicKey,
-        tokenMint: mint,
+        playerBalance: creatorPlayerBalancePDA,
+        oracle: oraclePDA,
+        gameToken: gameTokenPDA,
+        playerTokenAccount: creatorTokenAccount.address,
+        gameTokenAccount: gameTokenAccount.address,
       })
       .signers([creator])
       .rpc();
 
-    const gameId = await getLastGameId();
-    const gamePDA = await getGamePDA(gameId);
-
     // Try to set oracle random number before game is full
     try {
-      const hashValue = Array.from({ length: 32 }, () =>
-        Math.floor(Math.random() * 256),
-      );
       await program.methods
-        .completeGame(hashValue)
+        .completeGame(secretKey)
         .accounts({
           game: gamePDA,
+          oracle: oraclePDA,
           authority: program.provider.publicKey,
+          gameToken: gameTokenPDA,
+          playerBalance: creatorPlayerBalancePDA,
         })
         .rpc();
 
