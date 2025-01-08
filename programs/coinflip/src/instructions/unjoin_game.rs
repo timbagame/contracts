@@ -13,10 +13,14 @@ pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
         game.players.remove(pos);
     }
 
-    // Return funds if it's a coinflip game
+    // Return funds minus fee if it's a coinflip game
     if game.game_type == GameType::Coinflip {
+        let game_token = &mut ctx.accounts.game_token;
         let player_token = &mut ctx.accounts.player_token;
-        player_token.amount += game.amount;
+        let fee_percentage = ctx.accounts.oracle.fee_percentage;
+        let (return_amount, fee_amount) = game.calculate_amounts(1, fee_percentage);
+        game_token.fee_amount += fee_amount;
+        player_token.amount += return_amount;
     }
 
     Ok(())

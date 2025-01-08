@@ -21,9 +21,12 @@ pub fn handler(ctx: Context<super::CancelGame>) -> Result<()> {
         game.status = GameStatus::Cancelled;
     }
 
-    // Return funds
+    // Return funds minus fee
+    let game_token = &mut ctx.accounts.game_token;
     let player_token = &mut ctx.accounts.player_token;
-    player_token.amount += game.amount;
+    let (return_amount, fee_amount) = game.calculate_amounts(1, ctx.accounts.oracle.fee_percentage);
+    game_token.fee_amount += fee_amount;
+    player_token.amount += return_amount;
 
     Ok(())
 }
