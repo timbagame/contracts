@@ -1228,10 +1228,15 @@ describe("coinflip", () => {
   });
 
   it("Initialize and Join Giveaway Game Successfully", async () => {
-    await createOracleAccount();
+    const {
+      oraclePDA,
+    } = await createOracleAccount();
+
     const {
       mint,
-      mintAuthority
+      mintAuthority,
+      gameTokenAccount,
+      gameTokenPDA,
     } = await createSplTokenMint();
 
     const amount = new anchor.BN(1_000_000);
@@ -1244,20 +1249,27 @@ describe("coinflip", () => {
     const {
       player: creator,
       playerTokenAccount: creatorTokenAccount,
+      playerBalancePDA: creatorPlayerBalancePDA,
     } = await createPlayer(mint);
 
     // Create first player using helper
     const {
       player: player1,
+      playerTokenAccount: player1TokenAccount,
+      playerBalancePDA: player1PlayerBalancePDA,
     } = await createPlayer(mint);
 
     // Create second player using helper
     const {
       player: player2,
+      playerTokenAccount: player2TokenAccount,
+      playerBalancePDA: player2PlayerBalancePDA,
     } = await createPlayer(mint);
 
     // Mint tokens to creator
     await mintTokens(mintAuthority, mint, creatorTokenAccount.address, amount);
+
+    const { gamePDA, randomHash, secretKey } = await getGamePDA();
 
     // Initialize giveaway game
     await program.methods
@@ -1268,17 +1280,18 @@ describe("coinflip", () => {
         minParticipants,
         timeoutDuration,
         isPrivate,
+        randomHash,
       )
       .accounts({
         player: creator.publicKey,
-        tokenMint: mint,
+        playerBalance: creatorPlayerBalancePDA,
+        oracle: oraclePDA,
+        gameToken: gameTokenPDA,
+        playerTokenAccount: creatorTokenAccount.address,
+        gameTokenAccount: gameTokenAccount.address,
       })
       .signers([creator])
       .rpc();
-
-    // Get game PDA
-    const gameId = await getLastGameId();
-    const gamePDA = await getGamePDA(gameId);
 
     // First player joins
     await program.methods
@@ -1286,6 +1299,11 @@ describe("coinflip", () => {
       .accounts({
         game: gamePDA,
         player: player1.publicKey,
+        playerBalance: player1PlayerBalancePDA,
+        oracle: oraclePDA,
+        gameToken: gameTokenPDA,
+        playerTokenAccount: player1TokenAccount.address,
+        gameTokenAccount: gameTokenAccount.address,
       })
       .signers([player1])
       .rpc();
@@ -1296,6 +1314,11 @@ describe("coinflip", () => {
       .accounts({
         game: gamePDA,
         player: player2.publicKey,
+        playerBalance: player2PlayerBalancePDA,
+        oracle: oraclePDA,
+        gameToken: gameTokenPDA,
+        playerTokenAccount: player2TokenAccount.address,
+        gameTokenAccount: gameTokenAccount.address,
       })
       .signers([player2])
       .rpc();
