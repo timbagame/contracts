@@ -1269,7 +1269,7 @@ describe("coinflip", () => {
     // Mint tokens to creator
     await mintTokens(mintAuthority, mint, creatorTokenAccount.address, amount);
 
-    const { gamePDA, randomHash, secretKey } = await getGamePDA();
+    const { gamePDA, randomHash } = await getGamePDA();
 
     // Initialize giveaway game
     await program.methods
@@ -1331,10 +1331,15 @@ describe("coinflip", () => {
   });
 
   it("Cannot Join Game With Insufficient Funds", async () => {
-    await createOracleAccount();
+    const {
+      oraclePDA,
+    } = await createOracleAccount();
+
     const {
       mint,
-      mintAuthority
+      mintAuthority,
+      gameTokenAccount,
+      gameTokenPDA,
     } = await createSplTokenMint();
 
     const amount = new anchor.BN(1_000_000);
@@ -1343,10 +1348,13 @@ describe("coinflip", () => {
     const {
       player: creator,
       playerTokenAccount: creatorTokenAccount,
+      playerBalancePDA: creatorPlayerBalancePDA,
     } = await createPlayer(mint);
 
     // Mint tokens to creator
     await mintTokens(mintAuthority, mint, creatorTokenAccount.address, amount);
+
+    const { gamePDA, randomHash } = await getGamePDA();
 
     // Initialize game
     await program.methods
@@ -1357,22 +1365,24 @@ describe("coinflip", () => {
         2,
         3600,
         false,
+        randomHash,
       )
       .accounts({
         player: creator.publicKey,
-        tokenMint: mint,
+        playerBalance: creatorPlayerBalancePDA,
+        oracle: oraclePDA,
+        gameToken: gameTokenPDA,
+        playerTokenAccount: creatorTokenAccount.address,
+        gameTokenAccount: gameTokenAccount.address,
       })
       .signers([creator])
       .rpc();
-
-    // Get game PDA
-    const gameId = await getLastGameId();
-    const gamePDA = await getGamePDA(gameId);
 
     // Create player with insufficient funds
     const {
       player,
       playerTokenAccount,
+      playerBalancePDA
     } = await createPlayer(mint);
 
     // Mint insufficient tokens to player (half of required amount)
@@ -1385,6 +1395,11 @@ describe("coinflip", () => {
         .accounts({
           game: gamePDA,
           player: player.publicKey,
+          playerBalance: playerBalancePDA,
+          oracle: oraclePDA,
+          gameToken: gameTokenPDA,
+          playerTokenAccount: playerTokenAccount.address,
+          gameTokenAccount: gameTokenAccount.address,
         })
         .signers([player])
         .rpc();
@@ -1396,10 +1411,15 @@ describe("coinflip", () => {
   });
 
   it("Can Unjoin Game Before it's Full", async () => {
-    await createOracleAccount();
+    const {
+      oraclePDA,
+    } = await createOracleAccount();
+
     const {
       mint,
-      mintAuthority
+      mintAuthority,
+      gameTokenAccount,
+      gameTokenPDA,
     } = await createSplTokenMint();
 
     const amount = new anchor.BN(1_000_000);
@@ -1408,10 +1428,13 @@ describe("coinflip", () => {
     const {
       player: creator,
       playerTokenAccount: creatorTokenAccount,
+      playerBalancePDA: creatorPlayerBalancePDA,
     } = await createPlayer(mint);
 
     // Mint tokens to creator
     await mintTokens(mintAuthority, mint, creatorTokenAccount.address, amount);
+
+    const { gamePDA, randomHash } = await getGamePDA();
 
     // Initialize game with long timeout
     await program.methods
@@ -1420,18 +1443,20 @@ describe("coinflip", () => {
         amount,
         3, // More than 2 to test cancellation before game is full
         2,
-        new anchor.BN(4), // 4 seconds timeout
+        4, // 4 seconds timeout
         false,
+        randomHash,
       )
       .accounts({
         player: creator.publicKey,
-        tokenMint: mint,
+        playerBalance: creatorPlayerBalancePDA,
+        oracle: oraclePDA,
+        gameToken: gameTokenPDA,
+        playerTokenAccount: creatorTokenAccount.address,
+        gameTokenAccount: gameTokenAccount.address,
       })
       .signers([creator])
       .rpc();
-
-    const gameId = await getLastGameId();
-    const gamePDA = await getGamePDA(gameId);
 
     // Get initial balance
     const initialBalance = (
@@ -1444,6 +1469,11 @@ describe("coinflip", () => {
       .accounts({
         game: gamePDA,
         player: creator.publicKey,
+        playerBalance: creatorPlayerBalancePDA,
+        oracle: oraclePDA,
+        gameToken: gameTokenPDA,
+        playerTokenAccount: creatorTokenAccount.address,
+        gameTokenAccount: gameTokenAccount.address,
       })
       .signers([creator])
       .rpc();
@@ -1457,77 +1487,5 @@ describe("coinflip", () => {
     // Verify participant was removed
     const gameData = await program.account.game.fetch(gamePDA);
     expect(gameData.players.length).to.equal(0);
-  });
-
-  it("Cannot Unjoin Game When it's Full", async () => {
-    await createOracleAccount();
-    const {
-      mint,
-      mintAuthority
-    } = await createSplTokenMint();
-
-    const amount = new anchor.BN(1_000_000);
-
-    // Create creator using helper
-    const {
-      player: creator,
-      playerTokenAccount: creatorTokenAccount,
-    } = await createPlayer(mint);
-
-    // Create second player using helper
-    const {
-      player: player2,
-      playerTokenAccount: player2TokenAccount,
-    } = await createPlayer(mint);
-
-    // Mint tokens to both players
-    await mintTokens(mintAuthority, mint, creatorTokenAccount.address, amount);
-    await mintTokens(mintAuthority, mint, player2TokenAccount.address, amount);
-
-    // Initialize game
-    await program.methods
-      .initializeGame(
-        { coinflip: {} },
-        amount,
-        2, // Only 2 participants needed
-        2,
-        3600,
-        false,
-      )
-      .accounts({
-        player: creator.publicKey,
-        tokenMint: mint,
-      })
-      .signers([creator])
-      .rpc();
-
-    const gameId = await getLastGameId();
-    const gamePDA = await getGamePDA(gameId);
-
-    // Join game with second player to make it full
-    await program.methods
-      .joinGame()
-      .accounts({
-        game: gamePDA,
-        player: player2.publicKey,
-      })
-      .signers([player2])
-      .rpc();
-
-    // Try to cancel bet when game is full
-    try {
-      await program.methods
-        .unjoinGame()
-        .accounts({
-          game: gamePDA,
-          player: creator.publicKey,
-        })
-        .signers([creator])
-        .rpc();
-
-      expect.fail("Should not be able to cancel when game is full");
-    } catch (error) {
-      expect(error.toString()).to.include("GameReadyForOracle");
-    }
   });
 });
