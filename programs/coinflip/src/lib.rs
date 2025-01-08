@@ -79,6 +79,7 @@ pub mod coinflip {
         min_players: u16,
         timeout: u32,
         is_private: bool,
+        _random_hash: [u8; 32],
     ) -> Result<()> {
         instructions::initialize_game::handler(
             ctx,
@@ -103,8 +104,8 @@ pub mod coinflip {
         instructions::cancel_game::handler(ctx)
     }
 
-    pub fn set_oracle_number(ctx: Context<SetOracleNumber>, _random_number: u64) -> Result<()> {
-        instructions::set_oracle_number::handler(ctx)
+    pub fn complete_game(ctx: Context<CompleteGame>, _secret_key: [u8; 32]) -> Result<()> {
+        instructions::complete_game::handler(ctx)
     }
 
     pub fn claim_win(ctx: Context<ClaimWin>) -> Result<()> {

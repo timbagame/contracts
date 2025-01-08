@@ -14,7 +14,6 @@ pub fn handler(
 ) -> Result<()> {
     // Initialize game
     let game = &mut ctx.accounts.game;
-    game.id = ctx.accounts.oracle.games_counter;
     game.creator = ctx.accounts.player.key();
     game.game_type = game_type;
     game.amount = amount;
@@ -28,12 +27,8 @@ pub fn handler(
     game.is_private = is_private;
 
     if game.game_type == GameType::Coinflip {
-        game.players.push(ctx.accounts.player.key());
+        game.players.push(ctx.accounts.player_balance.key());
     }
-
-    // Increment game counter
-    let oracle = &mut ctx.accounts.oracle;
-    oracle.games_counter += 1;
 
     // Check player token amount
     let player_balance = &mut ctx.accounts.player_balance;

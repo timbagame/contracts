@@ -23,8 +23,7 @@ pub struct InitializeOracle<'info> {
             2 + // oracle_buffer_time
             2 + // max_players
             4 + // max_timeout
-            4 + // min_timeout
-            4, // games_counter
+            4, // min_timeout
         seeds = [b"oracle"],
         bump,
     )]
@@ -149,13 +148,13 @@ pub struct InitializePlayerBalance<'info> {
     min_players: u16,
     timeout: u32,
     is_private: bool,
+    random_hash: [u8; 32],
 )]
 pub struct InitializeGame<'info> {
     #[account(
         init, 
         payer = player, 
         space = 8 + // discriminator
-            4 + // id
             32 + // creator
             1 + // game_type
             8 + // amount
@@ -168,7 +167,7 @@ pub struct InitializeGame<'info> {
             8 + // created_at
             4 + // timeout
             1, // is_private
-        seeds = [b"game", oracle.games_counter.to_le_bytes().as_ref()],
+        seeds = [b"game", random_hash.as_ref()],
         bump,
         constraint = amount >= game_token.min_amount @ ErrorCode::InvalidAmount,
         constraint = timeout >= oracle.min_timeout @ ErrorCode::InvalidTimeout,
@@ -213,7 +212,7 @@ pub struct JoinGame<'info> {
     #[account(
         mut,
         constraint = game.status == GameStatus::Active @ ErrorCode::GameNotActive,
-        constraint = !game.players.contains(&player.key()) @ ErrorCode::AlreadyJoined,
+        constraint = !game.players.contains(&player_balance.key()) @ ErrorCode::AlreadyJoined,
         constraint = !game.ready_for_oracle(Clock::get()?.unix_timestamp) @ ErrorCode::GameReadyForOracle,
         constraint = game.players.len() < (game.max_players as usize) @ ErrorCode::GameFull,
         constraint = !game.is_private || authority.is_some() && authority.as_ref().unwrap().key() == oracle.authority @ ErrorCode::UnauthorizedPlayer,
@@ -249,17 +248,21 @@ pub struct JoinGame<'info> {
 
 #[derive(Accounts)]
 #[instruction(
-    random_number: u64,
+    secret_key: [u8; 32],
 )]
-pub struct SetOracleNumber<'info> {
+pub struct CompleteGame<'info> {
     #[account(
         mut,
         constraint = game.status == GameStatus::Active @ ErrorCode::GameNotActive,
+        constraint = game.derive_pda(secret_key) == game.key() @ ErrorCode::WrongSecretKey,
+        constraint = game.calculate_winner(secret_key) == player_balance.key() @ ErrorCode::UnauthorizedPlayer,
+        constraint = game.ready_for_oracle(Clock::get()?.unix_timestamp) @ ErrorCode::GameNotReadyForOracle,
     )]
     pub game: Account<'info, Game>,
     pub oracle: Account<'info, Oracle>,
     #[account(address = oracle.authority @ ErrorCode::UnauthorizedAuthority)]
     pub authority: Signer<'info>,
+    #[account(mut)]
     pub player_balance: Account<'info, PlayerBalance>,
     pub game_token: Account<'info, GameToken>,
     pub system_program: Program<'info, System>,
@@ -271,7 +274,7 @@ pub struct UnjoinGame<'info> {
     #[account(
         mut,
         constraint = game.status == GameStatus::Active @ ErrorCode::GameNotActive,
-        constraint = game.players.len() >= 2 && game.players.contains(&player.key()) @ ErrorCode::UnauthorizedPlayer,
+        constraint = game.players.len() >= 2 && game.players.contains(&player_balance.key()) @ ErrorCode::UnauthorizedPlayer,
         constraint = !game.ready_for_oracle(Clock::get()?.unix_timestamp) @ ErrorCode::GameReadyForOracle,
     )]
     pub game: Account<'info, Game>,
@@ -312,7 +315,7 @@ pub struct CancelGame<'info> {
         mut,
         constraint = game.status == GameStatus::Active @ ErrorCode::GameNotActive,
         constraint = match game.game_type {
-            GameType::Coinflip => game.players.contains(&player.key()),
+            GameType::Coinflip => game.players.contains(&player_balance.key()),
             GameType::Giveaway => game.creator == player.key(),
         } @ ErrorCode::UnauthorizedPlayer,
         constraint = game.buffer_passed(oracle.oracle_buffer_time, Clock::get()?.unix_timestamp) @ ErrorCode::GameReadyForOracle,
