@@ -1,4 +1,4 @@
-use crate::state::GameStatus;
+use crate::state::{GameStatus, GameType};
 use anchor_lang::prelude::*;
 
 pub fn handler(ctx: Context<super::SetOracleHash>) -> Result<()> {
@@ -7,7 +7,12 @@ pub fn handler(ctx: Context<super::SetOracleHash>) -> Result<()> {
     let player_token = &mut ctx.accounts.player_token;
 
     // Calculate winner amount and fee amount checking game type
-    let (winner_amount, fee_amount) = game.calculate_amounts(ctx.accounts.oracle.fee_percentage);
+    let players_len = match game.game_type {
+        GameType::Coinflip => game.players.len() as u64,
+        GameType::Giveaway => 1,
+    };
+    let fee_percentage = ctx.accounts.oracle.fee_percentage;
+    let (winner_amount, fee_amount) = game.calculate_amounts(players_len, fee_percentage);
 
     game.winner = player_token.player;
     game.status = GameStatus::Completed;

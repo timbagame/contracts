@@ -107,12 +107,8 @@ impl Game {
         self.players[index]
     }
 
-    pub fn calculate_amounts(&self, fee_percentage: u8) -> (u64, u64) {
-        let total_amount = if self.game_type == GameType::Coinflip {
-            self.amount * self.players.len() as u64
-        } else {
-            self.amount
-        };
+    pub fn calculate_amounts(&self, players_len: u64, fee_percentage: u8) -> (u64, u64) {
+        let total_amount = self.amount * players_len;
         let fee_amount = total_amount * fee_percentage as u64 / 100;
         let winner_amount = total_amount - fee_amount;
 
