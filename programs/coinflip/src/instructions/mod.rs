@@ -7,7 +7,7 @@ pub mod initialize_oracle;
 pub mod initialize_player_balance;
 pub mod initialize_token;
 pub mod join_game;
-pub mod set_oracle_hash;
+pub mod set_oracle_number;
 pub mod unjoin_game;
 pub mod update_oracle;
 pub mod update_token;

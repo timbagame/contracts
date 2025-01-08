@@ -103,8 +103,8 @@ pub mod coinflip {
         instructions::cancel_game::handler(ctx)
     }
 
-    pub fn set_oracle_hash(ctx: Context<SetOracleHash>) -> Result<()> {
-        instructions::set_oracle_hash::handler(ctx)
+    pub fn set_oracle_number(ctx: Context<SetOracleNumber>) -> Result<()> {
+        instructions::set_oracle_number::handler(ctx)
     }
 
     pub fn claim_win(ctx: Context<ClaimWin>) -> Result<()> {

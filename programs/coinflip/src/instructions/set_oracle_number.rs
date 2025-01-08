@@ -1,7 +1,7 @@
 use crate::state::{GameStatus, GameType};
 use anchor_lang::prelude::*;
 
-pub fn handler(ctx: Context<super::SetOracleHash>) -> Result<()> {
+pub fn handler(ctx: Context<super::SetOracleNumber>) -> Result<()> {
     let game = &mut ctx.accounts.game;
     let game_token = &mut ctx.accounts.game_token;
     let player_balance = &mut ctx.accounts.player_balance;
