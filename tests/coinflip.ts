@@ -335,10 +335,10 @@ describe("coinflip", () => {
       .accounts({
         player: creator.publicKey,
         playerBalance: creatorPlayerBalancePDA,
+        oracle: oraclePDA,
         gameToken: gameTokenPDA,
         playerTokenAccount: creatorTokenAccount.address,
         gameTokenAccount: gameTokenAccount.address,
-        oracle: oraclePDA,
       })
       .signers([creator])
       .rpc();
@@ -353,10 +353,10 @@ describe("coinflip", () => {
         game: gamePDA,
         player: player.publicKey,
         playerBalance: playerBalancePDA,
-        gameToken: gameTokenPDA,
-        gameTokenAccount: gameTokenAccount.address,
-        playerTokenAccount: playerTokenAccount.address,
         oracle: oraclePDA,
+        gameToken: gameTokenPDA,
+        playerTokenAccount: playerTokenAccount.address,
+        gameTokenAccount: gameTokenAccount.address,
       })
       .signers([player])
       .rpc();
