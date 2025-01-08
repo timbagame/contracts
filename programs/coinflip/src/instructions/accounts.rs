@@ -232,8 +232,7 @@ pub struct JoinGame<'info> {
     pub game_token: Account<'info, GameToken>,
     #[account(
         mut,
-        associated_token::mint = game_token.token_mint,
-        associated_token::authority = player,
+        address = player_balance.player_token_account,
         constraint = game.game_type != GameType::Coinflip || player_token_account.amount + player_balance.amount >= game.amount @ ErrorCode::InsufficientBalance,
     )]
     pub player_token_account: Account<'info, TokenAccount>,
@@ -297,8 +296,7 @@ pub struct UnjoinGame<'info> {
     pub game_vault: AccountInfo<'info>,
     #[account(
         mut,
-        associated_token::mint = game_token.token_mint,
-        associated_token::authority = player
+        address = player_balance.player_token_account,
     )]
     pub player_token_account: Account<'info, TokenAccount>,
     #[account(
@@ -342,8 +340,7 @@ pub struct CancelGame<'info> {
     pub game_vault: AccountInfo<'info>,
     #[account(
         mut,
-        associated_token::mint = game_token.token_mint,
-        associated_token::authority = player,
+        address = player_balance.player_token_account,
     )]
     pub player_token_account: Account<'info, TokenAccount>,
     #[account(
