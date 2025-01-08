@@ -169,38 +169,36 @@ pub struct InitializeGame<'info> {
             1, // is_private
         seeds = [b"game", random_hash.as_ref()],
         bump,
+        constraint = game_token.enabled @ ErrorCode::TokenNotEnabled,
         constraint = amount >= game_token.min_amount @ ErrorCode::InvalidAmount,
+        constraint = player_token_account.amount + player_balance.amount >= amount @ ErrorCode::InsufficientBalance,
         constraint = timeout >= oracle.min_timeout @ ErrorCode::InvalidTimeout,
         constraint = timeout <= oracle.max_timeout @ ErrorCode::InvalidTimeout,
         constraint = max_players <= oracle.max_players && min_players <= max_players && match game_type {
             GameType::Coinflip => max_players >= 2 && min_players >= 2,
             GameType::Giveaway => max_players >= 1 && min_players >= 1,
         } @ ErrorCode::InvalidPlayersCount,
-    )]
-    pub game: Account<'info, Game>,
-    #[account(mut)]
-    pub player: Signer<'info>,
-    #[account(
-        mut,
-        constraint = player_balance.player == player.key() @ ErrorCode::UnauthorizedPlayer,
         constraint = player_balance.token_mint == game_token.token_mint @ ErrorCode::InvalidToken,
     )]
+    pub game: Account<'info, Game>,
+    #[account(
+        mut,
+        address = player_balance.player @ ErrorCode::UnauthorizedPlayer,
+    )]
+    pub player: Signer<'info>,
+    #[account(mut)]
     pub player_balance: Account<'info, PlayerBalance>,
     #[account(mut)]
     pub oracle: Account<'info, Oracle>,
-    #[account(
-        constraint = game_token.enabled @ ErrorCode::TokenNotEnabled,
-    )]
     pub game_token: Account<'info, GameToken>,
     #[account(
         mut,
-        address = player_balance.player_token_account,
-        constraint = player_token_account.amount + player_balance.amount >= amount @ ErrorCode::InsufficientBalance,
+        address = player_balance.player_token_account @ ErrorCode::InvalidToken,
     )]
     pub player_token_account: Account<'info, TokenAccount>,
     #[account(
         mut,
-        address = game_token.game_token_account,
+        address = game_token.game_token_account @ ErrorCode::InvalidToken,
     )]
     pub game_token_account: Account<'info, TokenAccount>,
     pub system_program: Program<'info, System>,
