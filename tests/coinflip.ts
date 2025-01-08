@@ -101,9 +101,9 @@ describe("coinflip", () => {
       6,  // decimals
     );
 
-    // Get vault PDA using token mint
-    const [vaultPDA] = PublicKey.findProgramAddressSync(
-      [Buffer.from("vault"), mint.toBuffer()],
+    // Get game_vault PDA using token mint
+    const [gameVaultPDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("game_vault"), mint.toBuffer()],
       program.programId
     );
 
@@ -113,12 +113,12 @@ describe("coinflip", () => {
       program.programId
     );
 
-    // Create token account for vault
-    const vaultTokenAccountInfo = await getOrCreateAssociatedTokenAccount(
+    // Create game token account
+    const gameTokenAccountInfo = await getOrCreateAssociatedTokenAccount(
       program.provider.connection,
       mintAuthority, // payer
       mint,
-      vaultPDA,
+      gameVaultPDA,
       true, // allowOwnerOffCurve
     );
 
@@ -147,7 +147,7 @@ describe("coinflip", () => {
 
     return {
       mint,
-      vaultTokenAccountInfo,
+      gameTokenAccountInfo,
       mintAuthority,
       oracleAuthorityTokenAccount,
     };
