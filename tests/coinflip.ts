@@ -991,10 +991,15 @@ describe("coinflip", () => {
   });
 
   it("Fail to Set Oracle Random Number Twice", async () => {
-    await createOracleAccount();
+    const {
+      oraclePDA,
+    } = await createOracleAccount();
+
     const {
       mint,
-      mintAuthority
+      mintAuthority,
+      gameTokenAccount,
+      gameTokenPDA,
     } = await createSplTokenMint();
 
     const amount = new anchor.BN(1_000_000);
@@ -1003,10 +1008,13 @@ describe("coinflip", () => {
     const {
       player: creator,
       playerTokenAccount: creatorTokenAccount,
+      playerBalancePDA: creatorPlayerBalancePDA,
     } = await createPlayer(mint);
 
     // Mint tokens to creator
     await mintTokens(mintAuthority, mint, creatorTokenAccount.address, amount);
+
+    const { gamePDA, randomHash, secretKey } = await getGamePDA();
 
     // Create game
     await program.methods
@@ -1017,21 +1025,24 @@ describe("coinflip", () => {
         2,
         3600,
         false,
+        randomHash,
       )
       .accounts({
         player: creator.publicKey,
-        tokenMint: mint,
+        playerBalance: creatorPlayerBalancePDA,
+        oracle: oraclePDA,
+        gameToken: gameTokenPDA,
+        playerTokenAccount: creatorTokenAccount.address,
+        gameTokenAccount: gameTokenAccount.address,
       })
       .signers([creator])
       .rpc();
-
-    const gameId = await getLastGameId();
-    const gamePDA = await getGamePDA(gameId);
 
     // Create and join with second player
     const {
       player,
       playerTokenAccount,
+      playerBalancePDA,
     } = await createPlayer(mint);
 
     // Mint tokens to player
@@ -1043,32 +1054,37 @@ describe("coinflip", () => {
       .accounts({
         game: gamePDA,
         player: player.publicKey,
+        playerBalance: playerBalancePDA,
+        oracle: oraclePDA,
+        gameToken: gameTokenPDA,
+        playerTokenAccount: playerTokenAccount.address,
+        gameTokenAccount: gameTokenAccount.address,
       })
       .signers([player])
       .rpc();
 
     // Set oracle random number first time
-    const hashValue = Array.from({ length: 32 }, () =>
-      Math.floor(Math.random() * 256),
-    );
     await program.methods
-      .completeGame(hashValue)
+      .completeGame(secretKey)
       .accounts({
         game: gamePDA,
         authority: program.provider.publicKey,
+        playerBalance: creatorPlayerBalancePDA,
+        oracle: oraclePDA,
+        gameToken: gameTokenPDA,
       })
       .rpc();
 
     // Try to set oracle random number second time
     try {
-      const newHashValue = Array.from({ length: 32 }, () =>
-        Math.floor(Math.random() * 256),
-      );
       await program.methods
-        .completeGame(newHashValue)
+        .completeGame(secretKey)
         .accounts({
           game: gamePDA,
           authority: program.provider.publicKey,
+          playerBalance: creatorPlayerBalancePDA,
+          oracle: oraclePDA,
+          gameToken: gameTokenPDA,
         })
         .rpc();
 
@@ -1079,10 +1095,15 @@ describe("coinflip", () => {
   });
 
   it("Claim Winnings Successfully", async () => {
-    await createOracleAccount();
+    const {
+      oraclePDA,
+    } = await createOracleAccount();
+
     const {
       mint,
-      mintAuthority
+      mintAuthority,
+      gameTokenAccount,
+      gameTokenPDA,
     } = await createSplTokenMint();
 
     const amount = new anchor.BN(1_000_000);
@@ -1091,17 +1112,21 @@ describe("coinflip", () => {
     const {
       player: creator,
       playerTokenAccount: creatorTokenAccount,
+      playerBalancePDA: creatorPlayerBalancePDA,
     } = await createPlayer(mint);
 
     // Create second player using helper
     const {
       player: player1,
       playerTokenAccount: player1TokenAccount,
+      playerBalancePDA: player1PlayerBalancePDA,
     } = await createPlayer(mint);
 
     // Mint tokens to both accounts
     await mintTokens(mintAuthority, mint, creatorTokenAccount.address, amount);
     await mintTokens(mintAuthority, mint, player1TokenAccount.address, amount);
+
+    const { gamePDA, randomHash, secretKey } = await getGamePDA();
 
     // Initialize game
     await program.methods
@@ -1112,16 +1137,18 @@ describe("coinflip", () => {
         2,
         3600,
         false,
+        randomHash,
       )
       .accounts({
         player: creator.publicKey,
-        tokenMint: mint,
+        playerBalance: creatorPlayerBalancePDA,
+        oracle: oraclePDA,
+        gameToken: gameTokenPDA,
+        playerTokenAccount: creatorTokenAccount.address,
+        gameTokenAccount: gameTokenAccount.address,
       })
       .signers([creator])
       .rpc();
-
-    const gameId = await getLastGameId();
-    const gamePDA = await getGamePDA(gameId);
 
     // Join game
     await program.methods
@@ -1129,19 +1156,27 @@ describe("coinflip", () => {
       .accounts({
         game: gamePDA,
         player: player1.publicKey,
+        playerBalance: player1PlayerBalancePDA,
+        oracle: oraclePDA,
+        gameToken: gameTokenPDA,
+        playerTokenAccount: player1TokenAccount.address,
+        gameTokenAccount: gameTokenAccount.address,
       })
       .signers([player1])
       .rpc();
 
+    const playersGameData = await program.account.game.fetch(gamePDA);
+    const winnerBalancePDA = calculateWinner(playersGameData.players, secretKey);
+
     // Set oracle random number
-    const hashValue = Array.from({ length: 32 }, () =>
-      Math.floor(Math.random() * 256),
-    );
     await program.methods
-      .completeGame(hashValue)
+      .completeGame(secretKey)
       .accounts({
         game: gamePDA,
         authority: program.provider.publicKey,
+        playerBalance: winnerBalancePDA,
+        oracle: oraclePDA,
+        gameToken: gameTokenPDA,
       })
       .rpc();
 
@@ -1150,12 +1185,7 @@ describe("coinflip", () => {
     const winner = gameData.winner;
     expect(winner).to.not.be.null;
 
-    let winnerKeypair;
-    if (winner.equals(creator.publicKey)) {
-      winnerKeypair = creator;
-    } else {
-      winnerKeypair = player1;
-    }
+    const winnerKeypair = winner.equals(creator.publicKey) ? creator : player1;
 
     // Get winner's token account
     const winnerTokenAccount = winner.equals(creator.publicKey)
@@ -1171,8 +1201,11 @@ describe("coinflip", () => {
     await program.methods
       .claimWin()
       .accounts({
-        game: gamePDA,
+        playerBalance: winnerBalancePDA,
         player: winner,
+        gameToken: gameTokenPDA,
+        playerTokenAccount: winnerTokenAccount,
+        gameTokenAccount: gameTokenAccount.address,
       })
       .signers([winnerKeypair])
       .rpc();
