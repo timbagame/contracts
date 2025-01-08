@@ -1,7 +1,5 @@
 import * as anchor from "@coral-xyz/anchor";
-import { Program } from "@coral-xyz/anchor";
 import { Coinflip } from "../target/types/coinflip";
-import { BN } from "@coral-xyz/anchor";
 import { expect } from "chai";
 import {
   createMint,
@@ -14,7 +12,7 @@ import { PublicKey } from "@solana/web3.js";
 describe("coinflip", () => {
   // Configure the client to use the local cluster.
   anchor.setProvider(anchor.AnchorProvider.env());
-  const program = anchor.workspace.Coinflip as Program<Coinflip>;
+  const program = anchor.workspace.Coinflip as anchor.Program<Coinflip>;
 
   // Add helper functions at the top level
   async function getLastGameId() {
@@ -28,7 +26,7 @@ describe("coinflip", () => {
 
   async function getGamePDA(gameCounter: number) {
     return PublicKey.findProgramAddressSync(
-      [Buffer.from("game"), new BN(gameCounter).toArrayLike(Buffer, 'le', 4)],
+      [Buffer.from("game"), new anchor.BN(gameCounter).toArrayLike(Buffer, 'le', 4)],
       program.programId
     )[0];
   }
@@ -141,7 +139,7 @@ describe("coinflip", () => {
     // Try to initialize token, if it fails it may already exist
     try {
       await program.methods
-        .initializeToken("TEST", new BN(1000), true)
+        .initializeToken("TEST", new anchor.BN(1000), true)
         .accounts({
           tokenMint: mint,
           authority: program.provider.publicKey,
@@ -162,7 +160,7 @@ describe("coinflip", () => {
     };
   }
 
-  async function mintTokens(mintAuthority: anchor.web3.Keypair, tokenMint: PublicKey, playerTokenAccount: PublicKey, amount: BN) {
+  async function mintTokens(mintAuthority: anchor.web3.Keypair, tokenMint: PublicKey, playerTokenAccount: PublicKey, amount: anchor.BN) {
     await mintTo(
       program.provider.connection,
       mintAuthority,
@@ -260,10 +258,10 @@ describe("coinflip", () => {
       playerBalancePDA,
     } = await createPlayer(mint);
 
-    await mintTokens(mintAuthority, mint, playerTokenAccount.address, new BN(1_000_000));
+    await mintTokens(mintAuthority, mint, playerTokenAccount.address, new anchor.BN(1_000_000));
 
     // Try to initialize game with invalid parameters
-    const amount = new BN(1_000_000);
+    const amount = new anchor.BN(1_000_000);
     const invalidMaxParticipants = 1; // Should be at least 2 for coinflip
     const invalidMinParticipants = 3; // Can't be greater than max
     const timeoutDuration = 3600;
@@ -320,11 +318,11 @@ describe("coinflip", () => {
       playerBalancePDA
     } = await createPlayer(mint);
 
-    await mintTokens(mintAuthority, mint, creatorTokenAccount.address, new BN(1_000_000));
-    await mintTokens(mintAuthority, mint, playerTokenAccount.address, new BN(1_000_000));
+    await mintTokens(mintAuthority, mint, creatorTokenAccount.address, new anchor.BN(1_000_000));
+    await mintTokens(mintAuthority, mint, playerTokenAccount.address, new anchor.BN(1_000_000));
 
     // Initialize game
-    const amount = new BN(1_000_000);
+    const amount = new anchor.BN(1_000_000);
     await program.methods
       .initializeGame(
         { coinflip: {} },
@@ -395,7 +393,7 @@ describe("coinflip", () => {
     } = await createPlayer(mint);
 
     // Mint tokens to both accounts
-    const amount = new BN(1_000_000);
+    const amount = new anchor.BN(1_000_000);
     await mintTokens(mintAuthority, mint, creatorTokenAccount.address, amount);
     await mintTokens(mintAuthority, mint, joinerTokenAccount.address, amount);
 
@@ -445,18 +443,24 @@ describe("coinflip", () => {
   });
 
   it("Fail to Join Full Game", async () => {
-    await createOracleAccount();
+    const {
+      oraclePDA,
+    } = await createOracleAccount();
+
     const {
       mint,
-      mintAuthority
+      mintAuthority,
+      gameTokenAccount,
+      gameTokenPDA,
     } = await createSplTokenMint();
 
-    const amount = new BN(1_000_000);
+    const amount = new anchor.BN(1_000_000);
 
     // Create creator using helper
     const {
       player: creator,
       playerTokenAccount: creatorTokenAccount,
+      playerBalancePDA: creatorPlayerBalancePDA,
     } = await createPlayer(mint);
 
     // Mint tokens to creator
@@ -474,7 +478,11 @@ describe("coinflip", () => {
       )
       .accounts({
         player: creator.publicKey,
-        tokenMint: mint,
+        playerBalance: creatorPlayerBalancePDA,
+        oracle: oraclePDA,
+        gameToken: gameTokenPDA,
+        playerTokenAccount: creatorTokenAccount.address,
+        gameTokenAccount: gameTokenAccount.address,
       })
       .signers([creator])
       .rpc();
@@ -486,12 +494,14 @@ describe("coinflip", () => {
     const {
       player: player1,
       playerTokenAccount: player1TokenAccount,
+      playerBalancePDA: player1PlayerBalancePDA,
     } = await createPlayer(mint);
 
     // Create second player
     const {
       player: player2,
       playerTokenAccount: player2TokenAccount,
+      playerBalancePDA: player2PlayerBalancePDA,
     } = await createPlayer(mint);
 
     // Mint tokens to players
@@ -504,6 +514,11 @@ describe("coinflip", () => {
       .accounts({
         game: gamePDA,
         player: player1.publicKey,
+        playerBalance: player1PlayerBalancePDA,
+        oracle: oraclePDA,
+        gameToken: gameTokenPDA,
+        playerTokenAccount: player1TokenAccount.address,
+        gameTokenAccount: gameTokenAccount.address,
       })
       .signers([player1])
       .rpc();
@@ -515,6 +530,11 @@ describe("coinflip", () => {
         .accounts({
           game: gamePDA,
           player: player2.publicKey,
+          playerBalance: player2PlayerBalancePDA,
+          oracle: oraclePDA,
+          gameToken: gameTokenPDA,
+          playerTokenAccount: player2TokenAccount.address,
+          gameTokenAccount: gameTokenAccount.address,
         })
         .signers([player2])
         .rpc();
@@ -532,7 +552,7 @@ describe("coinflip", () => {
       mintAuthority
     } = await createSplTokenMint();
 
-    const amount = new BN(1_000_000);
+    const amount = new anchor.BN(1_000_000);
 
     // Create creator using helper
     const {
@@ -608,7 +628,7 @@ describe("coinflip", () => {
       mintAuthority
     } = await createSplTokenMint();
 
-    const amount = new BN(1_000_000);
+    const amount = new anchor.BN(1_000_000);
 
     // Create creator using helper
     const {
@@ -678,7 +698,7 @@ describe("coinflip", () => {
       mintAuthority
     } = await createSplTokenMint();
 
-    const amount = new BN(1_000_000);
+    const amount = new anchor.BN(1_000_000);
 
     // Create creator using helper
     const {
@@ -755,7 +775,7 @@ describe("coinflip", () => {
       mintAuthority
     } = await createSplTokenMint();
 
-    const amount = new BN(1_000_000);
+    const amount = new anchor.BN(1_000_000);
 
     // Create creator using helper
     const {
@@ -833,7 +853,7 @@ describe("coinflip", () => {
       mintAuthority
     } = await createSplTokenMint();
 
-    const amount = new BN(1_000_000);
+    const amount = new anchor.BN(1_000_000);
 
     // Create creator using helper
     const {
@@ -890,7 +910,7 @@ describe("coinflip", () => {
       mintAuthority
     } = await createSplTokenMint();
 
-    const amount = new BN(1_000_000);
+    const amount = new anchor.BN(1_000_000);
 
     // Create creator using helper
     const {
@@ -978,7 +998,7 @@ describe("coinflip", () => {
       mintAuthority
     } = await createSplTokenMint();
 
-    const amount = new BN(1_000_000);
+    const amount = new anchor.BN(1_000_000);
 
     // Create creator using helper
     const {
@@ -1088,7 +1108,7 @@ describe("coinflip", () => {
       mintAuthority
     } = await createSplTokenMint();
 
-    const amount = new BN(1_000_000);
+    const amount = new anchor.BN(1_000_000);
 
     // Create creator using helper
     const {
@@ -1181,7 +1201,7 @@ describe("coinflip", () => {
       mintAuthority
     } = await createSplTokenMint();
 
-    const amount = new BN(1_000_000);
+    const amount = new anchor.BN(1_000_000);
 
     // Create creator using helper
     const {
@@ -1198,7 +1218,7 @@ describe("coinflip", () => {
         amount,
         2,
         2,
-        new BN(2), // 2 seconds timeout
+        new anchor.BN(2), // 2 seconds timeout
         false,
       )
       .accounts({
@@ -1244,7 +1264,7 @@ describe("coinflip", () => {
       mintAuthority
     } = await createSplTokenMint();
 
-    const amount = new BN(1_000_000);
+    const amount = new anchor.BN(1_000_000);
     const maxParticipants = 2;
     const minParticipants = 1;
     const timeoutDuration = 3600;
@@ -1324,7 +1344,7 @@ describe("coinflip", () => {
       mintAuthority
     } = await createSplTokenMint();
 
-    const amount = new BN(1_000_000);
+    const amount = new anchor.BN(1_000_000);
 
     // Create creator using helper
     const {
@@ -1349,7 +1369,7 @@ describe("coinflip", () => {
         amount,
         2,
         2,
-        new BN(2), // 2 seconds timeout
+        new anchor.BN(2), // 2 seconds timeout
         false,
       )
       .accounts({
@@ -1422,7 +1442,7 @@ describe("coinflip", () => {
       mintAuthority
     } = await createSplTokenMint();
 
-    const amount = new BN(1_000_000);
+    const amount = new anchor.BN(1_000_000);
 
     // Create creator using helper
     const {
@@ -1445,7 +1465,7 @@ describe("coinflip", () => {
         amount,
         2,
         2,
-        new BN(2), // 2 seconds timeout
+        new anchor.BN(2), // 2 seconds timeout
         false,
       )
       .accounts({
@@ -1486,7 +1506,7 @@ describe("coinflip", () => {
       mintAuthority
     } = await createSplTokenMint();
 
-    const amount = new BN(1_000_000);
+    const amount = new anchor.BN(1_000_000);
 
     // Create creator using helper
     const {
@@ -1511,7 +1531,7 @@ describe("coinflip", () => {
         amount,
         10, // max participants
         2, // min participants
-        new BN(7), // 7 seconds timeout
+        new anchor.BN(7), // 7 seconds timeout
         false,
       )
       .accounts({
@@ -1563,7 +1583,7 @@ describe("coinflip", () => {
       mintAuthority
     } = await createSplTokenMint();
 
-    const amount = new BN(1_000_000);
+    const amount = new anchor.BN(1_000_000);
 
     // Create creator using helper
     const {
@@ -1666,7 +1686,7 @@ describe("coinflip", () => {
       mintAuthority
     } = await createSplTokenMint();
 
-    const amount = new BN(1_000_000);
+    const amount = new anchor.BN(1_000_000);
 
     // Create creator using helper
     const {
@@ -1731,7 +1751,7 @@ describe("coinflip", () => {
       mintAuthority
     } = await createSplTokenMint();
 
-    const amount = new BN(1_000_000);
+    const amount = new anchor.BN(1_000_000);
 
     // Create creator using helper
     const {
@@ -1749,7 +1769,7 @@ describe("coinflip", () => {
         amount,
         3, // More than 2 to test cancellation before game is full
         2,
-        new BN(4), // 4 seconds timeout
+        new anchor.BN(4), // 4 seconds timeout
         false,
       )
       .accounts({
@@ -1795,7 +1815,7 @@ describe("coinflip", () => {
       mintAuthority
     } = await createSplTokenMint();
 
-    const amount = new BN(1_000_000);
+    const amount = new anchor.BN(1_000_000);
 
     // Create creator using helper
     const {
