@@ -376,7 +376,7 @@ describe("coinflip", () => {
 
     // Verify game state
     const gameData = await program.account.game.fetch(gamePDA);
-    expect(gameData.players[1].toString()).to.equal(player.publicKey.toString());
+    expect(gameData.players[1].toString()).to.equal(playerBalancePDA.toString());
   });
 
   it("Join Private Game Successfully", async () => {
@@ -452,7 +452,7 @@ describe("coinflip", () => {
 
     // Verify game state
     const gameData = await program.account.game.fetch(gamePDA);
-    expect(gameData.players[1].toString()).to.equal(joiner.publicKey.toString());
+    expect(gameData.players[1].toString()).to.equal(joinerPlayerBalancePDA.toString());
   });
 
   it("Fail to Join Full Game", async () => {
