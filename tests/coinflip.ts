@@ -410,6 +410,8 @@ describe("coinflip", () => {
     await mintTokens(mintAuthority, mint, creatorTokenAccount.address, amount);
     await mintTokens(mintAuthority, mint, joinerTokenAccount.address, amount);
 
+    const { gamePDA, randomHash } = await getGamePDA();
+
     // Initialize game with isPrivate = true
     await program.methods
       .initializeGame(
@@ -419,6 +421,7 @@ describe("coinflip", () => {
         2,
         3600,
         true, // isPrivate
+        randomHash,
       )
       .accounts({
         player: creator.publicKey,
@@ -430,9 +433,6 @@ describe("coinflip", () => {
       })
       .signers([creator])
       .rpc();
-
-    const gameId = await getLastGameId();
-    const gamePDA = await getGamePDA(gameId);
 
     // Join game with both player and oracle signatures
     await program.methods
