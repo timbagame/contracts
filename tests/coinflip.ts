@@ -398,7 +398,7 @@ describe("coinflip", () => {
         amount,
         2,
         2,
-        new BN(3600),
+        3600,
         true, // isPrivate
       )
       .accounts({
@@ -452,7 +452,7 @@ describe("coinflip", () => {
         amount,
         2,
         2,
-        new BN(3600),
+        3600,
         false,
       )
       .accounts({
@@ -532,7 +532,7 @@ describe("coinflip", () => {
         amount,
         3, // Allow 3 participants to test double-join
         2,
-        new BN(3600),
+        3600,
         false,
       )
       .accounts({
@@ -609,7 +609,7 @@ describe("coinflip", () => {
         amount,
         2,
         2,
-        new BN(3600),
+        3600,
         true, // isPrivate
       )
       .accounts({
@@ -686,7 +686,7 @@ describe("coinflip", () => {
         amount,
         2,
         2,
-        new BN(3600),
+        3600,
         false,
       )
       .accounts({
@@ -763,7 +763,7 @@ describe("coinflip", () => {
         amount,
         2,
         2,
-        new BN(3600),
+        3600,
         false,
       )
       .accounts({
@@ -834,7 +834,7 @@ describe("coinflip", () => {
         amount,
         2,
         2,
-        new BN(3600),
+        3600,
         false,
       )
       .accounts({
@@ -891,7 +891,7 @@ describe("coinflip", () => {
         amount,
         2,
         2,
-        new BN(3600),
+        3600,
         false,
       )
       .accounts({
@@ -986,7 +986,7 @@ describe("coinflip", () => {
         amount,
         2,
         2,
-        new BN(3600),
+        3600,
         false,
       )
       .accounts({
@@ -1096,7 +1096,7 @@ describe("coinflip", () => {
         amount,
         2,
         2,
-        new BN(3600),
+        3600,
         false,
       )
       .accounts({
@@ -1230,7 +1230,7 @@ describe("coinflip", () => {
     const amount = new BN(1_000_000);
     const maxParticipants = 2;
     const minParticipants = 1;
-    const timeoutDuration = new BN(3600);
+    const timeoutDuration = 3600;
     const isPrivate = false;
 
     // Create creator using helper
@@ -1571,7 +1571,7 @@ describe("coinflip", () => {
         amount,
         2,
         2,
-        new BN(3600),
+        3600,
         false,
       )
       .accounts({
@@ -1667,7 +1667,7 @@ describe("coinflip", () => {
         amount,
         2,
         2,
-        new BN(3600),
+        3600,
         false,
       )
       .accounts({
@@ -1803,7 +1803,7 @@ describe("coinflip", () => {
         amount,
         2, // Only 2 participants needed
         2,
-        new BN(3600),
+        3600,
         false,
       )
       .accounts({
