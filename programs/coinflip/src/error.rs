@@ -10,8 +10,10 @@ pub enum ErrorCode {
     GameReadyForOracle,
     #[msg("Game not ready for oracle")]
     GameNotReadyForOracle,
-    #[msg("Wrong secret key")]
-    WrongSecretKey,
+    #[msg("Invalid secret key")]
+    InvalidSecretKey,
+    #[msg("Invalid vault")]
+    InvalidVault,
     #[msg("Invalid players count")]
     InvalidPlayersCount,
     #[msg("Game not active")]
