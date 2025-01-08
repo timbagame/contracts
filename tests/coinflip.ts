@@ -170,6 +170,7 @@ describe("coinflip", () => {
       mintAuthority,
       oracleAuthorityTokenAccount,
       gameTokenPDA,
+      gameVaultPDA
     };
   }
 
@@ -1107,6 +1108,7 @@ describe("coinflip", () => {
       mintAuthority,
       gameTokenAccount,
       gameTokenPDA,
+      gameVaultPDA,
     } = await createSplTokenMint();
 
     const amount = new anchor.BN(1_000_000);
@@ -1209,6 +1211,7 @@ describe("coinflip", () => {
         gameToken: gameTokenPDA,
         playerTokenAccount: winnerTokenAccount,
         gameTokenAccount: gameTokenAccount.address,
+        gameVault: gameVaultPDA,
       })
       .signers([winnerKeypair])
       .rpc();
