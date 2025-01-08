@@ -65,13 +65,13 @@ pub struct InitializeToken<'info> {
         space = 8 + // discriminator
             4 + ticker.len() + // ticker
             32 + // token_mint
-            32 + // token_account
-            32 + // vault
+            32 + // game_token_account
+            32 + // game_vault
             1 + // bump
             8 + // min_amount
             8 + // fee_amount
             1, // enabled
-        seeds = [b"token", token_mint.key().as_ref()],
+        seeds = [b"game_token", token_mint.key().as_ref()],
         bump,
     )]
     pub game_token: Account<'info, GameToken>,
@@ -81,12 +81,12 @@ pub struct InitializeToken<'info> {
         seeds = [b"game_vault", token_mint.key().as_ref()],
         bump,
     )]
-    pub vault: AccountInfo<'info>,
+    pub game_vault: AccountInfo<'info>,
     #[account(
         associated_token::mint = token_mint,
-        associated_token::authority = vault,
+        associated_token::authority = game_vault,
     )]
-    pub token_account: Account<'info, TokenAccount>,
+    pub game_token_account: Account<'info, TokenAccount>,
     #[account()]
     pub oracle: Account<'info, Oracle>,
     #[account(
