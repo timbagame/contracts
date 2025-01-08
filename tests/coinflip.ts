@@ -546,10 +546,15 @@ describe("coinflip", () => {
   });
 
   it("Fail to Join Game Twice", async () => {
-    await createOracleAccount();
+    const {
+      oraclePDA,
+    } = await createOracleAccount();
+
     const {
       mint,
-      mintAuthority
+      mintAuthority,
+      gameTokenAccount,
+      gameTokenPDA,
     } = await createSplTokenMint();
 
     const amount = new anchor.BN(1_000_000);
@@ -558,6 +563,7 @@ describe("coinflip", () => {
     const {
       player: creator,
       playerTokenAccount: creatorTokenAccount,
+      playerBalancePDA: creatorPlayerBalancePDA,
     } = await createPlayer(mint);
 
     // Mint tokens to creator
@@ -574,7 +580,11 @@ describe("coinflip", () => {
       )
       .accounts({
         player: creator.publicKey,
-        tokenMint: mint,
+        playerBalance: creatorPlayerBalancePDA,
+        oracle: oraclePDA,
+        gameToken: gameTokenPDA,
+        playerTokenAccount: creatorTokenAccount.address,
+        gameTokenAccount: gameTokenAccount.address,
       })
       .signers([creator])
       .rpc();
@@ -586,6 +596,7 @@ describe("coinflip", () => {
     const {
       player,
       playerTokenAccount,
+      playerBalancePDA
     } = await createPlayer(mint);
 
     // Mint tokens to player
@@ -597,6 +608,11 @@ describe("coinflip", () => {
       .accounts({
         game: gamePDA,
         player: player.publicKey,
+        playerBalance: playerBalancePDA,
+        oracle: oraclePDA,
+        gameToken: gameTokenPDA,
+        playerTokenAccount: playerTokenAccount.address,
+        gameTokenAccount: gameTokenAccount.address,
       })
       .signers([player])
       .rpc();
@@ -608,6 +624,11 @@ describe("coinflip", () => {
         .accounts({
           game: gamePDA,
           player: player.publicKey,
+          playerBalance: playerBalancePDA,
+          oracle: oraclePDA,
+          gameToken: gameTokenPDA,
+          playerTokenAccount: playerTokenAccount.address,
+          gameTokenAccount: gameTokenAccount.address,
         })
         .signers([player])
         .rpc();
