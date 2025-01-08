@@ -43,11 +43,7 @@ pub struct InitializeOracle<'info> {
     min_timeout: u32,
 )]
 pub struct UpdateOracle<'info> {
-    #[account(
-        mut,
-        seeds = [b"oracle"],
-        bump,
-    )]
+    #[account(mut)]
     pub oracle: Account<'info, Oracle>,
     #[account(
         address = oracle.authority @ ErrorCode::UnauthorizedAuthority,
@@ -112,10 +108,6 @@ pub struct InitializeToken<'info> {
 pub struct UpdateToken<'info> {
     #[account(mut)]
     pub game_token: Account<'info, GameToken>,
-    #[account(
-        seeds = [b"oracle"],
-        bump,
-    )]
     pub oracle: Account<'info, Oracle>,
     #[account(
         address = oracle.authority @ ErrorCode::UnauthorizedAuthority,
@@ -251,10 +243,6 @@ pub struct JoinGame<'info> {
         address = game_token.token_account,
     )]
     pub game_token_account: Account<'info, TokenAccount>,
-    #[account(
-        seeds = [b"oracle"],
-        bump,
-    )]
     pub oracle: Account<'info, Oracle>,
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,

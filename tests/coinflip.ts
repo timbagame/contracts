@@ -107,6 +107,12 @@ describe("coinflip", () => {
       program.programId
     );
 
+    // Get oracle PDA
+    const [oraclePDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("oracle")],
+      program.programId
+    );
+
     // Create token account for vault
     const vaultTokenAccountInfo = await getOrCreateAssociatedTokenAccount(
       program.provider.connection,
@@ -131,6 +137,7 @@ describe("coinflip", () => {
         .accounts({
           tokenMint: mint,
           authority: program.provider.publicKey,
+          oracle: oraclePDA,
         })
         .rpc();
     } catch (e) {
