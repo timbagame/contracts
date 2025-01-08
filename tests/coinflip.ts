@@ -801,10 +801,12 @@ describe("coinflip", () => {
     const randomNumber = new anchor.BN(Math.floor(Math.random() * 256));
 
     await program.methods
-      .setOracleNumber()
+      .setOracleNumber(randomNumber)
       .accounts({
         game: gamePDA,
+        oracle: oraclePDA,
         authority: program.provider.publicKey,
+        gameToken: gameTokenPDA,
       })
       .rpc();
 
