@@ -114,7 +114,7 @@ describe("coinflip", () => {
     );
 
     // Create game token account
-    const gameTokenAccountInfo = await getOrCreateAssociatedTokenAccount(
+    const gameTokenAccount = await getOrCreateAssociatedTokenAccount(
       program.provider.connection,
       mintAuthority, // payer
       mint,
@@ -147,7 +147,7 @@ describe("coinflip", () => {
 
     return {
       mint,
-      gameTokenAccountInfo,
+      gameTokenAccount,
       mintAuthority,
       oracleAuthorityTokenAccount,
     };
@@ -214,7 +214,8 @@ describe("coinflip", () => {
     await createOracleAccount();
     const {
       mint,
-      mintAuthority
+      mintAuthority,
+      gameTokenAccount,
     } = await createSplTokenMint();
 
     const {
@@ -243,20 +244,10 @@ describe("coinflip", () => {
       program.programId
     );
 
-    // Get player token PDA
-    const [playerTokenPDA] = PublicKey.findProgramAddressSync(
-      [Buffer.from("player_token"), player.publicKey.toBuffer(), mint.toBuffer()],
+    // Get player balance PDA
+    const [playerBalancePDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("player_balance"), player.publicKey.toBuffer(), mint.toBuffer()],
       program.programId
-    );
-
-
-    // Get vault token account
-    const vaultTokenAccount = await getOrCreateAssociatedTokenAccount(
-      program.provider.connection,
-      player, // payer
-      mint,
-      gameTokenPDA,
-      true // allowOwnerOffCurve
     );
 
     try {
@@ -271,11 +262,11 @@ describe("coinflip", () => {
         )
         .accounts({
           player: player.publicKey,
-          playerToken: playerTokenPDA,
+          playerBalance: playerBalancePDA,
           oracle: oraclePDA,
           gameToken: gameTokenPDA,
           playerTokenAccount: playerTokenAccount.address,
-          gameTokenAccount: vaultTokenAccount.address,
+          gameTokenAccount: gameTokenAccount.address,
         })
         .signers([player])
         .rpc();
