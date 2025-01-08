@@ -15,7 +15,7 @@ pub fn handler(ctx: Context<super::ClaimFee>) -> Result<()> {
                 authority: ctx.accounts.vault.to_account_info(),
             },
             &[&[
-                b"vault",
+                b"game_vault",
                 ctx.accounts.game_token.token_mint.as_ref(),
                 &[ctx.accounts.game_token.bump],
             ]],

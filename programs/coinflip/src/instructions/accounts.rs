@@ -78,7 +78,7 @@ pub struct InitializeToken<'info> {
     pub token_mint: Account<'info, Mint>,
     /// CHECK: This is a PDA that serves as the authority for the game's token accounts
     #[account(
-        seeds = [b"vault", token_mint.key().as_ref()],
+        seeds = [b"game_vault", token_mint.key().as_ref()],
         bump,
     )]
     pub vault: AccountInfo<'info>,
