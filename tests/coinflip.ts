@@ -724,7 +724,7 @@ describe("coinflip", () => {
     }
   });
 
-  it("Set Oracle Hash Successfully", async () => {
+  it("Set Oracle Random Number Successfully", async () => {
     const {
       oraclePDA,
     } = await createOracleAccount();
@@ -813,7 +813,7 @@ describe("coinflip", () => {
     expect(gameData.winner).to.not.be.null;
   });
 
-  it("Fail to Set Oracle Hash Without Oracle Authority", async () => {
+  it("Fail to Set Oracle Random Number Without Oracle Authority", async () => {
     await createOracleAccount();
 
     // Create SPL token setup
@@ -871,7 +871,7 @@ describe("coinflip", () => {
       .signers([player])
       .rpc();
 
-    // Try to set oracle hash with fake oracle authority
+    // Try to set oracle random number with fake oracle authority
     const fakeAuthority = anchor.web3.Keypair.generate();
     try {
       const hashValue = Array.from({ length: 32 }, () =>
@@ -892,7 +892,7 @@ describe("coinflip", () => {
     }
   });
 
-  it("Fail to Set Oracle Hash Before Game is Full", async () => {
+  it("Fail to Set Oracle Random Number Before Game is Full", async () => {
     await createOracleAccount();
 
     const {
@@ -931,7 +931,7 @@ describe("coinflip", () => {
     const gameId = await getLastGameId();
     const gamePDA = await getGamePDA(gameId);
 
-    // Try to set oracle hash before game is full
+    // Try to set oracle random number before game is full
     try {
       const hashValue = Array.from({ length: 32 }, () =>
         Math.floor(Math.random() * 256),
@@ -950,7 +950,7 @@ describe("coinflip", () => {
     }
   });
 
-  it("Fail to Set Oracle Hash Twice", async () => {
+  it("Fail to Set Oracle Random Number Twice", async () => {
     await createOracleAccount();
     const {
       mint,
@@ -1007,7 +1007,7 @@ describe("coinflip", () => {
       .signers([player])
       .rpc();
 
-    // Set oracle hash first time
+    // Set oracle random number first time
     const hashValue = Array.from({ length: 32 }, () =>
       Math.floor(Math.random() * 256),
     );
@@ -1019,7 +1019,7 @@ describe("coinflip", () => {
       })
       .rpc();
 
-    // Try to set oracle hash second time
+    // Try to set oracle random number second time
     try {
       const newHashValue = Array.from({ length: 32 }, () =>
         Math.floor(Math.random() * 256),
@@ -1093,7 +1093,7 @@ describe("coinflip", () => {
       .signers([player])
       .rpc();
 
-    // Set oracle hash
+    // Set oracle random number
     const hashValue = Array.from({ length: 32 }, () =>
       Math.floor(Math.random() * 256),
     );
@@ -1203,7 +1203,7 @@ describe("coinflip", () => {
       .signers([player])
       .rpc();
 
-    // Set oracle hash
+    // Set oracle random number
     const hashValue = Array.from({ length: 32 }, () =>
       Math.floor(Math.random() * 256),
     );
@@ -1546,7 +1546,7 @@ describe("coinflip", () => {
     }
   });
 
-  it("Set Oracle Hash When Minimum Participants Met and Timeout Passed", async () => {
+  it("Set Oracle Random Number When Minimum Participants Met and Timeout Passed", async () => {
     await createOracleAccount();
     const {
       mint,
@@ -1605,7 +1605,7 @@ describe("coinflip", () => {
     // Wait for timeout
     await new Promise((resolve) => setTimeout(resolve, 8000));
 
-    // Set oracle hash
+    // Set oracle random number
     const hashValue = Array.from({ length: 32 }, () =>
       Math.floor(Math.random() * 256),
     );
@@ -1679,7 +1679,7 @@ describe("coinflip", () => {
       .signers([player1])
       .rpc();
 
-    // Set oracle hash
+    // Set oracle random number
     const hashValue = Array.from({ length: 32 }, () =>
       Math.floor(Math.random() * 256),
     );
