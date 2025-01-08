@@ -12,7 +12,7 @@ pub fn handler(ctx: Context<super::ClaimFee>) -> Result<()> {
             token::Transfer {
                 from: ctx.accounts.game_token_account.to_account_info(),
                 to: ctx.accounts.authority_token_account.to_account_info(),
-                authority: ctx.accounts.vault.to_account_info(),
+                authority: ctx.accounts.game_vault.to_account_info(),
             },
             &[&[
                 b"game_vault",

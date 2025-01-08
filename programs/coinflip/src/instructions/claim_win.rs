@@ -2,10 +2,10 @@ use anchor_lang::prelude::*;
 use anchor_spl::token;
 
 pub fn handler(ctx: Context<super::ClaimWin>) -> Result<()> {
-    let player_token = &mut ctx.accounts.player_token;
+    let player_balance = &mut ctx.accounts.player_balance;
     let game_token = &mut ctx.accounts.game_token;
-    let amount = player_token.amount;
-    player_token.amount = 0;
+    let amount = player_balance.amount;
+    player_balance.amount = 0;
 
     token::transfer(
         CpiContext::new_with_signer(
@@ -13,7 +13,7 @@ pub fn handler(ctx: Context<super::ClaimWin>) -> Result<()> {
             token::Transfer {
                 from: ctx.accounts.game_token_account.to_account_info(),
                 to: ctx.accounts.player_token_account.to_account_info(),
-                authority: ctx.accounts.vault.to_account_info(),
+                authority: ctx.accounts.game_vault.to_account_info(),
             },
             &[&[
                 b"game_vault",
