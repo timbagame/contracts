@@ -292,26 +292,32 @@ describe("coinflip", () => {
 
       expect.fail("Should have thrown an error");
     } catch (error) {
-      console.log("Error:", error);
       expect(error.toString()).to.include("InvalidPlayersCount");
     }
   });
 
   it("Initialize Game and Join Successfully", async () => {
-    await createOracleAccount();
+    const {
+      oraclePDA,
+    } = await createOracleAccount();
+
     const {
       mint,
       mintAuthority,
+      gameTokenAccount,
+      gameTokenPDA,
     } = await createSplTokenMint();
 
     const {
       player: creator,
       playerTokenAccount: creatorTokenAccount,
+      playerBalancePDA: creatorPlayerBalancePDA,
     } = await createPlayer(mint);
 
     const {
       player,
       playerTokenAccount,
+      playerBalancePDA
     } = await createPlayer(mint);
 
     await mintTokens(mintAuthority, mint, creatorTokenAccount.address, new BN(1_000_000));
@@ -325,12 +331,16 @@ describe("coinflip", () => {
         amount,
         2, // maxParticipants
         2, // minParticipants
-        new BN(3600), // timeoutDuration
+        3600, // timeoutDuration
         false, // isPrivate
       )
       .accounts({
         player: creator.publicKey,
-        tokenMint: mint,
+        playerBalance: creatorPlayerBalancePDA,
+        gameToken: gameTokenPDA,
+        playerTokenAccount: creatorTokenAccount.address,
+        gameTokenAccount: gameTokenAccount.address,
+        oracle: oraclePDA,
       })
       .signers([creator])
       .rpc();
@@ -344,6 +354,10 @@ describe("coinflip", () => {
       .accounts({
         game: gamePDA,
         player: player.publicKey,
+        playerBalance: playerBalancePDA,
+        gameToken: gameTokenPDA,
+        gameTokenAccount: gameTokenAccount.address,
+        oracle: oraclePDA,
       })
       .signers([player])
       .rpc();
