@@ -100,22 +100,15 @@ describe("coinflip", () => {
       6,  // decimals
     );
 
-    // Get game_vault PDA using token mint
-    const [gameVaultPDA] = PublicKey.findProgramAddressSync(
-      [Buffer.from("game_vault"), mint.toBuffer()],
-      program.programId
-    );
-
-
-    // Get game_token PDA using token mint
-    const [gameTokenPDA] = PublicKey.findProgramAddressSync(
-      [Buffer.from("game_token"), mint.toBuffer()],
-      program.programId
-    );
-
     // Get oracle PDA
     const [oraclePDA] = PublicKey.findProgramAddressSync(
       [Buffer.from("oracle")],
+      program.programId
+    );
+
+    // Get game_vault PDA using token mint
+    const [gameVaultPDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("game_vault"), mint.toBuffer()],
       program.programId
     );
 
@@ -150,6 +143,12 @@ describe("coinflip", () => {
       // Token may already be initialized, that's fine
       console.log("Token initialization failed, may already exist:", e);
     }
+
+    // Get game_token PDA using token mint
+    const [gameTokenPDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("game_token"), mint.toBuffer()],
+      program.programId
+    );
 
     return {
       mint,
@@ -197,12 +196,6 @@ describe("coinflip", () => {
       program.programId
     );
 
-    // Get player balance PDA
-    const [playerBalancePDA] = PublicKey.findProgramAddressSync(
-      [Buffer.from("player_balance"), player.publicKey.toBuffer(), tokenMint.toBuffer()],
-      program.programId
-    );
-
     // Initialize player balance
     await program.methods
       .initializePlayerBalance()
@@ -212,6 +205,12 @@ describe("coinflip", () => {
       })
       .signers([player])
       .rpc();
+
+    // Get player balance PDA
+    const [playerBalancePDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("player_balance"), player.publicKey.toBuffer(), tokenMint.toBuffer()],
+      program.programId
+    );
 
     return {
       player,
