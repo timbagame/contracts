@@ -156,7 +156,7 @@ pub struct InitializePlayerToken<'info> {
     amount: u64,
     max_players: u16,
     min_players: u16,
-    timeout: u16,
+    timeout: u32,
     is_private: bool,
 )]
 pub struct InitializeGame<'info> {
@@ -175,7 +175,7 @@ pub struct InitializeGame<'info> {
             1 + // status
             32 + // token_mint
             8 + // created_at
-            2 + // timeout
+            4 + // timeout
             1, // is_private
         seeds = [b"game", oracle.games_counter.to_le_bytes().as_ref()],
         bump,
