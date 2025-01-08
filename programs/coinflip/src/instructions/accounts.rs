@@ -10,8 +10,8 @@ use crate::state::*;
     fee_percentage: u8,
     oracle_buffer_time: u16,
     max_players: u16,
-    max_timeout: u16,
-    min_timeout: u16,
+    max_timeout: u32,
+    min_timeout: u32,
 )]
 pub struct InitializeOracle<'info> {
     #[account(
@@ -22,8 +22,8 @@ pub struct InitializeOracle<'info> {
             1 + // fee_percentage
             2 + // oracle_buffer_time
             2 + // max_players
-            2 + // max_timeout
-            2 + // min_timeout
+            4 + // max_timeout
+            4 + // min_timeout
             4, // games_counter
         seeds = [b"oracle"],
         bump,
@@ -39,8 +39,8 @@ pub struct InitializeOracle<'info> {
     fee_percentage: u8,
     oracle_buffer_time: u16,
     max_players: u16,
-    max_timeout: u16,
-    min_timeout: u16,
+    max_timeout: u32,
+    min_timeout: u32,
 )]
 pub struct UpdateOracle<'info> {
     #[account(
