@@ -260,7 +260,7 @@ pub struct SetOracleNumber<'info> {
     #[account(address = oracle.authority @ ErrorCode::UnauthorizedAuthority)]
     pub authority: Signer<'info>,
     #[account(
-        seeds = [b"player_token", game.calculate_winner(random_number, Clock::get()?.unix_timestamp).as_ref(), game_token.token_mint.as_ref()],
+        seeds = [b"player_balance", game.calculate_winner(random_number, Clock::get()?.unix_timestamp).as_ref(), game_token.token_mint.as_ref()],
         bump,
     )]
     pub player_balance: Account<'info, PlayerBalance>,
