@@ -357,6 +357,7 @@ describe("coinflip", () => {
         playerBalance: playerBalancePDA,
         gameToken: gameTokenPDA,
         gameTokenAccount: gameTokenAccount.address,
+        playerTokenAccount: playerTokenAccount.address,
         oracle: oraclePDA,
       })
       .signers([player])
@@ -431,6 +432,7 @@ describe("coinflip", () => {
         playerBalance: joinerPlayerBalancePDA,
         gameToken: gameTokenPDA,
         gameTokenAccount: gameTokenAccount.address,
+        playerTokenAccount: joinerTokenAccount.address,
         oracle: oraclePDA,
         authority: program.provider.publicKey,
       })
