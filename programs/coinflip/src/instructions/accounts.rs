@@ -215,7 +215,7 @@ pub struct JoinGame<'info> {
         constraint = !game.ready_for_oracle(Clock::get()?.unix_timestamp) @ ErrorCode::GameReadyForOracle,
         constraint = !game.is_private || authority.is_some() && authority.as_ref().unwrap().key() == oracle.authority @ ErrorCode::UnauthorizedPlayer,
         constraint = game.token_mint == game_token.token_mint && game.token_mint == player_balance.token_mint @ ErrorCode::InvalidToken,
-        constraint = game.game_type != GameType::Coinflip || player_token_account.amount + player_balance.amount >= game.amount @ ErrorCode::InsufficientBalance,
+        constraint = game.game_type == GameType::Giveaway || player_token_account.amount + player_balance.amount >= game.amount @ ErrorCode::InsufficientBalance,
     )]
     pub game: Account<'info, Game>,
     #[account(
@@ -269,7 +269,8 @@ pub struct UnjoinGame<'info> {
     #[account(
         mut,
         constraint = game.status == GameStatus::Active @ ErrorCode::GameNotActive,
-        constraint = game.players.len() >= 2 && game.players.contains(&player_balance.key()) @ ErrorCode::UnauthorizedPlayer,
+        constraint = game.game_type == GameType::Giveaway || game.players.len() > 1 @ ErrorCode::InvalidPlayersCount,
+        constraint = game.players.contains(&player_balance.key()) @ ErrorCode::UnauthorizedPlayer,
         constraint = !game.ready_for_oracle(Clock::get()?.unix_timestamp) @ ErrorCode::GameReadyForOracle,
         constraint = game.token_mint == game_token.token_mint && game.token_mint == player_balance.token_mint @ ErrorCode::InvalidToken,
     )]
