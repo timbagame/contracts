@@ -269,7 +269,7 @@ pub struct UnjoinGame<'info> {
     #[account(
         mut,
         constraint = game.status == GameStatus::Active @ ErrorCode::GameNotActive,
-        constraint = game.game_type == GameType::Giveaway || game.players.len() > 1 @ ErrorCode::InvalidPlayersCount,
+        constraint = game.game_type == GameType::Giveaway || game.players.len() >= 2 @ ErrorCode::InvalidPlayersCount,
         constraint = game.players.contains(&player_balance.key()) @ ErrorCode::UnauthorizedPlayer,
         constraint = !game.ready_for_oracle(Clock::get()?.unix_timestamp) @ ErrorCode::GameReadyForOracle,
         constraint = game.token_mint == game_token.token_mint && game.token_mint == player_balance.token_mint @ ErrorCode::InvalidToken,
