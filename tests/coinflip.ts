@@ -640,13 +640,16 @@ describe("coinflip", () => {
   });
 
   it("Fail to Join Private Game with Wrong Authority", async () => {
-    // Initialize config
-    await createOracleAccount();
+    const {
+      oraclePDA,
+    } = await createOracleAccount();
 
     // Create SPL token setup
     const {
       mint,
-      mintAuthority
+      mintAuthority,
+      gameTokenAccount,
+      gameTokenPDA,
     } = await createSplTokenMint();
 
     const amount = new anchor.BN(1_000_000);
@@ -655,6 +658,7 @@ describe("coinflip", () => {
     const {
       player: creator,
       playerTokenAccount: creatorTokenAccount,
+      playerBalancePDA: creatorPlayerBalancePDA,
     } = await createPlayer(mint);
 
     // Mint tokens to creator
@@ -672,7 +676,11 @@ describe("coinflip", () => {
       )
       .accounts({
         player: creator.publicKey,
-        tokenMint: mint,
+        playerBalance: creatorPlayerBalancePDA,
+        gameToken: gameTokenPDA,
+        playerTokenAccount: creatorTokenAccount.address,
+        gameTokenAccount: gameTokenAccount.address,
+        oracle: oraclePDA,
       })
       .signers([creator])
       .rpc();
@@ -684,6 +692,7 @@ describe("coinflip", () => {
     const {
       player,
       playerTokenAccount,
+      playerBalancePDA,
     } = await createPlayer(mint);
 
     // Mint tokens to player
@@ -700,6 +709,11 @@ describe("coinflip", () => {
           game: gamePDA,
           player: player.publicKey,
           authority: fakeAuthority.publicKey,
+          playerBalance: playerBalancePDA,
+          oracle: oraclePDA,
+          gameToken: gameTokenPDA,
+          playerTokenAccount: playerTokenAccount.address,
+          gameTokenAccount: gameTokenAccount.address,
         })
         .signers([player, fakeAuthority])
         .rpc();
