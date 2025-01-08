@@ -103,7 +103,7 @@ pub mod coinflip {
         instructions::cancel_game::handler(ctx)
     }
 
-    pub fn set_oracle_number(ctx: Context<SetOracleNumber>) -> Result<()> {
+    pub fn set_oracle_number(ctx: Context<SetOracleNumber>, _random_number: u64) -> Result<()> {
         instructions::set_oracle_number::handler(ctx)
     }
 
