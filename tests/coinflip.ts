@@ -828,12 +828,16 @@ describe("coinflip", () => {
   });
 
   it("Fail to Set Oracle Random Number Without Oracle Authority", async () => {
-    await createOracleAccount();
+    const {
+      oraclePDA,
+    } = await createOracleAccount();
 
     // Create SPL token setup
     const {
       mint,
-      mintAuthority
+      mintAuthority,
+      gameTokenAccount,
+      gameTokenPDA,
     } = await createSplTokenMint();
 
     const amount = new anchor.BN(1_000_000);
@@ -842,17 +846,21 @@ describe("coinflip", () => {
     const {
       player: creator,
       playerTokenAccount: creatorTokenAccount,
+      playerBalancePDA: creatorPlayerBalancePDA,
     } = await createPlayer(mint);
 
     // Create second player using helper
     const {
       player: player1,
       playerTokenAccount: player1TokenAccount,
+      playerBalancePDA: player1PlayerBalancePDA,
     } = await createPlayer(mint);
 
     // Mint tokens to both accounts
     await mintTokens(mintAuthority, mint, creatorTokenAccount.address, amount);
     await mintTokens(mintAuthority, mint, player1TokenAccount.address, amount);
+
+    const { gamePDA, randomHash, secretKey } = await getGamePDA();
 
     // Create game
     await program.methods
@@ -863,17 +871,18 @@ describe("coinflip", () => {
         2,
         3600,
         false,
+        randomHash,
       )
       .accounts({
         player: creator.publicKey,
-        tokenMint: mint,
+        playerBalance: creatorPlayerBalancePDA,
+        oracle: oraclePDA,
+        gameToken: gameTokenPDA,
+        playerTokenAccount: creatorTokenAccount.address,
+        gameTokenAccount: gameTokenAccount.address,
       })
       .signers([creator])
       .rpc();
-
-    // Get current game counter for PDA derivation
-    const gameId = await getLastGameId();
-    const gamePDA = await getGamePDA(gameId);
 
     // Join game with second player
     await program.methods
@@ -881,21 +890,29 @@ describe("coinflip", () => {
       .accounts({
         game: gamePDA,
         player: player1.publicKey,
+        playerBalance: player1PlayerBalancePDA,
+        oracle: oraclePDA,
+        gameToken: gameTokenPDA,
+        playerTokenAccount: player1TokenAccount.address,
+        gameTokenAccount: gameTokenAccount.address,
       })
       .signers([player1])
       .rpc();
 
     // Try to set oracle random number with fake oracle authority
     const fakeAuthority = anchor.web3.Keypair.generate();
+    const playersGameData = await program.account.game.fetch(gamePDA);
+    const winnerBalance = calculateWinner(playersGameData.players, secretKey);
+
     try {
-      const hashValue = Array.from({ length: 32 }, () =>
-        Math.floor(Math.random() * 256),
-      );
       await program.methods
-        .completeGame(hashValue)
+        .completeGame(secretKey)
         .accounts({
           game: gamePDA,
+          oracle: oraclePDA,
           authority: fakeAuthority.publicKey,
+          gameToken: gameTokenPDA,
+          playerBalance: winnerBalance,
         })
         .signers([fakeAuthority])
         .rpc();
