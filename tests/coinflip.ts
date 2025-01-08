@@ -368,22 +368,29 @@ describe("coinflip", () => {
   });
 
   it("Join Private Game Successfully", async () => {
-    await createOracleAccount();
+    const {
+      oraclePDA,
+    } = await createOracleAccount();
+
     const {
       mint,
-      mintAuthority
+      mintAuthority,
+      gameTokenAccount,
+      gameTokenPDA,
     } = await createSplTokenMint();
 
     // Create creator using helper
     const {
       player: creator,
       playerTokenAccount: creatorTokenAccount,
+      playerBalancePDA: creatorPlayerBalancePDA,
     } = await createPlayer(mint);
 
     // Create joiner using helper  
     const {
       player: joiner,
       playerTokenAccount: joinerTokenAccount,
+      playerBalancePDA: joinerPlayerBalancePDA,
     } = await createPlayer(mint);
 
     // Mint tokens to both accounts
@@ -403,7 +410,11 @@ describe("coinflip", () => {
       )
       .accounts({
         player: creator.publicKey,
-        tokenMint: mint,
+        playerBalance: creatorPlayerBalancePDA,
+        gameToken: gameTokenPDA,
+        playerTokenAccount: creatorTokenAccount.address,
+        gameTokenAccount: gameTokenAccount.address,
+        oracle: oraclePDA,
       })
       .signers([creator])
       .rpc();
@@ -417,6 +428,10 @@ describe("coinflip", () => {
       .accounts({
         game: gamePDA,
         player: joiner.publicKey,
+        playerBalance: joinerPlayerBalancePDA,
+        gameToken: gameTokenPDA,
+        gameTokenAccount: gameTokenAccount.address,
+        oracle: oraclePDA,
         authority: program.provider.publicKey,
       })
       .signers([joiner])
