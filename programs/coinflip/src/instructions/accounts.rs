@@ -123,7 +123,7 @@ pub struct InitializePlayerBalance<'info> {
         space = 8 + // discriminator
             32 + // player
             32 + // token_mint
-            32 + // token_account
+            32 + // player_token_account
             8, // amount
         seeds = [b"player_balance", player.key().as_ref(), game_token.token_mint.as_ref()],
         bump,
@@ -184,10 +184,10 @@ pub struct InitializeGame<'info> {
     pub player: Signer<'info>,
     #[account(
         mut,
-        constraint = player_token.player == player.key() @ ErrorCode::UnauthorizedPlayer,
-        constraint = player_token.token_mint == game_token.token_mint @ ErrorCode::InvalidToken,
+        constraint = player_balance.player == player.key() @ ErrorCode::UnauthorizedPlayer,
+        constraint = player_balance.token_mint == game_token.token_mint @ ErrorCode::InvalidToken,
     )]
-    pub player_token: Account<'info, PlayerToken>,
+    pub player_balance: Account<'info, PlayerBalance>,
     #[account(mut)]
     pub oracle: Account<'info, Oracle>,
     #[account(
@@ -196,13 +196,13 @@ pub struct InitializeGame<'info> {
     pub game_token: Account<'info, GameToken>,
     #[account(
         mut,
-        address = player_token.token_account,
-        constraint = player_token_account.amount + player_token.amount >= amount @ ErrorCode::InsufficientBalance,
+        address = player_balance.player_token_account,
+        constraint = player_balance.amount + player_token_account.amount >= amount @ ErrorCode::InsufficientBalance,
     )]
     pub player_token_account: Account<'info, TokenAccount>,
     #[account(
         mut,
-        address = game_token.token_account,
+        address = game_token.game_token_account,
     )]
     pub game_token_account: Account<'info, TokenAccount>,
     pub system_program: Program<'info, System>,
@@ -225,7 +225,7 @@ pub struct JoinGame<'info> {
         constraint = player_token.token_mint == game.token_mint @ ErrorCode::InvalidToken,
         constraint = player_token.player == player.key() @ ErrorCode::UnauthorizedPlayer,
     )]
-    pub player_token: Account<'info, PlayerToken>,
+    pub player_balance: Account<'info, PlayerToken>,
     pub authority: Option<Signer<'info>>,
     #[account(
         constraint = game_token.token_mint == game.token_mint @ ErrorCode::InvalidToken,
@@ -269,7 +269,7 @@ pub struct SetOracleHash<'info> {
         seeds = [b"player_token", game.calculate_winner(random_number, Clock::get()?.unix_timestamp).as_ref(), game_token.token_mint.as_ref()],
         bump,
     )]
-    pub player_token: Account<'info, PlayerToken>,
+    pub player_balance: Account<'info, PlayerToken>,
     pub game_token: Account<'info, GameToken>,
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
@@ -294,7 +294,7 @@ pub struct UnjoinGame<'info> {
         constraint = player_token.player == player.key() @ ErrorCode::UnauthorizedPlayer,
         constraint = player_token.token_mint == game.token_mint @ ErrorCode::InvalidToken,
     )]
-    pub player_token: Account<'info, PlayerToken>,
+    pub player_balance: Account<'info, PlayerToken>,
     /// CHECK: This is a PDA that serves as the authority for the game's token accounts
     #[account(
         address = game_token.vault,
@@ -336,7 +336,7 @@ pub struct CancelGame<'info> {
         constraint = player_token.player == player.key() @ ErrorCode::UnauthorizedPlayer,
         constraint = player_token.token_mint == game.token_mint @ ErrorCode::InvalidToken,
     )]
-    pub player_token: Account<'info, PlayerToken>,
+    pub player_balance: Account<'info, PlayerToken>,
     #[account()]
     pub oracle: Account<'info, Oracle>,
     #[account(
@@ -369,7 +369,7 @@ pub struct ClaimWin<'info> {
         mut,
         constraint = player_token.player == player.key() @ ErrorCode::UnauthorizedPlayer,
     )]
-    pub player_token: Account<'info, PlayerToken>,
+    pub player_balance: Account<'info, PlayerToken>,
     pub player: Signer<'info>,
     #[account(
         constraint = game_token.token_mint == player_token.token_mint @ ErrorCode::InvalidToken,
