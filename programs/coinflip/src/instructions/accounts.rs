@@ -311,7 +311,7 @@ pub struct CancelGame<'info> {
             GameType::Coinflip => game.players.contains(&player_balance.key()),
             GameType::Giveaway => game.creator == player.key(),
         } @ ErrorCode::UnauthorizedPlayer,
-        constraint = game.buffer_passed(oracle.oracle_buffer_time, Clock::get()?.unix_timestamp) @ ErrorCode::GameReadyForOracle,
+        constraint = game.players.is_empty() || game.buffer_passed(oracle.oracle_buffer_time, Clock::get()?.unix_timestamp) @ ErrorCode::GameReadyForOracle,
         constraint = game.token_mint == game_token.token_mint && game.token_mint == player_balance.token_mint @ ErrorCode::InvalidToken,
     )]
     pub game: Account<'info, Game>,
