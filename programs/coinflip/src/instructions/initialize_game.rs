@@ -9,7 +9,7 @@ pub fn handler(
     amount: u64,
     max_players: u16,
     min_players: u16,
-    timeout: u16,
+    timeout: u32,
     is_private: bool,
 ) -> Result<()> {
     // Initialize game

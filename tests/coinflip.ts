@@ -236,7 +236,6 @@ describe("coinflip", () => {
         )
         .accounts({
           player: player.publicKey,
-          tokenMint: mint,
         })
         .signers([player])
         .rpc();

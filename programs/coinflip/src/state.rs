@@ -7,8 +7,8 @@ pub struct Oracle {
     pub fee_percentage: u8,
     pub oracle_buffer_time: u16,
     pub max_players: u16,
-    pub max_timeout: u16,
-    pub min_timeout: u16,
+    pub max_timeout: u32,
+    pub min_timeout: u32,
     pub games_counter: u32,
 }
 
@@ -73,7 +73,7 @@ pub struct Game {
     pub status: GameStatus,
     pub token_mint: Pubkey,
     pub created_at: u64,
-    pub timeout: u16,
+    pub timeout: u32,
     pub is_private: bool,
 }
 

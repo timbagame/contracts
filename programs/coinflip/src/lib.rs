@@ -18,8 +18,8 @@ pub mod coinflip {
         fee_percentage: u8,
         oracle_buffer_time: u16,
         max_players: u16,
-        max_timeout: u16,
-        min_timeout: u16,
+        max_timeout: u32,
+        min_timeout: u32,
     ) -> Result<()> {
         instructions::initialize_oracle::handler(
             ctx,
@@ -36,8 +36,8 @@ pub mod coinflip {
         fee_percentage: u8,
         oracle_buffer_time: u16,
         max_players: u16,
-        max_timeout: u16,
-        min_timeout: u16,
+        max_timeout: u32,
+        min_timeout: u32,
     ) -> Result<()> {
         instructions::update_oracle::handler(
             ctx,
@@ -77,7 +77,7 @@ pub mod coinflip {
         amount: u64,
         max_players: u16,
         min_players: u16,
-        timeout: u16,
+        timeout: u32,
         is_private: bool,
     ) -> Result<()> {
         instructions::initialize_game::handler(
