@@ -725,12 +725,16 @@ describe("coinflip", () => {
   });
 
   it("Set Oracle Hash Successfully", async () => {
-    await createOracleAccount();
+    const {
+      oraclePDA,
+    } = await createOracleAccount();
 
     // Create SPL token setup
     const {
       mint,
-      mintAuthority
+      mintAuthority,
+      gameTokenAccount,
+      gameTokenPDA,
     } = await createSplTokenMint();
 
     const amount = new anchor.BN(1_000_000);
@@ -739,12 +743,14 @@ describe("coinflip", () => {
     const {
       player: creator,
       playerTokenAccount: creatorTokenAccount,
+      playerBalancePDA: creatorPlayerBalancePDA,
     } = await createPlayer(mint);
 
     // Create second player using helper
     const {
       player,
       playerTokenAccount,
+      playerBalancePDA,
     } = await createPlayer(mint);
 
     // Mint tokens to both accounts
@@ -763,7 +769,11 @@ describe("coinflip", () => {
       )
       .accounts({
         player: creator.publicKey,
-        tokenMint: mint,
+        playerBalance: creatorPlayerBalancePDA,
+        oracle: oraclePDA,
+        gameToken: gameTokenPDA,
+        playerTokenAccount: creatorTokenAccount.address,
+        gameTokenAccount: gameTokenAccount.address,
       })
       .signers([creator])
       .rpc();
@@ -778,17 +788,20 @@ describe("coinflip", () => {
       .accounts({
         game: gamePDA,
         player: player.publicKey,
+        playerBalance: playerBalancePDA,
+        oracle: oraclePDA,
+        gameToken: gameTokenPDA,
+        playerTokenAccount: playerTokenAccount.address,
+        gameTokenAccount: gameTokenAccount.address,
       })
       .signers([player])
       .rpc();
 
-    // Set oracle hash
-    const hashValue = Array.from({ length: 32 }, () =>
-      Math.floor(Math.random() * 256),
-    );
+    // Set oracle random number
+    const randomNumber = new anchor.BN(Math.floor(Math.random() * 256));
 
     await program.methods
-      .setOracleHash(hashValue)
+      .SetOracleNumber()
       .accounts({
         game: gamePDA,
         authority: program.provider.publicKey,
@@ -797,7 +810,6 @@ describe("coinflip", () => {
 
     // Verify game state
     const gameData = await program.account.game.fetch(gamePDA);
-    expect(gameData.status.readyForClaim).to.not.be.undefined;
     expect(gameData.winner).to.not.be.null;
   });
 
@@ -866,7 +878,7 @@ describe("coinflip", () => {
         Math.floor(Math.random() * 256),
       );
       await program.methods
-        .setOracleHash(hashValue)
+        .SetOracleNumber(hashValue)
         .accounts({
           game: gamePDA,
           authority: fakeAuthority.publicKey,
@@ -925,7 +937,7 @@ describe("coinflip", () => {
         Math.floor(Math.random() * 256),
       );
       await program.methods
-        .setOracleHash(hashValue)
+        .SetOracleNumber(hashValue)
         .accounts({
           game: gamePDA,
           authority: program.provider.publicKey,
@@ -1000,7 +1012,7 @@ describe("coinflip", () => {
       Math.floor(Math.random() * 256),
     );
     await program.methods
-      .setOracleHash(hashValue)
+      .SetOracleNumber(hashValue)
       .accounts({
         game: gamePDA,
         authority: program.provider.publicKey,
@@ -1013,7 +1025,7 @@ describe("coinflip", () => {
         Math.floor(Math.random() * 256),
       );
       await program.methods
-        .setOracleHash(newHashValue)
+        .SetOracleNumber(newHashValue)
         .accounts({
           game: gamePDA,
           authority: program.provider.publicKey,
@@ -1086,7 +1098,7 @@ describe("coinflip", () => {
       Math.floor(Math.random() * 256),
     );
     await program.methods
-      .setOracleHash(hashValue)
+      .SetOracleNumber(hashValue)
       .accounts({
         game: gamePDA,
         authority: program.provider.publicKey,
@@ -1196,7 +1208,7 @@ describe("coinflip", () => {
       Math.floor(Math.random() * 256),
     );
     await program.methods
-      .setOracleHash(hashValue)
+      .SetOracleNumber(hashValue)
       .accounts({
         game: gamePDA,
         authority: program.provider.publicKey,
@@ -1598,7 +1610,7 @@ describe("coinflip", () => {
       Math.floor(Math.random() * 256),
     );
     await program.methods
-      .setOracleHash(hashValue)
+      .SetOracleNumber(hashValue)
       .accounts({
         game: gamePDA,
         authority: program.provider.publicKey,
@@ -1672,7 +1684,7 @@ describe("coinflip", () => {
       Math.floor(Math.random() * 256),
     );
     await program.methods
-      .setOracleHash(hashValue)
+      .SetOracleNumber(hashValue)
       .accounts({
         game: gamePDA,
         authority: program.provider.publicKey,

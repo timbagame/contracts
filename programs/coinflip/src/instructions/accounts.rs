@@ -250,7 +250,7 @@ pub struct JoinGame<'info> {
 #[instruction(
     random_number: u64,
 )]
-pub struct SetOracleHash<'info> {
+pub struct SetOracleNumber<'info> {
     #[account(
         mut,
         constraint = game.status == GameStatus::Active @ ErrorCode::GameNotActive,
