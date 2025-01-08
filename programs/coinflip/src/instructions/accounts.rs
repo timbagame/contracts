@@ -214,6 +214,7 @@ pub struct JoinGame<'info> {
         mut,
         constraint = game.status == GameStatus::Active @ ErrorCode::GameNotActive,
         constraint = !game.players.contains(&player.key()) @ ErrorCode::AlreadyJoined,
+        constraint = !game.ready_for_oracle(Clock::get()?.unix_timestamp) @ ErrorCode::GameReadyForOracle,
         constraint = game.players.len() < (game.max_players as usize) @ ErrorCode::GameFull,
         constraint = !game.is_private || authority.is_some() && authority.as_ref().unwrap().key() == oracle.authority @ ErrorCode::UnauthorizedPlayer,
     )]
@@ -259,10 +260,6 @@ pub struct SetOracleNumber<'info> {
     pub oracle: Account<'info, Oracle>,
     #[account(address = oracle.authority @ ErrorCode::UnauthorizedAuthority)]
     pub authority: Signer<'info>,
-    #[account(
-        seeds = [b"player_balance", game.calculate_winner(random_number, Clock::get()?.unix_timestamp).as_ref(), game_token.token_mint.as_ref()],
-        bump,
-    )]
     pub player_balance: Account<'info, PlayerBalance>,
     pub game_token: Account<'info, GameToken>,
     pub system_program: Program<'info, System>,
