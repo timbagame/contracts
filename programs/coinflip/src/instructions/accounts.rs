@@ -212,9 +212,9 @@ pub struct JoinGame<'info> {
     #[account(
         mut,
         constraint = game.status == GameStatus::Active @ ErrorCode::GameNotActive,
+        constraint = game.players.len() < (game.max_players as usize) @ ErrorCode::GameFull,
         constraint = !game.players.contains(&player_balance.key()) @ ErrorCode::AlreadyJoined,
         constraint = !game.ready_for_oracle(Clock::get()?.unix_timestamp) @ ErrorCode::GameReadyForOracle,
-        constraint = game.players.len() < (game.max_players as usize) @ ErrorCode::GameFull,
         constraint = !game.is_private || authority.is_some() && authority.as_ref().unwrap().key() == oracle.authority @ ErrorCode::UnauthorizedPlayer,
     )]
     pub game: Account<'info, Game>,
