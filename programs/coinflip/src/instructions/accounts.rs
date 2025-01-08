@@ -116,7 +116,7 @@ pub struct UpdateToken<'info> {
 }
 
 #[derive(Accounts)]
-pub struct InitializePlayerToken<'info> {
+pub struct InitializePlayerBalance<'info> {
     #[account(
         init,
         payer = player,
@@ -125,16 +125,16 @@ pub struct InitializePlayerToken<'info> {
             32 + // token_mint
             32 + // token_account
             8, // amount
-        seeds = [b"player_token", player.key().as_ref(), game_token.token_mint.as_ref()],
+        seeds = [b"player_balance", player.key().as_ref(), game_token.token_mint.as_ref()],
         bump,
     )]
-    pub player_token: Account<'info, PlayerToken>,
+    pub player_balance: Account<'info, PlayerBalance>,
     pub game_token: Account<'info, GameToken>,
     #[account(
         associated_token::mint = game_token.token_mint,
         associated_token::authority = player,
     )]
-    pub token_account: Account<'info, TokenAccount>,
+    pub player_token_account: Account<'info, TokenAccount>,
     #[account(mut)]
     pub player: Signer<'info>,
     pub token_program: Program<'info, Token>,
