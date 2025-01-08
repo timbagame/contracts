@@ -197,7 +197,7 @@ pub struct InitializeGame<'info> {
     #[account(
         mut,
         address = player_balance.player_token_account,
-        constraint = player_balance.amount + player_token_account.amount >= amount @ ErrorCode::InsufficientBalance,
+        constraint = player_token_account.amount + player_balance.amount >= amount @ ErrorCode::InsufficientBalance,
     )]
     pub player_token_account: Account<'info, TokenAccount>,
     #[account(
