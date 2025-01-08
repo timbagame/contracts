@@ -4,7 +4,7 @@ use anchor_lang::prelude::*;
 pub fn handler(ctx: Context<super::SetOracleHash>) -> Result<()> {
     let game = &mut ctx.accounts.game;
     let game_token = &mut ctx.accounts.game_token;
-    let player_token = &mut ctx.accounts.player_token;
+    let player_balance = &mut ctx.accounts.player_balance;
 
     // Calculate winner amount and fee amount checking game type
     let players_len = match game.game_type {
@@ -14,10 +14,10 @@ pub fn handler(ctx: Context<super::SetOracleHash>) -> Result<()> {
     let fee_percentage = ctx.accounts.oracle.fee_percentage;
     let (winner_amount, fee_amount) = game.calculate_amounts(players_len, fee_percentage);
 
-    game.winner = player_token.player;
+    game.winner = player_balance.player;
     game.status = GameStatus::Completed;
     game_token.fee_amount += fee_amount;
-    player_token.amount += winner_amount;
+    player_balance.amount += winner_amount;
 
     Ok(())
 }

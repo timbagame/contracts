@@ -8,13 +8,13 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
 
     // Check player token amount
     if game.game_type == GameType::Coinflip {
-        let player_token = &mut ctx.accounts.player_token;
-        let needed_amount = if player_token.amount >= game.amount {
-            player_token.amount -= game.amount;
+        let player_balance = &mut ctx.accounts.player_balance;
+        let needed_amount = if player_balance.amount >= game.amount {
+            player_balance.amount -= game.amount;
             0
         } else {
-            let needed = game.amount - player_token.amount;
-            player_token.amount = 0;
+            let needed = game.amount - player_balance.amount;
+            player_balance.amount = 0;
             needed
         };
 

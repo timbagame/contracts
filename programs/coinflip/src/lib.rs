@@ -67,7 +67,7 @@ pub mod coinflip {
         instructions::update_token::handler(ctx, ticker, min_amount, enabled)
     }
 
-    pub fn initialize_player_token(ctx: Context<InitializePlayerToken>) -> Result<()> {
+    pub fn initialize_player_balance(ctx: Context<InitializePlayerBalance>) -> Result<()> {
         instructions::initialize_player_balance::handler(ctx)
     }
 
