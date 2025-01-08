@@ -68,7 +68,7 @@ pub mod coinflip {
     }
 
     pub fn initialize_player_token(ctx: Context<InitializePlayerToken>) -> Result<()> {
-        instructions::initialize_player_token::handler(ctx)
+        instructions::initialize_player_balance::handler(ctx)
     }
 
     pub fn initialize_game(
