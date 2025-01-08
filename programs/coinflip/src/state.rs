@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use anchor_lang::solana_program::hash::hash;
 
 #[account]
 #[derive(Default)]
@@ -9,7 +10,6 @@ pub struct Oracle {
     pub max_players: u16,
     pub max_timeout: u32,
     pub min_timeout: u32,
-    pub games_counter: u32,
 }
 
 #[account]
@@ -62,7 +62,6 @@ impl Default for GameStatus {
 #[account]
 #[derive(Default)]
 pub struct Game {
-    pub id: u32,
     pub creator: Pubkey,
     pub game_type: GameType,
     pub amount: u64,
@@ -90,19 +89,24 @@ impl Game {
         current_time as u64 >= self.created_at + self.timeout as u64 + oracle_buffer_time as u64
     }
 
-    pub fn calculate_winner(&self, random_number: u64, current_time: i64) -> Pubkey {
-        if !self.ready_for_oracle(current_time) {
-            panic!("Game not ready for oracle");
-        }
+    pub fn derive_pda(&self, secret_key: [u8; 32]) -> Pubkey {
+        let random_hash = hash(secret_key.as_ref());
+        let program_id = crate::ID;
+        let (pda, _) = Pubkey::find_program_address(&[b"game", random_hash.as_ref()], &program_id);
 
-        let n_players = self.players.len();
+        pda
+    }
+
+    pub fn calculate_winner(&self, secret_key: [u8; 32]) -> Pubkey {
+        let n_players = self.players.len() as u64;
         if n_players == 1 {
             return self.players[0];
         }
 
-        let max_valid = usize::MAX - (usize::MAX % n_players);
-        let final_number = (random_number as usize + current_time as usize) % max_valid;
-        let index = final_number % n_players;
+        let random_number = u64::from_le_bytes(secret_key[0..8].try_into().unwrap());
+        let max_valid = u64::MAX - (u64::MAX % n_players);
+        let final_number = random_number % max_valid;
+        let index = (final_number % n_players) as usize;
 
         self.players[index]
     }

@@ -8,27 +8,42 @@ import {
   getOrCreateAssociatedTokenAccount,
 } from "@solana/spl-token";
 import { PublicKey } from "@solana/web3.js";
+import { createHash } from "crypto";
+
+function calculateWinner(players: PublicKey[], secretKey: number[]): PublicKey {
+  if (players.length === 1) {
+    return players[0];
+  }
+
+  // Convert first 8 bytes of secret key to number (same as contract)
+  const randomBytes = new Uint8Array(secretKey.slice(0, 8));
+  const randomNumber = new DataView(randomBytes.buffer).getBigUint64(0, true); // true for little-endian
+
+  const nPlayers = BigInt(players.length);
+  const maxValid = BigInt('0xFFFFFFFFFFFFFFFF') - (BigInt('0xFFFFFFFFFFFFFFFF') % nPlayers);
+  const finalNumber = randomNumber % maxValid;
+  const index = Number(finalNumber % nPlayers);
+
+  return players[index];
+}
 
 describe("coinflip", () => {
   // Configure the client to use the local cluster.
   anchor.setProvider(anchor.AnchorProvider.env());
   const program = anchor.workspace.Coinflip as anchor.Program<Coinflip>;
 
-  // Add helper functions at the top level
-  async function getLastGameId() {
-    const [oraclePDA] = PublicKey.findProgramAddressSync(
-      [Buffer.from("oracle")],
+  async function getGamePDA() {
+    const secretKeyBuffer = anchor.web3.Keypair.generate().publicKey.toBuffer();
+    const secretKey = Array.from(secretKeyBuffer);
+    const randomHashBuffer = createHash('sha256').update(secretKeyBuffer).digest();
+    const randomHash = Array.from(randomHashBuffer);
+
+    const [gamePDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("game"), randomHashBuffer],
       program.programId
     );
-    const oracleAccount = await program.account.oracle.fetch(oraclePDA);
-    return oracleAccount.gamesCounter - 1;
-  }
 
-  async function getGamePDA(gameCounter: number) {
-    return PublicKey.findProgramAddressSync(
-      [Buffer.from("game"), new anchor.BN(gameCounter).toArrayLike(Buffer, 'le', 4)],
-      program.programId
-    )[0];
+    return { gamePDA, randomHash, secretKey };
   }
   // Add this before all tests
   before(async () => {
@@ -75,7 +90,6 @@ describe("coinflip", () => {
       authority: oracleAccount.authority,
       feePercentage: oracleAccount.feePercentage,
       oracleBufferTime: oracleAccount.oracleBufferTime,
-      gamesCounter: oracleAccount.gamesCounter,
       oraclePDA: oraclePDA,
     };
   }
@@ -221,7 +235,7 @@ describe("coinflip", () => {
 
 
   it("Initialize Oracle Successfully", async () => {
-    const { authority, feePercentage, oracleBufferTime, gamesCounter } = await createOracleAccount();
+    const { authority, feePercentage, oracleBufferTime } = await createOracleAccount();
 
     // Get the oracle PDA
     const [oraclePDA] = PublicKey.findProgramAddressSync(
@@ -236,7 +250,6 @@ describe("coinflip", () => {
     expect(oracleData.authority.toString()).to.equal(authority.toString());
     expect(oracleData.feePercentage.toString()).to.equal(feePercentage.toString());
     expect(oracleData.oracleBufferTime.toString()).to.equal(oracleBufferTime.toString());
-    expect(oracleData.gamesCounter.toString()).to.equal(gamesCounter.toString());
   });
 
   it("Initialize Game with Invalid Parameters", async () => {
@@ -265,6 +278,7 @@ describe("coinflip", () => {
     const invalidMinParticipants = 3; // Can't be greater than max
     const timeoutDuration = 3600;
     const isPrivate = false;
+    const { randomHash } = await getGamePDA();
 
     try {
       await program.methods
@@ -275,6 +289,7 @@ describe("coinflip", () => {
           invalidMinParticipants,
           timeoutDuration,
           isPrivate,
+          randomHash,
         )
         .accounts({
           player: player.publicKey,
@@ -322,6 +337,7 @@ describe("coinflip", () => {
 
     // Initialize game
     const amount = new anchor.BN(1_000_000);
+    const { gamePDA, randomHash } = await getGamePDA();
     await program.methods
       .initializeGame(
         { coinflip: {} },
@@ -330,6 +346,7 @@ describe("coinflip", () => {
         2, // minParticipants
         3600, // timeoutDuration
         false, // isPrivate
+        randomHash,
       )
       .accounts({
         player: creator.publicKey,
@@ -341,9 +358,6 @@ describe("coinflip", () => {
       })
       .signers([creator])
       .rpc();
-
-    const gameId = await getLastGameId();
-    const gamePDA = await getGamePDA(gameId);
 
     // Join game
     await program.methods
@@ -723,7 +737,7 @@ describe("coinflip", () => {
     }
   });
 
-  it("Set Oracle Random Number Successfully", async () => {
+  it("Complete Game Successfully", async () => {
     const {
       oraclePDA,
     } = await createOracleAccount();
@@ -756,6 +770,8 @@ describe("coinflip", () => {
     await mintTokens(mintAuthority, mint, creatorTokenAccount.address, amount);
     await mintTokens(mintAuthority, mint, playerTokenAccount.address, amount);
 
+    const { gamePDA, randomHash, secretKey } = await getGamePDA();
+
     // Create game
     await program.methods
       .initializeGame(
@@ -765,6 +781,7 @@ describe("coinflip", () => {
         2,
         3600,
         false,
+        randomHash,
       )
       .accounts({
         player: creator.publicKey,
@@ -776,10 +793,6 @@ describe("coinflip", () => {
       })
       .signers([creator])
       .rpc();
-
-    // Get current game counter for PDA derivation
-    const gameId = await getLastGameId();
-    const gamePDA = await getGamePDA(gameId);
 
     // Join game with second player
     await program.methods
@@ -796,16 +809,17 @@ describe("coinflip", () => {
       .signers([player])
       .rpc();
 
-    // Set oracle random number
-    const randomNumber = new anchor.BN(Math.floor(Math.random() * 256));
+    const playersGameData = await program.account.game.fetch(gamePDA);
+    const winnerBalance = calculateWinner(playersGameData.players, secretKey);
 
     await program.methods
-      .setOracleNumber(randomNumber)
+      .completeGame(secretKey)
       .accounts({
         game: gamePDA,
         oracle: oraclePDA,
         authority: program.provider.publicKey,
         gameToken: gameTokenPDA,
+        playerBalance: winnerBalance,
       })
       .rpc();
 
@@ -833,13 +847,13 @@ describe("coinflip", () => {
 
     // Create second player using helper
     const {
-      player,
-      playerTokenAccount,
+      player: player1,
+      playerTokenAccount: player1TokenAccount,
     } = await createPlayer(mint);
 
     // Mint tokens to both accounts
     await mintTokens(mintAuthority, mint, creatorTokenAccount.address, amount);
-    await mintTokens(mintAuthority, mint, playerTokenAccount.address, amount);
+    await mintTokens(mintAuthority, mint, player1TokenAccount.address, amount);
 
     // Create game
     await program.methods
@@ -867,9 +881,9 @@ describe("coinflip", () => {
       .joinGame()
       .accounts({
         game: gamePDA,
-        player: player.publicKey,
+        player: player1.publicKey,
       })
-      .signers([player])
+      .signers([player1])
       .rpc();
 
     // Try to set oracle random number with fake oracle authority
@@ -1056,13 +1070,13 @@ describe("coinflip", () => {
 
     // Create second player using helper
     const {
-      player,
-      playerTokenAccount,
+      player: player1,
+      playerTokenAccount: player1TokenAccount,
     } = await createPlayer(mint);
 
-    // Mint tokens to both players
+    // Mint tokens to both accounts
     await mintTokens(mintAuthority, mint, creatorTokenAccount.address, amount);
-    await mintTokens(mintAuthority, mint, playerTokenAccount.address, amount);
+    await mintTokens(mintAuthority, mint, player1TokenAccount.address, amount);
 
     // Initialize game
     await program.methods
@@ -1089,9 +1103,9 @@ describe("coinflip", () => {
       .joinGame()
       .accounts({
         game: gamePDA,
-        player: player.publicKey,
+        player: player1.publicKey,
       })
-      .signers([player])
+      .signers([player1])
       .rpc();
 
     // Set oracle random number
@@ -1115,13 +1129,13 @@ describe("coinflip", () => {
     if (winner.equals(creator.publicKey)) {
       winnerKeypair = creator;
     } else {
-      winnerKeypair = player;
+      winnerKeypair = player1;
     }
 
     // Get winner's token account
     const winnerTokenAccount = winner.equals(creator.publicKey)
       ? creatorTokenAccount.address
-      : playerTokenAccount.address;
+      : player1TokenAccount.address;
 
     // Get initial balances
     const initialBalance = (
@@ -1166,13 +1180,13 @@ describe("coinflip", () => {
 
     // Create second player using helper
     const {
-      player,
-      playerTokenAccount,
+      player: player1,
+      playerTokenAccount: player1TokenAccount,
     } = await createPlayer(mint);
 
     // Mint tokens to both players
     await mintTokens(mintAuthority, mint, creatorTokenAccount.address, amount);
-    await mintTokens(mintAuthority, mint, playerTokenAccount.address, amount);
+    await mintTokens(mintAuthority, mint, player1TokenAccount.address, amount);
 
     // Initialize game
     await program.methods
@@ -1199,9 +1213,9 @@ describe("coinflip", () => {
       .joinGame()
       .accounts({
         game: gamePDA,
-        player: player.publicKey,
+        player: player1.publicKey,
       })
-      .signers([player])
+      .signers([player1])
       .rpc();
 
     // Set oracle random number
@@ -1222,8 +1236,8 @@ describe("coinflip", () => {
     expect(winner).to.not.be.null;
 
     // Try to claim as non-winner (the player who didn't win)
-    const nonWinner = winner.equals(creator.publicKey) ? player.publicKey : creator.publicKey;
-    const nonWinnerKeypair = winner.equals(creator.publicKey) ? player : creator;
+    const nonWinner = winner.equals(creator.publicKey) ? player1.publicKey : creator.publicKey;
+    const nonWinnerKeypair = winner.equals(creator.publicKey) ? player1 : creator;
 
     try {
       await program.methods

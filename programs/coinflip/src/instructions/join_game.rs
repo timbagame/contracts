@@ -34,7 +34,7 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
         }
     }
 
-    game.players.push(ctx.accounts.player.key());
+    game.players.push(ctx.accounts.player_balance.key());
 
     Ok(())
 }

@@ -15,7 +15,6 @@ pub fn handler(
     oracle.max_timeout = max_timeout;
     oracle.min_timeout = min_timeout;
     oracle.authority = ctx.accounts.authority.key();
-    oracle.games_counter = 0;
 
     Ok(())
 }
