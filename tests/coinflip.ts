@@ -1063,13 +1063,16 @@ describe("coinflip", () => {
       .signers([player])
       .rpc();
 
+    const playersGameData = await program.account.game.fetch(gamePDA);
+    const winnerBalance = calculateWinner(playersGameData.players, secretKey);
+
     // Set oracle random number first time
     await program.methods
       .completeGame(secretKey)
       .accounts({
         game: gamePDA,
         authority: program.provider.publicKey,
-        playerBalance: creatorPlayerBalancePDA,
+        playerBalance: winnerBalance,
         oracle: oraclePDA,
         gameToken: gameTokenPDA,
       })
@@ -1082,7 +1085,7 @@ describe("coinflip", () => {
         .accounts({
           game: gamePDA,
           authority: program.provider.publicKey,
-          playerBalance: creatorPlayerBalancePDA,
+          playerBalance: winnerBalance,
           oracle: oraclePDA,
           gameToken: gameTokenPDA,
         })
