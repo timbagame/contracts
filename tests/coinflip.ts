@@ -231,6 +231,34 @@ describe("coinflip", () => {
     const timeoutDuration = 3600;
     const isPrivate = false;
 
+    // Get oracle PDA
+    const [oraclePDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("oracle")],
+      program.programId
+    );
+
+    // Get game token PDA
+    const [gameTokenPDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("token"), mint.toBuffer()],
+      program.programId
+    );
+
+    // Get player token PDA
+    const [playerTokenPDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("player_token"), player.publicKey.toBuffer(), mint.toBuffer()],
+      program.programId
+    );
+
+
+    // Get vault token account
+    const vaultTokenAccount = await getOrCreateAssociatedTokenAccount(
+      program.provider.connection,
+      player, // payer
+      mint,
+      gameTokenPDA,
+      true // allowOwnerOffCurve
+    );
+
     try {
       await program.methods
         .initializeGame(
@@ -243,6 +271,11 @@ describe("coinflip", () => {
         )
         .accounts({
           player: player.publicKey,
+          playerToken: playerTokenPDA,
+          oracle: oraclePDA,
+          gameToken: gameTokenPDA,
+          playerTokenAccount: playerTokenAccount.address,
+          gameTokenAccount: vaultTokenAccount.address,
         })
         .signers([player])
         .rpc();
