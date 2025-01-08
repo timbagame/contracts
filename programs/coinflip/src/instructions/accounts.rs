@@ -87,7 +87,6 @@ pub struct InitializeToken<'info> {
         associated_token::authority = game_vault,
     )]
     pub game_token_account: Account<'info, TokenAccount>,
-    #[account()]
     pub oracle: Account<'info, Oracle>,
     #[account(
         mut,
@@ -258,13 +257,9 @@ pub struct SetOracleHash<'info> {
         constraint = game.status == GameStatus::Active @ ErrorCode::GameNotActive,
     )]
     pub game: Account<'info, Game>,
-    #[account()]
     pub oracle: Account<'info, Oracle>,
     #[account(address = oracle.authority @ ErrorCode::UnauthorizedAuthority)]
     pub authority: Signer<'info>,
-    #[account(
-        constraint = game_token.token_mint == game.token_mint @ ErrorCode::InvalidToken,
-    )]
     #[account(
         seeds = [b"player_token", game.calculate_winner(random_number, Clock::get()?.unix_timestamp).as_ref(), game_token.token_mint.as_ref()],
         bump,
@@ -311,7 +306,6 @@ pub struct UnjoinGame<'info> {
         address = game_token.game_token_account,
     )]
     pub game_token_account: Account<'info, TokenAccount>,
-    #[account()]
     pub oracle: Account<'info, Oracle>,
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
@@ -329,7 +323,6 @@ pub struct CancelGame<'info> {
         constraint = game.buffer_passed(oracle.oracle_buffer_time, Clock::get()?.unix_timestamp) @ ErrorCode::GameReadyForOracle,
     )]
     pub game: Account<'info, Game>,
-    #[account()]
     pub player: Signer<'info>,
     #[account(
         mut,
@@ -337,7 +330,6 @@ pub struct CancelGame<'info> {
         constraint = player_balance.token_mint == game.token_mint @ ErrorCode::InvalidToken,
     )]
     pub player_balance: Account<'info, PlayerBalance>,
-    #[account()]
     pub oracle: Account<'info, Oracle>,
     #[account(
         constraint = game_token.token_mint == game.token_mint @ ErrorCode::InvalidToken,
