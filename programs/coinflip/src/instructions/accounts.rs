@@ -243,7 +243,7 @@ pub struct JoinGame<'info> {
 
 #[derive(Accounts)]
 #[instruction(
-    secret_key: [u8; 32],
+    secret_key: [u8; 64],
 )]
 pub struct CompleteGame<'info> {
     #[account(
