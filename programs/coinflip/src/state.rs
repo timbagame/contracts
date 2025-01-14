@@ -89,7 +89,7 @@ impl Game {
         current_time as u64 >= self.created_at + self.timeout as u64 + oracle_buffer_time as u64
     }
 
-    pub fn derive_pda(&self, secret_key: [u8; 32]) -> Pubkey {
+    pub fn derive_pda(&self, secret_key: [u8; 64]) -> Pubkey {
         let random_hash = hash(secret_key.as_ref());
         let program_id = crate::ID;
         let (pda, _) = Pubkey::find_program_address(&[b"game", random_hash.as_ref()], &program_id);
@@ -97,7 +97,7 @@ impl Game {
         pda
     }
 
-    pub fn calculate_winner(&self, secret_key: [u8; 32]) -> Pubkey {
+    pub fn calculate_winner(&self, secret_key: [u8; 64]) -> Pubkey {
         let n_players = self.players.len() as u64;
         if n_players == 1 {
             return self.players[0];

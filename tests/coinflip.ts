@@ -33,7 +33,7 @@ describe("coinflip", () => {
   const program = anchor.workspace.Coinflip as anchor.Program<Coinflip>;
 
   async function getGamePDA() {
-    const secretKeyBuffer = anchor.web3.Keypair.generate().publicKey.toBuffer();
+    const secretKeyBuffer = anchor.web3.Keypair.generate().secretKey;
     const secretKey = Array.from(secretKeyBuffer);
     const randomHashBuffer = createHash('sha256').update(secretKeyBuffer).digest();
     const randomHash = Array.from(randomHashBuffer);
