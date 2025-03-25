@@ -4,13 +4,6 @@
 	"name": "Timba Contracts",
 	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
 	"image": "mcr.microsoft.com/devcontainers/universal:2-linux",
-	"features": {
-		"ghcr.io/devcontainers/features/rust:1": {
-			"version": "latest",
-			"profile": "default",
-			"targets": "x86_64-unknown-linux-gnu,wasm32-unknown-unknown"
-		}
-	},
 	"postCreateCommand": "bash -i .devcontainer/post-create.sh",
 	"postStartCommand": "yarn install",
 	"customizations": {

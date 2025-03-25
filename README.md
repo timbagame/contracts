@@ -30,18 +30,12 @@ If you prefer not to use devcontainers, you'll need to install the following pre
 
 #### Manual Installation Steps
 
-1. Install Solana:
+1. Install Solana and Anchor:
 ```bash
-sh -c "$(curl -sSfL https://release.anza.xyz/stable/install)"
+curl --proto '=https' --tlsv1.2 -sSfL https://solana-install.solana.workers.dev | bash
 ```
 
-2. Install Anchor:
-```bash
-cargo install --git https://github.com/coral-xyz/anchor avm --locked --force
-avm install latest
-```
-
-3. Install dependencies:
+2. Install dependencies:
 ```bash
 yarn install
 ```
