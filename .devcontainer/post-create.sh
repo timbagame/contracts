@@ -1,10 +1,7 @@
 set -ef
 
-# Install Solana  
-sh -c "$(curl -sSfL https://release.anza.xyz/stable/install)"
+# Install Solana
+curl --proto '=https' --tlsv1.2 -sSfL https://solana-install.solana.workers.dev | bash
 echo 'export PATH="/home/codespace/.local/share/solana/install/active_release/bin:$PATH"' >> ~/.bashrc
 source ~/.bashrc
 solana-keygen new --no-bip39-passphrase
-
-# Install Anchor
-npm install -g @coral-xyz/anchor-cli
