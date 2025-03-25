@@ -7,11 +7,14 @@ skip-lint = false
 [programs.devnet]
 coinflip = "2CnFDP6E2QNzD1QEcrNaZ29NArtrFWURQm4GmudXnZ9o"
 
+[programs.localnet]
+coinflip = "2CnFDP6E2QNzD1QEcrNaZ29NArtrFWURQm4GmudXnZ9o"
+
 [registry]
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "Devnet"
+cluster = "Localnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
