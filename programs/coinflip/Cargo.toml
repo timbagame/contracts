@@ -19,3 +19,4 @@ idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
 [dependencies]
 anchor-lang = "0.31.0"
 anchor-spl = "0.31.0"
+bytemuck_derive = "=1.8.1"
