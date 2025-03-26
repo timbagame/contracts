@@ -5,10 +5,14 @@
   // Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
   "image": "mcr.microsoft.com/devcontainers/base:noble",
   "postCreateCommand": "bash -i .devcontainer/post-create.sh",
-  "postStartCommand": "yarn install",
   "customizations": {
     "vscode": {
-      "extensions": ["fill-labs.dependi"]
+      "extensions": [
+        "fill-labs.dependi"
+      ],
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash"
+      }
     }
   }
 }
