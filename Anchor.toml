@@ -6,10 +6,10 @@ resolution = true
 skip-lint = false
 
 [programs.devnet]
-coinflip = "2CnFDP6E2QNzD1QEcrNaZ29NArtrFWURQm4GmudXnZ9o"
+coinflip = "Ax5KbtdH2KHgk1EJS1LeuyYiwEUDmKxPUsPwnzzgc43Y"
 
 [programs.localnet]
-coinflip = "2CnFDP6E2QNzD1QEcrNaZ29NArtrFWURQm4GmudXnZ9o"
+coinflip = "Ax5KbtdH2KHgk1EJS1LeuyYiwEUDmKxPUsPwnzzgc43Y"
 
 [registry]
 url = "https://api.apr.dev"
