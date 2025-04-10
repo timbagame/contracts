@@ -101,6 +101,47 @@ async function main() {
     } catch (error) {
         console.error("Error with oracle setup:", error);
     }
+
+    // Let's initialize a token (wSOL in this case)
+    console.log("Initializing wSOL token...");
+
+    // Use the standard Wrapped SOL mint address
+    const WRAPPED_SOL_MINT = new PublicKey("So11111111111111111111111111111111111111112");
+
+    // Find token PDA
+    const [tokenPDA] = PublicKey.findProgramAddressSync(
+        [Buffer.from("token"), WRAPPED_SOL_MINT.toBuffer()],
+        program.programId
+    );
+
+    try {
+        // Check if the token account already exists
+        const tokenAccount = await connection.getAccountInfo(tokenPDA);
+
+        if (tokenAccount) {
+            console.log("Token account already exists:", tokenPDA.toString());
+        } else {
+            // Initialize token
+            await program.methods
+                .initializeToken(
+                    "SOL",             // ticker
+                    new BN(10_000_000), // min_amount (0.01 SOL in lamports)
+                    true               // enabled
+                )
+                .accounts({
+                    authority: authorityKp.publicKey,
+                    tokenMint: WRAPPED_SOL_MINT,
+                    oracle: oraclePDA,
+                })
+                .signers([authorityKp])
+                .rpc();
+
+            console.log("Token initialized successfully!");
+            console.log("Token Account:", tokenPDA.toString());
+        }
+    } catch (error) {
+        console.error("Error initializing token:", error);
+    }
 }
 
 main().catch((error) => {
