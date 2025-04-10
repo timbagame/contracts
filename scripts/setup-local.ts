@@ -51,13 +51,14 @@ async function main() {
     const wsolAccount = await createWrappedNativeAccount(
         connection,
         authorityKp,
-        targetWallet,
+        authorityKp.publicKey,
         1000 * LAMPORTS_PER_SOL
     );
 
     console.log(`Successfully created wSOL account: ${wsolAccount.toString()}`);
 
-    console.log(`Successfully created wSOL account with 1000 wSOL for ${targetWallet.toString()}`);
+    // If you want to transfer the wSOL to the target wallet, you'll need to add that as a separate step
+    console.log(`Successfully created wSOL account with 1000 wSOL for ${authorityKp.publicKey.toString()}`);
 
     // Setup provider
     const wallet = new Wallet(authorityKp);
@@ -66,34 +67,43 @@ async function main() {
     // Create Program interface
     const program = new Program(idl as Coinflip, provider);
 
-    // Derive config PDA
-    const [configPDA] = PublicKey.findProgramAddressSync(
-        [Buffer.from("config")],
+    // Derive oracle PDA
+    const [oraclePDA] = PublicKey.findProgramAddressSync(
+        [Buffer.from("oracle")],
         program.programId
     );
 
     try {
-        // Initialize config
-        await program.methods
-            .initializeConfig(
-                authorityKp.publicKey, // treasury
-                new BN(1), // 1% fee
-                authorityKp.publicKey  // operator
-            )
-            .accounts({
-                signer: authorityKp.publicKey,
-            })
-            .signers([authorityKp])
-            .rpc();
+        // Check if the oracle account already exists
+        const oracleAccount = await connection.getAccountInfo(oraclePDA);
 
-        console.log("Config initialized successfully!");
-        console.log("Config Account:", configPDA.toString());
+        if (oracleAccount) {
+            console.log("Oracle account already exists:", oraclePDA.toString());
+        } else {
+            // Initialize oracle only if it doesn't exist
+            await program.methods
+                .initializeOracle(
+                    new BN(1), // 1% fee
+                    300, // oracle_buffer_time: 5 minutes in seconds
+                    100, // max_players
+                    3600, // max_timeout: 1 hour in seconds
+                    300, // min_timeout: 5 minutes in seconds
+                )
+                .accounts({
+                    authority: authorityKp.publicKey,
+                })
+                .signers([authorityKp])
+                .rpc();
+
+            console.log("Oracle initialized successfully!");
+            console.log("Oracle Account:", oraclePDA.toString());
+        }
     } catch (error) {
-        console.error("Error initializing config:", error);
+        console.error("Error with oracle setup:", error);
     }
 }
 
 main().catch((error) => {
     console.error("Script failed:", error);
     process.exit(1);
-}); 
+});
