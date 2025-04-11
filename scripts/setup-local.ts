@@ -1,7 +1,12 @@
 import idl from "../target/idl/coinflip.json";
 import type { Coinflip } from "../target/types/coinflip";
 import { Connection, LAMPORTS_PER_SOL, PublicKey, Keypair } from "@solana/web3.js";
-import { createWrappedNativeAccount } from "@solana/spl-token";
+import {
+    getAssociatedTokenAddressSync,
+    createAssociatedTokenAccountInstruction,
+    TOKEN_PROGRAM_ID,
+    ASSOCIATED_TOKEN_PROGRAM_ID,
+} from "@solana/spl-token";
 import * as anchor from "@coral-xyz/anchor";
 import * as fs from "fs";
 import * as os from "os";
@@ -62,17 +67,6 @@ async function main() {
         console.log(`Authority wallet ${wallet.publicKey.toString()} already has sufficient funds.`);
     }
 
-    // Create and fund wrapped SOL account
-    console.log("Creating wrapped SOL account...");
-    const wsolAccount = await createWrappedNativeAccount(
-        connection,
-        authorityKp,
-        wallet.publicKey,
-        1000 * LAMPORTS_PER_SOL
-    );
-
-    console.log(`Successfully created wSOL account: ${wsolAccount.toString()}`);
-
     // Create Program interface
     const program = new anchor.Program(idl as Coinflip, provider);
 
@@ -118,8 +112,21 @@ async function main() {
 
     // Find token PDA
     const [tokenPDA] = PublicKey.findProgramAddressSync(
-        [Buffer.from("token"), WRAPPED_SOL_MINT.toBuffer()],
+        [Buffer.from("game_token"), WRAPPED_SOL_MINT.toBuffer()],
         program.programId
+    );
+
+    // Find game vault PDA
+    const [gameVaultPDA] = PublicKey.findProgramAddressSync(
+        [Buffer.from("game_vault"), WRAPPED_SOL_MINT.toBuffer()],
+        program.programId
+    );
+
+    // Find game token account (ATA)
+    const gameTokenAccountATA = getAssociatedTokenAddressSync(
+        WRAPPED_SOL_MINT,
+        gameVaultPDA,
+        true // allowOwnerOffCurve - PDA can be off-curve
     );
 
     try {
@@ -140,7 +147,21 @@ async function main() {
                     authority: wallet.publicKey,
                     tokenMint: WRAPPED_SOL_MINT,
                     oracle: oraclePDA,
+                    gameToken: tokenPDA, // The game token state account PDA
+                    gameVault: gameVaultPDA,
+                    gameTokenAccount: gameTokenAccountATA,
+                    systemProgram: anchor.web3.SystemProgram.programId,
+                    tokenProgram: TOKEN_PROGRAM_ID,
+                    associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
                 })
+                .preInstructions([
+                    createAssociatedTokenAccountInstruction(
+                        wallet.publicKey, // Payer
+                        gameTokenAccountATA, // ATA address
+                        gameVaultPDA, // Owner (the vault PDA)
+                        WRAPPED_SOL_MINT // Mint
+                    )
+                ])
                 .rpc();
 
             console.log("Token initialized successfully!");
