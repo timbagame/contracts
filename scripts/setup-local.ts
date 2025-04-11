@@ -1,8 +1,10 @@
-import { AnchorProvider, Program, Wallet, BN } from "@coral-xyz/anchor";
 import idl from "../target/idl/coinflip.json";
 import type { Coinflip } from "../target/types/coinflip";
-import { Connection, Keypair, LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
+import { Connection, LAMPORTS_PER_SOL, PublicKey, Keypair } from "@solana/web3.js";
 import { createWrappedNativeAccount } from "@solana/spl-token";
+import * as anchor from "@coral-xyz/anchor";
+import * as fs from "fs";
+import * as os from "os";
 
 async function safeAirdrop(connection: Connection, address: PublicKey, amount: number) {
     try {
@@ -26,8 +28,15 @@ async function main() {
     // Connect to local Solana network
     const connection = new Connection("http://127.0.0.1:8899", "confirmed");
 
-    // Create or load a keypair for the authority
-    const authorityKp = Keypair.generate();
+    // Load wallet from default Solana CLI path
+    const walletPath = os.homedir() + "/.config/solana/id.json";
+    const secretKey = JSON.parse(fs.readFileSync(walletPath, "utf-8"));
+    const authorityKp = Keypair.fromSecretKey(new Uint8Array(secretKey));
+    const wallet = new anchor.Wallet(authorityKp);
+
+    // Setup provider
+    const provider = new anchor.AnchorProvider(connection, wallet, anchor.AnchorProvider.defaultOptions());
+    anchor.setProvider(provider);
 
     // Add the target wallet address
     const targetWallet = new PublicKey("HhEWJstpJE6vvrYGS3BaK5ZJbdVAXqGmQ2MBM8FyiPvy");
@@ -41,9 +50,16 @@ async function main() {
     console.log("SOL airdrop completed successfully");
 
     // Airdrop to authority wallet (need extra SOL for wrapping)
-    const authorityAirdrop = await safeAirdrop(connection, authorityKp.publicKey, 1002 * LAMPORTS_PER_SOL);
-    if (!authorityAirdrop) {
-        throw new Error("Failed to fund authority wallet");
+    const authorityBalance = await connection.getBalance(wallet.publicKey);
+    const neededAmount = 1002 * LAMPORTS_PER_SOL;
+    if (authorityBalance < neededAmount) {
+        console.log(`Airdropping ${neededAmount / LAMPORTS_PER_SOL} SOL to authority ${wallet.publicKey.toString()}`);
+        const authorityAirdrop = await safeAirdrop(connection, wallet.publicKey, neededAmount - authorityBalance);
+        if (!authorityAirdrop) {
+            throw new Error("Failed to fund authority wallet");
+        }
+    } else {
+        console.log(`Authority wallet ${wallet.publicKey.toString()} already has sufficient funds.`);
     }
 
     // Create and fund wrapped SOL account
@@ -51,21 +67,14 @@ async function main() {
     const wsolAccount = await createWrappedNativeAccount(
         connection,
         authorityKp,
-        authorityKp.publicKey,
+        wallet.publicKey,
         1000 * LAMPORTS_PER_SOL
     );
 
     console.log(`Successfully created wSOL account: ${wsolAccount.toString()}`);
 
-    // If you want to transfer the wSOL to the target wallet, you'll need to add that as a separate step
-    console.log(`Successfully created wSOL account with 1000 wSOL for ${authorityKp.publicKey.toString()}`);
-
-    // Setup provider
-    const wallet = new Wallet(authorityKp);
-    const provider = new AnchorProvider(connection, wallet, {});
-
     // Create Program interface
-    const program = new Program(idl as Coinflip, provider);
+    const program = new anchor.Program(idl as Coinflip, provider);
 
     // Derive oracle PDA
     const [oraclePDA] = PublicKey.findProgramAddressSync(
@@ -83,16 +92,15 @@ async function main() {
             // Initialize oracle only if it doesn't exist
             await program.methods
                 .initializeOracle(
-                    new BN(1), // 1% fee
+                    new anchor.BN(1), // 1% fee
                     300, // oracle_buffer_time: 5 minutes in seconds
                     100, // max_players
                     3600, // max_timeout: 1 hour in seconds
                     300, // min_timeout: 5 minutes in seconds
                 )
                 .accounts({
-                    authority: authorityKp.publicKey,
+                    authority: wallet.publicKey,
                 })
-                .signers([authorityKp])
                 .rpc();
 
             console.log("Oracle initialized successfully!");
@@ -125,15 +133,14 @@ async function main() {
             await program.methods
                 .initializeToken(
                     "SOL",             // ticker
-                    new BN(10_000_000), // min_amount (0.01 SOL in lamports)
+                    new anchor.BN(10_000_000), // min_amount (0.01 SOL in lamports)
                     true               // enabled
                 )
                 .accounts({
-                    authority: authorityKp.publicKey,
+                    authority: wallet.publicKey,
                     tokenMint: WRAPPED_SOL_MINT,
                     oracle: oraclePDA,
                 })
-                .signers([authorityKp])
                 .rpc();
 
             console.log("Token initialized successfully!");
