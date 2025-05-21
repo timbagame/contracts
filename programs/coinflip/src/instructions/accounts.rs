@@ -42,7 +42,11 @@ pub struct InitializeOracle<'info> {
     min_timeout: u32,
 )]
 pub struct UpdateOracle<'info> {
-    #[account(mut)]
+    #[account(
+        mut,
+        seeds = [b"oracle"],
+        bump,
+    )]
     pub oracle: Account<'info, Oracle>,
     #[account(
         address = oracle.authority @ ErrorCode::UnauthorizedAuthority,
@@ -86,6 +90,10 @@ pub struct InitializeToken<'info> {
         associated_token::authority = game_vault,
     )]
     pub game_token_account: Account<'info, TokenAccount>,
+     #[account(
+        seeds = [b"oracle"],
+        bump,
+    )]
     pub oracle: Account<'info, Oracle>,
     #[account(
         mut,
@@ -106,6 +114,10 @@ pub struct InitializeToken<'info> {
 pub struct UpdateToken<'info> {
     #[account(mut)]
     pub game_token: Account<'info, GameToken>,
+    #[account(
+        seeds = [b"oracle"],
+        bump,
+    )]
     pub oracle: Account<'info, Oracle>,
     #[account(
         address = oracle.authority @ ErrorCode::UnauthorizedAuthority,
@@ -152,8 +164,8 @@ pub struct InitializePlayerBalance<'info> {
 )]
 pub struct InitializeGame<'info> {
     #[account(
-        init, 
-        payer = player, 
+        init,
+        payer = player,
         space = 8 + // discriminator
             32 + // creator
             1 + // game_type
@@ -188,7 +200,11 @@ pub struct InitializeGame<'info> {
     pub player: Signer<'info>,
     #[account(mut)]
     pub player_balance: Account<'info, PlayerBalance>,
-    #[account(mut)]
+    #[account(
+        mut,
+        seeds = [b"oracle"],
+        bump,
+    )]
     pub oracle: Account<'info, Oracle>,
     pub game_token: Account<'info, GameToken>,
     #[account(
@@ -236,6 +252,10 @@ pub struct JoinGame<'info> {
         address = game_token.game_token_account @ ErrorCode::InvalidToken,
     )]
     pub game_token_account: Account<'info, TokenAccount>,
+    #[account(
+        seeds = [b"oracle"],
+        bump,
+    )]
     pub oracle: Account<'info, Oracle>,
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
@@ -254,6 +274,10 @@ pub struct CompleteGame<'info> {
         constraint = game.ready_for_oracle(Clock::get()?.unix_timestamp) @ ErrorCode::GameNotReadyForOracle,
     )]
     pub game: Account<'info, Game>,
+    #[account(
+        seeds = [b"oracle"],
+        bump,
+    )]
     pub oracle: Account<'info, Oracle>,
     #[account(address = oracle.authority @ ErrorCode::UnauthorizedAuthority)]
     pub authority: Signer<'info>,
@@ -297,6 +321,10 @@ pub struct UnjoinGame<'info> {
         address = game_token.game_token_account @ ErrorCode::InvalidToken,
     )]
     pub game_token_account: Account<'info, TokenAccount>,
+    #[account(
+        seeds = [b"oracle"],
+        bump,
+    )]
     pub oracle: Account<'info, Oracle>,
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
@@ -321,6 +349,10 @@ pub struct CancelGame<'info> {
     pub player: Signer<'info>,
     #[account(mut)]
     pub player_balance: Account<'info, PlayerBalance>,
+    #[account(
+        seeds = [b"oracle"],
+        bump,
+    )]
     pub oracle: Account<'info, Oracle>,
     pub game_token: Account<'info, GameToken>,
     /// CHECK: This is a PDA that serves as the authority for the game's token accounts
@@ -382,7 +414,11 @@ pub struct ClaimFee<'info> {
         address = game_token.game_vault @ ErrorCode::InvalidVault,
     )]
     pub game_vault: AccountInfo<'info>,
-    #[account(mut)]
+    #[account(
+        mut,
+        seeds = [b"oracle"],
+        bump,
+    )]
     pub oracle: Account<'info, Oracle>,
     #[account(address = oracle.authority @ ErrorCode::UnauthorizedAuthority)]
     pub authority: Signer<'info>,
