@@ -9,9 +9,6 @@ pub fn handler(
     let game_token = &mut ctx.accounts.game_token;
     game_token.ticker = ticker;
     game_token.token_mint = ctx.accounts.token_mint.key();
-    game_token.game_token_account = ctx.accounts.game_token_account.key();
-    game_token.game_vault = ctx.accounts.game_vault.key();
-    game_token.bump = ctx.bumps.game_vault;
     game_token.min_amount = min_amount;
     game_token.fee_amount = 0;
     game_token.enabled = enabled;

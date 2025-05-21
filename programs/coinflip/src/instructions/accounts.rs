@@ -68,9 +68,6 @@ pub struct InitializeToken<'info> {
         space = 8 + // discriminator
             4 + ticker.len() + // ticker
             32 + // token_mint
-            32 + // game_token_account
-            32 + // game_vault
-            1 + // bump
             8 + // min_amount
             8 + // fee_amount
             1, // enabled
@@ -138,7 +135,6 @@ pub struct InitializePlayerBalance<'info> {
         space = 8 + // discriminator
             32 + // player
             32 + // token_mint
-            32 + // player_token_account
             8, // amount
         seeds = [b"player_balance", player.key().as_ref(), token_mint.key().as_ref()],
         bump,
