@@ -6,16 +6,16 @@ resolution = true
 skip-lint = false
 
 [programs.devnet]
-coinflip = "DNAGhpeMXvdCkwTYKmuJfcwpu4sJpegcnHnHih1Y3Gzi"
+coinflip = "9eN8pkAbCz8XZeGJdjxUtkxXYJKVfBwsJ2GFhYRYB43z"
 
 [programs.localnet]
-coinflip = "DNAGhpeMXvdCkwTYKmuJfcwpu4sJpegcnHnHih1Y3Gzi"
+coinflip = "9eN8pkAbCz8XZeGJdjxUtkxXYJKVfBwsJ2GFhYRYB43z"
 
 [registry]
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "Localnet"
+cluster = "localnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
