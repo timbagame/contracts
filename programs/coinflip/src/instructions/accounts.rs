@@ -310,6 +310,10 @@ pub struct CompleteGame<'info> {
     pub authority: Signer<'info>,
     #[account(mut)]
     pub player_balance: Account<'info, PlayerBalance>,
+    #[account(
+        seeds = [b"game_token", game.token_mint.as_ref()],
+        bump,
+    )]
     pub game_token: Account<'info, GameToken>,
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
