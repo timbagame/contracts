@@ -152,7 +152,7 @@ pub struct InitializePlayerBalance<'info> {
     pub game_token: Account<'info, GameToken>,
     pub token_mint: Account<'info, Mint>,
     #[account(
-        associated_token::mint = game_token.token_mint,
+        associated_token::mint = token_mint,
         associated_token::authority = player,
     )]
     pub player_token_account: Account<'info, TokenAccount>,
