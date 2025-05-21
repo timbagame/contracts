@@ -103,7 +103,7 @@ pub struct Game {
     pub created_at: u64,
     // Timeout duration in seconds
     pub timeout: u32,
-    // Whether this is a private game requiring approval
+    // Whether this is a private game requiring oracle approval
     pub is_private: bool,
 }
 
