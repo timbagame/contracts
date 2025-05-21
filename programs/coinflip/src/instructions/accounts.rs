@@ -336,26 +336,27 @@ pub struct UnjoinGame<'info> {
     )]
     pub game: Account<'info, Game>,
     pub player: Signer<'info>,
+    #[account(
+        seeds = [b"game_token", game.token_mint.as_ref()],
+        bump,
+    )]
     pub game_token: Account<'info, GameToken>,
     #[account(
         mut,
-        seeds = [b"player_balance", player.key().as_ref(), game_token.token_mint.as_ref()],
+        seeds = [b"player_balance", player.key().as_ref(), game.token_mint.as_ref()],
         bump,
     )]
     pub player_balance: Account<'info, PlayerBalance>,
-    /// CHECK: This is a PDA that serves as the authority for the game's token accounts
-    #[account(
-        address = game_token.game_vault @ ErrorCode::InvalidVault,
-    )]
-    pub game_vault: AccountInfo<'info>,
     #[account(
         mut,
-        address = player_balance.player_token_account @ ErrorCode::InvalidToken,
+        associated_token::mint = game.token_mint,
+        associated_token::authority = player,
     )]
     pub player_token_account: Account<'info, TokenAccount>,
     #[account(
         mut,
-        address = game_token.game_token_account @ ErrorCode::InvalidToken,
+        associated_token::mint = game.token_mint,
+        associated_token::authority = game_token.game_vault,
     )]
     pub game_token_account: Account<'info, TokenAccount>,
     #[account(
@@ -365,6 +366,7 @@ pub struct UnjoinGame<'info> {
     pub oracle: Account<'info, Oracle>,
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
 }
 
 #[derive(Accounts)]
