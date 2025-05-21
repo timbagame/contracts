@@ -285,6 +285,7 @@ pub struct JoinGame<'info> {
     pub oracle: Account<'info, Oracle>,
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
 }
 
 #[derive(Accounts)]
