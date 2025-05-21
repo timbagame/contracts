@@ -297,7 +297,7 @@ pub struct CompleteGame<'info> {
         mut,
         constraint = game.status == GameStatus::Active @ ErrorCode::GameNotActive,
         constraint = game.derive_pda(secret_key) == game.key() @ ErrorCode::InvalidSecretKey,
-        constraint = game.calculate_winner(secret_key) == player_balance.key() @ ErrorCode::UnauthorizedPlayer,
+        constraint = game.calculate_winner(secret_key) == player.key() @ ErrorCode::UnauthorizedPlayer,
         constraint = game.ready_for_oracle(Clock::get()?.unix_timestamp) @ ErrorCode::GameNotReadyForOracle,
     )]
     pub game: Account<'info, Game>,
@@ -308,7 +308,12 @@ pub struct CompleteGame<'info> {
     pub oracle: Account<'info, Oracle>,
     #[account(address = oracle.authority @ ErrorCode::UnauthorizedAuthority)]
     pub authority: Signer<'info>,
-    #[account(mut)]
+    pub player: AccountInfo<'info>,
+    #[account(
+        mut,
+        seeds = [b"player_balance", player.key().as_ref(), game.token_mint.as_ref()],
+        bump,
+    )]
     pub player_balance: Account<'info, PlayerBalance>,
     #[account(
         seeds = [b"game_token", game.token_mint.as_ref()],
