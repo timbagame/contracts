@@ -201,7 +201,6 @@ pub struct InitializeGame<'info> {
             GameType::Coinflip => max_players >= 2 && min_players >= 2,
             GameType::Giveaway => max_players >= 1 && min_players >= 1,
         } @ ErrorCode::InvalidPlayersCount,
-        constraint = player_balance.token_mint == game_token.token_mint @ ErrorCode::InvalidToken,
     )]
     pub game: Account<'info, Game>,
     #[account(mut)]
@@ -226,16 +225,19 @@ pub struct InitializeGame<'info> {
     pub game_token: Account<'info, GameToken>,
     #[account(
         mut,
-        address = player_balance.player_token_account @ ErrorCode::InvalidToken,
+        associated_token::mint = token_mint,
+        associated_token::authority = player,
     )]
     pub player_token_account: Account<'info, TokenAccount>,
     #[account(
         mut,
-        address = game_token.game_token_account @ ErrorCode::InvalidToken,
+        associated_token::mint = token_mint,
+        associated_token::authority = game_token.game_vault,
     )]
     pub game_token_account: Account<'info, TokenAccount>,
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
 }
 
 #[derive(Accounts)]
