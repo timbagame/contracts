@@ -140,7 +140,7 @@ pub struct InitializePlayerBalance<'info> {
             32 + // token_mint
             32 + // player_token_account
             8, // amount
-        seeds = [b"player_balance", player.key().as_ref(), game_token.token_mint.as_ref()],
+        seeds = [b"player_balance", player.key().as_ref(), token_mint.key().as_ref()],
         bump,
     )]
     pub player_balance: Account<'info, PlayerBalance>,
