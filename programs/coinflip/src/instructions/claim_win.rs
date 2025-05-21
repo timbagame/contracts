@@ -3,7 +3,6 @@ use anchor_spl::token;
 
 pub fn handler(ctx: Context<super::ClaimWin>) -> Result<()> {
     let player_balance = &mut ctx.accounts.player_balance;
-    let game_token = &mut ctx.accounts.game_token;
     let amount = player_balance.amount;
     player_balance.amount = 0;
 
@@ -17,8 +16,8 @@ pub fn handler(ctx: Context<super::ClaimWin>) -> Result<()> {
             },
             &[&[
                 b"game_vault",
-                game_token.token_mint.as_ref(),
-                &[game_token.bump],
+                ctx.accounts.token_mint.key().as_ref(),
+                &[ctx.bumps.game_vault],
             ]],
         ),
         amount,
