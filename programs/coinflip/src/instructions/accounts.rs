@@ -112,8 +112,13 @@ pub struct InitializeToken<'info> {
     enabled: bool,
 )]
 pub struct UpdateToken<'info> {
-    #[account(mut)]
+    #[account(
+        mut,
+        seeds = [b"game_token", token_mint.key().as_ref()],
+        bump,
+    )]
     pub game_token: Account<'info, GameToken>,
+    pub token_mint: Account<'info, Mint>,
     #[account(
         seeds = [b"oracle"],
         bump,
@@ -139,7 +144,13 @@ pub struct InitializePlayerBalance<'info> {
         bump,
     )]
     pub player_balance: Account<'info, PlayerBalance>,
+    #[account(
+        mut,
+        seeds = [b"game_token", token_mint.key().as_ref()],
+        bump,
+    )]
     pub game_token: Account<'info, GameToken>,
+    pub token_mint: Account<'info, Mint>,
     #[account(
         associated_token::mint = game_token.token_mint,
         associated_token::authority = player,
