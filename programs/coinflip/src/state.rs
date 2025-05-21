@@ -15,7 +15,6 @@ pub struct Oracle {
 #[account]
 #[derive(Default)]
 pub struct GameToken {
-    pub ticker: String,
     pub token_mint: Pubkey,
     pub min_amount: u64,
     pub fee_amount: u64,
