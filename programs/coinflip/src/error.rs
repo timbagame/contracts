@@ -12,18 +12,12 @@ pub enum ErrorCode {
     GameNotReadyForOracle,
     #[msg("Invalid secret key")]
     InvalidSecretKey,
-    #[msg("Invalid vault")]
-    InvalidVault,
     #[msg("Invalid players count")]
     InvalidPlayersCount,
     #[msg("Game not active")]
     GameNotActive,
-    #[msg("Game completed")]
-    GameCompleted,
     #[msg("Invalid timeout")]
     InvalidTimeout,
-    #[msg("Invalid token")]
-    InvalidToken,
     #[msg("Insufficient balance")]
     InsufficientBalance,
     #[msg("Unauthorized player")]
