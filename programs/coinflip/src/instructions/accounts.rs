@@ -246,7 +246,7 @@ pub struct JoinGame<'info> {
         mut,
         constraint = game.status == GameStatus::Active @ ErrorCode::GameNotActive,
         constraint = game.players.len() < (game.max_players as usize) @ ErrorCode::GameFull,
-        constraint = !game.players.contains(&player_balance.key()) @ ErrorCode::AlreadyJoined,
+        constraint = !game.players.contains(&player.key()) @ ErrorCode::AlreadyJoined,
         constraint = !game.ready_for_oracle(Clock::get()?.unix_timestamp) @ ErrorCode::GameReadyForOracle,
         constraint = !game.is_private || authority.is_some() && authority.as_ref().unwrap().key() == oracle.authority @ ErrorCode::UnauthorizedPlayer,
         constraint = game.token_mint == game_token.token_mint && game.token_mint == player_balance.token_mint @ ErrorCode::InvalidToken,
@@ -325,7 +325,7 @@ pub struct UnjoinGame<'info> {
         mut,
         constraint = game.status == GameStatus::Active @ ErrorCode::GameNotActive,
         constraint = game.game_type == GameType::Giveaway || game.players.len() >= 2 @ ErrorCode::InvalidPlayersCount,
-        constraint = game.players.contains(&player_balance.key()) @ ErrorCode::UnauthorizedPlayer,
+        constraint = game.players.contains(&player.key()) @ ErrorCode::UnauthorizedPlayer,
         constraint = !game.ready_for_oracle(Clock::get()?.unix_timestamp) @ ErrorCode::GameReadyForOracle,
         constraint = game.token_mint == game_token.token_mint && game.token_mint == player_balance.token_mint @ ErrorCode::InvalidToken,
     )]
@@ -368,7 +368,7 @@ pub struct CancelGame<'info> {
         mut,
         constraint = game.status == GameStatus::Active @ ErrorCode::GameNotActive,
         constraint = match game.game_type {
-            GameType::Coinflip => game.players.contains(&player_balance.key()),
+            GameType::Coinflip => game.players.contains(&player.key()),
             GameType::Giveaway => game.creator == player.key(),
         } @ ErrorCode::UnauthorizedPlayer,
         constraint = game.players.is_empty() || game.buffer_passed(oracle.oracle_buffer_time, Clock::get()?.unix_timestamp) @ ErrorCode::GameReadyForOracle,
