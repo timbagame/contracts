@@ -234,11 +234,12 @@ pub struct JoinGame<'info> {
         constraint = game.game_type == GameType::Giveaway || player_token_account.amount + player_balance.amount >= game.amount @ ErrorCode::InsufficientBalance,
     )]
     pub game: Account<'info, Game>,
-    #[account(
-        address = player_balance.player @ ErrorCode::UnauthorizedPlayer,
-    )]
     pub player: Signer<'info>,
-    #[account(mut)]
+    #[account(
+        mut,
+        seeds = [b"player_balance", player.key().as_ref(), game_token.token_mint.as_ref()],
+        bump,
+    )]
     pub player_balance: Account<'info, PlayerBalance>,
     pub authority: Option<Signer<'info>>,
     pub game_token: Account<'info, GameToken>,
@@ -299,12 +300,13 @@ pub struct UnjoinGame<'info> {
         constraint = game.token_mint == game_token.token_mint && game.token_mint == player_balance.token_mint @ ErrorCode::InvalidToken,
     )]
     pub game: Account<'info, Game>,
-    #[account(
-        address = player_balance.player @ ErrorCode::UnauthorizedPlayer,
-    )]
     pub player: Signer<'info>,
     pub game_token: Account<'info, GameToken>,
-    #[account(mut)]
+    #[account(
+        mut,
+        seeds = [b"player_balance", player.key().as_ref(), game_token.token_mint.as_ref()],
+        bump,
+    )]
     pub player_balance: Account<'info, PlayerBalance>,
     /// CHECK: This is a PDA that serves as the authority for the game's token accounts
     #[account(
@@ -343,11 +345,12 @@ pub struct CancelGame<'info> {
         constraint = game.token_mint == game_token.token_mint && game.token_mint == player_balance.token_mint @ ErrorCode::InvalidToken,
     )]
     pub game: Account<'info, Game>,
-    #[account(
-        address = player_balance.player @ ErrorCode::UnauthorizedPlayer,
-    )]
     pub player: Signer<'info>,
-    #[account(mut)]
+    #[account(
+        mut,
+        seeds = [b"player_balance", player.key().as_ref(), game_token.token_mint.as_ref()],
+        bump,
+    )]
     pub player_balance: Account<'info, PlayerBalance>,
     #[account(
         seeds = [b"oracle"],
@@ -378,12 +381,10 @@ pub struct CancelGame<'info> {
 pub struct ClaimWin<'info> {
     #[account(
         mut,
-        constraint = player_balance.token_mint == game_token.token_mint @ ErrorCode::InvalidToken,
+        seeds = [b"player_balance", player.key().as_ref(), game_token.token_mint.as_ref()],
+        bump,
     )]
     pub player_balance: Account<'info, PlayerBalance>,
-    #[account(
-        address = player_balance.player @ ErrorCode::UnauthorizedPlayer,
-    )]
     pub player: Signer<'info>,
     pub game_token: Account<'info, GameToken>,
     #[account(
