@@ -312,6 +312,7 @@ pub struct CompleteGame<'info> {
     pub oracle: Account<'info, Oracle>,
     #[account(address = oracle.authority @ ErrorCode::UnauthorizedAuthority)]
     pub authority: Signer<'info>,
+    /// CHECK: This is the player who won the game, validated by the game's winner calculation
     pub player: AccountInfo<'info>,
     #[account(
         mut,
