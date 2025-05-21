@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{Token, TokenAccount, Mint};
 use anchor_spl::associated_token::AssociatedToken;
+use anchor_spl::token::{Mint, Token, TokenAccount};
 
 use crate::error::ErrorCode;
 use crate::state::*;
@@ -85,7 +85,7 @@ pub struct InitializeToken<'info> {
         associated_token::authority = game_vault,
     )]
     pub game_token_account: Account<'info, TokenAccount>,
-     #[account(
+    #[account(
         seeds = [b"oracle"],
         bump,
     )]
@@ -216,6 +216,12 @@ pub struct InitializeGame<'info> {
         bump,
     )]
     pub game_token: Account<'info, GameToken>,
+    /// CHECK: This is a PDA that serves as the authority for the game's token accounts
+    #[account(
+        seeds = [b"game_vault", token_mint.key().as_ref()],
+        bump,
+    )]
+    pub game_vault: AccountInfo<'info>,
     #[account(
         mut,
         associated_token::mint = token_mint,
@@ -225,7 +231,7 @@ pub struct InitializeGame<'info> {
     #[account(
         mut,
         associated_token::mint = token_mint,
-        associated_token::authority = game_token.game_vault,
+        associated_token::authority = game_vault,
     )]
     pub game_token_account: Account<'info, TokenAccount>,
     pub system_program: Program<'info, System>,
@@ -258,6 +264,12 @@ pub struct JoinGame<'info> {
         bump,
     )]
     pub game_token: Account<'info, GameToken>,
+    /// CHECK: This is a PDA that serves as the authority for the game's token accounts
+    #[account(
+        seeds = [b"game_vault", game.token_mint.as_ref()],
+        bump,
+    )]
+    pub game_vault: AccountInfo<'info>,
     #[account(
         mut,
         associated_token::mint = game.token_mint,
@@ -267,7 +279,7 @@ pub struct JoinGame<'info> {
     #[account(
         mut,
         associated_token::mint = game.token_mint,
-        associated_token::authority = game_token.game_vault,
+        associated_token::authority = game_vault,
     )]
     pub game_token_account: Account<'info, TokenAccount>,
     #[account(
@@ -332,6 +344,12 @@ pub struct UnjoinGame<'info> {
         bump,
     )]
     pub game_token: Account<'info, GameToken>,
+    /// CHECK: This is a PDA that serves as the authority for the game's token accounts
+    #[account(
+        seeds = [b"game_vault", game.token_mint.as_ref()],
+        bump,
+    )]
+    pub game_vault: AccountInfo<'info>,
     #[account(
         mut,
         seeds = [b"player_balance", player.key().as_ref(), game.token_mint.as_ref()],
@@ -347,7 +365,7 @@ pub struct UnjoinGame<'info> {
     #[account(
         mut,
         associated_token::mint = game.token_mint,
-        associated_token::authority = game_token.game_vault,
+        associated_token::authority = game_vault,
     )]
     pub game_token_account: Account<'info, TokenAccount>,
     #[account(
@@ -389,6 +407,12 @@ pub struct CancelGame<'info> {
         bump,
     )]
     pub game_token: Account<'info, GameToken>,
+    /// CHECK: This is a PDA that serves as the authority for the game's token accounts
+    #[account(
+        seeds = [b"game_vault", game.token_mint.as_ref()],
+        bump,
+    )]
+    pub game_vault: AccountInfo<'info>,
     #[account(
         mut,
         associated_token::mint = game.token_mint,
@@ -398,7 +422,7 @@ pub struct CancelGame<'info> {
     #[account(
         mut,
         associated_token::mint = game.token_mint,
-        associated_token::authority = game_token.game_vault,
+        associated_token::authority = game_vault,
     )]
     pub game_token_account: Account<'info, TokenAccount>,
     pub system_program: Program<'info, System>,
