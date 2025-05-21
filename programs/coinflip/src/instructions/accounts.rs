@@ -204,12 +204,13 @@ pub struct InitializeGame<'info> {
         constraint = player_balance.token_mint == game_token.token_mint @ ErrorCode::InvalidToken,
     )]
     pub game: Account<'info, Game>,
+    #[account(mut)]
+    pub player: Signer<'info>,
     #[account(
         mut,
-        address = player_balance.player @ ErrorCode::UnauthorizedPlayer,
+        seeds = [b"player_balance", player.key().as_ref(), token_mint.key().as_ref()],
+        bump,
     )]
-    pub player: Signer<'info>,
-    #[account(mut)]
     pub player_balance: Account<'info, PlayerBalance>,
     #[account(
         mut,
@@ -217,6 +218,11 @@ pub struct InitializeGame<'info> {
         bump,
     )]
     pub oracle: Account<'info, Oracle>,
+    pub token_mint: Account<'info, Mint>,
+    #[account(
+        seeds = [b"game_token", token_mint.key().as_ref()],
+        bump,
+    )]
     pub game_token: Account<'info, GameToken>,
     #[account(
         mut,
