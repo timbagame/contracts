@@ -17,9 +17,6 @@ pub struct Oracle {
 pub struct GameToken {
     pub ticker: String,
     pub token_mint: Pubkey,
-    pub game_token_account: Pubkey,
-    pub game_vault: Pubkey,
-    pub bump: u8,
     pub min_amount: u64,
     pub fee_amount: u64,
     pub enabled: bool,
@@ -30,7 +27,6 @@ pub struct GameToken {
 pub struct PlayerBalance {
     pub player: Pubkey,
     pub token_mint: Pubkey,
-    pub player_token_account: Pubkey,
     pub amount: u64,
 }
 
