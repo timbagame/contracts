@@ -57,7 +57,6 @@ pub struct UpdateOracle<'info> {
 
 #[derive(Accounts)]
 #[instruction(
-    ticker: String,
     min_amount: u64,
     enabled: bool,
 )]
@@ -66,7 +65,6 @@ pub struct InitializeToken<'info> {
         init,
         payer = authority,
         space = 8 + // discriminator
-            4 + ticker.len() + // ticker
             32 + // token_mint
             8 + // min_amount
             8 + // fee_amount
@@ -104,7 +102,6 @@ pub struct InitializeToken<'info> {
 
 #[derive(Accounts)]
 #[instruction(
-    ticker: String,
     min_amount: u64,
     enabled: bool,
 )]

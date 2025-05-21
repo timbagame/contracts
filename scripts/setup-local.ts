@@ -139,7 +139,6 @@ async function main() {
             // Initialize token
             await program.methods
                 .initializeToken(
-                    "WSOL",            // ticker
                     new anchor.BN(10_000_000), // min_amount (0.01 SOL in lamports)
                     true               // enabled
                 )
