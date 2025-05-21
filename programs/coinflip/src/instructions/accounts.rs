@@ -80,7 +80,7 @@ pub struct InitializeToken<'info> {
     )]
     pub game_token: Account<'info, GameToken>,
     pub token_mint: Account<'info, Mint>,
-    /// CHECK: This is a PDA that serves as the authority for the game's token accounts
+    // CHECK: This is a PDA that serves as the authority for the game's token accounts
     #[account(
         seeds = [b"game_vault", token_mint.key().as_ref()],
         bump,
@@ -192,7 +192,7 @@ pub struct ClaimWin<'info> {
         associated_token::authority = game_vault,
     )]
     pub game_token_account: Account<'info, TokenAccount>,
-    /// CHECK: This is a PDA that serves as the authority for the game's token accounts
+    // CHECK: This is a PDA that serves as the authority for the game's token accounts
     #[account(
         seeds = [b"game_vault", token_mint.key().as_ref()],
         bump,
@@ -266,7 +266,7 @@ pub struct InitializeGame<'info> {
         bump,
     )]
     pub game_token: Account<'info, GameToken>,
-    /// CHECK: This is a PDA that serves as the authority for the game's token accounts
+    // CHECK: This is a PDA that serves as the authority for the game's token accounts
     #[account(
         seeds = [b"game_vault", token_mint.key().as_ref()],
         bump,
@@ -314,7 +314,7 @@ pub struct JoinGame<'info> {
         bump,
     )]
     pub game_token: Account<'info, GameToken>,
-    /// CHECK: This is a PDA that serves as the authority for the game's token accounts
+    // CHECK: This is a PDA that serves as the authority for the game's token accounts
     #[account(
         seeds = [b"game_vault", game.token_mint.as_ref()],
         bump,
@@ -362,7 +362,7 @@ pub struct CompleteGame<'info> {
     pub oracle: Account<'info, Oracle>,
     #[account(address = oracle.authority @ ErrorCode::UnauthorizedAuthority)]
     pub authority: Signer<'info>,
-    /// CHECK: This is the player who won the game, validated by the game's winner calculation
+    // CHECK: This is the player who won the game, validated by the game's winner calculation
     pub player: AccountInfo<'info>,
     #[account(
         mut,
@@ -395,7 +395,7 @@ pub struct UnjoinGame<'info> {
         bump,
     )]
     pub game_token: Account<'info, GameToken>,
-    /// CHECK: This is a PDA that serves as the authority for the game's token accounts
+    // CHECK: This is a PDA that serves as the authority for the game's token accounts
     #[account(
         seeds = [b"game_vault", game.token_mint.as_ref()],
         bump,
@@ -458,7 +458,7 @@ pub struct CancelGame<'info> {
         bump,
     )]
     pub game_token: Account<'info, GameToken>,
-    /// CHECK: This is a PDA that serves as the authority for the game's token accounts
+    // CHECK: This is a PDA that serves as the authority for the game's token accounts
     #[account(
         seeds = [b"game_vault", game.token_mint.as_ref()],
         bump,
@@ -493,7 +493,7 @@ pub struct ClaimFee<'info> {
     )]
     pub game_token: Account<'info, GameToken>,
     pub token_mint: Account<'info, Mint>,
-    /// CHECK: This is a PDA that serves as the authority for the game's token accounts
+    // CHECK: This is a PDA that serves as the authority for the game's token accounts
     #[account(
         seeds = [b"game_vault", token_mint.key().as_ref()],
         bump,
