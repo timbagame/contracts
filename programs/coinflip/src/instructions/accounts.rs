@@ -5,6 +5,9 @@ use anchor_spl::token::{Mint, Token, TokenAccount};
 use crate::error::ErrorCode;
 use crate::state::*;
 
+// Oracle Management Accounts
+// -------------------------
+
 #[derive(Accounts)]
 #[instruction(
     fee_percentage: u8,
@@ -54,6 +57,9 @@ pub struct UpdateOracle<'info> {
     pub old_authority: Signer<'info>,
     pub new_authority: Signer<'info>,
 }
+
+// Token Management Accounts
+// ------------------------
 
 #[derive(Accounts)]
 #[instruction(
@@ -124,6 +130,9 @@ pub struct UpdateToken<'info> {
     pub authority: Signer<'info>,
 }
 
+// Player Management Accounts
+// -------------------------
+
 #[derive(Accounts)]
 pub struct InitializePlayerBalance<'info> {
     #[account(
@@ -155,6 +164,47 @@ pub struct InitializePlayerBalance<'info> {
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
 }
+
+#[derive(Accounts)]
+pub struct ClaimWin<'info> {
+    #[account(
+        mut,
+        seeds = [b"player_balance", player.key().as_ref(), token_mint.key().as_ref()],
+        bump,
+    )]
+    pub player_balance: Account<'info, PlayerBalance>,
+    pub player: Signer<'info>,
+    pub token_mint: Account<'info, Mint>,
+    #[account(
+        seeds = [b"game_token", token_mint.key().as_ref()],
+        bump,
+    )]
+    pub game_token: Account<'info, GameToken>,
+    #[account(
+        mut,
+        associated_token::mint = token_mint,
+        associated_token::authority = player,
+    )]
+    pub player_token_account: Account<'info, TokenAccount>,
+    #[account(
+        mut,
+        associated_token::mint = token_mint,
+        associated_token::authority = game_vault,
+    )]
+    pub game_token_account: Account<'info, TokenAccount>,
+    /// CHECK: This is a PDA that serves as the authority for the game's token accounts
+    #[account(
+        seeds = [b"game_vault", token_mint.key().as_ref()],
+        bump,
+    )]
+    pub game_vault: AccountInfo<'info>,
+    pub system_program: Program<'info, System>,
+    pub token_program: Program<'info, Token>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
+}
+
+// Game Management Accounts
+// -----------------------
 
 #[derive(Accounts)]
 #[instruction(
@@ -431,43 +481,8 @@ pub struct CancelGame<'info> {
     pub associated_token_program: Program<'info, AssociatedToken>,
 }
 
-#[derive(Accounts)]
-pub struct ClaimWin<'info> {
-    #[account(
-        mut,
-        seeds = [b"player_balance", player.key().as_ref(), token_mint.key().as_ref()],
-        bump,
-    )]
-    pub player_balance: Account<'info, PlayerBalance>,
-    pub player: Signer<'info>,
-    pub token_mint: Account<'info, Mint>,
-    #[account(
-        seeds = [b"game_token", token_mint.key().as_ref()],
-        bump,
-    )]
-    pub game_token: Account<'info, GameToken>,
-    #[account(
-        mut,
-        associated_token::mint = token_mint,
-        associated_token::authority = player,
-    )]
-    pub player_token_account: Account<'info, TokenAccount>,
-    #[account(
-        mut,
-        associated_token::mint = token_mint,
-        associated_token::authority = game_vault,
-    )]
-    pub game_token_account: Account<'info, TokenAccount>,
-    /// CHECK: This is a PDA that serves as the authority for the game's token accounts
-    #[account(
-        seeds = [b"game_vault", token_mint.key().as_ref()],
-        bump,
-    )]
-    pub game_vault: AccountInfo<'info>,
-    pub system_program: Program<'info, System>,
-    pub token_program: Program<'info, Token>,
-    pub associated_token_program: Program<'info, AssociatedToken>,
-}
+// Fee Management Accounts
+// ----------------------
 
 #[derive(Accounts)]
 pub struct ClaimFee<'info> {
