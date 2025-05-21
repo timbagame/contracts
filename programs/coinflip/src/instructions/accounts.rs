@@ -456,11 +456,17 @@ pub struct ClaimWin<'info> {
 
 #[derive(Accounts)]
 pub struct ClaimFee<'info> {
-    #[account(mut)]
+    #[account(
+        mut,
+        seeds = [b"game_token", token_mint.key().as_ref()],
+        bump,
+    )]
     pub game_token: Account<'info, GameToken>,
+    pub token_mint: Account<'info, Mint>,
     /// CHECK: This is a PDA that serves as the authority for the game's token accounts
     #[account(
-        address = game_token.game_vault @ ErrorCode::InvalidVault,
+        seeds = [b"game_vault", token_mint.key().as_ref()],
+        bump,
     )]
     pub game_vault: AccountInfo<'info>,
     #[account(
@@ -473,13 +479,14 @@ pub struct ClaimFee<'info> {
     pub authority: Signer<'info>,
     #[account(
         mut,
-        associated_token::mint = game_token.token_mint,
+        associated_token::mint = token_mint,
         associated_token::authority = authority,
     )]
     pub authority_token_account: Account<'info, TokenAccount>,
     #[account(
         mut,
-        address = game_token.game_token_account @ ErrorCode::InvalidToken,
+        associated_token::mint = token_mint,
+        associated_token::authority = game_vault,
     )]
     pub game_token_account: Account<'info, TokenAccount>,
     pub system_program: Program<'info, System>,
