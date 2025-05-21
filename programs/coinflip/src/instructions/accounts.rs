@@ -420,29 +420,38 @@ pub struct CancelGame<'info> {
 pub struct ClaimWin<'info> {
     #[account(
         mut,
-        seeds = [b"player_balance", player.key().as_ref(), game_token.token_mint.as_ref()],
+        seeds = [b"player_balance", player.key().as_ref(), token_mint.key().as_ref()],
         bump,
     )]
     pub player_balance: Account<'info, PlayerBalance>,
     pub player: Signer<'info>,
+    pub token_mint: Account<'info, Mint>,
+    #[account(
+        seeds = [b"game_token", token_mint.key().as_ref()],
+        bump,
+    )]
     pub game_token: Account<'info, GameToken>,
     #[account(
         mut,
-        address = player_balance.player_token_account @ ErrorCode::InvalidToken,
+        associated_token::mint = token_mint,
+        associated_token::authority = player,
     )]
     pub player_token_account: Account<'info, TokenAccount>,
     #[account(
         mut,
-        address = game_token.game_token_account @ ErrorCode::InvalidToken,
+        associated_token::mint = token_mint,
+        associated_token::authority = game_vault,
     )]
     pub game_token_account: Account<'info, TokenAccount>,
     /// CHECK: This is a PDA that serves as the authority for the game's token accounts
     #[account(
-        address = game_token.game_vault @ ErrorCode::InvalidVault,
+        seeds = [b"game_vault", token_mint.key().as_ref()],
+        bump,
     )]
     pub game_vault: AccountInfo<'info>,
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
 }
 
 #[derive(Accounts)]
