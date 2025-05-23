@@ -14,7 +14,7 @@ pub fn handler(ctx: Context<super::CompleteGame>) -> Result<()> {
     let fee_percentage = ctx.accounts.oracle.fee_percentage;
     let (winner_amount, fee_amount) = game.calculate_amounts(players_len, fee_percentage);
 
-    game.winner = player_balance.player;
+    game.winner = ctx.accounts.player.key();
     game.status = GameStatus::Completed;
     game_token.fee_amount += fee_amount;
     player_balance.amount += winner_amount;

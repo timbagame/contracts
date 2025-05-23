@@ -1,21 +1,21 @@
 [toolchain]
-solana_version = "2.1.18"
+solana_version = "2.1.21"
 
 [features]
 resolution = true
 skip-lint = false
 
 [programs.devnet]
-coinflip = "DNAGhpeMXvdCkwTYKmuJfcwpu4sJpegcnHnHih1Y3Gzi"
+coinflip = "CTokUBpwvUL1xcMMpXTdiz7ceuRkbiS7KAs4hFFFUKZV"
 
 [programs.localnet]
-coinflip = "DNAGhpeMXvdCkwTYKmuJfcwpu4sJpegcnHnHih1Y3Gzi"
+coinflip = "CTokUBpwvUL1xcMMpXTdiz7ceuRkbiS7KAs4hFFFUKZV"
 
 [registry]
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "Localnet"
+cluster = "localnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]

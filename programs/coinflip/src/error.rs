@@ -2,36 +2,44 @@ use anchor_lang::prelude::*;
 
 #[error_code]
 pub enum ErrorCode {
+    // Game State Errors
+    // ----------------
     #[msg("Game already full")]
     GameFull,
-    #[msg("Player already joined")]
-    AlreadyJoined,
+    #[msg("Game not active")]
+    GameNotActive,
     #[msg("Game ready for oracle")]
     GameReadyForOracle,
     #[msg("Game not ready for oracle")]
     GameNotReadyForOracle,
-    #[msg("Invalid secret key")]
-    InvalidSecretKey,
-    #[msg("Invalid vault")]
-    InvalidVault,
-    #[msg("Invalid players count")]
-    InvalidPlayersCount,
-    #[msg("Game not active")]
-    GameNotActive,
-    #[msg("Game completed")]
-    GameCompleted,
-    #[msg("Invalid timeout")]
-    InvalidTimeout,
-    #[msg("Invalid token")]
-    InvalidToken,
-    #[msg("Insufficient balance")]
-    InsufficientBalance,
+
+    // Player Errors
+    // ------------
+    #[msg("Player already joined")]
+    AlreadyJoined,
     #[msg("Unauthorized player")]
     UnauthorizedPlayer,
-    #[msg("Unauthorized authority")]
-    UnauthorizedAuthority,
-    #[msg("Token not enabled")]
-    TokenNotEnabled,
+    #[msg("Insufficient balance")]
+    InsufficientBalance,
+
+    // Game Configuration Errors
+    // ------------------------
+    #[msg("Invalid players count")]
+    InvalidPlayersCount,
+    #[msg("Invalid timeout")]
+    InvalidTimeout,
     #[msg("Invalid amount")]
     InvalidAmount,
+    #[msg("Invalid secret key")]
+    InvalidSecretKey,
+
+    // Authority Errors
+    // ---------------
+    #[msg("Unauthorized authority")]
+    UnauthorizedAuthority,
+
+    // Token Errors
+    // -----------
+    #[msg("Token not enabled")]
+    TokenNotEnabled,
 }
