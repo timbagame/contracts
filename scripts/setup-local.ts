@@ -4,8 +4,6 @@ import { Connection, LAMPORTS_PER_SOL, PublicKey, Keypair } from "@solana/web3.j
 import {
     getAssociatedTokenAddressSync,
     createAssociatedTokenAccountInstruction,
-    TOKEN_PROGRAM_ID,
-    ASSOCIATED_TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
 import * as anchor from "@coral-xyz/anchor";
 import * as fs from "fs";
@@ -139,20 +137,12 @@ async function main() {
             // Initialize token
             await program.methods
                 .initializeToken(
-                    "WSOL",            // ticker
                     new anchor.BN(10_000_000), // min_amount (0.01 SOL in lamports)
                     true               // enabled
                 )
                 .accounts({
                     authority: wallet.publicKey,
                     tokenMint: WRAPPED_SOL_MINT,
-                    oracle: oraclePDA,
-                    gameToken: tokenPDA, // The game token state account PDA
-                    gameVault: gameVaultPDA,
-                    gameTokenAccount: gameTokenAccountATA,
-                    systemProgram: anchor.web3.SystemProgram.programId,
-                    tokenProgram: TOKEN_PROGRAM_ID,
-                    associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
                 })
                 .preInstructions([
                     createAssociatedTokenAccountInstruction(

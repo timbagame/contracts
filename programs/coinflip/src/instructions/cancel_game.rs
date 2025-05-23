@@ -10,7 +10,7 @@ pub fn handler(ctx: Context<super::CancelGame>) -> Result<()> {
         if let Some(pos) = game
             .players
             .iter()
-            .position(|x| *x == ctx.accounts.player_balance.key())
+            .position(|x| *x == ctx.accounts.player.key())
         {
             game.players.remove(pos);
         }

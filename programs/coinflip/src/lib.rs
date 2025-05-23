@@ -7,7 +7,7 @@ mod state;
 use crate::instructions::*;
 use crate::state::GameType;
 
-declare_id!("DNAGhpeMXvdCkwTYKmuJfcwpu4sJpegcnHnHih1Y3Gzi");
+declare_id!("CTokUBpwvUL1xcMMpXTdiz7ceuRkbiS7KAs4hFFFUKZV");
 
 #[program]
 pub mod coinflip {
@@ -51,20 +51,18 @@ pub mod coinflip {
 
     pub fn initialize_token(
         ctx: Context<InitializeToken>,
-        ticker: String,
         min_amount: u64,
         enabled: bool,
     ) -> Result<()> {
-        instructions::initialize_token::handler(ctx, ticker, min_amount, enabled)
+        instructions::initialize_token::handler(ctx, min_amount, enabled)
     }
 
     pub fn update_token(
         ctx: Context<UpdateToken>,
-        ticker: String,
         min_amount: u64,
         enabled: bool,
     ) -> Result<()> {
-        instructions::update_token::handler(ctx, ticker, min_amount, enabled)
+        instructions::update_token::handler(ctx, min_amount, enabled)
     }
 
     pub fn initialize_player_balance(ctx: Context<InitializePlayerBalance>) -> Result<()> {

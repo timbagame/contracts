@@ -27,7 +27,7 @@ pub fn handler(
     game.is_private = is_private;
 
     if game.game_type == GameType::Coinflip {
-        game.players.push(ctx.accounts.player_balance.key());
+        game.players.push(ctx.accounts.player.key());
     }
 
     // Check player token amount
