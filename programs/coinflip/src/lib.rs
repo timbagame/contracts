@@ -7,7 +7,7 @@ mod state;
 use crate::instructions::*;
 use crate::state::GameType;
 
-declare_id!("9eN8pkAbCz8XZeGJdjxUtkxXYJKVfBwsJ2GFhYRYB43z");
+declare_id!("CTokUBpwvUL1xcMMpXTdiz7ceuRkbiS7KAs4hFFFUKZV");
 
 #[program]
 pub mod coinflip {
