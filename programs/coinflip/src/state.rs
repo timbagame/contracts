@@ -165,3 +165,69 @@ impl Game {
         (winner_amount, fee_amount)
     }
 }
+
+// Helper function for handling player token transfers during game participation
+pub fn handle_player_token_transfer<'info>(
+    player_balance: &mut PlayerBalance,
+    game_amount: u64,
+    player_token_account: &anchor_lang::prelude::AccountInfo<'info>,
+    game_token_account: &anchor_lang::prelude::AccountInfo<'info>,
+    player: &anchor_lang::prelude::AccountInfo<'info>,
+    token_program: &anchor_lang::prelude::AccountInfo<'info>,
+) -> Result<()> {
+    use anchor_spl::token;
+
+    let needed_amount = if player_balance.amount >= game_amount {
+        player_balance.amount -= game_amount;
+        0
+    } else {
+        let needed = game_amount - player_balance.amount;
+        player_balance.amount = 0;
+        needed
+    };
+
+    // Only transfer if additional tokens are needed
+    if needed_amount > 0 {
+        token::transfer(
+            anchor_lang::prelude::CpiContext::new(
+                token_program.clone(),
+                token::Transfer {
+                    from: player_token_account.clone(),
+                    to: game_token_account.clone(),
+                    authority: player.clone(),
+                },
+            ),
+            needed_amount,
+        )?;
+    }
+
+    Ok(())
+}
+
+// Helper function for PDA-signed token transfers (game vault to player/authority)
+pub fn handle_pda_token_transfer<'info>(
+    from_account: &anchor_lang::prelude::AccountInfo<'info>,
+    to_account: &anchor_lang::prelude::AccountInfo<'info>,
+    authority: &anchor_lang::prelude::AccountInfo<'info>,
+    token_program: &anchor_lang::prelude::AccountInfo<'info>,
+    token_mint: &anchor_lang::prelude::Pubkey,
+    vault_bump: u8,
+    amount: u64,
+) -> Result<()> {
+    use anchor_spl::token;
+
+    token::transfer(
+        anchor_lang::prelude::CpiContext::new_with_signer(
+            token_program.clone(),
+            token::Transfer {
+                from: from_account.clone(),
+                to: to_account.clone(),
+                authority: authority.clone(),
+            },
+            &[&[b"game_vault", token_mint.as_ref(), &[vault_bump]]],
+        ),
+        amount,
+    )?;
+
+    Ok(())
+}
