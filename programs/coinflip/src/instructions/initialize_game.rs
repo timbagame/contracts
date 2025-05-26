@@ -1,5 +1,4 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token;
 
 use crate::state::GameType;
 
@@ -30,31 +29,15 @@ pub fn handler(
         game.players.push(ctx.accounts.player.key());
     }
 
-    // Check player token amount
-    let player_balance = &mut ctx.accounts.player_balance;
-    let needed_amount = if player_balance.amount >= game.amount {
-        player_balance.amount -= game.amount;
-        0
-    } else {
-        let needed = game.amount - player_balance.amount;
-        player_balance.amount = 0;
-        needed
-    };
-
-    // Only transfer if additional tokens are needed
-    if needed_amount > 0 {
-        token::transfer(
-            CpiContext::new(
-                ctx.accounts.token_program.to_account_info(),
-                token::Transfer {
-                    from: ctx.accounts.player_token_account.to_account_info(),
-                    to: ctx.accounts.game_token_account.to_account_info(),
-                    authority: ctx.accounts.player.to_account_info(),
-                },
-            ),
-            needed_amount,
-        )?;
-    }
+    // Handle player token transfer using helper function
+    crate::state::handle_player_token_transfer(
+        &mut ctx.accounts.player_balance,
+        game.amount,
+        &ctx.accounts.player_token_account.to_account_info(),
+        &ctx.accounts.game_token_account.to_account_info(),
+        &ctx.accounts.player.to_account_info(),
+        &ctx.accounts.token_program.to_account_info(),
+    )?;
 
     Ok(())
 }
