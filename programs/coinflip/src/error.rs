@@ -2,44 +2,44 @@ use anchor_lang::prelude::*;
 
 #[error_code]
 pub enum ErrorCode {
-    // Game State Errors
-    // ----------------
-    #[msg("Game already full")]
-    GameFull,
-    #[msg("Game not active")]
-    GameNotActive,
-    #[msg("Game ready for oracle")]
-    GameReadyForOracle,
-    #[msg("Game not ready for oracle")]
-    GameNotReadyForOracle,
-
-    // Player Errors
-    // ------------
-    #[msg("Player already joined")]
-    AlreadyJoined,
-    #[msg("Unauthorized player")]
-    UnauthorizedPlayer,
-    #[msg("Insufficient balance")]
-    InsufficientBalance,
-
-    // Game Configuration Errors
-    // ------------------------
-    #[msg("Invalid players count")]
-    InvalidPlayersCount,
-    #[msg("Invalid timeout")]
-    InvalidTimeout,
-    #[msg("Invalid amount")]
-    InvalidAmount,
-    #[msg("Invalid secret key")]
-    InvalidSecretKey,
-
-    // Authority Errors
-    // ---------------
+    // Authority and Permission Errors (1000-1099)
+    // ------------------------------------------
     #[msg("Unauthorized authority")]
-    UnauthorizedAuthority,
+    UnauthorizedAuthority = 1000,
+    #[msg("Unauthorized player")]
+    UnauthorizedPlayer = 1001,
 
-    // Token Errors
-    // -----------
+    // Game State Errors (1100-1199)
+    // -----------------------------
+    #[msg("Game not active")]
+    GameNotActive = 1100,
+    #[msg("Game already full")]
+    GameFull = 1101,
+    #[msg("Game ready for oracle")]
+    GameReadyForOracle = 1102,
+    #[msg("Game not ready for oracle")]
+    GameNotReadyForOracle = 1103,
+
+    // Player Action Errors (1200-1299)
+    // --------------------------------
+    #[msg("Player already joined")]
+    AlreadyJoined = 1200,
+    #[msg("Insufficient balance")]
+    InsufficientBalance = 1201,
+
+    // Configuration Errors (1300-1399)
+    // --------------------------------
+    #[msg("Invalid players count")]
+    InvalidPlayersCount = 1300,
+    #[msg("Invalid timeout")]
+    InvalidTimeout = 1301,
+    #[msg("Invalid amount")]
+    InvalidAmount = 1302,
+    #[msg("Invalid secret key")]
+    InvalidSecretKey = 1303,
+
+    // Token Errors (1400-1499)
+    // ------------------------
     #[msg("Token not enabled")]
-    TokenNotEnabled,
+    TokenNotEnabled = 1400,
 }
