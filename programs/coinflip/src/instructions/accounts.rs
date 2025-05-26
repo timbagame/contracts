@@ -349,6 +349,7 @@ pub struct JoinGame<'info> {
 pub struct CompleteGame<'info> {
     #[account(
         mut,
+        close = creator,
         constraint = game.status == GameStatus::Active @ ErrorCode::GameNotActive,
         constraint = game.derive_pda(secret_key) == game.key() @ ErrorCode::InvalidSecretKey,
         constraint = game.calculate_winner(secret_key) == player.key() @ ErrorCode::UnauthorizedPlayer,
@@ -364,6 +365,9 @@ pub struct CompleteGame<'info> {
     pub authority: Signer<'info>,
     /// CHECK: This is the player who won the game, validated by the game's winner calculation
     pub player: AccountInfo<'info>,
+    /// CHECK: This is the creator of the game who will receive the rent back
+    #[account(address = game.creator)]
+    pub creator: AccountInfo<'info>,
     #[account(
         mut,
         seeds = [b"player_balance", player.key().as_ref(), game.token_mint.as_ref()],
@@ -433,6 +437,7 @@ pub struct UnjoinGame<'info> {
 pub struct CancelGame<'info> {
     #[account(
         mut,
+        close = creator,
         constraint = game.status == GameStatus::Active @ ErrorCode::GameNotActive,
         constraint = match game.game_type {
             GameType::Coinflip => game.players.contains(&player.key()),
@@ -442,6 +447,9 @@ pub struct CancelGame<'info> {
     )]
     pub game: Account<'info, Game>,
     pub player: Signer<'info>,
+    /// CHECK: This is the creator of the game who will receive the rent back
+    #[account(address = game.creator)]
+    pub creator: AccountInfo<'info>,
     #[account(
         mut,
         seeds = [b"player_balance", player.key().as_ref(), game.token_mint.as_ref()],
