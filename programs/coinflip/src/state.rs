@@ -1,6 +1,11 @@
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::hash::hash;
 
+// Constants for space calculation
+pub const ORACLE_SIZE: usize = 8 + 32 + 1 + 2 + 2 + 4 + 4;
+pub const GAME_TOKEN_SIZE: usize = 8 + 32 + 8 + 8 + 1;
+pub const PLAYER_BALANCE_SIZE: usize = 8 + 32 + 32 + 8;
+
 // Oracle account that manages global game settings and authority
 #[account]
 #[derive(Default)]
@@ -108,7 +113,12 @@ pub struct Game {
 }
 
 impl Game {
-    // Checks if the game is ready for oracle to determine winner
+    // Calculate space needed for a game account based on max players
+    pub fn space(max_players: u16) -> usize {
+        8 + 32 + 1 + 8 + 2 + 2 + 4 + (32 * max_players as usize) + 32 + 1 + 32 + 8 + 4 + 1
+    }
+
+    // Checks if the game meets minimum requirements and timeout conditions
     pub fn ready_for_oracle(&self, current_time: i64) -> bool {
         let has_min_players = self.players.len() >= self.min_players as usize;
         let has_max_players = self.players.len() == self.max_players as usize;
@@ -117,7 +127,7 @@ impl Game {
         (has_min_players && timeout_met) || has_max_players
     }
 
-    // Checks if the oracle buffer time has passed
+    // Checks if the oracle buffer time has passed for cancellation
     pub fn buffer_passed(&self, oracle_buffer_time: u16, current_time: i64) -> bool {
         current_time as u64 >= self.created_at + self.timeout as u64 + oracle_buffer_time as u64
     }
@@ -125,20 +135,21 @@ impl Game {
     // Derives the PDA for this game using the secret key
     pub fn derive_pda(&self, secret_key: [u8; 64]) -> Pubkey {
         let random_hash = hash(secret_key.as_ref());
-        let program_id = crate::ID;
-        let (pda, _) = Pubkey::find_program_address(&[b"game", random_hash.as_ref()], &program_id);
-
+        let (pda, _) = Pubkey::find_program_address(&[b"game", random_hash.as_ref()], &crate::ID);
         pda
     }
 
-    // Calculates the winner using the secret key
+    // Calculates the winner using cryptographic randomness
     pub fn calculate_winner(&self, secret_key: [u8; 64]) -> Pubkey {
         let n_players = self.players.len() as u64;
         if n_players == 1 {
             return self.players[0];
         }
 
+        // Use first 8 bytes of secret key as random seed
         let random_number = u64::from_le_bytes(secret_key[0..8].try_into().unwrap());
+
+        // Ensure fair distribution by avoiding modulo bias
         let max_valid = u64::MAX - (u64::MAX % n_players);
         let final_number = random_number % max_valid;
         let index = (final_number % n_players) as usize;
@@ -146,12 +157,19 @@ impl Game {
         self.players[index]
     }
 
-    // Calculates the winner amount and fee amount
+    // Calculates prize distribution with fee deduction
     pub fn calculate_amounts(&self, players_len: u64, fee_percentage: u8) -> (u64, u64) {
         let total_amount = self.amount * players_len;
         let fee_amount = total_amount * fee_percentage as u64 / 100;
         let winner_amount = total_amount - fee_amount;
-
         (winner_amount, fee_amount)
+    }
+
+    // Validates player count constraints based on game type
+    pub fn validate_player_count(&self, min_players: u16, max_players: u16) -> bool {
+        match self.game_type {
+            GameType::Coinflip => min_players >= 2 && max_players >= 2,
+            GameType::Giveaway => min_players >= 1 && max_players >= 1,
+        }
     }
 }

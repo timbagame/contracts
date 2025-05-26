@@ -1,15 +1,27 @@
+// Account definitions
 pub mod accounts;
-pub mod cancel_game;
-pub mod claim_fee;
-pub mod claim_win;
-pub mod complete_game;
-pub mod initialize_game;
+
+// Oracle management
 pub mod initialize_oracle;
-pub mod initialize_player_balance;
-pub mod initialize_token;
-pub mod join_game;
-pub mod unjoin_game;
 pub mod update_oracle;
+
+// Token management
+pub mod initialize_token;
 pub mod update_token;
 
+// Player management
+pub mod claim_win;
+pub mod initialize_player_balance;
+
+// Game management
+pub mod cancel_game;
+pub mod complete_game;
+pub mod initialize_game;
+pub mod join_game;
+pub mod unjoin_game;
+
+// Fee management
+pub mod claim_fee;
+
+// Re-export accounts for convenience
 pub use accounts::*;
