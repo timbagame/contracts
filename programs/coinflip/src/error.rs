@@ -8,6 +8,8 @@ pub enum ErrorCode {
     UnauthorizedAuthority = 1000,
     #[msg("Unauthorized player")]
     UnauthorizedPlayer = 1001,
+    #[msg("Invalid creator address")]
+    InvalidCreator = 1002,
 
     // Game State Errors (1100-1199)
     // -----------------------------

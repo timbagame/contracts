@@ -279,7 +279,7 @@ pub struct CompleteGame<'info> {
     /// CHECK: Validated by game's winner calculation
     pub player: AccountInfo<'info>,
     /// CHECK: Game creator for rent refund
-    #[account(address = game.creator)]
+    #[account(mut, address = game.creator @ ErrorCode::InvalidCreator)]
     pub creator: AccountInfo<'info>,
     #[account(
         mut,
@@ -349,7 +349,7 @@ pub struct CancelGame<'info> {
     pub game: Account<'info, Game>,
     pub player: Signer<'info>,
     /// CHECK: Game creator for rent refund
-    #[account(address = game.creator)]
+    #[account(mut, address = game.creator @ ErrorCode::InvalidCreator)]
     pub creator: AccountInfo<'info>,
     #[account(
         mut,
