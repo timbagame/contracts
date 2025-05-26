@@ -164,12 +164,4 @@ impl Game {
         let winner_amount = total_amount - fee_amount;
         (winner_amount, fee_amount)
     }
-
-    // Validates player count constraints based on game type
-    pub fn validate_player_count(&self, min_players: u16, max_players: u16) -> bool {
-        match self.game_type {
-            GameType::Coinflip => min_players >= 2 && max_players >= 2,
-            GameType::Giveaway => min_players >= 1 && max_players >= 1,
-        }
-    }
 }
