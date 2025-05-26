@@ -15,7 +15,7 @@ coinflip = "CTokUBpwvUL1xcMMpXTdiz7ceuRkbiS7KAs4hFFFUKZV"
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "localnet"
+cluster = "devnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
