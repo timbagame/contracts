@@ -27,7 +27,6 @@ pub fn handler(ctx: Context<super::CompleteGame>) -> Result<()> {
     let fee_percentage = ctx.accounts.oracle.fee_percentage;
     let (winner_amount, fee_amount) = game.calculate_amounts(players_len, fee_percentage);
 
-    game.winner = ctx.accounts.player.key();
     game_token.fee_amount += fee_amount;
     player_balance.amount += winner_amount;
 
@@ -35,7 +34,7 @@ pub fn handler(ctx: Context<super::CompleteGame>) -> Result<()> {
     emit!(GameCompleted {
         game_key: game.key(),
         creator: game.creator,
-        winner: game.winner,
+        winner: ctx.accounts.player.key(),
         game_type: game.game_type,
         amount: game.amount,
         players: game.players.clone(),
