@@ -21,7 +21,7 @@ pub mod join_game;
 pub mod unjoin_game;
 
 // Fee management
-pub mod claim_fee;
+pub mod withdraw_token_fee;
 
 // Re-export accounts for convenience
 pub use accounts::*;

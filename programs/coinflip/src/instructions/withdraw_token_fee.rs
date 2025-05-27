@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-pub fn handler(ctx: Context<super::ClaimFee>) -> Result<()> {
+pub fn handler(ctx: Context<super::WithdrawTokenFee>) -> Result<()> {
     let game_token = &mut ctx.accounts.game_token;
     let fee_amount = game_token.fee_amount;
     game_token.fee_amount = 0;
