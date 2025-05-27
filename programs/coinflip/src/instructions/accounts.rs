@@ -299,7 +299,7 @@ pub struct UnjoinGame<'info> {
         constraint = game.status == GameStatus::Active @ ErrorCode::GameNotActive,
         constraint = game.creator != player.key() @ ErrorCode::UnauthorizedPlayer,
         constraint = game.players.contains(&player.key()) @ ErrorCode::UnauthorizedPlayer,
-        constraint = !game.ready_for_oracle(Clock::get()?.unix_timestamp) @ ErrorCode::GameReadyForOracle,
+        constraint = !game.ready_for_oracle(Clock::get()?.unix_timestamp) || game.buffer_passed(oracle.oracle_buffer_time, Clock::get()?.unix_timestamp) @ ErrorCode::GameReadyForOracle,
     )]
     pub game: Account<'info, Game>,
     pub player: Signer<'info>,
@@ -309,6 +309,8 @@ pub struct UnjoinGame<'info> {
         bump,
     )]
     pub player_balance: Account<'info, PlayerBalance>,
+    #[account(seeds = [b"oracle"], bump)]
+    pub oracle: Account<'info, Oracle>,
     pub system_program: Program<'info, System>,
 }
 
