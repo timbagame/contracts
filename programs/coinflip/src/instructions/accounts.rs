@@ -312,7 +312,11 @@ pub struct UnjoinGame<'info> {
         constraint = authority.is_some() || !game.ready_for_oracle(Clock::get()?.unix_timestamp) || game.buffer_passed(oracle.oracle_buffer_time, Clock::get()?.unix_timestamp) @ ErrorCode::GameReadyForOracle,
     )]
     pub game: Account<'info, Game>,
-    pub player: Signer<'info>,
+    /// CHECK: Either this player must sign, or oracle authority must be present and sign
+    #[account(
+        constraint = authority.is_some() || player.is_signer @ ErrorCode::UnauthorizedPlayer,
+    )]
+    pub player: AccountInfo<'info>,
     pub authority: Option<Signer<'info>>,
     #[account(
         mut,
