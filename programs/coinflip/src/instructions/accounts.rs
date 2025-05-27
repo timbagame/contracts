@@ -334,12 +334,18 @@ pub struct CancelGame<'info> {
     #[account(
         mut,
         close = creator,
-        constraint = game.creator == creator.key() @ ErrorCode::InvalidCreator,
+        constraint = authority.as_ref().map_or(true, |auth| auth.key() == oracle.authority) @ ErrorCode::UnauthorizedAuthority,
         constraint = game.players.is_empty() || game.buffer_passed(oracle.oracle_buffer_time, Clock::get()?.unix_timestamp) @ ErrorCode::GameReadyForOracle,
     )]
     pub game: Account<'info, Game>,
-    #[account(mut)]
-    pub creator: Signer<'info>,
+    /// CHECK: Either this creator must sign, or oracle authority must be present and sign
+    #[account(
+        mut,
+        constraint = authority.is_some() || creator.is_signer @ ErrorCode::UnauthorizedPlayer,
+        constraint = authority.is_some() || game.creator == creator.key() @ ErrorCode::InvalidCreator,
+    )]
+    pub creator: AccountInfo<'info>,
+    pub authority: Option<Signer<'info>>,
     #[account(
         mut,
         seeds = [b"player_balance", creator.key().as_ref(), game.token_mint.as_ref()],
