@@ -308,16 +308,13 @@ pub struct UnjoinGame<'info> {
     #[account(
         mut,
         constraint = game.players.contains(&player.key()) @ ErrorCode::UnauthorizedPlayer,
-        constraint = authority.as_ref().map_or(true, |auth| auth.key() == oracle.authority) @ ErrorCode::UnauthorizedAuthority,
-        constraint = authority.is_some() || !game.ready_for_oracle(Clock::get()?.unix_timestamp) || game.buffer_passed(oracle.oracle_buffer_time, Clock::get()?.unix_timestamp) @ ErrorCode::GameReadyForOracle,
+        constraint = authority.key() == player.key() || authority.key() == oracle.authority @ ErrorCode::UnauthorizedAuthority,
+        constraint = !game.ready_for_oracle(Clock::get()?.unix_timestamp) || game.buffer_passed(oracle.oracle_buffer_time, Clock::get()?.unix_timestamp) @ ErrorCode::GameReadyForOracle,
     )]
     pub game: Account<'info, Game>,
-    /// CHECK: Either this player must sign, or oracle authority must be present and sign
-    #[account(
-        constraint = authority.is_some() || player.is_signer @ ErrorCode::UnauthorizedPlayer,
-    )]
+    /// CHECK: Player account - validated by constraints
     pub player: AccountInfo<'info>,
-    pub authority: Option<Signer<'info>>,
+    pub authority: Signer<'info>,
     #[account(
         mut,
         seeds = [b"player_balance", player.key().as_ref(), game.token_mint.as_ref()],
@@ -334,21 +331,18 @@ pub struct CancelGame<'info> {
     #[account(
         mut,
         close = creator,
-        constraint = authority.as_ref().map_or(true, |auth| auth.key() == oracle.authority) @ ErrorCode::UnauthorizedAuthority,
+        constraint = game.creator == creator.key() @ ErrorCode::InvalidCreator,
+        constraint = authority.key() == creator.key() || authority.key() == oracle.authority @ ErrorCode::UnauthorizedAuthority,
         constraint = game.players.is_empty() ||
                     game.game_type == GameType::Giveaway ||
                     (game.game_type == GameType::Coinflip && game.players.len() == 1 && game.players[0] == game.creator) @ ErrorCode::CoinflipHasActivePlayers,
         constraint = !game.ready_for_oracle(Clock::get()?.unix_timestamp) || game.buffer_passed(oracle.oracle_buffer_time, Clock::get()?.unix_timestamp) @ ErrorCode::GameReadyForOracle,
     )]
     pub game: Account<'info, Game>,
-    /// CHECK: Either this creator must sign, or oracle authority must be present and sign
-    #[account(
-        mut,
-        constraint = authority.is_some() || creator.is_signer @ ErrorCode::UnauthorizedPlayer,
-        constraint = authority.is_some() || game.creator == creator.key() @ ErrorCode::InvalidCreator,
-    )]
+    /// CHECK: Game creator for rent refund - validated by constraints
+    #[account(mut)]
     pub creator: AccountInfo<'info>,
-    pub authority: Option<Signer<'info>>,
+    pub authority: Signer<'info>,
     #[account(
         mut,
         seeds = [b"player_balance", creator.key().as_ref(), game.token_mint.as_ref()],
