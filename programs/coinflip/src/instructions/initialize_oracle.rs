@@ -4,7 +4,7 @@ pub fn handler(
     ctx: Context<super::InitializeOracle>,
     fee_percentage: u8,
     oracle_buffer_time: u16,
-    max_players: u16,
+    max_players: u8,
     max_timeout: u32,
     min_timeout: u32,
 ) -> Result<()> {

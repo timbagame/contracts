@@ -14,7 +14,7 @@ declare_id!("CTokUBpwvUL1xcMMpXTdiz7ceuRkbiS7KAs4hFFFUKZV");
 pub struct OracleConfig {
     pub fee_percentage: u8,
     pub oracle_buffer_time: u16,
-    pub max_players: u16,
+    pub max_players: u8,
     pub max_timeout: u32,
     pub min_timeout: u32,
 }
@@ -31,8 +31,8 @@ pub struct TokenConfig {
 pub struct GameConfig {
     pub game_type: GameType,
     pub amount: u64,
-    pub max_players: u16,
-    pub min_players: u16,
+    pub max_players: u8,
+    pub min_players: u8,
     pub timeout: u32,
     pub is_private: bool,
 }

@@ -9,7 +9,7 @@ use crate::state::*;
 // ----------------
 
 #[derive(Accounts)]
-#[instruction(fee_percentage: u8, oracle_buffer_time: u16, max_players: u16, max_timeout: u32, min_timeout: u32)]
+#[instruction(fee_percentage: u8, oracle_buffer_time: u16, max_players: u8, max_timeout: u32, min_timeout: u32)]
 pub struct InitializeOracle<'info> {
     #[account(
         init,
@@ -28,7 +28,7 @@ pub struct InitializeOracle<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(fee_percentage: u8, oracle_buffer_time: u16, max_players: u16, max_timeout: u32, min_timeout: u32)]
+#[instruction(fee_percentage: u8, oracle_buffer_time: u16, max_players: u8, max_timeout: u32, min_timeout: u32)]
 pub struct UpdateOracle<'info> {
     #[account(
         mut,
@@ -172,7 +172,7 @@ pub struct WithdrawPlayerBalance<'info> {
 // --------------
 
 #[derive(Accounts)]
-#[instruction(game_type: GameType, amount: u64, max_players: u16, min_players: u16, timeout: u32, is_private: bool, random_hash: [u8; 32])]
+#[instruction(game_type: GameType, amount: u64, max_players: u8, min_players: u8, timeout: u32, is_private: bool, random_hash: [u8; 32])]
 pub struct InitializeGame<'info> {
     #[account(
         init,
