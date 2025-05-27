@@ -297,7 +297,6 @@ pub struct UnjoinGame<'info> {
     #[account(
         mut,
         constraint = game.status == GameStatus::Active @ ErrorCode::GameNotActive,
-        constraint = game.creator != player.key() @ ErrorCode::UnauthorizedPlayer,
         constraint = game.players.contains(&player.key()) @ ErrorCode::UnauthorizedPlayer,
         constraint = !game.ready_for_oracle(Clock::get()?.unix_timestamp) || game.buffer_passed(oracle.oracle_buffer_time, Clock::get()?.unix_timestamp) @ ErrorCode::GameReadyForOracle,
     )]
