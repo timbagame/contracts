@@ -377,7 +377,7 @@ describe("coinflip", () => {
 
     // Verify game state
     const gameData = await program.account.game.fetch(gamePDA);
-    expect(gameData.players[1].toString()).to.equal(playerBalancePDA.toString());
+    expect(gameData.players[1].toString()).to.equal(player.publicKey.toString());
   });
 
   it("Join Private Game Successfully", async () => {
@@ -399,7 +399,7 @@ describe("coinflip", () => {
       playerBalancePDA: creatorPlayerBalancePDA,
     } = await createPlayer(mint);
 
-    // Create joiner using helper  
+    // Create joiner using helper
     const {
       player: joiner,
       playerTokenAccount: joinerTokenAccount,
