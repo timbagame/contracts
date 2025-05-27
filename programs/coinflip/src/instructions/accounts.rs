@@ -290,7 +290,6 @@ pub struct CompleteGame<'info> {
     #[account(seeds = [b"game_token", game.token_mint.as_ref()], bump)]
     pub game_token: Account<'info, GameToken>,
     pub system_program: Program<'info, System>,
-    pub token_program: Program<'info, Token>,
 }
 
 #[derive(Accounts)]
@@ -304,19 +303,12 @@ pub struct UnjoinGame<'info> {
     )]
     pub game: Account<'info, Game>,
     pub player: Signer<'info>,
-    #[account(seeds = [b"game_token", game.token_mint.as_ref()], bump)]
-    pub game_token: Account<'info, GameToken>,
-    /// CHECK: PDA authority for game's token accounts
-    #[account(seeds = [b"game_vault", game.token_mint.as_ref()], bump)]
-    pub game_vault: AccountInfo<'info>,
     #[account(
         mut,
         seeds = [b"player_balance", player.key().as_ref(), game.token_mint.as_ref()],
         bump,
     )]
     pub player_balance: Account<'info, PlayerBalance>,
-    #[account(seeds = [b"oracle"], bump)]
-    pub oracle: Account<'info, Oracle>,
     pub system_program: Program<'info, System>,
 }
 
@@ -345,11 +337,6 @@ pub struct CancelGame<'info> {
     pub player_balance: Account<'info, PlayerBalance>,
     #[account(seeds = [b"oracle"], bump)]
     pub oracle: Account<'info, Oracle>,
-    #[account(seeds = [b"game_token", game.token_mint.as_ref()], bump)]
-    pub game_token: Account<'info, GameToken>,
-    /// CHECK: PDA authority for game's token accounts
-    #[account(seeds = [b"game_vault", game.token_mint.as_ref()], bump)]
-    pub game_vault: AccountInfo<'info>,
     pub system_program: Program<'info, System>,
 }
 
