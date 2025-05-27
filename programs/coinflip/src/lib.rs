@@ -84,8 +84,8 @@ pub mod coinflip {
         instructions::initialize_player_balance::handler(ctx)
     }
 
-    pub fn claim_win(ctx: Context<ClaimWin>) -> Result<()> {
-        instructions::claim_win::handler(ctx)
+    pub fn withdraw_player_balance(ctx: Context<WithdrawPlayerBalance>) -> Result<()> {
+        instructions::withdraw_player_balance::handler(ctx)
     }
 
     // Game Management

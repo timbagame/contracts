@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-pub fn handler(ctx: Context<super::ClaimWin>) -> Result<()> {
+pub fn handler(ctx: Context<super::WithdrawPlayerBalance>) -> Result<()> {
     let player_balance = &mut ctx.accounts.player_balance;
     let amount = player_balance.amount;
     player_balance.amount = 0;
