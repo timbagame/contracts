@@ -318,20 +318,15 @@ pub struct CancelGame<'info> {
         mut,
         close = creator,
         constraint = game.status == GameStatus::Active @ ErrorCode::GameNotActive,
-        constraint = match game.game_type {
-            GameType::Coinflip => game.players.contains(&player.key()),
-            GameType::Giveaway => game.creator == player.key(),
-        } @ ErrorCode::UnauthorizedPlayer,
+        constraint = game.creator == creator.key() @ ErrorCode::InvalidCreator,
         constraint = game.players.is_empty() || game.buffer_passed(oracle.oracle_buffer_time, Clock::get()?.unix_timestamp) @ ErrorCode::GameReadyForOracle,
     )]
     pub game: Account<'info, Game>,
-    pub player: Signer<'info>,
-    /// CHECK: Game creator for rent refund
-    #[account(mut, address = game.creator @ ErrorCode::InvalidCreator)]
-    pub creator: AccountInfo<'info>,
+    #[account(mut)]
+    pub creator: Signer<'info>,
     #[account(
         mut,
-        seeds = [b"player_balance", player.key().as_ref(), game.token_mint.as_ref()],
+        seeds = [b"player_balance", creator.key().as_ref(), game.token_mint.as_ref()],
         bump,
     )]
     pub player_balance: Account<'info, PlayerBalance>,
