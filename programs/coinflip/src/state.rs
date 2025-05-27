@@ -24,6 +24,26 @@ pub struct Oracle {
     pub min_timeout: u32,
 }
 
+impl Oracle {
+    // Helper method to update oracle configuration
+    pub fn update_config(
+        &mut self,
+        fee_percentage: u8,
+        oracle_buffer_time: u16,
+        max_players: u8,
+        max_timeout: u32,
+        min_timeout: u32,
+        new_authority: Pubkey,
+    ) {
+        self.fee_percentage = fee_percentage;
+        self.oracle_buffer_time = oracle_buffer_time;
+        self.max_players = max_players;
+        self.max_timeout = max_timeout;
+        self.min_timeout = min_timeout;
+        self.authority = new_authority;
+    }
+}
+
 // Game token configuration for supported tokens
 #[account]
 #[derive(Default)]
@@ -38,6 +58,22 @@ pub struct GameToken {
     pub enabled: bool,
 }
 
+impl GameToken {
+    // Helper method to update token configuration
+    pub fn update_config(&mut self, min_amount: u64, enabled: bool) {
+        self.min_amount = min_amount;
+        self.enabled = enabled;
+    }
+
+    // Helper method to initialize token with mint
+    pub fn initialize(&mut self, token_mint: Pubkey, min_amount: u64, enabled: bool) {
+        self.token_mint = token_mint;
+        self.min_amount = min_amount;
+        self.fee_amount = 0;
+        self.enabled = enabled;
+    }
+}
+
 // Player's balance for a specific token
 #[account]
 #[derive(Default)]
@@ -48,6 +84,13 @@ pub struct PlayerBalance {
     pub token_mint: Pubkey,
     // Current balance amount
     pub amount: u64,
+}
+
+impl PlayerBalance {
+    // Helper method to refund amount to player balance
+    pub fn refund(&mut self, amount: u64) {
+        self.amount += amount;
+    }
 }
 
 // Type of game being played
@@ -143,9 +186,72 @@ impl Game {
         let winner_amount = total_amount - fee_amount;
         (winner_amount, fee_amount)
     }
+
+    // Helper method to handle player refunds based on game type and state
+    pub fn refund_player(&self, player_balance: &mut PlayerBalance, player_key: &Pubkey) -> bool {
+        match self.game_type {
+            GameType::Giveaway => {
+                // For giveaway games, always refund to creator (creator puts up the prize)
+                if *player_key == self.creator {
+                    player_balance.refund(self.amount);
+                    true
+                } else {
+                    false
+                }
+            }
+            GameType::Coinflip => {
+                // For coinflip games, refund if player has stake in the game
+                if self.players.contains(player_key) {
+                    player_balance.refund(self.amount);
+                    true
+                } else {
+                    false
+                }
+            }
+        }
+    }
 }
 
-// Helper function for handling player token transfers during game participation
+// Consolidated token transfer helper that can handle both regular and PDA-signed transfers
+pub fn transfer_tokens<'info>(
+    from_account: &anchor_lang::prelude::AccountInfo<'info>,
+    to_account: &anchor_lang::prelude::AccountInfo<'info>,
+    authority: &anchor_lang::prelude::AccountInfo<'info>,
+    token_program: &anchor_lang::prelude::AccountInfo<'info>,
+    amount: u64,
+    signer_seeds: Option<&[&[&[u8]]]>,
+) -> Result<()> {
+    use anchor_spl::token;
+
+    let transfer_instruction = token::Transfer {
+        from: from_account.clone(),
+        to: to_account.clone(),
+        authority: authority.clone(),
+    };
+
+    match signer_seeds {
+        Some(seeds) => {
+            token::transfer(
+                anchor_lang::prelude::CpiContext::new_with_signer(
+                    token_program.clone(),
+                    transfer_instruction,
+                    seeds,
+                ),
+                amount,
+            )?;
+        }
+        None => {
+            token::transfer(
+                anchor_lang::prelude::CpiContext::new(token_program.clone(), transfer_instruction),
+                amount,
+            )?;
+        }
+    }
+
+    Ok(())
+}
+
+// Updated helper function for player token transfers
 pub fn handle_player_token_transfer<'info>(
     player_balance: &mut PlayerBalance,
     game_amount: u64,
@@ -154,8 +260,6 @@ pub fn handle_player_token_transfer<'info>(
     player: &anchor_lang::prelude::AccountInfo<'info>,
     token_program: &anchor_lang::prelude::AccountInfo<'info>,
 ) -> Result<()> {
-    use anchor_spl::token;
-
     let needed_amount = if player_balance.amount >= game_amount {
         player_balance.amount -= game_amount;
         0
@@ -167,23 +271,20 @@ pub fn handle_player_token_transfer<'info>(
 
     // Only transfer if additional tokens are needed
     if needed_amount > 0 {
-        token::transfer(
-            anchor_lang::prelude::CpiContext::new(
-                token_program.clone(),
-                token::Transfer {
-                    from: player_token_account.clone(),
-                    to: game_token_account.clone(),
-                    authority: player.clone(),
-                },
-            ),
+        transfer_tokens(
+            player_token_account,
+            game_token_account,
+            player,
+            token_program,
             needed_amount,
+            None,
         )?;
     }
 
     Ok(())
 }
 
-// Helper function for PDA-signed token transfers (game vault to player/authority)
+// Updated helper function for PDA-signed token transfers
 pub fn handle_pda_token_transfer<'info>(
     from_account: &anchor_lang::prelude::AccountInfo<'info>,
     to_account: &anchor_lang::prelude::AccountInfo<'info>,
@@ -193,20 +294,14 @@ pub fn handle_pda_token_transfer<'info>(
     vault_bump: u8,
     amount: u64,
 ) -> Result<()> {
-    use anchor_spl::token;
+    let signer_seeds = &[b"game_vault", token_mint.as_ref(), &[vault_bump]];
 
-    token::transfer(
-        anchor_lang::prelude::CpiContext::new_with_signer(
-            token_program.clone(),
-            token::Transfer {
-                from: from_account.clone(),
-                to: to_account.clone(),
-                authority: authority.clone(),
-            },
-            &[&[b"game_vault", token_mint.as_ref(), &[vault_bump]]],
-        ),
+    transfer_tokens(
+        from_account,
+        to_account,
+        authority,
+        token_program,
         amount,
-    )?;
-
-    Ok(())
+        Some(&[signer_seeds]),
+    )
 }
