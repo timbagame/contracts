@@ -315,23 +315,9 @@ pub struct UnjoinGame<'info> {
         bump,
     )]
     pub player_balance: Account<'info, PlayerBalance>,
-    #[account(
-        mut,
-        associated_token::mint = game.token_mint,
-        associated_token::authority = player,
-    )]
-    pub player_token_account: Account<'info, TokenAccount>,
-    #[account(
-        mut,
-        associated_token::mint = game.token_mint,
-        associated_token::authority = game_vault,
-    )]
-    pub game_token_account: Account<'info, TokenAccount>,
     #[account(seeds = [b"oracle"], bump)]
     pub oracle: Account<'info, Oracle>,
     pub system_program: Program<'info, System>,
-    pub token_program: Program<'info, Token>,
-    pub associated_token_program: Program<'info, AssociatedToken>,
 }
 
 #[derive(Accounts)]
@@ -364,21 +350,7 @@ pub struct CancelGame<'info> {
     /// CHECK: PDA authority for game's token accounts
     #[account(seeds = [b"game_vault", game.token_mint.as_ref()], bump)]
     pub game_vault: AccountInfo<'info>,
-    #[account(
-        mut,
-        associated_token::mint = game.token_mint,
-        associated_token::authority = player,
-    )]
-    pub player_token_account: Account<'info, TokenAccount>,
-    #[account(
-        mut,
-        associated_token::mint = game.token_mint,
-        associated_token::authority = game_vault,
-    )]
-    pub game_token_account: Account<'info, TokenAccount>,
     pub system_program: Program<'info, System>,
-    pub token_program: Program<'info, Token>,
-    pub associated_token_program: Program<'info, AssociatedToken>,
 }
 
 // Fee Management
