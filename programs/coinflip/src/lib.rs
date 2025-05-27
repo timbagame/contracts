@@ -91,7 +91,7 @@ pub mod coinflip {
     // Game Management
     // --------------
 
-    pub fn initialize_game(ctx: Context<InitializeGame>, config: GameConfig) -> Result<()> {
+    pub fn initialize_game(ctx: Context<InitializeGame>, config: GameConfig, _random_hash: [u8; 32]) -> Result<()> {
         instructions::initialize_game::handler(
             ctx,
             config.game_type,
