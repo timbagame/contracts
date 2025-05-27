@@ -264,6 +264,7 @@ pub struct CompleteGame<'info> {
         mut,
         close = creator,
         constraint = game.status == GameStatus::Active @ ErrorCode::GameNotActive,
+        constraint = game.creator == creator.key() @ ErrorCode::InvalidCreator,
         constraint = game.derive_pda(secret_key) == game.key() @ ErrorCode::InvalidSecretKey,
         constraint = game.calculate_winner(secret_key) == player.key() @ ErrorCode::UnauthorizedPlayer,
         constraint = game.ready_for_oracle(Clock::get()?.unix_timestamp) @ ErrorCode::GameNotReadyForOracle,
@@ -279,7 +280,7 @@ pub struct CompleteGame<'info> {
     /// CHECK: Validated by game's winner calculation
     pub player: AccountInfo<'info>,
     /// CHECK: Game creator for rent refund
-    #[account(mut, address = game.creator @ ErrorCode::InvalidCreator)]
+    #[account(mut)]
     pub creator: AccountInfo<'info>,
     #[account(
         mut,
