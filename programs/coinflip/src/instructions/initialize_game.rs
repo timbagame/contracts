@@ -6,8 +6,8 @@ pub fn handler(
     ctx: Context<super::InitializeGame>,
     game_type: GameType,
     amount: u64,
-    max_players: u16,
-    min_players: u16,
+    max_players: u8,
+    min_players: u8,
     timeout: u32,
     is_private: bool,
 ) -> Result<()> {

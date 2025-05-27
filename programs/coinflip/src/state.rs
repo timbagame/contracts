@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_lang::solana_program::hash::hash;
 
 // Constants for space calculation
-pub const ORACLE_SIZE: usize = 8 + 32 + 1 + 2 + 2 + 4 + 4;
+pub const ORACLE_SIZE: usize = 8 + 32 + 1 + 2 + 1 + 4 + 4;
 pub const GAME_TOKEN_SIZE: usize = 8 + 32 + 8 + 8 + 1;
 pub const PLAYER_BALANCE_SIZE: usize = 8 + 32 + 32 + 8;
 
@@ -16,8 +16,8 @@ pub struct Oracle {
     pub fee_percentage: u8,
     // Buffer time in seconds after game timeout before cancellation is allowed
     pub oracle_buffer_time: u16,
-    // Maximum number of players allowed in a game
-    pub max_players: u16,
+    // Maximum number of players allowed in a game (realistically never > 255)
+    pub max_players: u8,
     // Maximum timeout duration in seconds for a game
     pub max_timeout: u32,
     // Minimum timeout duration in seconds for a game
@@ -75,10 +75,10 @@ pub struct Game {
     pub game_type: GameType,
     // Amount each player must contribute
     pub amount: u64,
-    // Maximum number of players allowed
-    pub max_players: u16,
-    // Minimum number of players required
-    pub min_players: u16,
+    // Maximum number of players allowed (realistically never > 255)
+    pub max_players: u8,
+    // Minimum number of players required (realistically never > 255)
+    pub min_players: u8,
     // List of players who have joined
     pub players: Vec<Pubkey>,
     // Token mint used for this game
@@ -93,8 +93,8 @@ pub struct Game {
 
 impl Game {
     // Calculate space needed for a game account based on max players
-    pub fn space(max_players: u16) -> usize {
-        8 + 32 + 1 + 8 + 2 + 2 + 4 + (32 * max_players as usize) + 32 + 8 + 4 + 1
+    pub fn space(max_players: u8) -> usize {
+        8 + 32 + 1 + 8 + 1 + 1 + 4 + (32 * max_players as usize) + 32 + 8 + 4 + 1
     }
 
     // Checks if the game meets minimum requirements and timeout conditions
