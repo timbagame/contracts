@@ -72,8 +72,6 @@ pub enum GameStatus {
     Active,
     // Game has been completed and winner determined
     Completed,
-    // Game has been cancelled
-    Cancelled,
 }
 
 impl Default for GameStatus {
