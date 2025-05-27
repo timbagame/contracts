@@ -296,10 +296,12 @@ pub struct UnjoinGame<'info> {
     #[account(
         mut,
         constraint = game.players.contains(&player.key()) @ ErrorCode::UnauthorizedPlayer,
-        constraint = !game.ready_for_oracle(Clock::get()?.unix_timestamp) || game.buffer_passed(oracle.oracle_buffer_time, Clock::get()?.unix_timestamp) @ ErrorCode::GameReadyForOracle,
+        constraint = authority.is_none() || authority.as_ref().unwrap().key() == oracle.authority @ ErrorCode::UnauthorizedAuthority,
+        constraint = authority.is_some() || !game.ready_for_oracle(Clock::get()?.unix_timestamp) || game.buffer_passed(oracle.oracle_buffer_time, Clock::get()?.unix_timestamp) @ ErrorCode::GameReadyForOracle,
     )]
     pub game: Account<'info, Game>,
     pub player: Signer<'info>,
+    pub authority: Option<Signer<'info>>,
     #[account(
         mut,
         seeds = [b"player_balance", player.key().as_ref(), game.token_mint.as_ref()],
