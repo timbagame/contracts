@@ -1,4 +1,4 @@
-use crate::state::{GameStatus, GameType};
+use crate::state::GameType;
 use anchor_lang::prelude::*;
 
 #[event]
@@ -28,7 +28,6 @@ pub fn handler(ctx: Context<super::CompleteGame>) -> Result<()> {
     let (winner_amount, fee_amount) = game.calculate_amounts(players_len, fee_percentage);
 
     game.winner = ctx.accounts.player.key();
-    game.status = GameStatus::Completed;
     game_token.fee_amount += fee_amount;
     player_balance.amount += winner_amount;
 

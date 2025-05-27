@@ -65,21 +65,6 @@ impl Default for GameType {
     }
 }
 
-// Current status of a game
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Copy)]
-pub enum GameStatus {
-    // Game is active and accepting players
-    Active,
-    // Game has been completed and winner determined
-    Completed,
-}
-
-impl Default for GameStatus {
-    fn default() -> Self {
-        GameStatus::Active
-    }
-}
-
 // Game instance that manages player participation and winner determination
 #[account]
 #[derive(Default)]
@@ -98,8 +83,6 @@ pub struct Game {
     pub players: Vec<Pubkey>,
     // Winner of the game (if completed)
     pub winner: Pubkey,
-    // Current status of the game
-    pub status: GameStatus,
     // Token mint used for this game
     pub token_mint: Pubkey,
     // Timestamp when game was created
@@ -113,7 +96,7 @@ pub struct Game {
 impl Game {
     // Calculate space needed for a game account based on max players
     pub fn space(max_players: u16) -> usize {
-        8 + 32 + 1 + 8 + 2 + 2 + 4 + (32 * max_players as usize) + 32 + 1 + 32 + 8 + 4 + 1
+        8 + 32 + 1 + 8 + 2 + 2 + 4 + (32 * max_players as usize) + 32 + 32 + 8 + 4 + 1
     }
 
     // Checks if the game meets minimum requirements and timeout conditions

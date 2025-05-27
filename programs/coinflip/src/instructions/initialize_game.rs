@@ -19,7 +19,6 @@ pub fn handler(
     game.max_players = max_players;
     game.min_players = min_players;
     game.players = Vec::with_capacity(max_players as usize);
-    game.status = crate::state::GameStatus::Active;
     game.token_mint = ctx.accounts.game_token.token_mint;
     game.created_at = Clock::get()?.unix_timestamp as u64;
     game.timeout = timeout;
