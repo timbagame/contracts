@@ -16,7 +16,7 @@ pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
     // Return full funds without charging any fee when unjoining
     if game.game_type == GameType::Coinflip {
         let player_balance = &mut ctx.accounts.player_balance;
-        player_balance.amount += game.amount;
+        player_balance.refund(game.amount);
     }
 
     Ok(())

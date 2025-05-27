@@ -1,28 +1,19 @@
+use crate::{state::GameType, GameConfig};
 use anchor_lang::prelude::*;
 
-use crate::state::GameType;
-
-pub fn handler(
-    ctx: Context<super::InitializeGame>,
-    game_type: GameType,
-    amount: u64,
-    max_players: u8,
-    min_players: u8,
-    timeout: u32,
-    is_private: bool,
-) -> Result<()> {
+pub fn handler(ctx: Context<super::InitializeGame>, config: GameConfig) -> Result<()> {
     // Initialize game
     let game = &mut ctx.accounts.game;
     game.creator = ctx.accounts.player.key();
-    game.game_type = game_type;
-    game.amount = amount;
-    game.max_players = max_players;
-    game.min_players = min_players;
-    game.players = Vec::with_capacity(max_players as usize);
+    game.game_type = config.game_type;
+    game.amount = config.amount;
+    game.max_players = config.max_players;
+    game.min_players = config.min_players;
+    game.players = Vec::with_capacity(config.max_players as usize);
     game.token_mint = ctx.accounts.game_token.token_mint;
     game.created_at = Clock::get()?.unix_timestamp as u64;
-    game.timeout = timeout;
-    game.is_private = is_private;
+    game.timeout = config.timeout;
+    game.is_private = config.is_private;
 
     if game.game_type == GameType::Coinflip {
         game.players.push(ctx.accounts.player.key());

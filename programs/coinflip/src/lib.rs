@@ -1,3 +1,4 @@
+#![allow(unexpected_cfgs)]
 use anchor_lang::prelude::*;
 
 mod error;
@@ -45,36 +46,22 @@ pub mod coinflip {
     // ----------------
 
     pub fn initialize_oracle(ctx: Context<InitializeOracle>, config: OracleConfig) -> Result<()> {
-        instructions::initialize_oracle::handler(
-            ctx,
-            config.fee_percentage,
-            config.oracle_buffer_time,
-            config.max_players,
-            config.max_timeout,
-            config.min_timeout,
-        )
+        instructions::initialize_oracle::handler(ctx, config)
     }
 
     pub fn update_oracle(ctx: Context<UpdateOracle>, config: OracleConfig) -> Result<()> {
-        instructions::update_oracle::handler(
-            ctx,
-            config.fee_percentage,
-            config.oracle_buffer_time,
-            config.max_players,
-            config.max_timeout,
-            config.min_timeout,
-        )
+        instructions::update_oracle::handler(ctx, config)
     }
 
     // Token Management
     // ---------------
 
     pub fn initialize_token(ctx: Context<InitializeToken>, config: TokenConfig) -> Result<()> {
-        instructions::initialize_token::handler(ctx, config.min_amount, config.enabled)
+        instructions::initialize_token::handler(ctx, config)
     }
 
     pub fn update_token(ctx: Context<UpdateToken>, config: TokenConfig) -> Result<()> {
-        instructions::update_token::handler(ctx, config.min_amount, config.enabled)
+        instructions::update_token::handler(ctx, config)
     }
 
     // Player Management
@@ -91,16 +78,12 @@ pub mod coinflip {
     // Game Management
     // --------------
 
-    pub fn initialize_game(ctx: Context<InitializeGame>, config: GameConfig, _random_hash: [u8; 32]) -> Result<()> {
-        instructions::initialize_game::handler(
-            ctx,
-            config.game_type,
-            config.amount,
-            config.max_players,
-            config.min_players,
-            config.timeout,
-            config.is_private,
-        )
+    pub fn initialize_game(
+        ctx: Context<InitializeGame>,
+        config: GameConfig,
+        _random_hash: [u8; 32],
+    ) -> Result<()> {
+        instructions::initialize_game::handler(ctx, config)
     }
 
     pub fn join_game(ctx: Context<JoinGame>) -> Result<()> {
