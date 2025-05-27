@@ -335,7 +335,10 @@ pub struct CancelGame<'info> {
         mut,
         close = creator,
         constraint = authority.as_ref().map_or(true, |auth| auth.key() == oracle.authority) @ ErrorCode::UnauthorizedAuthority,
-        constraint = game.players.is_empty() || game.buffer_passed(oracle.oracle_buffer_time, Clock::get()?.unix_timestamp) @ ErrorCode::GameReadyForOracle,
+        constraint = game.players.is_empty() ||
+                    game.game_type == GameType::Giveaway ||
+                    (game.game_type == GameType::Coinflip && game.players.len() == 1 && game.players[0] == game.creator) @ ErrorCode::CoinflipHasActivePlayers,
+        constraint = !game.ready_for_oracle(Clock::get()?.unix_timestamp) || game.buffer_passed(oracle.oracle_buffer_time, Clock::get()?.unix_timestamp) @ ErrorCode::GameReadyForOracle,
     )]
     pub game: Account<'info, Game>,
     /// CHECK: Either this creator must sign, or oracle authority must be present and sign

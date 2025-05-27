@@ -21,6 +21,8 @@ pub enum ErrorCode {
     GameReadyForOracle = 1102,
     #[msg("Game not ready for oracle")]
     GameNotReadyForOracle = 1103,
+    #[msg("Cannot cancel coinflip game with active players")]
+    CoinflipHasActivePlayers = 1104,
 
     // Player Action Errors (1200-1299)
     // --------------------------------
