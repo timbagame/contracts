@@ -357,7 +357,7 @@ pub struct CancelGame<'info> {
 // -------------
 
 #[derive(Accounts)]
-pub struct ClaimFee<'info> {
+pub struct WithdrawTokenFee<'info> {
     #[account(
         mut,
         seeds = [b"game_token", token_mint.key().as_ref()],

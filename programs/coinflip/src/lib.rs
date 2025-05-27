@@ -122,7 +122,7 @@ pub mod coinflip {
     // Fee Management
     // -------------
 
-    pub fn claim_fee(ctx: Context<ClaimFee>) -> Result<()> {
-        instructions::claim_fee::handler(ctx)
+    pub fn withdraw_token_fee(ctx: Context<WithdrawTokenFee>) -> Result<()> {
+        instructions::withdraw_token_fee::handler(ctx)
     }
 }
