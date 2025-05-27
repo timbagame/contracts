@@ -10,8 +10,8 @@ pub mod initialize_token;
 pub mod update_token;
 
 // Player management
-pub mod claim_win;
 pub mod initialize_player_balance;
+pub mod withdraw_player_balance;
 
 // Game management
 pub mod cancel_game;

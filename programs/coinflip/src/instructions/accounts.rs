@@ -126,7 +126,7 @@ pub struct InitializePlayerBalance<'info> {
 }
 
 #[derive(Accounts)]
-pub struct ClaimWin<'info> {
+pub struct WithdrawPlayerBalance<'info> {
     #[account(
         mut,
         seeds = [b"player_balance", player.key().as_ref(), token_mint.key().as_ref()],
