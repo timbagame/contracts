@@ -217,7 +217,6 @@ pub struct InitializeGame<'info> {
 pub struct JoinGame<'info> {
     #[account(
         mut,
-        constraint = game.status == GameStatus::Active @ ErrorCode::GameNotActive,
         constraint = game.players.len() < (game.max_players as usize) @ ErrorCode::GameFull,
         constraint = !game.players.contains(&player.key()) @ ErrorCode::AlreadyJoined,
         constraint = !game.ready_for_oracle(Clock::get()?.unix_timestamp) @ ErrorCode::GameReadyForOracle,
@@ -263,7 +262,6 @@ pub struct CompleteGame<'info> {
     #[account(
         mut,
         close = creator,
-        constraint = game.status == GameStatus::Active @ ErrorCode::GameNotActive,
         constraint = game.creator == creator.key() @ ErrorCode::InvalidCreator,
         constraint = game.derive_pda(secret_key) == game.key() @ ErrorCode::InvalidSecretKey,
         constraint = game.calculate_winner(secret_key) == player.key() @ ErrorCode::UnauthorizedPlayer,
@@ -297,7 +295,6 @@ pub struct CompleteGame<'info> {
 pub struct UnjoinGame<'info> {
     #[account(
         mut,
-        constraint = game.status == GameStatus::Active @ ErrorCode::GameNotActive,
         constraint = game.players.contains(&player.key()) @ ErrorCode::UnauthorizedPlayer,
         constraint = !game.ready_for_oracle(Clock::get()?.unix_timestamp) || game.buffer_passed(oracle.oracle_buffer_time, Clock::get()?.unix_timestamp) @ ErrorCode::GameReadyForOracle,
     )]
@@ -319,7 +316,6 @@ pub struct CancelGame<'info> {
     #[account(
         mut,
         close = creator,
-        constraint = game.status == GameStatus::Active @ ErrorCode::GameNotActive,
         constraint = game.creator == creator.key() @ ErrorCode::InvalidCreator,
         constraint = game.players.is_empty() || game.buffer_passed(oracle.oracle_buffer_time, Clock::get()?.unix_timestamp) @ ErrorCode::GameReadyForOracle,
     )]
