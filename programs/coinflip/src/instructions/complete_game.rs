@@ -19,17 +19,9 @@ pub fn handler(ctx: Context<super::CompleteGame>) -> Result<()> {
     let game_token = &mut ctx.accounts.game_token;
     let player_balance = &mut ctx.accounts.player_balance;
 
-    // Move data before mutations to avoid clone
-    let game_key = game.key();
-    let creator = game.creator;
-    let game_type = game.game_type;
-    let amount = game.amount;
-    let players = std::mem::take(&mut game.players);
-    let token_mint = game.token_mint;
-
     // Calculate winner amount and fee amount checking game type
-    let players_len = match game_type {
-        GameType::Coinflip => players.len() as u64,
+    let players_len = match game.game_type {
+        GameType::Coinflip => game.players.len() as u64,
         GameType::Giveaway => 1,
     };
     let fee_percentage = ctx.accounts.oracle.fee_percentage;
@@ -40,13 +32,13 @@ pub fn handler(ctx: Context<super::CompleteGame>) -> Result<()> {
 
     // Emit event before the account is closed
     emit!(GameCompleted {
-        game_key,
-        creator,
+        game_key: game.key(),
+        creator: game.creator,
         winner: ctx.accounts.player.key(),
-        game_type,
-        amount,
-        players,
-        token_mint,
+        game_type: game.game_type,
+        amount: game.amount,
+        players: game.players.clone(),
+        token_mint: game.token_mint,
         winner_amount,
         fee_amount,
     });

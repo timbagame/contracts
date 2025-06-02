@@ -1,5 +1,12 @@
 use anchor_lang::prelude::*;
 
+#[event]
+pub struct PlayerBalanceWithdrawn {
+    pub player: Pubkey,
+    pub token_mint: Pubkey,
+    pub amount: u64,
+}
+
 pub fn handler(ctx: Context<super::WithdrawPlayerBalance>) -> Result<()> {
     let player_balance = &mut ctx.accounts.player_balance;
     let amount = player_balance.amount;
@@ -14,6 +21,12 @@ pub fn handler(ctx: Context<super::WithdrawPlayerBalance>) -> Result<()> {
         ctx.bumps.game_vault,
         amount,
     )?;
+
+    emit!(PlayerBalanceWithdrawn {
+        player: ctx.accounts.player.key(),
+        token_mint: ctx.accounts.token_mint.key(),
+        amount,
+    });
 
     Ok(())
 }

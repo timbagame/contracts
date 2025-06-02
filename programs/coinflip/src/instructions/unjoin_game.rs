@@ -1,6 +1,15 @@
 use crate::state::GameType;
 use anchor_lang::prelude::*;
 
+#[event]
+pub struct PlayerUnjoined {
+    pub game_key: Pubkey,
+    pub player: Pubkey,
+    pub game_type: GameType,
+    pub amount: u64,
+    pub current_players: u8,
+}
+
 pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
     let game = &mut ctx.accounts.game;
 
@@ -18,6 +27,14 @@ pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
         let player_balance = &mut ctx.accounts.player_balance;
         player_balance.refund(game.amount);
     }
+
+    emit!(PlayerUnjoined {
+        game_key: game.key(),
+        player: ctx.accounts.player.key(),
+        game_type: game.game_type,
+        amount: game.amount,
+        current_players: game.players.len() as u8,
+    });
 
     Ok(())
 }
