@@ -348,7 +348,7 @@ pub struct CancelGame<'info> {
         seeds = [b"player_balance", creator.key().as_ref(), game.token_mint.as_ref()],
         bump,
     )]
-    pub player_balance: Account<'info, PlayerBalance>,
+    pub creator_balance: Account<'info, PlayerBalance>,
     #[account(seeds = [b"oracle"], bump)]
     pub oracle: Account<'info, Oracle>,
     pub system_program: Program<'info, System>,
