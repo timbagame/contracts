@@ -1,4 +1,4 @@
-use crate::state::{handle_player_token_transfer, GameType};
+use crate::{state::GameType, utils::handle_player_token_transfer};
 use anchor_lang::prelude::*;
 
 #[event]

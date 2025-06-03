@@ -4,6 +4,7 @@ use anchor_lang::prelude::*;
 mod error;
 mod instructions;
 mod state;
+mod utils;
 
 use crate::instructions::*;
 use crate::state::GameType;
