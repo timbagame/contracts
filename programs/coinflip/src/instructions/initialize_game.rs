@@ -33,14 +33,14 @@ pub fn handler(ctx: Context<super::InitializeGame>, config: GameConfig) -> Resul
 
     emit!(GameInitialized {
         game_key: game.key(),
-        creator: ctx.accounts.player.key(),
-        game_type: config.game_type,
-        amount: config.amount,
-        max_players: config.max_players,
-        min_players: config.min_players,
-        token_mint: ctx.accounts.game_token.token_mint,
-        timeout: config.timeout,
-        is_private: config.is_private,
+        creator: game.creator,
+        game_type: game.game_type,
+        amount: game.amount,
+        max_players: game.max_players,
+        min_players: game.min_players,
+        token_mint: game.token_mint,
+        timeout: game.timeout,
+        is_private: game.is_private,
         created_at: game.created_at,
     });
 
