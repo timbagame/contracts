@@ -24,7 +24,6 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
         game_type: game.game_type,
         amount: game.amount,
         current_players: game.players.len() as u8,
-        max_players: game.max_players,
     });
 
     Ok(())
