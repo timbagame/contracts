@@ -9,7 +9,7 @@ pub fn handler(ctx: Context<super::CancelGame>) -> Result<()> {
     match game.game_type {
         GameType::Giveaway => {
             // For giveaway games, always refund to creator (creator puts up the prize)
-            if &ctx.accounts.creator.key() == &game.creator {
+            if ctx.accounts.creator.key() == game.creator {
                 player_balance.refund(game.amount);
             }
         }
