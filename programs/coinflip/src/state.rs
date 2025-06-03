@@ -1,5 +1,6 @@
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::hash::hash;
+use anchor_spl::token::{transfer, Transfer};
 
 // Constants for space calculation
 pub const ORACLE_SIZE: usize = 8 + 32 + 1 + 2 + 1 + 4 + 4;
@@ -212,53 +213,14 @@ impl Game {
     }
 }
 
-// Consolidated token transfer helper that can handle both regular and PDA-signed transfers
-pub fn transfer_tokens<'info>(
-    from_account: &anchor_lang::prelude::AccountInfo<'info>,
-    to_account: &anchor_lang::prelude::AccountInfo<'info>,
-    authority: &anchor_lang::prelude::AccountInfo<'info>,
-    token_program: &anchor_lang::prelude::AccountInfo<'info>,
-    amount: u64,
-    signer_seeds: Option<&[&[&[u8]]]>,
-) -> Result<()> {
-    use anchor_spl::token;
-
-    let transfer_instruction = token::Transfer {
-        from: from_account.clone(),
-        to: to_account.clone(),
-        authority: authority.clone(),
-    };
-
-    match signer_seeds {
-        Some(seeds) => {
-            token::transfer(
-                anchor_lang::prelude::CpiContext::new_with_signer(
-                    token_program.clone(),
-                    transfer_instruction,
-                    seeds,
-                ),
-                amount,
-            )?;
-        }
-        None => {
-            token::transfer(
-                anchor_lang::prelude::CpiContext::new(token_program.clone(), transfer_instruction),
-                amount,
-            )?;
-        }
-    }
-
-    Ok(())
-}
-
 // Updated helper function for player token transfers
 pub fn handle_player_token_transfer<'info>(
     player_balance: &mut PlayerBalance,
     game_amount: u64,
-    player_token_account: &anchor_lang::prelude::AccountInfo<'info>,
-    game_token_account: &anchor_lang::prelude::AccountInfo<'info>,
-    player: &anchor_lang::prelude::AccountInfo<'info>,
-    token_program: &anchor_lang::prelude::AccountInfo<'info>,
+    player_token_account: &AccountInfo<'info>,
+    game_token_account: &AccountInfo<'info>,
+    player: &AccountInfo<'info>,
+    token_program: &AccountInfo<'info>,
 ) -> Result<()> {
     let needed_amount = if player_balance.amount >= game_amount {
         player_balance.amount -= game_amount;
@@ -271,13 +233,16 @@ pub fn handle_player_token_transfer<'info>(
 
     // Only transfer if additional tokens are needed
     if needed_amount > 0 {
-        transfer_tokens(
-            player_token_account,
-            game_token_account,
-            player,
-            token_program,
+        transfer(
+            CpiContext::new(
+                token_program.clone(),
+                Transfer {
+                    from: player_token_account.clone(),
+                    to: game_token_account.clone(),
+                    authority: player.clone(),
+                },
+            ),
             needed_amount,
-            None,
         )?;
     }
 
@@ -286,22 +251,28 @@ pub fn handle_player_token_transfer<'info>(
 
 // Updated helper function for PDA-signed token transfers
 pub fn handle_pda_token_transfer<'info>(
-    from_account: &anchor_lang::prelude::AccountInfo<'info>,
-    to_account: &anchor_lang::prelude::AccountInfo<'info>,
-    authority: &anchor_lang::prelude::AccountInfo<'info>,
-    token_program: &anchor_lang::prelude::AccountInfo<'info>,
-    token_mint: &anchor_lang::prelude::Pubkey,
+    from_account: &AccountInfo<'info>,
+    to_account: &AccountInfo<'info>,
+    authority: &AccountInfo<'info>,
+    token_program: &AccountInfo<'info>,
+    token_mint: &Pubkey,
     vault_bump: u8,
     amount: u64,
 ) -> Result<()> {
     let signer_seeds = &[b"game_vault", token_mint.as_ref(), &[vault_bump]];
 
-    transfer_tokens(
-        from_account,
-        to_account,
-        authority,
-        token_program,
+    transfer(
+        CpiContext::new_with_signer(
+            token_program.clone(),
+            Transfer {
+                from: from_account.clone(),
+                to: to_account.clone(),
+                authority: authority.clone(),
+            },
+            &[signer_seeds],
+        ),
         amount,
-        Some(&[signer_seeds]),
-    )
+    )?;
+
+    Ok(())
 }
