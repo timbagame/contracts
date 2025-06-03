@@ -24,7 +24,7 @@ pub fn handler(ctx: Context<super::CompleteGame>) -> Result<()> {
         winner: ctx.accounts.player.key(),
         game_type: game.game_type,
         amount: game.amount,
-        players_count: game.players.len() as u8,
+        players_count: game.players.len() as u16,
         token_mint: game.token_mint,
         winner_amount,
         fee_amount,

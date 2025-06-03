@@ -7,7 +7,7 @@ pub struct OracleInitialized {
     pub authority: Pubkey,
     pub fee_percentage: u8,
     pub oracle_buffer_time: u16,
-    pub max_players: u8,
+    pub max_players: u16,
     pub max_timeout: u32,
     pub min_timeout: u32,
 }
@@ -18,7 +18,7 @@ pub struct OracleUpdated {
     pub new_authority: Pubkey,
     pub fee_percentage: u8,
     pub oracle_buffer_time: u16,
-    pub max_players: u8,
+    pub max_players: u16,
     pub max_timeout: u32,
     pub min_timeout: u32,
 }
@@ -65,7 +65,7 @@ pub struct PlayerJoined {
     pub player: Pubkey,
     pub game_type: GameType,
     pub amount: u64,
-    pub current_players: u8,
+    pub current_players: u16,
 }
 
 #[event]
@@ -74,7 +74,7 @@ pub struct PlayerUnjoined {
     pub player: Pubkey,
     pub game_type: GameType,
     pub amount: u64,
-    pub current_players: u8,
+    pub current_players: u16,
 }
 
 // Game Events
@@ -84,8 +84,8 @@ pub struct GameInitialized {
     pub creator: Pubkey,
     pub game_type: GameType,
     pub amount: u64,
-    pub max_players: u8,
-    pub min_players: u8,
+    pub max_players: u16,
+    pub min_players: u16,
     pub token_mint: Pubkey,
     pub timeout: u32,
     pub is_private: bool,
@@ -99,7 +99,7 @@ pub struct GameCompleted {
     pub winner: Pubkey,
     pub game_type: GameType,
     pub amount: u64,
-    pub players_count: u8,
+    pub players_count: u16,
     pub token_mint: Pubkey,
     pub winner_amount: u64,
     pub fee_amount: u64,
