@@ -17,9 +17,9 @@ pub struct InitializeOracle<'info> {
         space = ORACLE_SIZE,
         seeds = [b"oracle"],
         bump,
-        constraint = fee_percentage <= 100 @ ErrorCode::InvalidAmount,
-        constraint = max_timeout >= min_timeout @ ErrorCode::InvalidTimeout,
-        constraint = max_players > 0 @ ErrorCode::InvalidPlayersCount,
+        constraint = Oracle::is_valid_fee_percentage(&Oracle::default(), fee_percentage) @ ErrorCode::InvalidAmount,
+        constraint = Oracle::is_valid_timeout(&Oracle::default(), max_timeout, min_timeout) @ ErrorCode::InvalidTimeout,
+        constraint = Oracle::is_valid_players_count(&Oracle::default(), max_players) @ ErrorCode::InvalidPlayersCount,
     )]
     pub oracle: Account<'info, Oracle>,
     #[account(mut)]
@@ -34,10 +34,10 @@ pub struct UpdateOracle<'info> {
         mut,
         seeds = [b"oracle"],
         bump,
-        constraint = old_authority.key() == oracle.authority @ ErrorCode::UnauthorizedAuthority,
-        constraint = fee_percentage <= 100 @ ErrorCode::InvalidAmount,
-        constraint = max_timeout >= min_timeout @ ErrorCode::InvalidTimeout,
-        constraint = max_players > 0 @ ErrorCode::InvalidPlayersCount,
+        constraint = oracle.is_authorized_authority(&old_authority.key()) @ ErrorCode::UnauthorizedAuthority,
+        constraint = oracle.is_valid_fee_percentage(fee_percentage) @ ErrorCode::InvalidAmount,
+        constraint = oracle.is_valid_timeout(max_timeout, min_timeout) @ ErrorCode::InvalidTimeout,
+        constraint = oracle.is_valid_players_count(max_players) @ ErrorCode::InvalidPlayersCount,
     )]
     pub oracle: Account<'info, Oracle>,
     pub old_authority: Signer<'info>,
@@ -70,7 +70,7 @@ pub struct InitializeToken<'info> {
     #[account(
         seeds = [b"oracle"],
         bump,
-        constraint = oracle.authority == authority.key() @ ErrorCode::UnauthorizedAuthority,
+        constraint = oracle.is_authorized_authority(&authority.key()) @ ErrorCode::UnauthorizedAuthority,
     )]
     pub oracle: Account<'info, Oracle>,
     #[account(mut)]
@@ -93,7 +93,7 @@ pub struct UpdateToken<'info> {
     #[account(
         seeds = [b"oracle"],
         bump,
-        constraint = oracle.authority == authority.key() @ ErrorCode::UnauthorizedAuthority,
+        constraint = oracle.is_authorized_authority(&authority.key()) @ ErrorCode::UnauthorizedAuthority,
     )]
     pub oracle: Account<'info, Oracle>,
     pub authority: Signer<'info>,
@@ -110,7 +110,7 @@ pub struct InitializePlayerBalance<'info> {
         space = PLAYER_BALANCE_SIZE,
         seeds = [b"player_balance", player.key().as_ref(), token_mint.key().as_ref()],
         bump,
-        constraint = game_token.enabled @ ErrorCode::TokenNotEnabled,
+        constraint = game_token.is_enabled() @ ErrorCode::TokenNotEnabled,
     )]
     pub player_balance: Account<'info, PlayerBalance>,
     #[account(
@@ -138,10 +138,10 @@ pub struct WithdrawPlayerBalance<'info> {
         mut,
         seeds = [b"player_balance", player.key().as_ref(), token_mint.key().as_ref()],
         bump,
-        constraint = player_balance.player == player.key() @ ErrorCode::UnauthorizedPlayer,
-        constraint = player_balance.token_mint == token_mint.key() @ ErrorCode::InvalidAmount,
-        constraint = player_balance.amount > 0 @ ErrorCode::InsufficientBalance,
-        constraint = game_token.enabled @ ErrorCode::TokenNotEnabled,
+        constraint = player_balance.is_owner(&player.key()) @ ErrorCode::UnauthorizedPlayer,
+        constraint = player_balance.is_token_mint(&token_mint.key()) @ ErrorCode::InvalidAmount,
+        constraint = player_balance.has_sufficient_balance() @ ErrorCode::InsufficientBalance,
+        constraint = game_token.is_enabled() @ ErrorCode::TokenNotEnabled,
     )]
     pub player_balance: Account<'info, PlayerBalance>,
     pub player: Signer<'info>,
@@ -180,15 +180,12 @@ pub struct InitializeGame<'info> {
         space = Game::space(max_players),
         seeds = [b"game", random_hash.as_ref()],
         bump,
-        constraint = game_token.enabled @ ErrorCode::TokenNotEnabled,
-        constraint = amount >= game_token.min_amount @ ErrorCode::InvalidAmount,
-        constraint = timeout >= oracle.min_timeout && timeout <= oracle.max_timeout @ ErrorCode::InvalidTimeout,
-        constraint = max_players <= oracle.max_players && min_players <= max_players @ ErrorCode::InvalidPlayersCount,
-        constraint = match game_type {
-            GameType::Coinflip => max_players >= 2 && min_players >= 2,
-            GameType::Giveaway => max_players >= 1 && min_players >= 1,
-        } @ ErrorCode::InvalidPlayersCount,
-        constraint = player_token_account.amount + player_balance.amount >= amount @ ErrorCode::InsufficientBalance,
+        constraint = game_token.is_enabled() @ ErrorCode::TokenNotEnabled,
+        constraint = game_token.meets_min_amount(amount) @ ErrorCode::InvalidAmount,
+        constraint = oracle.is_valid_timeout_range(timeout) @ ErrorCode::InvalidTimeout,
+        constraint = Game::is_valid_players_count(max_players, min_players, oracle.max_players) @ ErrorCode::InvalidPlayersCount,
+        constraint = Game::is_valid_game_type_players(game_type, max_players, min_players) @ ErrorCode::InvalidPlayersCount,
+        constraint = player_balance.has_combined_balance(player_token_account.amount, amount) @ ErrorCode::InsufficientBalance,
     )]
     pub game: Account<'info, Game>,
     #[account(mut)]
@@ -228,12 +225,12 @@ pub struct InitializeGame<'info> {
 pub struct JoinGame<'info> {
     #[account(
         mut,
-        constraint = game.players.len() < (game.max_players as usize) @ ErrorCode::GameFull,
-        constraint = !game.players.contains(&player.key()) @ ErrorCode::AlreadyJoined,
+        constraint = game.is_not_full() @ ErrorCode::GameFull,
+        constraint = !game.has_player(&player.key()) @ ErrorCode::AlreadyJoined,
         constraint = !game.ready_for_oracle(Clock::get()?.unix_timestamp) @ ErrorCode::GameReadyForOracle,
-        constraint = !game.is_private || authority.as_ref().map_or(false, |auth| auth.key() == oracle.authority) @ ErrorCode::UnauthorizedPlayer,
-        constraint = game.game_type == GameType::Giveaway || player_token_account.amount + player_balance.amount >= game.amount @ ErrorCode::InsufficientBalance,
-        constraint = game_token.enabled @ ErrorCode::TokenNotEnabled,
+        constraint = game.can_join_private(authority.as_ref().map(|a| a.key()), &oracle.authority) @ ErrorCode::UnauthorizedPlayer,
+        constraint = game.has_sufficient_balance_for_join(player_token_account.amount, player_balance.amount) @ ErrorCode::InsufficientBalance,
+        constraint = game_token.is_enabled() @ ErrorCode::TokenNotEnabled,
     )]
     pub game: Account<'info, Game>,
     pub player: Signer<'info>,
@@ -274,7 +271,7 @@ pub struct CompleteGame<'info> {
     #[account(
         mut,
         close = creator,
-        constraint = game.creator == creator.key() @ ErrorCode::InvalidCreator,
+        constraint = game.is_creator(&creator.key()) @ ErrorCode::InvalidCreator,
         constraint = game.derive_pda(secret_key) == game.key() @ ErrorCode::InvalidSecretKey,
         constraint = game.calculate_winner(secret_key) == player.key() @ ErrorCode::UnauthorizedPlayer,
         constraint = game.ready_for_oracle(Clock::get()?.unix_timestamp) @ ErrorCode::GameNotReadyForOracle,
@@ -283,7 +280,7 @@ pub struct CompleteGame<'info> {
     #[account(
         seeds = [b"oracle"],
         bump,
-        constraint = oracle.authority == authority.key() @ ErrorCode::UnauthorizedAuthority,
+        constraint = oracle.is_authorized_authority(&authority.key()) @ ErrorCode::UnauthorizedAuthority,
     )]
     pub oracle: Account<'info, Oracle>,
     pub authority: Signer<'info>,
@@ -307,9 +304,9 @@ pub struct CompleteGame<'info> {
 pub struct UnjoinGame<'info> {
     #[account(
         mut,
-        constraint = game.players.contains(&player.key()) @ ErrorCode::UnauthorizedPlayer,
-        constraint = authority.key() == player.key() || authority.key() == oracle.authority @ ErrorCode::UnauthorizedAuthority,
-        constraint = !game.ready_for_oracle(Clock::get()?.unix_timestamp) || game.buffer_passed(oracle.oracle_buffer_time, Clock::get()?.unix_timestamp) @ ErrorCode::GameReadyForOracle,
+        constraint = game.has_player(&player.key()) @ ErrorCode::UnauthorizedPlayer,
+        constraint = game.is_cancellable_by(&authority.key(), &oracle.authority) @ ErrorCode::UnauthorizedAuthority,
+        constraint = game.is_within_cancellation_window(oracle.oracle_buffer_time, Clock::get()?.unix_timestamp) @ ErrorCode::GameReadyForOracle,
     )]
     pub game: Account<'info, Game>,
     /// CHECK: Player account - validated by constraints
@@ -331,12 +328,10 @@ pub struct CancelGame<'info> {
     #[account(
         mut,
         close = creator,
-        constraint = game.creator == creator.key() @ ErrorCode::InvalidCreator,
-        constraint = authority.key() == creator.key() || authority.key() == oracle.authority @ ErrorCode::UnauthorizedAuthority,
-        constraint = game.players.is_empty() ||
-                    game.game_type == GameType::Giveaway ||
-                    (game.game_type == GameType::Coinflip && game.players.len() == 1 && game.players[0] == game.creator) @ ErrorCode::CoinflipHasActivePlayers,
-        constraint = !game.ready_for_oracle(Clock::get()?.unix_timestamp) || game.buffer_passed(oracle.oracle_buffer_time, Clock::get()?.unix_timestamp) @ ErrorCode::GameReadyForOracle,
+        constraint = game.is_creator(&creator.key()) @ ErrorCode::InvalidCreator,
+        constraint = game.is_cancellable_by(&authority.key(), &oracle.authority) @ ErrorCode::UnauthorizedAuthority,
+        constraint = game.has_no_active_participants() @ ErrorCode::CoinflipHasActivePlayers,
+        constraint = game.is_within_cancellation_window(oracle.oracle_buffer_time, Clock::get()?.unix_timestamp) @ ErrorCode::GameReadyForOracle,
     )]
     pub game: Account<'info, Game>,
     /// CHECK: Game creator for rent refund - validated by constraints
@@ -373,7 +368,7 @@ pub struct WithdrawTokenFee<'info> {
         mut,
         seeds = [b"oracle"],
         bump,
-        constraint = oracle.authority == authority.key() @ ErrorCode::UnauthorizedAuthority,
+        constraint = oracle.is_authorized_authority(&authority.key()) @ ErrorCode::UnauthorizedAuthority,
     )]
     pub oracle: Account<'info, Oracle>,
     pub authority: Signer<'info>,
