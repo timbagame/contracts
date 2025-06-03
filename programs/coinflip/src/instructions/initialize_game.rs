@@ -1,4 +1,7 @@
-use crate::{state::GameType, GameConfig};
+use crate::{
+    state::{handle_player_token_transfer, GameType},
+    GameConfig,
+};
 use anchor_lang::prelude::*;
 
 #[event]
@@ -34,7 +37,7 @@ pub fn handler(ctx: Context<super::InitializeGame>, config: GameConfig) -> Resul
     }
 
     // Handle player token transfer using helper function
-    crate::state::handle_player_token_transfer(
+    handle_player_token_transfer(
         &mut ctx.accounts.player_balance,
         game.amount,
         &ctx.accounts.player_token_account.to_account_info(),

@@ -1,6 +1,5 @@
+use crate::state::{handle_player_token_transfer, GameType};
 use anchor_lang::prelude::*;
-
-use crate::state::GameType;
 
 #[event]
 pub struct PlayerJoined {
@@ -17,7 +16,7 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
 
     // Check player token amount
     if game.game_type == GameType::Coinflip {
-        crate::state::handle_player_token_transfer(
+        handle_player_token_transfer(
             &mut ctx.accounts.player_balance,
             game.amount,
             &ctx.accounts.player_token_account.to_account_info(),
