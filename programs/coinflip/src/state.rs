@@ -186,28 +186,4 @@ impl Game {
         let winner_amount = total_amount - fee_amount;
         (winner_amount, fee_amount)
     }
-
-    // Helper method to handle player refunds based on game type and state
-    pub fn refund_player(&self, player_balance: &mut PlayerBalance, player_key: &Pubkey) -> bool {
-        match self.game_type {
-            GameType::Giveaway => {
-                // For giveaway games, always refund to creator (creator puts up the prize)
-                if *player_key == self.creator {
-                    player_balance.refund(self.amount);
-                    true
-                } else {
-                    false
-                }
-            }
-            GameType::Coinflip => {
-                // For coinflip games, refund if player has stake in the game
-                if self.players.contains(player_key) {
-                    player_balance.refund(self.amount);
-                    true
-                } else {
-                    false
-                }
-            }
-        }
-    }
 }
