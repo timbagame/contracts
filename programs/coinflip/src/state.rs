@@ -267,7 +267,7 @@ impl Game {
         authority_key: Option<Pubkey>,
         oracle_authority: &Pubkey,
     ) -> bool {
-        !self.is_private || authority_key.map_or(false, |auth| auth == *oracle_authority)
+        !self.is_private || authority_key.map_or(false, |key| key == *oracle_authority)
     }
 
     pub fn has_sufficient_balance_for_join(&self, token_balance: u64, player_balance: u64) -> bool {
