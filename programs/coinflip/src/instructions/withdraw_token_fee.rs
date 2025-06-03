@@ -1,3 +1,4 @@
+use crate::state::handle_pda_token_transfer;
 use anchor_lang::prelude::*;
 
 #[event]
@@ -12,7 +13,7 @@ pub fn handler(ctx: Context<super::WithdrawTokenFee>) -> Result<()> {
     let fee_amount = game_token.fee_amount;
     game_token.fee_amount = 0;
 
-    crate::state::handle_pda_token_transfer(
+    handle_pda_token_transfer(
         &ctx.accounts.game_token_account.to_account_info(),
         &ctx.accounts.authority_token_account.to_account_info(),
         &ctx.accounts.game_vault.to_account_info(),
