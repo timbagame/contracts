@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_lang::solana_program::hash::hash;
 
 // Constants for space calculation
-pub const ORACLE_SIZE: usize = 8 + 32 + 1 + 2 + 1 + 4 + 4;
+pub const ORACLE_SIZE: usize = 8 + 32 + 1 + 2 + 2 + 4 + 4;
 pub const GAME_TOKEN_SIZE: usize = 8 + 32 + 8 + 8 + 1;
 pub const PLAYER_BALANCE_SIZE: usize = 8 + 32 + 32 + 8;
 
@@ -16,8 +16,8 @@ pub struct Oracle {
     pub fee_percentage: u8,
     // Buffer time in seconds after game timeout before cancellation is allowed
     pub oracle_buffer_time: u16,
-    // Maximum number of players allowed in a game (realistically never > 255)
-    pub max_players: u8,
+    // Maximum number of players allowed in a game
+    pub max_players: u16,
     // Maximum timeout duration in seconds for a game
     pub max_timeout: u32,
     // Minimum timeout duration in seconds for a game
@@ -30,7 +30,7 @@ impl Oracle {
         &mut self,
         fee_percentage: u8,
         oracle_buffer_time: u16,
-        max_players: u8,
+        max_players: u16,
         max_timeout: u32,
         min_timeout: u32,
         new_authority: Pubkey,
@@ -52,7 +52,7 @@ impl Oracle {
         max_timeout >= min_timeout
     }
 
-    pub fn is_valid_players_count(&self, max_players: u8) -> bool {
+    pub fn is_valid_players_count(&self, max_players: u16) -> bool {
         max_players > 0
     }
 
@@ -165,10 +165,10 @@ pub struct Game {
     pub game_type: GameType,
     // Amount each player must contribute
     pub amount: u64,
-    // Maximum number of players allowed (realistically never > 255)
-    pub max_players: u8,
-    // Minimum number of players required (realistically never > 255)
-    pub min_players: u8,
+    // Maximum number of players allowed
+    pub max_players: u16,
+    // Minimum number of players required
+    pub min_players: u16,
     // List of players who have joined
     pub players: Vec<Pubkey>,
     // Token mint used for this game
@@ -183,8 +183,8 @@ pub struct Game {
 
 impl Game {
     // Calculate space needed for a game account based on max players
-    pub fn space(max_players: u8) -> usize {
-        8 + 32 + 1 + 8 + 1 + 1 + 4 + (32 * max_players as usize) + 32 + 8 + 4 + 1
+    pub fn space(max_players: u16) -> usize {
+        8 + 32 + 1 + 8 + 2 + 2 + 4 + (32 * max_players as usize) + 32 + 8 + 4 + 1
     }
 
     // Checks if the game meets minimum requirements and timeout conditions
@@ -247,14 +247,14 @@ impl Game {
         self.players.contains(player)
     }
 
-    pub fn is_valid_players_count(max_players: u8, min_players: u8, oracle_max: u8) -> bool {
+    pub fn is_valid_players_count(max_players: u16, min_players: u16, oracle_max: u16) -> bool {
         max_players <= oracle_max && min_players <= max_players
     }
 
     pub fn is_valid_game_type_players(
         game_type: GameType,
-        max_players: u8,
-        min_players: u8,
+        max_players: u16,
+        min_players: u16,
     ) -> bool {
         match game_type {
             GameType::Coinflip => max_players >= 2 && min_players >= 2,

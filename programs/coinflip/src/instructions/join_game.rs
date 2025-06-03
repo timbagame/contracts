@@ -23,7 +23,7 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
         player: ctx.accounts.player.key(),
         game_type: game.game_type,
         amount: game.amount,
-        current_players: game.players.len() as u8,
+        current_players: game.players.len() as u16,
     });
 
     Ok(())
