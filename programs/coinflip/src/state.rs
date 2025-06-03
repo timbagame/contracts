@@ -42,6 +42,27 @@ impl Oracle {
         self.min_timeout = min_timeout;
         self.authority = new_authority;
     }
+
+    // Validation helpers for constraints
+    pub fn is_valid_fee_percentage(&self, fee_percentage: u8) -> bool {
+        fee_percentage <= 100
+    }
+
+    pub fn is_valid_timeout(&self, max_timeout: u32, min_timeout: u32) -> bool {
+        max_timeout >= min_timeout
+    }
+
+    pub fn is_valid_players_count(&self, max_players: u8) -> bool {
+        max_players > 0
+    }
+
+    pub fn is_authorized_authority(&self, authority: &Pubkey) -> bool {
+        self.authority == *authority
+    }
+
+    pub fn is_valid_timeout_range(&self, timeout: u32) -> bool {
+        timeout >= self.min_timeout && timeout <= self.max_timeout
+    }
 }
 
 // Game token configuration for supported tokens
@@ -72,6 +93,15 @@ impl GameToken {
         self.fee_amount = 0;
         self.enabled = enabled;
     }
+
+    // Validation helpers for constraints
+    pub fn is_enabled(&self) -> bool {
+        self.enabled
+    }
+
+    pub fn meets_min_amount(&self, amount: u64) -> bool {
+        amount >= self.min_amount
+    }
 }
 
 // Player's balance for a specific token
@@ -90,6 +120,23 @@ impl PlayerBalance {
     // Helper method to refund amount to player balance
     pub fn refund(&mut self, amount: u64) {
         self.amount += amount;
+    }
+
+    // Validation helpers for constraints
+    pub fn is_owner(&self, player: &Pubkey) -> bool {
+        self.player == *player
+    }
+
+    pub fn is_token_mint(&self, token_mint: &Pubkey) -> bool {
+        self.token_mint == *token_mint
+    }
+
+    pub fn has_sufficient_balance(&self) -> bool {
+        self.amount > 0
+    }
+
+    pub fn has_combined_balance(&self, token_account_amount: u64, required_amount: u64) -> bool {
+        self.amount + token_account_amount >= required_amount
     }
 }
 
@@ -185,5 +232,70 @@ impl Game {
         let fee_amount = total_amount * fee_percentage as u64 / 100;
         let winner_amount = total_amount - fee_amount;
         (winner_amount, fee_amount)
+    }
+
+    // Validation helpers for constraints
+    pub fn is_creator(&self, creator: &Pubkey) -> bool {
+        self.creator == *creator
+    }
+
+    pub fn is_not_full(&self) -> bool {
+        self.players.len() < (self.max_players as usize)
+    }
+
+    pub fn has_player(&self, player: &Pubkey) -> bool {
+        self.players.contains(player)
+    }
+
+    pub fn is_valid_players_count(max_players: u8, min_players: u8, oracle_max: u8) -> bool {
+        max_players <= oracle_max && min_players <= max_players
+    }
+
+    pub fn is_valid_game_type_players(
+        game_type: GameType,
+        max_players: u8,
+        min_players: u8,
+    ) -> bool {
+        match game_type {
+            GameType::Coinflip => max_players >= 2 && min_players >= 2,
+            GameType::Giveaway => max_players >= 1 && min_players >= 1,
+        }
+    }
+
+    pub fn can_join_private(
+        &self,
+        authority_key: Option<Pubkey>,
+        oracle_authority: &Pubkey,
+    ) -> bool {
+        !self.is_private || authority_key.map_or(false, |auth| auth == *oracle_authority)
+    }
+
+    pub fn has_sufficient_balance_for_join(&self, token_balance: u64, player_balance: u64) -> bool {
+        self.game_type == GameType::Giveaway || token_balance + player_balance >= self.amount
+    }
+
+    // Checks if the game has no active participants that would prevent cancellation
+    // Returns true if: no players, giveaway type, or coinflip with only creator
+    pub fn has_no_active_participants(&self) -> bool {
+        self.players.is_empty()
+            || self.game_type == GameType::Giveaway
+            || (self.game_type == GameType::Coinflip
+                && self.players.len() == 1
+                && self.players[0] == self.creator)
+    }
+
+    // Checks if the specified authority is allowed to cancel/unjoin (creator or oracle)
+    pub fn is_cancellable_by(&self, authority: &Pubkey, oracle_authority: &Pubkey) -> bool {
+        *authority == self.creator || *authority == *oracle_authority
+    }
+
+    // Checks if the timing allows for cancellation/unjoining
+    // Returns true if: game not ready for oracle OR oracle buffer time has passed
+    pub fn is_within_cancellation_window(
+        &self,
+        oracle_buffer_time: u16,
+        current_time: i64,
+    ) -> bool {
+        !self.ready_for_oracle(current_time) || self.buffer_passed(oracle_buffer_time, current_time)
     }
 }
