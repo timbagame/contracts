@@ -1,15 +1,5 @@
-use crate::{state::GameType, utils::handle_player_token_transfer};
+use crate::{events::PlayerJoined, state::GameType, utils::handle_player_token_transfer};
 use anchor_lang::prelude::*;
-
-#[event]
-pub struct PlayerJoined {
-    pub game_key: Pubkey,
-    pub player: Pubkey,
-    pub game_type: GameType,
-    pub amount: u64,
-    pub current_players: u8,
-    pub max_players: u8,
-}
 
 pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
     let game = &mut ctx.accounts.game;

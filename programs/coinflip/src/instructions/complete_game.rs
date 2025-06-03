@@ -1,18 +1,5 @@
-use crate::state::GameType;
+use crate::{events::GameCompleted, state::GameType};
 use anchor_lang::prelude::*;
-
-#[event]
-pub struct GameCompleted {
-    pub game_key: Pubkey,
-    pub creator: Pubkey,
-    pub winner: Pubkey,
-    pub game_type: GameType,
-    pub amount: u64,
-    pub players_count: u8,
-    pub token_mint: Pubkey,
-    pub winner_amount: u64,
-    pub fee_amount: u64,
-}
 
 pub fn handler(ctx: Context<super::CompleteGame>) -> Result<()> {
     let game = &mut ctx.accounts.game;

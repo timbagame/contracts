@@ -1,12 +1,5 @@
-use crate::TokenConfig;
+use crate::{events::TokenInitialized, TokenConfig};
 use anchor_lang::prelude::*;
-
-#[event]
-pub struct TokenInitialized {
-    pub token_mint: Pubkey,
-    pub min_amount: u64,
-    pub enabled: bool,
-}
 
 pub fn handler(ctx: Context<super::InitializeToken>, config: TokenConfig) -> Result<()> {
     let game_token = &mut ctx.accounts.game_token;
