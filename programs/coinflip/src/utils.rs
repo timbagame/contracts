@@ -6,10 +6,10 @@ use anchor_spl::token::{transfer, Transfer};
 pub fn handle_player_token_transfer<'info>(
     player_balance: &mut PlayerBalance,
     game_amount: u64,
-    player_token_account: &AccountInfo<'info>,
-    game_token_account: &AccountInfo<'info>,
-    player: &AccountInfo<'info>,
-    token_program: &AccountInfo<'info>,
+    player_token_account: AccountInfo<'info>,
+    game_token_account: AccountInfo<'info>,
+    player: AccountInfo<'info>,
+    token_program: AccountInfo<'info>,
 ) -> Result<()> {
     let needed_amount = if player_balance.amount >= game_amount {
         player_balance.amount -= game_amount;
@@ -40,11 +40,11 @@ pub fn handle_player_token_transfer<'info>(
 
 // Helper function for PDA-signed token transfers
 pub fn handle_pda_token_transfer<'info>(
-    from_account: &AccountInfo<'info>,
-    to_account: &AccountInfo<'info>,
-    authority: &AccountInfo<'info>,
-    token_program: &AccountInfo<'info>,
-    token_mint: &Pubkey,
+    from_account: AccountInfo<'info>,
+    to_account: AccountInfo<'info>,
+    authority: AccountInfo<'info>,
+    token_program: AccountInfo<'info>,
+    token_mint: Pubkey,
     vault_bump: u8,
     amount: u64,
 ) -> Result<()> {
