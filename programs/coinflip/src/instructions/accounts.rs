@@ -228,7 +228,7 @@ pub struct JoinGame<'info> {
         constraint = game.is_not_full() @ ErrorCode::GameFull,
         constraint = !game.has_player(&player.key()) @ ErrorCode::AlreadyJoined,
         constraint = !game.ready_for_oracle(Clock::get()?.unix_timestamp) @ ErrorCode::GameReadyForOracle,
-        constraint = game.can_join_private(authority.as_ref().map(|a| a.key()), &oracle.authority) @ ErrorCode::UnauthorizedPlayer,
+        constraint = game.can_join_private(authority.as_ref(), &oracle.authority) @ ErrorCode::UnauthorizedPlayer,
         constraint = game.has_sufficient_balance_for_join(player_token_account.amount, player_balance.amount) @ ErrorCode::InsufficientBalance,
         constraint = game_token.is_enabled() @ ErrorCode::TokenNotEnabled,
     )]
