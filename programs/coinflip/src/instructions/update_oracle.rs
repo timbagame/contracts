@@ -1,16 +1,5 @@
-use crate::OracleConfig;
+use crate::{events::OracleUpdated, OracleConfig};
 use anchor_lang::prelude::*;
-
-#[event]
-pub struct OracleUpdated {
-    pub old_authority: Pubkey,
-    pub new_authority: Pubkey,
-    pub fee_percentage: u8,
-    pub oracle_buffer_time: u16,
-    pub max_players: u8,
-    pub max_timeout: u32,
-    pub min_timeout: u32,
-}
 
 pub fn handler(ctx: Context<super::UpdateOracle>, config: OracleConfig) -> Result<()> {
     let oracle = &mut ctx.accounts.oracle;

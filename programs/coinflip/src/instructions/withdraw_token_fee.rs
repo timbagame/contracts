@@ -1,12 +1,5 @@
-use crate::utils::handle_pda_token_transfer;
+use crate::{events::TokenFeeWithdrawn, utils::handle_pda_token_transfer};
 use anchor_lang::prelude::*;
-
-#[event]
-pub struct TokenFeeWithdrawn {
-    pub authority: Pubkey,
-    pub token_mint: Pubkey,
-    pub amount: u64,
-}
 
 pub fn handler(ctx: Context<super::WithdrawTokenFee>) -> Result<()> {
     let game_token = &mut ctx.accounts.game_token;

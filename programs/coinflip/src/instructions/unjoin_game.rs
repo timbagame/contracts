@@ -1,14 +1,5 @@
-use crate::state::GameType;
+use crate::{events::PlayerUnjoined, state::GameType};
 use anchor_lang::prelude::*;
-
-#[event]
-pub struct PlayerUnjoined {
-    pub game_key: Pubkey,
-    pub player: Pubkey,
-    pub game_type: GameType,
-    pub amount: u64,
-    pub current_players: u8,
-}
 
 pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
     let game = &mut ctx.accounts.game;

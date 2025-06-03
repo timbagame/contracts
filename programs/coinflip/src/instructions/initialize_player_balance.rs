@@ -1,10 +1,5 @@
+use crate::events::PlayerBalanceInitialized;
 use anchor_lang::prelude::*;
-
-#[event]
-pub struct PlayerBalanceInitialized {
-    pub player: Pubkey,
-    pub token_mint: Pubkey,
-}
 
 pub fn handler(ctx: Context<super::InitializePlayerBalance>) -> Result<()> {
     let player_balance = &mut ctx.accounts.player_balance;

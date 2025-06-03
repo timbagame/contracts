@@ -1,15 +1,5 @@
-use crate::OracleConfig;
+use crate::{events::OracleInitialized, OracleConfig};
 use anchor_lang::prelude::*;
-
-#[event]
-pub struct OracleInitialized {
-    pub authority: Pubkey,
-    pub fee_percentage: u8,
-    pub oracle_buffer_time: u16,
-    pub max_players: u8,
-    pub max_timeout: u32,
-    pub min_timeout: u32,
-}
 
 pub fn handler(ctx: Context<super::InitializeOracle>, config: OracleConfig) -> Result<()> {
     let oracle = &mut ctx.accounts.oracle;

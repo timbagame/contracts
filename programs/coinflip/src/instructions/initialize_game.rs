@@ -1,19 +1,7 @@
-use crate::{state::GameType, utils::handle_player_token_transfer, GameConfig};
+use crate::{
+    events::GameInitialized, state::GameType, utils::handle_player_token_transfer, GameConfig,
+};
 use anchor_lang::prelude::*;
-
-#[event]
-pub struct GameInitialized {
-    pub game_key: Pubkey,
-    pub creator: Pubkey,
-    pub game_type: GameType,
-    pub amount: u64,
-    pub max_players: u8,
-    pub min_players: u8,
-    pub token_mint: Pubkey,
-    pub timeout: u32,
-    pub is_private: bool,
-    pub created_at: u64,
-}
 
 pub fn handler(ctx: Context<super::InitializeGame>, config: GameConfig) -> Result<()> {
     // Initialize game

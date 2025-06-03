@@ -1,15 +1,5 @@
+use crate::events::GameCancelled;
 use anchor_lang::prelude::*;
-
-use crate::state::GameType;
-
-#[event]
-pub struct GameCancelled {
-    pub game_key: Pubkey,
-    pub creator: Pubkey,
-    pub game_type: GameType,
-    pub amount: u64,
-    pub token_mint: Pubkey,
-}
 
 pub fn handler(ctx: Context<super::CancelGame>) -> Result<()> {
     let game = &mut ctx.accounts.game;
