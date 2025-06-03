@@ -66,7 +66,6 @@ pub struct PlayerJoined {
     pub game_type: GameType,
     pub amount: u64,
     pub current_players: u8,
-    pub max_players: u8,
 }
 
 #[event]
