@@ -4,7 +4,6 @@ use anchor_lang::prelude::*;
 pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
     let game = &mut ctx.accounts.game;
     let player_participation = &mut ctx.accounts.player_participation;
-    let current_time = Clock::get()?.unix_timestamp as u64;
 
     // Check player token amount for coinflip games
     if game.game_type == GameType::Coinflip {
@@ -18,13 +17,8 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
         )?;
     }
 
-    // Initialize player participation with current player count as index
-    player_participation.initialize(
-        ctx.accounts.player.key(),
-        game.key(),
-        current_time,
-        game.player_count,
-    );
+    // Set player index for winner calculation
+    player_participation.player_index = game.player_count;
 
     // Increment player count
     game.player_count += 1;
