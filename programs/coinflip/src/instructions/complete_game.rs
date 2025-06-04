@@ -1,4 +1,4 @@
-use crate::{events::GameCompleted, state::GameType};
+use crate::events::GameCompleted;
 use anchor_lang::prelude::*;
 
 pub fn handler(ctx: Context<super::CompleteGame>) -> Result<()> {
@@ -7,12 +7,8 @@ pub fn handler(ctx: Context<super::CompleteGame>) -> Result<()> {
     let player_balance = &mut ctx.accounts.player_balance;
 
     // Calculate winner amount and fee amount checking game type
-    let players_len = match game.game_type {
-        GameType::Coinflip => game.players.len() as u64,
-        GameType::Giveaway => 1,
-    };
     let fee_percentage = ctx.accounts.oracle.fee_percentage;
-    let (winner_amount, fee_amount) = game.calculate_amounts(players_len, fee_percentage);
+    let (winner_amount, fee_amount) = game.calculate_amounts(fee_percentage);
 
     game_token.fee_amount += fee_amount;
     player_balance.amount += winner_amount;
@@ -24,7 +20,7 @@ pub fn handler(ctx: Context<super::CompleteGame>) -> Result<()> {
         winner: ctx.accounts.player.key(),
         game_type: game.game_type,
         amount: game.amount,
-        players_count: game.players.len() as u16,
+        players_count: game.player_count,
         token_mint: game.token_mint,
         winner_amount,
         fee_amount,

@@ -100,7 +100,7 @@ pub mod coinflip {
         instructions::cancel_game::handler(ctx)
     }
 
-    pub fn complete_game(ctx: Context<CompleteGame>, _secret_key: [u8; 64]) -> Result<()> {
+    pub fn complete_game(ctx: Context<CompleteGame>, _secret_key: [u8; 32]) -> Result<()> {
         instructions::complete_game::handler(ctx)
     }
 

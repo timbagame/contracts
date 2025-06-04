@@ -177,7 +177,7 @@ pub struct InitializeGame<'info> {
     #[account(
         init,
         payer = player,
-        space = Game::space(max_players),
+        space = GAME_SIZE,
         seeds = [b"game", random_hash.as_ref()],
         bump,
         constraint = game_token.is_enabled() @ ErrorCode::TokenNotEnabled,
@@ -185,7 +185,6 @@ pub struct InitializeGame<'info> {
         constraint = oracle.is_valid_timeout_range(timeout) @ ErrorCode::InvalidTimeout,
         constraint = Game::is_valid_players_count(max_players, min_players, oracle.max_players) @ ErrorCode::InvalidPlayersCount,
         constraint = Game::is_valid_game_type_players(game_type, max_players, min_players) @ ErrorCode::InvalidPlayersCount,
-        constraint = player_balance.has_combined_balance(player_token_account.amount, amount) @ ErrorCode::InsufficientBalance,
     )]
     pub game: Account<'info, Game>,
     #[account(mut)]
@@ -226,13 +225,21 @@ pub struct JoinGame<'info> {
     #[account(
         mut,
         constraint = game.is_not_full() @ ErrorCode::GameFull,
-        constraint = !game.has_player(&player.key()) @ ErrorCode::AlreadyJoined,
         constraint = !game.ready_for_oracle(Clock::get()?.unix_timestamp) @ ErrorCode::GameReadyForOracle,
         constraint = game.can_join_private(authority.as_ref(), &oracle.authority) @ ErrorCode::UnauthorizedPlayer,
         constraint = game.has_sufficient_balance_for_join(player_token_account.amount, player_balance.amount) @ ErrorCode::InsufficientBalance,
         constraint = game_token.is_enabled() @ ErrorCode::TokenNotEnabled,
     )]
     pub game: Account<'info, Game>,
+    #[account(
+        init,
+        payer = player,
+        space = PLAYER_PARTICIPATION_SIZE,
+        seeds = [b"player_participation", game.key().as_ref(), player.key().as_ref()],
+        bump,
+    )]
+    pub player_participation: Account<'info, PlayerParticipation>,
+    #[account(mut)]
     pub player: Signer<'info>,
     #[account(
         mut,
@@ -266,14 +273,14 @@ pub struct JoinGame<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(secret_key: [u8; 64])]
+#[instruction(secret_key: [u8; 32])]
 pub struct CompleteGame<'info> {
     #[account(
         mut,
         close = creator,
         constraint = game.is_creator(&creator.key()) @ ErrorCode::InvalidCreator,
         constraint = game.derive_pda(secret_key) == game.key() @ ErrorCode::InvalidSecretKey,
-        constraint = game.calculate_winner(secret_key) == player.key() @ ErrorCode::UnauthorizedPlayer,
+        constraint = game.calculate_winner_index(secret_key) == player_participation.player_index @ ErrorCode::UnauthorizedPlayer,
         constraint = game.ready_for_oracle(Clock::get()?.unix_timestamp) @ ErrorCode::GameNotReadyForOracle,
     )]
     pub game: Account<'info, Game>,
@@ -284,7 +291,15 @@ pub struct CompleteGame<'info> {
     )]
     pub oracle: Account<'info, Oracle>,
     pub authority: Signer<'info>,
+    #[account(
+        mut,
+        close = player,
+        seeds = [b"player_participation", game.key().as_ref(), player.key().as_ref()],
+        bump,
+    )]
+    pub player_participation: Account<'info, PlayerParticipation>,
     /// CHECK: Validated by game's winner calculation
+    #[account(mut)]
     pub player: AccountInfo<'info>,
     /// CHECK: Game creator for rent refund
     #[account(mut)]
@@ -304,12 +319,19 @@ pub struct CompleteGame<'info> {
 pub struct UnjoinGame<'info> {
     #[account(
         mut,
-        constraint = game.has_player(&player.key()) @ ErrorCode::UnauthorizedPlayer,
         constraint = game.is_cancellable_by(&authority.key(), &oracle.authority) @ ErrorCode::UnauthorizedAuthority,
         constraint = game.is_within_cancellation_window(oracle.oracle_buffer_time, Clock::get()?.unix_timestamp) @ ErrorCode::GameReadyForOracle,
     )]
     pub game: Account<'info, Game>,
+    #[account(
+        mut,
+        close = player,
+        seeds = [b"player_participation", game.key().as_ref(), player.key().as_ref()],
+        bump,
+    )]
+    pub player_participation: Account<'info, PlayerParticipation>,
     /// CHECK: Player account - validated by constraints
+    #[account(mut)]
     pub player: AccountInfo<'info>,
     pub authority: Signer<'info>,
     #[account(
