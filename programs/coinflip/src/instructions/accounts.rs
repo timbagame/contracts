@@ -371,6 +371,26 @@ pub struct CancelGame<'info> {
     pub system_program: Program<'info, System>,
 }
 
+#[derive(Accounts)]
+pub struct CleanupPlayerParticipation<'info> {
+    /// CHECK: Game account that has been completed (closed)
+    #[account(
+        constraint = game.data_is_empty() @ ErrorCode::GameNotCompleted,
+    )]
+    pub game: AccountInfo<'info>,
+    #[account(
+        mut,
+        close = player,
+        seeds = [b"player_participation", game.key().as_ref(), player.key().as_ref()],
+        bump,
+    )]
+    pub player_participation: Account<'info, PlayerParticipation>,
+    /// CHECK: Player account for rent refund
+    #[account(mut)]
+    pub player: AccountInfo<'info>,
+    pub system_program: Program<'info, System>,
+}
+
 // Fee Management
 // -------------
 
