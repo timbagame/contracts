@@ -13,21 +13,17 @@ module.exports = async function (provider) {
 
   try {
     // Initialize Oracle parameters
-    const feePercentage = 1; // 1% fee
-    const oracleBufferTime = 300; // 5 minutes in seconds
-    const maxPlayers = 100;
-    const maxTimeout = 3600; // 1 hour in seconds
-    const minTimeout = 300; // 5 minutes in seconds
+    const config = {
+      feePercentage: 1, // 1% fee
+      oracleBufferTime: 300, // 5 minutes in seconds
+      maxPlayers: 1000,
+      maxTimeout: 3600, // 1 hour in seconds
+      minTimeout: 300, // 5 minutes in seconds
+    };
 
     // Initialize Oracle
     const tx = await program.methods
-      .initializeOracle(
-        feePercentage,
-        oracleBufferTime,
-        maxPlayers,
-        maxTimeout,
-        minTimeout
-      )
+      .initializeOracle(config)
       .accounts({
         authority: provider.wallet.publicKey,
       })
