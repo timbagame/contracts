@@ -121,10 +121,6 @@ impl PlayerBalance {
     pub fn has_sufficient_balance(&self) -> bool {
         self.amount > 0
     }
-
-    pub fn has_combined_balance(&self, token_account_amount: u64, required_amount: u64) -> bool {
-        self.amount + token_account_amount >= required_amount
-    }
 }
 
 // Player's participation in a specific game
