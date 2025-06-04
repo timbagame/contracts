@@ -138,8 +138,6 @@ pub struct WithdrawPlayerBalance<'info> {
         mut,
         seeds = [b"player_balance", player.key().as_ref(), token_mint.key().as_ref()],
         bump,
-        constraint = player_balance.is_owner(&player.key()) @ ErrorCode::UnauthorizedPlayer,
-        constraint = player_balance.is_token_mint(&token_mint.key()) @ ErrorCode::InvalidAmount,
         constraint = player_balance.has_sufficient_balance() @ ErrorCode::InsufficientBalance,
         constraint = game_token.is_enabled() @ ErrorCode::TokenNotEnabled,
     )]

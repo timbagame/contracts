@@ -3,9 +3,9 @@ use anchor_lang::solana_program::hash::hash;
 
 // Constants for space calculation
 pub const ORACLE_SIZE: usize = 8 + 32 + 1 + 2 + 2 + 4 + 4;
-pub const GAME_TOKEN_SIZE: usize = 8 + 32 + 8 + 8 + 1;
-pub const PLAYER_BALANCE_SIZE: usize = 8 + 32 + 32 + 8;
-pub const PLAYER_PARTICIPATION_SIZE: usize = 8 + 32 + 32 + 8 + 2;
+pub const GAME_TOKEN_SIZE: usize = 8 + 8 + 8 + 1;
+pub const PLAYER_BALANCE_SIZE: usize = 8 + 8;
+pub const PLAYER_PARTICIPATION_SIZE: usize = 8 + 2;
 pub const GAME_SIZE: usize = 8 + 32 + 1 + 8 + 2 + 2 + 2 + 32 + 8 + 4 + 1;
 
 // Oracle account that manages global game settings and authority
@@ -71,8 +71,6 @@ impl Oracle {
 #[account]
 #[derive(Default)]
 pub struct GameToken {
-    // The token mint address
-    pub token_mint: Pubkey,
     // Minimum amount required to participate in games
     pub min_amount: u64,
     // Accumulated fee amount for this token
@@ -89,8 +87,7 @@ impl GameToken {
     }
 
     // Helper method to initialize token with mint
-    pub fn initialize(&mut self, token_mint: Pubkey, min_amount: u64, enabled: bool) {
-        self.token_mint = token_mint;
+    pub fn initialize(&mut self, min_amount: u64, enabled: bool) {
         self.min_amount = min_amount;
         self.fee_amount = 0;
         self.enabled = enabled;
@@ -110,10 +107,6 @@ impl GameToken {
 #[account]
 #[derive(Default)]
 pub struct PlayerBalance {
-    // Player's public key
-    pub player: Pubkey,
-    // Token mint address
-    pub token_mint: Pubkey,
     // Current balance amount
     pub amount: u64,
 }
@@ -125,14 +118,6 @@ impl PlayerBalance {
     }
 
     // Validation helpers for constraints
-    pub fn is_owner(&self, player: &Pubkey) -> bool {
-        self.player == *player
-    }
-
-    pub fn is_token_mint(&self, token_mint: &Pubkey) -> bool {
-        self.token_mint == *token_mint
-    }
-
     pub fn has_sufficient_balance(&self) -> bool {
         self.amount > 0
     }
@@ -146,33 +131,8 @@ impl PlayerBalance {
 #[account]
 #[derive(Default)]
 pub struct PlayerParticipation {
-    // Player's public key
-    pub player: Pubkey,
-    // Game's public key
-    pub game: Pubkey,
-    // Timestamp when player joined the game
-    pub joined_at: u64,
     // Player's position/index in the game (for winner calculation)
     pub player_index: u16,
-}
-
-impl PlayerParticipation {
-    // Helper method to initialize participation
-    pub fn initialize(&mut self, player: Pubkey, game: Pubkey, joined_at: u64, player_index: u16) {
-        self.player = player;
-        self.game = game;
-        self.joined_at = joined_at;
-        self.player_index = player_index;
-    }
-
-    // Validation helpers for constraints
-    pub fn is_player(&self, player: &Pubkey) -> bool {
-        self.player == *player
-    }
-
-    pub fn is_game(&self, game: &Pubkey) -> bool {
-        self.game == *game
-    }
 }
 
 // Type of game being played

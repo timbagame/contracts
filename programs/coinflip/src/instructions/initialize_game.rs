@@ -10,7 +10,7 @@ pub fn handler(ctx: Context<super::InitializeGame>, config: GameConfig) -> Resul
     game.max_players = config.max_players;
     game.min_players = config.min_players;
     game.player_count = 0;
-    game.token_mint = ctx.accounts.game_token.token_mint;
+    game.token_mint = ctx.accounts.token_mint.key();
     game.created_at = Clock::get()?.unix_timestamp as u64;
     game.timeout = config.timeout;
     game.is_private = config.is_private;
