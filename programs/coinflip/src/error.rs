@@ -8,21 +8,19 @@ pub enum ErrorCode {
     UnauthorizedAuthority = 1000,
     #[msg("Unauthorized player")]
     UnauthorizedPlayer = 1001,
-    #[msg("Invalid creator address")]
+    #[msg("Invalid creator")]
     InvalidCreator = 1002,
 
     // Game State Errors (1100-1199)
     // -----------------------------
-    #[msg("Game not active")]
-    GameNotActive = 1100,
     #[msg("Game already full")]
-    GameFull = 1101,
+    GameFull = 1100,
     #[msg("Game ready for oracle")]
-    GameReadyForOracle = 1102,
+    GameReadyForOracle = 1101,
     #[msg("Game not ready for oracle")]
-    GameNotReadyForOracle = 1103,
+    GameNotReadyForOracle = 1102,
     #[msg("Cannot cancel coinflip game with active players")]
-    CoinflipHasActivePlayers = 1104,
+    CoinflipHasActivePlayers = 1103,
 
     // Player Action Errors (1200-1299)
     // --------------------------------
