@@ -201,21 +201,20 @@ impl Game {
             return 0;
         }
 
-        // Use multiple u16 chunks and XOR them for better entropy distribution
-        let chunk1 = u16::from_le_bytes(secret_key[0..2].try_into().unwrap());
-        let chunk2 = u16::from_le_bytes(secret_key[2..4].try_into().unwrap());
-        let chunk3 = u16::from_le_bytes(secret_key[4..6].try_into().unwrap());
-        let chunk4 = u16::from_le_bytes(secret_key[6..8].try_into().unwrap());
+        let max_valid = u64::MAX - (u64::MAX % n_players as u64);
 
-        // XOR all chunks to mix entropy
-        let random_number = chunk1 ^ chunk2 ^ chunk3 ^ chunk4;
+        // Try sliding 8-byte windows through the secret key
+        for start_pos in 0..=(32 - 8) {
+            let random_u64 =
+                u64::from_le_bytes(secret_key[start_pos..start_pos + 8].try_into().unwrap());
 
-        // Ensure fair distribution by avoiding modulo bias
-        let max_valid = u16::MAX - (u16::MAX % n_players);
-        let final_number = random_number % max_valid;
-        let index = final_number % n_players;
+            // Use this value if it's in the unbiased range
+            if random_u64 < max_valid {
+                return (random_u64 % n_players as u64) as u16;
+            }
+        }
 
-        index
+        panic!("Unable to generate unbiased random number - game must be cancelled");
     }
 
     // Calculates prize distribution with fee deduction
