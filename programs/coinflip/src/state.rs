@@ -5,6 +5,8 @@ use anchor_lang::solana_program::hash::hash;
 pub const ORACLE_SIZE: usize = 8 + 32 + 1 + 2 + 2 + 4 + 4;
 pub const GAME_TOKEN_SIZE: usize = 8 + 32 + 8 + 8 + 1;
 pub const PLAYER_BALANCE_SIZE: usize = 8 + 32 + 32 + 8;
+pub const PLAYER_PARTICIPATION_SIZE: usize = 8 + 32 + 32 + 8 + 2;
+pub const GAME_SIZE: usize = 8 + 32 + 1 + 8 + 2 + 2 + 2 + 32 + 8 + 4 + 1;
 
 // Oracle account that manages global game settings and authority
 #[account]
@@ -140,6 +142,39 @@ impl PlayerBalance {
     }
 }
 
+// Player's participation in a specific game
+#[account]
+#[derive(Default)]
+pub struct PlayerParticipation {
+    // Player's public key
+    pub player: Pubkey,
+    // Game's public key
+    pub game: Pubkey,
+    // Timestamp when player joined the game
+    pub joined_at: u64,
+    // Player's position/index in the game (for winner calculation)
+    pub player_index: u16,
+}
+
+impl PlayerParticipation {
+    // Helper method to initialize participation
+    pub fn initialize(&mut self, player: Pubkey, game: Pubkey, joined_at: u64, player_index: u16) {
+        self.player = player;
+        self.game = game;
+        self.joined_at = joined_at;
+        self.player_index = player_index;
+    }
+
+    // Validation helpers for constraints
+    pub fn is_player(&self, player: &Pubkey) -> bool {
+        self.player == *player
+    }
+
+    pub fn is_game(&self, game: &Pubkey) -> bool {
+        self.game == *game
+    }
+}
+
 // Type of game being played
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Copy)]
 pub enum GameType {
@@ -169,8 +204,8 @@ pub struct Game {
     pub max_players: u16,
     // Minimum number of players required
     pub min_players: u16,
-    // List of players who have joined
-    pub players: Vec<Pubkey>,
+    // Current number of players who have joined
+    pub player_count: u16,
     // Token mint used for this game
     pub token_mint: Pubkey,
     // Timestamp when game was created
@@ -182,15 +217,10 @@ pub struct Game {
 }
 
 impl Game {
-    // Calculate space needed for a game account based on max players
-    pub fn space(max_players: u16) -> usize {
-        8 + 32 + 1 + 8 + 2 + 2 + 4 + (32 * max_players as usize) + 32 + 8 + 4 + 1
-    }
-
     // Checks if the game meets minimum requirements and timeout conditions
     pub fn ready_for_oracle(&self, current_time: i64) -> bool {
-        let has_min_players = self.players.len() >= self.min_players as usize;
-        let has_max_players = self.players.len() == self.max_players as usize;
+        let has_min_players = self.player_count >= self.min_players;
+        let has_max_players = self.player_count == self.max_players;
         let timeout_met = current_time as u64 >= self.created_at + self.timeout as u64;
 
         (has_min_players && timeout_met) || has_max_players
@@ -202,33 +232,42 @@ impl Game {
     }
 
     // Derives the PDA for this game using the secret key
-    pub fn derive_pda(&self, secret_key: [u8; 64]) -> Pubkey {
+    pub fn derive_pda(&self, secret_key: [u8; 32]) -> Pubkey {
         let random_hash = hash(secret_key.as_ref());
         let (pda, _) = Pubkey::find_program_address(&[b"game", random_hash.as_ref()], &crate::ID);
         pda
     }
 
-    // Calculates the winner using cryptographic randomness
-    pub fn calculate_winner(&self, secret_key: [u8; 64]) -> Pubkey {
-        let n_players = self.players.len() as u64;
-        if n_players == 1 {
-            return self.players[0];
+    // Calculates the winner index using cryptographic randomness
+    pub fn calculate_winner_index(&self, secret_key: [u8; 32]) -> u16 {
+        let n_players = self.player_count;
+        if n_players <= 1 {
+            return 0;
         }
 
-        // Use first 8 bytes of secret key as random seed
-        let random_number = u64::from_le_bytes(secret_key[0..8].try_into().unwrap());
+        // Use multiple u16 chunks and XOR them for better entropy distribution
+        let chunk1 = u16::from_le_bytes(secret_key[0..2].try_into().unwrap());
+        let chunk2 = u16::from_le_bytes(secret_key[2..4].try_into().unwrap());
+        let chunk3 = u16::from_le_bytes(secret_key[4..6].try_into().unwrap());
+        let chunk4 = u16::from_le_bytes(secret_key[6..8].try_into().unwrap());
+
+        // XOR all chunks to mix entropy
+        let random_number = chunk1 ^ chunk2 ^ chunk3 ^ chunk4;
 
         // Ensure fair distribution by avoiding modulo bias
-        let max_valid = u64::MAX - (u64::MAX % n_players);
+        let max_valid = u16::MAX - (u16::MAX % n_players);
         let final_number = random_number % max_valid;
-        let index = (final_number % n_players) as usize;
+        let index = final_number % n_players;
 
-        self.players[index]
+        index
     }
 
     // Calculates prize distribution with fee deduction
-    pub fn calculate_amounts(&self, players_len: u64, fee_percentage: u8) -> (u64, u64) {
-        let total_amount = self.amount * players_len;
+    pub fn calculate_amounts(&self, fee_percentage: u8) -> (u64, u64) {
+        let total_amount = match self.game_type {
+            GameType::Coinflip => self.amount * self.player_count as u64,
+            GameType::Giveaway => self.amount, // Fixed prize amount for giveaways
+        };
         let fee_amount = total_amount * fee_percentage as u64 / 100;
         let winner_amount = total_amount - fee_amount;
         (winner_amount, fee_amount)
@@ -240,11 +279,7 @@ impl Game {
     }
 
     pub fn is_not_full(&self) -> bool {
-        self.players.len() < (self.max_players as usize)
-    }
-
-    pub fn has_player(&self, player: &Pubkey) -> bool {
-        self.players.contains(player)
+        self.player_count < self.max_players
     }
 
     pub fn is_valid_players_count(max_players: u16, min_players: u16, oracle_max: u16) -> bool {
@@ -271,13 +306,9 @@ impl Game {
     }
 
     // Checks if the game has no active participants that would prevent cancellation
-    // Returns true if: no players, giveaway type, or coinflip with only creator
+    // Returns true if: no players or giveaway type
     pub fn has_no_active_participants(&self) -> bool {
-        self.players.is_empty()
-            || self.game_type == GameType::Giveaway
-            || (self.game_type == GameType::Coinflip
-                && self.players.len() == 1
-                && self.players[0] == self.creator)
+        self.player_count == 0 || self.game_type == GameType::Giveaway
     }
 
     // Checks if the specified authority is allowed to cancel/unjoin (creator or oracle)

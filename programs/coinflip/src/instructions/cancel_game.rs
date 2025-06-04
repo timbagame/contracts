@@ -5,8 +5,8 @@ pub fn handler(ctx: Context<super::CancelGame>) -> Result<()> {
     let game = &mut ctx.accounts.game;
     let creator_balance = &mut ctx.accounts.creator_balance;
 
-    // Refund if it's a giveaway game or if creator has stake in coinflip
-    if game.game_type == GameType::Giveaway || game.players.contains(&game.creator) {
+    // Refund if it's a giveaway game
+    if game.game_type == GameType::Giveaway {
         creator_balance.refund(game.amount);
     }
 
