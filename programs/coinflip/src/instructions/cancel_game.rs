@@ -2,10 +2,10 @@ use crate::{events::GameCancelled, state::GameType};
 use anchor_lang::prelude::*;
 
 pub fn handler(ctx: Context<super::CancelGame>) -> Result<()> {
-    let game = &mut ctx.accounts.game;
+    let game = &ctx.accounts.game;
     let creator_balance = &mut ctx.accounts.creator_balance;
 
-    // Refund if it's a giveaway game
+    // Refund creator for giveaway games
     if game.game_type == GameType::Giveaway {
         creator_balance.refund(game.amount);
     }
