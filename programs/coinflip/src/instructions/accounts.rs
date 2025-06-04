@@ -317,7 +317,6 @@ pub struct CompleteGame<'info> {
 pub struct UnjoinGame<'info> {
     #[account(
         mut,
-        constraint = game.is_cancellable_by(&authority.key(), &oracle.authority) @ ErrorCode::UnauthorizedAuthority,
         constraint = game.is_within_cancellation_window(oracle.oracle_buffer_time, Clock::get()?.unix_timestamp) @ ErrorCode::GameReadyForOracle,
     )]
     pub game: Account<'info, Game>,
@@ -328,10 +327,8 @@ pub struct UnjoinGame<'info> {
         bump,
     )]
     pub player_participation: Account<'info, PlayerParticipation>,
-    /// CHECK: Player account - validated by constraints
     #[account(mut)]
-    pub player: AccountInfo<'info>,
-    pub authority: Signer<'info>,
+    pub player: Signer<'info>,
     #[account(
         mut,
         seeds = [b"player_balance", player.key().as_ref(), game.token_mint.as_ref()],
