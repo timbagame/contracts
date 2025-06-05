@@ -200,12 +200,17 @@ impl Game {
             return 0;
         }
 
-        let max_valid = u64::MAX - (u64::MAX % n_players);
+        // Hash combination of secret key and last_slot for additional entropy
+        let mut combined_data = Vec::with_capacity(40);
+        combined_data.extend_from_slice(&secret_key);
+        combined_data.extend_from_slice(&self.last_slot.to_le_bytes());
+        let entropy_hash = hash(&combined_data).to_bytes();
 
-        // Try sliding 8-byte windows through the secret key
+        // Try sliding 8-byte windows through the hashed entropy
+        let max_valid = u64::MAX - (u64::MAX % n_players);
         for start_pos in 0..=(32 - 8) {
             let random_u64 =
-                u64::from_le_bytes(secret_key[start_pos..start_pos + 8].try_into().unwrap());
+                u64::from_le_bytes(entropy_hash[start_pos..start_pos + 8].try_into().unwrap());
 
             // Use this value if it's in the unbiased range
             if random_u64 < max_valid {
