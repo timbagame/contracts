@@ -377,9 +377,8 @@ pub struct CleanupPlayerParticipation<'info> {
         bump,
     )]
     pub player_participation: Account<'info, PlayerParticipation>,
-    /// CHECK: Player account for rent refund
     #[account(mut)]
-    pub player: AccountInfo<'info>,
+    pub player: Signer<'info>,
     pub system_program: Program<'info, System>,
 }
 
