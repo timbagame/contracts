@@ -194,10 +194,10 @@ impl Game {
         pda
     }
 
-    // Calculates the winner index using cryptographic randomness
+    // Calculates the winner index using random secret key provided by oracle
     pub fn calculate_winner_index(&self, secret_key: [u8; 32]) -> u16 {
         let n_players = self.player_count;
-        if n_players <= 1 {
+        if n_players == 1 {
             return 0;
         }
 
