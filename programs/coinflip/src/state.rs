@@ -187,14 +187,13 @@ impl Game {
         current_time as u64 >= self.created_at + self.timeout as u64 + oracle_buffer_time as u64
     }
 
-    // Derives the PDA for this game using the secret key
-    pub fn derive_pda(&self, secret_key: [u8; 32]) -> Pubkey {
-        let random_hash = hash(secret_key.as_ref());
-        let (pda, _) = Pubkey::find_program_address(&[b"game", random_hash.as_ref()], &crate::ID);
-        pda
+    // Verifies the secret key matches the random hash
+    pub fn verify_secret_key(&self, random_hash: [u8; 32], secret_key: [u8; 32]) -> bool {
+        let random_hash_calculated = hash(secret_key.as_ref()).to_bytes();
+        random_hash_calculated == random_hash
     }
 
-    // Calculates the winner index using random secret key provided by oracle
+    // Calculates the winner index using secret key revealed by oracle
     pub fn calculate_winner_index(&self, secret_key: [u8; 32]) -> u16 {
         let n_players = self.player_count;
         if n_players == 1 {
