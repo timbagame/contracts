@@ -364,7 +364,7 @@ pub struct CancelGame<'info> {
 }
 
 #[derive(Accounts)]
-pub struct CleanupPlayerParticipation<'info> {
+pub struct CleanPlayerParticipation<'info> {
     /// CHECK: Game account that has been completed (closed)
     #[account(
         constraint = game.data_is_empty() @ ErrorCode::GameNotCompleted,
