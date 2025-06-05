@@ -223,7 +223,6 @@ pub struct JoinGame<'info> {
     #[account(
         mut,
         constraint = game.is_not_full() @ ErrorCode::GameFull,
-        constraint = !game.ready_for_oracle(Clock::get()?.unix_timestamp) @ ErrorCode::GameReadyForOracle,
         constraint = game.can_join_private(authority.as_ref(), &oracle.authority) @ ErrorCode::UnauthorizedPlayer,
         constraint = game.has_sufficient_balance_for_join(player_token_account.amount, player_balance.amount) @ ErrorCode::InsufficientBalance,
         constraint = game_token.is_enabled() @ ErrorCode::TokenNotEnabled,
@@ -281,7 +280,6 @@ pub struct CompleteGame<'info> {
         constraint = game.is_creator(&creator.key()) @ ErrorCode::InvalidCreator,
         constraint = game.verify_secret_key(random_hash, secret_key) @ ErrorCode::InvalidSecretKey,
         constraint = game.calculate_winner_index(secret_key) == player_participation.player_index @ ErrorCode::UnauthorizedPlayer,
-        constraint = game.ready_for_oracle(Clock::get()?.unix_timestamp) @ ErrorCode::GameNotReadyForOracle,
     )]
     pub game: Account<'info, Game>,
     #[account(
@@ -317,10 +315,7 @@ pub struct CompleteGame<'info> {
 
 #[derive(Accounts)]
 pub struct UnjoinGame<'info> {
-    #[account(
-        mut,
-        constraint = game.is_within_cancellation_window(oracle.oracle_buffer_time, Clock::get()?.unix_timestamp) @ ErrorCode::GameReadyForOracle,
-    )]
+    #[account(mut)]
     pub game: Account<'info, Game>,
     #[account(
         mut,
@@ -349,7 +344,6 @@ pub struct CancelGame<'info> {
         close = creator,
         constraint = game.is_creator(&creator.key()) @ ErrorCode::InvalidCreator,
         constraint = game.has_no_active_participants() @ ErrorCode::CoinflipHasActivePlayers,
-        constraint = game.is_within_cancellation_window(oracle.oracle_buffer_time, Clock::get()?.unix_timestamp) @ ErrorCode::GameReadyForOracle,
     )]
     pub game: Account<'info, Game>,
     #[account(mut)]
