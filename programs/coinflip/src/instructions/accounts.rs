@@ -377,8 +377,9 @@ pub struct CleanPlayerParticipation<'info> {
         bump,
     )]
     pub player_participation: Account<'info, PlayerParticipation>,
+    /// CHECK: Player checked by seeds constraint
     #[account(mut)]
-    pub player: Signer<'info>,
+    pub player: AccountInfo<'info>,
     pub system_program: Program<'info, System>,
 }
 
