@@ -10,8 +10,9 @@ pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
         player_balance.refund(game.amount);
     }
 
-    // Decrement player count
+    // Decrement player count and update last slot
     game.player_count -= 1;
+    game.last_slot = Clock::get()?.slot;
 
     emit!(PlayerUnjoined {
         game_key: game.key(),

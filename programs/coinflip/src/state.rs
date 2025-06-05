@@ -6,7 +6,7 @@ pub const ORACLE_SIZE: usize = 8 + 32 + 1 + 2 + 2 + 4 + 4;
 pub const GAME_TOKEN_SIZE: usize = 8 + 8 + 8 + 1;
 pub const PLAYER_BALANCE_SIZE: usize = 8 + 8;
 pub const PLAYER_PARTICIPATION_SIZE: usize = 8 + 2;
-pub const GAME_SIZE: usize = 8 + 32 + 1 + 8 + 2 + 2 + 2 + 32 + 8 + 1;
+pub const GAME_SIZE: usize = 8 + 32 + 1 + 8 + 2 + 2 + 2 + 32 + 8 + 8 + 1;
 
 // Oracle account that manages global game settings and authority
 #[account]
@@ -166,6 +166,8 @@ pub struct Game {
     pub token_mint: Pubkey,
     // Timestamp when game expires
     pub expires_at: u64,
+    // Last slot number when game was updated
+    pub last_slot: u64,
     // Whether this is a private game requiring oracle approval
     pub is_private: bool,
 }
