@@ -271,13 +271,15 @@ pub struct JoinGame<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(secret_key: [u8; 32])]
+#[instruction(random_hash: [u8; 32], secret_key: [u8; 32])]
 pub struct CompleteGame<'info> {
     #[account(
         mut,
+        seeds = [b"game", random_hash.as_ref()],
+        bump,
         close = creator,
         constraint = game.is_creator(&creator.key()) @ ErrorCode::InvalidCreator,
-        constraint = game.derive_pda(secret_key) == game.key() @ ErrorCode::InvalidSecretKey,
+        constraint = game.verify_secret_key(random_hash, secret_key) @ ErrorCode::InvalidSecretKey,
         constraint = game.calculate_winner_index(secret_key) == player_participation.player_index @ ErrorCode::UnauthorizedPlayer,
         constraint = game.ready_for_oracle(Clock::get()?.unix_timestamp) @ ErrorCode::GameNotReadyForOracle,
     )]
