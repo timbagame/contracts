@@ -346,15 +346,12 @@ pub struct CancelGame<'info> {
         mut,
         close = creator,
         constraint = game.is_creator(&creator.key()) @ ErrorCode::InvalidCreator,
-        constraint = game.is_cancellable_by(&authority.key(), &oracle.authority) @ ErrorCode::UnauthorizedAuthority,
         constraint = game.has_no_active_participants() @ ErrorCode::CoinflipHasActivePlayers,
         constraint = game.is_within_cancellation_window(oracle.oracle_buffer_time, Clock::get()?.unix_timestamp) @ ErrorCode::GameReadyForOracle,
     )]
     pub game: Account<'info, Game>,
-    /// CHECK: Game creator for rent refund - validated by constraints
     #[account(mut)]
-    pub creator: AccountInfo<'info>,
-    pub authority: Signer<'info>,
+    pub creator: Signer<'info>,
     #[account(
         mut,
         seeds = [b"player_balance", creator.key().as_ref(), game.token_mint.as_ref()],
