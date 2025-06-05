@@ -13,7 +13,6 @@ pub fn handler(ctx: Context<super::CompleteGame>) -> Result<()> {
     game_token.fee_amount += fee_amount;
     player_balance.amount += winner_amount;
 
-    // Emit event before the account is closed
     emit!(GameCompleted {
         game_key: game.key(),
         creator: game.creator,
