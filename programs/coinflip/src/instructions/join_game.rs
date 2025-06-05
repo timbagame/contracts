@@ -1,5 +1,5 @@
 use crate::{
-    error::ErrorCode::GameReadyForOracle, events::PlayerJoined, state::GameType,
+    error::ErrorCode::GameWaitingForOracle, events::PlayerJoined, state::GameType,
     utils::handle_player_token_transfer,
 };
 use anchor_lang::prelude::*;
@@ -11,7 +11,7 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
 
     // Check that game is not ready for oracle
     if game.ready_for_oracle(clock.unix_timestamp as u64) {
-        return Err(GameReadyForOracle.into());
+        return Err(GameWaitingForOracle.into());
     }
 
     // Check player token amount for coinflip games

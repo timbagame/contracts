@@ -1,4 +1,4 @@
-use crate::{error::ErrorCode::GameReadyForOracle, events::PlayerUnjoined, state::GameType};
+use crate::{error::ErrorCode::GameWaitingForOracle, events::PlayerUnjoined, state::GameType};
 use anchor_lang::prelude::*;
 
 pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
@@ -7,11 +7,11 @@ pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
     let clock = Clock::get()?;
 
     // Check that game is within cancellation window
-    if game.is_within_cancellation_window(
+    if !game.is_within_cancellation_window(
         oracle.oracle_buffer_time as u64,
         clock.unix_timestamp as u64,
     ) {
-        return Err(GameReadyForOracle.into());
+        return Err(GameWaitingForOracle.into());
     }
 
     // Return full funds without charging any fee when unjoining
