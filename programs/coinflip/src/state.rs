@@ -266,11 +266,6 @@ impl Game {
         self.player_count == 0 || self.game_type == GameType::Giveaway
     }
 
-    // Checks if the specified authority is allowed to cancel/unjoin (creator or oracle)
-    pub fn is_cancellable_by(&self, authority: &Pubkey, oracle_authority: &Pubkey) -> bool {
-        *authority == self.creator || *authority == *oracle_authority
-    }
-
     // Checks if the timing allows for cancellation/unjoining
     // Returns true if: game not ready for oracle OR oracle buffer time has passed
     pub fn is_within_cancellation_window(
