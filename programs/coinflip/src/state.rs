@@ -174,17 +174,17 @@ pub struct Game {
 
 impl Game {
     // Checks if the game meets minimum requirements and timeout conditions
-    pub fn ready_for_oracle(&self, current_time: i64) -> bool {
+    pub fn ready_for_oracle(&self, current_time: u64) -> bool {
         let has_min_players = self.player_count >= self.min_players;
         let has_max_players = self.player_count == self.max_players;
-        let timeout_met = current_time as u64 >= self.expires_at;
+        let timeout_met = current_time >= self.expires_at;
 
         (has_min_players && timeout_met) || has_max_players
     }
 
     // Checks if the oracle buffer time has passed for cancellation
-    pub fn buffer_passed(&self, oracle_buffer_time: u16, current_time: i64) -> bool {
-        current_time as u64 >= self.expires_at + oracle_buffer_time as u64
+    pub fn buffer_passed(&self, oracle_buffer_time: u64, current_time: u64) -> bool {
+        current_time >= self.expires_at + oracle_buffer_time
     }
 
     // Verifies the secret key matches the random hash
@@ -195,12 +195,12 @@ impl Game {
 
     // Calculates the winner index using secret key revealed by oracle
     pub fn calculate_winner_index(&self, secret_key: [u8; 32]) -> u16 {
-        let n_players = self.player_count;
+        let n_players = self.player_count as u64;
         if n_players == 1 {
             return 0;
         }
 
-        let max_valid = u64::MAX - (u64::MAX % n_players as u64);
+        let max_valid = u64::MAX - (u64::MAX % n_players);
 
         // Try sliding 8-byte windows through the secret key
         for start_pos in 0..=(32 - 8) {
@@ -209,7 +209,7 @@ impl Game {
 
             // Use this value if it's in the unbiased range
             if random_u64 < max_valid {
-                return (random_u64 % n_players as u64) as u16;
+                return (random_u64 % n_players) as u16;
             }
         }
 
@@ -217,12 +217,12 @@ impl Game {
     }
 
     // Calculates prize distribution with fee deduction
-    pub fn calculate_amounts(&self, fee_percentage: u8) -> (u64, u64) {
+    pub fn calculate_amounts(&self, fee_percentage: u64) -> (u64, u64) {
         let total_amount = match self.game_type {
             GameType::Coinflip => self.amount * self.player_count as u64,
             GameType::Giveaway => self.amount, // Fixed prize amount for giveaways
         };
-        let fee_amount = total_amount * fee_percentage as u64 / 100;
+        let fee_amount = total_amount * fee_percentage / 100;
         let winner_amount = total_amount - fee_amount;
         (winner_amount, fee_amount)
     }
@@ -269,8 +269,8 @@ impl Game {
     // Returns true if: game not ready for oracle OR oracle buffer time has passed
     pub fn is_within_cancellation_window(
         &self,
-        oracle_buffer_time: u16,
-        current_time: i64,
+        oracle_buffer_time: u64,
+        current_time: u64,
     ) -> bool {
         !self.ready_for_oracle(current_time) || self.buffer_passed(oracle_buffer_time, current_time)
     }

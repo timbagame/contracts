@@ -1,9 +1,18 @@
-use crate::{events::PlayerJoined, state::GameType, utils::handle_player_token_transfer};
+use crate::{
+    error::ErrorCode::GameReadyForOracle, events::PlayerJoined, state::GameType,
+    utils::handle_player_token_transfer,
+};
 use anchor_lang::prelude::*;
 
 pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
     let game = &mut ctx.accounts.game;
     let player_participation = &mut ctx.accounts.player_participation;
+    let clock = Clock::get()?;
+
+    // Check that game is not ready for oracle
+    if game.ready_for_oracle(clock.unix_timestamp as u64) {
+        return Err(GameReadyForOracle.into());
+    }
 
     // Check player token amount for coinflip games
     if game.game_type == GameType::Coinflip {
@@ -22,7 +31,7 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
 
     // Increment player count and update last slot
     game.player_count += 1;
-    game.last_slot = Clock::get()?.slot;
+    game.last_slot = clock.slot;
 
     emit!(PlayerJoined {
         game_key: game.key(),
