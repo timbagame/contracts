@@ -4,6 +4,8 @@ use anchor_lang::prelude::*;
 pub fn handler(ctx: Context<super::InitializeGame>, config: GameConfig) -> Result<()> {
     // Initialize game
     let game = &mut ctx.accounts.game;
+    let clock = Clock::get()?;
+
     game.creator = ctx.accounts.player.key();
     game.game_type = config.game_type;
     game.amount = config.amount;
@@ -11,7 +13,8 @@ pub fn handler(ctx: Context<super::InitializeGame>, config: GameConfig) -> Resul
     game.min_players = config.min_players;
     game.player_count = 0;
     game.token_mint = ctx.accounts.token_mint.key();
-    game.expires_at = Clock::get()?.unix_timestamp as u64 + config.timeout as u64;
+    game.expires_at = clock.unix_timestamp as u64 + config.timeout as u64;
+    game.last_slot = clock.slot;
     game.is_private = config.is_private;
 
     emit!(GameInitialized {
