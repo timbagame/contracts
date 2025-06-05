@@ -11,8 +11,7 @@ pub fn handler(ctx: Context<super::InitializeGame>, config: GameConfig) -> Resul
     game.min_players = config.min_players;
     game.player_count = 0;
     game.token_mint = ctx.accounts.token_mint.key();
-    game.created_at = Clock::get()?.unix_timestamp as u64;
-    game.timeout = config.timeout;
+    game.expires_at = Clock::get()?.unix_timestamp as u64 + config.timeout as u64;
     game.is_private = config.is_private;
 
     emit!(GameInitialized {
@@ -23,9 +22,8 @@ pub fn handler(ctx: Context<super::InitializeGame>, config: GameConfig) -> Resul
         max_players: game.max_players,
         min_players: game.min_players,
         token_mint: game.token_mint,
-        timeout: game.timeout,
         is_private: game.is_private,
-        created_at: game.created_at,
+        expires_at: game.expires_at,
     });
 
     Ok(())

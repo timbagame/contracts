@@ -87,9 +87,8 @@ pub struct GameInitialized {
     pub max_players: u16,
     pub min_players: u16,
     pub token_mint: Pubkey,
-    pub timeout: u32,
     pub is_private: bool,
-    pub created_at: u64,
+    pub expires_at: u64,
 }
 
 #[event]

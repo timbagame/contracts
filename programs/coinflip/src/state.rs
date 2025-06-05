@@ -6,7 +6,7 @@ pub const ORACLE_SIZE: usize = 8 + 32 + 1 + 2 + 2 + 4 + 4;
 pub const GAME_TOKEN_SIZE: usize = 8 + 8 + 8 + 1;
 pub const PLAYER_BALANCE_SIZE: usize = 8 + 8;
 pub const PLAYER_PARTICIPATION_SIZE: usize = 8 + 2;
-pub const GAME_SIZE: usize = 8 + 32 + 1 + 8 + 2 + 2 + 2 + 32 + 8 + 4 + 1;
+pub const GAME_SIZE: usize = 8 + 32 + 1 + 8 + 2 + 2 + 2 + 32 + 8 + 1;
 
 // Oracle account that manages global game settings and authority
 #[account]
@@ -164,10 +164,8 @@ pub struct Game {
     pub player_count: u16,
     // Token mint used for this game
     pub token_mint: Pubkey,
-    // Timestamp when game was created
-    pub created_at: u64,
-    // Timeout duration in seconds
-    pub timeout: u32,
+    // Timestamp when game expires
+    pub expires_at: u64,
     // Whether this is a private game requiring oracle approval
     pub is_private: bool,
 }
@@ -177,14 +175,14 @@ impl Game {
     pub fn ready_for_oracle(&self, current_time: i64) -> bool {
         let has_min_players = self.player_count >= self.min_players;
         let has_max_players = self.player_count == self.max_players;
-        let timeout_met = current_time as u64 >= self.created_at + self.timeout as u64;
+        let timeout_met = current_time as u64 >= self.expires_at;
 
         (has_min_players && timeout_met) || has_max_players
     }
 
     // Checks if the oracle buffer time has passed for cancellation
     pub fn buffer_passed(&self, oracle_buffer_time: u16, current_time: i64) -> bool {
-        current_time as u64 >= self.created_at + self.timeout as u64 + oracle_buffer_time as u64
+        current_time as u64 >= self.expires_at + oracle_buffer_time as u64
     }
 
     // Verifies the secret key matches the random hash
