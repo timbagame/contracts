@@ -35,7 +35,9 @@ pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
         player: ctx.accounts.player.key(),
         game_type: game.game_type,
         amount: game.amount,
+        total_pot: game.total_pot,
         current_players: game.player_count,
+        last_slot: game.last_slot,
     });
 
     Ok(())

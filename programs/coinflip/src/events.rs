@@ -67,6 +67,7 @@ pub struct PlayerJoined {
     pub amount: u64,
     pub total_pot: u64,
     pub current_players: u16,
+    pub last_slot: u64,
 }
 
 #[event]
@@ -75,7 +76,9 @@ pub struct PlayerUnjoined {
     pub player: Pubkey,
     pub game_type: GameType,
     pub amount: u64,
+    pub total_pot: u64,
     pub current_players: u16,
+    pub last_slot: u64,
 }
 
 // Game Events
