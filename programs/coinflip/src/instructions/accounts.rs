@@ -9,7 +9,7 @@ use crate::state::*;
 // ----------------
 
 #[derive(Accounts)]
-#[instruction(fee_percentage: u8, oracle_buffer_time: u16, max_players: u16, max_timeout: u32, min_timeout: u32)]
+#[instruction(fee_percentage: u8, oracle_buffer_time: u16, max_players: u32, max_timeout: u32, min_timeout: u32)]
 pub struct InitializeOracle<'info> {
     #[account(
         init,
@@ -28,7 +28,7 @@ pub struct InitializeOracle<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(fee_percentage: u8, oracle_buffer_time: u16, max_players: u16, max_timeout: u32, min_timeout: u32)]
+#[instruction(fee_percentage: u8, oracle_buffer_time: u16, max_players: u32, max_timeout: u32, min_timeout: u32)]
 pub struct UpdateOracle<'info> {
     #[account(
         mut,
@@ -170,7 +170,7 @@ pub struct WithdrawPlayerBalance<'info> {
 // --------------
 
 #[derive(Accounts)]
-#[instruction(game_type: GameType, amount: u64, max_players: u16, min_players: u16, timeout: u32, is_private: bool, random_hash: [u8; 32])]
+#[instruction(game_type: GameType, amount: u64, max_players: u32, min_players: u32, timeout: u32, is_private: bool, random_hash: [u8; 32])]
 pub struct InitializeGame<'info> {
     #[account(
         init,
@@ -420,14 +420,14 @@ pub struct WithdrawTokenFee<'info> {
 }
 
 #[derive(Accounts)]
-pub struct RollSnowballGame<'info> {
+pub struct RollGame<'info> {
     #[account(
         mut,
         constraint = game.is_not_full() @ ErrorCode::GameFull,
         constraint = game.can_join_private(authority.as_ref(), &oracle.authority) @ ErrorCode::UnauthorizedPlayer,
         constraint = game.has_sufficient_balance_for_join(player_token_account.amount, player_balance.amount) @ ErrorCode::InsufficientBalance,
         constraint = game_token.is_enabled() @ ErrorCode::TokenNotEnabled,
-        constraint = game.game_type == GameType::Snowball @ ErrorCode::InvalidGameType,
+        constraint = game.game_type == GameType::Snowball || game.game_type == GameType::Dumbflip @ ErrorCode::InvalidGameType,
     )]
     pub game: Account<'info, Game>,
     #[account(

@@ -12,10 +12,11 @@ pub fn handler(ctx: Context<super::InitializeGame>, config: GameConfig) -> Resul
     game.game_type = config.game_type;
     game.max_players = config.max_players;
     game.min_players = config.min_players;
-    game.player_count = 0;
+    game.players_count = 0;
     game.token_mint = ctx.accounts.token_mint.key();
-    game.expires_at = clock.unix_timestamp as u64 + config.timeout as u64;
-    game.last_slot = clock.slot;
+    game.created_at = clock.unix_timestamp as u64;
+    game.timeout = config.timeout;
+    game.slot_entropy = clock.slot;
     game.is_private = config.is_private;
 
     // If it is a giveaway, the creator will pay the pot
@@ -29,11 +30,11 @@ pub fn handler(ctx: Context<super::InitializeGame>, config: GameConfig) -> Resul
             ctx.accounts.token_program.to_account_info(),
         )?;
 
-        game.total_pot = config.amount;
-        game.amount = 0;
+        game.total_amount = config.amount;
+        game.ticket_amount = 0;
     } else {
-        game.total_pot = 0;
-        game.amount = config.amount;
+        game.total_amount = 0;
+        game.ticket_amount = config.amount;
     }
 
     // Increment the nonce
@@ -43,12 +44,14 @@ pub fn handler(ctx: Context<super::InitializeGame>, config: GameConfig) -> Resul
         game_key: game.key(),
         creator: game.creator,
         game_type: game.game_type,
-        amount: game.amount,
+        ticket_amount: game.ticket_amount,
+        total_amount: game.total_amount,
         max_players: game.max_players,
         min_players: game.min_players,
         token_mint: game.token_mint,
         is_private: game.is_private,
-        expires_at: game.expires_at,
+        created_at: game.created_at,
+        timeout: game.timeout,
     });
 
     Ok(())

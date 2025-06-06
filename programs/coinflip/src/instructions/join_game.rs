@@ -18,31 +18,40 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
     if game.game_type != GameType::Giveaway {
         handle_player_token_transfer(
             &mut ctx.accounts.player_balance,
-            game.amount,
+            game.ticket_amount,
             ctx.accounts.player_token_account.to_account_info(),
             ctx.accounts.game_token_account.to_account_info(),
             ctx.accounts.player.to_account_info(),
             ctx.accounts.token_program.to_account_info(),
         )?;
 
-        game.total_pot += game.amount;
+        game.total_amount += game.ticket_amount;
     }
 
     // Set player index for winner calculation
-    player_participation.player_index = game.player_count;
+    player_participation.player_index = game.players_count;
 
-    // Increment player count and update last slot
-    game.player_count += 1;
-    game.last_slot = clock.slot;
+    // Increment player count and slot entropy
+    game.players_count += 1;
+    game.slot_entropy += clock.slot;
 
     emit!(PlayerJoined {
         game_key: game.key(),
+        creator: game.creator,
         player: ctx.accounts.player.key(),
         game_type: game.game_type,
-        amount: game.amount,
-        total_pot: game.total_pot,
-        current_players: game.player_count,
-        last_slot: game.last_slot,
+        token_mint: game.token_mint,
+        max_players: game.max_players,
+        min_players: game.min_players,
+        ticket_amount: game.ticket_amount,
+        total_amount: game.total_amount,
+        players_count: game.players_count,
+        slot_entropy: game.slot_entropy,
+        player_index: player_participation.player_index,
+        is_private: game.is_private,
+        created_at: game.created_at,
+        timeout: game.timeout,
+        timestamp: clock.unix_timestamp as u64,
     });
 
     Ok(())

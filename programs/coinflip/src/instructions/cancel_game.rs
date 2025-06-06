@@ -15,15 +15,17 @@ pub fn handler(ctx: Context<super::CancelGame>) -> Result<()> {
 
     // Refund creator for giveaway games
     if game.game_type == GameType::Giveaway {
-        creator_balance.refund(game.amount);
+        creator_balance.refund(game.ticket_amount);
     }
 
     emit!(GameCancelled {
         game_key: game.key(),
         creator: game.creator,
         game_type: game.game_type,
-        amount: game.amount,
+        ticket_amount: game.ticket_amount,
+        total_amount: game.total_amount,
         token_mint: game.token_mint,
+        timestamp: current_time,
     });
 
     Ok(())
