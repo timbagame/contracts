@@ -65,6 +65,7 @@ pub struct PlayerJoined {
     pub player: Pubkey,
     pub game_type: GameType,
     pub amount: u64,
+    pub total_pot: u64,
     pub current_players: u16,
 }
 
