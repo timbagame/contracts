@@ -32,20 +32,10 @@ pub fn handler(ctx: Context<super::RollGame>) -> Result<()> {
 
     emit!(PlayerRolled {
         game_key: game.key(),
-        creator: game.creator,
         player: ctx.accounts.player.key(),
-        game_type: game.game_type,
-        token_mint: game.token_mint,
-        max_players: game.max_players,
-        min_players: game.min_players,
-        ticket_amount: game.ticket_amount,
         total_amount: game.total_amount,
-        players_count: game.players_count,
-        slot_entropy: game.slot_entropy,
         player_index: ctx.accounts.player_participation.player_index,
-        is_private: game.is_private,
-        created_at: game.created_at,
-        timeout: game.timeout,
+        slot_entropy: game.slot_entropy,
         timestamp: clock.unix_timestamp as u64,
     });
 

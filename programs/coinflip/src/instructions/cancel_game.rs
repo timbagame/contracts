@@ -20,11 +20,6 @@ pub fn handler(ctx: Context<super::CancelGame>) -> Result<()> {
 
     emit!(GameCancelled {
         game_key: game.key(),
-        creator: game.creator,
-        game_type: game.game_type,
-        ticket_amount: game.ticket_amount,
-        total_amount: game.total_amount,
-        token_mint: game.token_mint,
         timestamp: current_time,
     });
 
