@@ -105,6 +105,7 @@ pub struct GameInitialized {
     pub is_private: bool,
     pub created_at: u64,
     pub timeout: u32,
+    pub nonce: u64,
 }
 
 #[event]
