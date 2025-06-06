@@ -2,11 +2,11 @@ use anchor_lang::prelude::*;
 use anchor_lang::solana_program::hash::hash;
 
 // Constants for space calculation
-pub const ORACLE_SIZE: usize = 8 + 32 + 1 + 2 + 2 + 4 + 4;
-pub const GAME_TOKEN_SIZE: usize = 8 + 8 + 8 + 1 + 8;
-pub const PLAYER_BALANCE_SIZE: usize = 8 + 8;
-pub const PLAYER_PARTICIPATION_SIZE: usize = 8 + 2;
-pub const GAME_SIZE: usize = 8 + 32 + 1 + 8 + 2 + 2 + 2 + 32 + 8 + 8 + 1 + 8;
+pub const ORACLE_SIZE: usize = 8 + 32 + 1 + 2 + 4 + 4 + 4; // discriminator + authority + fee_percentage + oracle_buffer_time + max_players + max_timeout + min_timeout
+pub const GAME_TOKEN_SIZE: usize = 8 + 8 + 8 + 1 + 8; // discriminator + min_amount + fee_amount + enabled + nonce
+pub const PLAYER_BALANCE_SIZE: usize = 8 + 8; // discriminator + amount
+pub const PLAYER_PARTICIPATION_SIZE: usize = 8 + 4; // discriminator + player_index
+pub const GAME_SIZE: usize = 8 + 32 + 1 + 8 + 4 + 4 + 4 + 32 + 8 + 4 + 8 + 1 + 8; // discriminator + creator + game_type + ticket_amount + max_players + min_players + players_count + token_mint + created_at + timeout + slot_entropy + is_private + total_amount
 
 // Oracle account that manages global game settings and authority
 #[account]
