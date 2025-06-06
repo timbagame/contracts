@@ -23,6 +23,8 @@ pub enum ErrorCode {
     CoinflipHasActivePlayers = 1103,
     #[msg("Game not completed")]
     GameNotCompleted = 1104,
+    #[msg("Invalid game type")]
+    InvalidGameType = 1105,
 
     // Player Action Errors (1200-1299)
     // --------------------------------

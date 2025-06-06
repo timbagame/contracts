@@ -6,7 +6,7 @@ pub const ORACLE_SIZE: usize = 8 + 32 + 1 + 2 + 2 + 4 + 4;
 pub const GAME_TOKEN_SIZE: usize = 8 + 8 + 8 + 1;
 pub const PLAYER_BALANCE_SIZE: usize = 8 + 8;
 pub const PLAYER_PARTICIPATION_SIZE: usize = 8 + 2;
-pub const GAME_SIZE: usize = 8 + 32 + 1 + 8 + 2 + 2 + 2 + 32 + 8 + 8 + 1;
+pub const GAME_SIZE: usize = 8 + 32 + 1 + 8 + 2 + 2 + 2 + 32 + 8 + 8 + 1 + 8;
 
 // Oracle account that manages global game settings and authority
 #[account]
@@ -136,8 +136,12 @@ pub struct PlayerParticipation {
 pub enum GameType {
     // Two or more players compete for the pot
     Coinflip,
-    // One or more players compete for a giveaway
+    // One or more players compete for a giveaway from the creator
     Giveaway,
+    // Two or more players compete for the pot, we reveal the potential winner in real-time
+    Dumbflip,
+    // Two or more players compete for the pot, we reveal the potential winner in real-time, can join multiple times, no unjoin, pot accumulates
+    Snowball,
 }
 
 impl Default for GameType {
@@ -170,6 +174,8 @@ pub struct Game {
     pub last_slot: u64,
     // Whether this is a private game requiring oracle approval
     pub is_private: bool,
+    // Total accumulated pot
+    pub total_pot: u64,
 }
 
 impl Game {
@@ -223,12 +229,8 @@ impl Game {
 
     // Calculates prize distribution with fee deduction
     pub fn calculate_amounts(&self, fee_percentage: u64) -> (u64, u64) {
-        let total_amount = match self.game_type {
-            GameType::Coinflip => self.amount * self.player_count as u64,
-            GameType::Giveaway => self.amount, // Fixed prize amount for giveaways
-        };
-        let fee_amount = total_amount * fee_percentage / 100;
-        let winner_amount = total_amount - fee_amount;
+        let fee_amount = self.total_pot * fee_percentage / 100;
+        let winner_amount = self.total_pot - fee_amount;
         (winner_amount, fee_amount)
     }
 
@@ -250,9 +252,10 @@ impl Game {
         max_players: u16,
         min_players: u16,
     ) -> bool {
-        match game_type {
-            GameType::Coinflip => max_players >= 2 && min_players >= 2,
-            GameType::Giveaway => max_players >= 1 && min_players >= 1,
+        if game_type == GameType::Giveaway {
+            max_players >= 1 && min_players >= 1
+        } else {
+            max_players >= 2 && min_players >= 2
         }
     }
 

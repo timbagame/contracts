@@ -418,3 +418,51 @@ pub struct WithdrawTokenFee<'info> {
     pub token_program: Program<'info, Token>,
     pub associated_token_program: Program<'info, AssociatedToken>,
 }
+
+#[derive(Accounts)]
+pub struct RollSnowballGame<'info> {
+    #[account(
+        mut,
+        constraint = game.is_not_full() @ ErrorCode::GameFull,
+        constraint = game.can_join_private(authority.as_ref(), &oracle.authority) @ ErrorCode::UnauthorizedPlayer,
+        constraint = game.has_sufficient_balance_for_join(player_token_account.amount, player_balance.amount) @ ErrorCode::InsufficientBalance,
+        constraint = game_token.is_enabled() @ ErrorCode::TokenNotEnabled,
+        constraint = game.game_type == GameType::Snowball @ ErrorCode::InvalidGameType,
+    )]
+    pub game: Account<'info, Game>,
+    #[account(
+        seeds = [b"player_participation", game.key().as_ref(), player.key().as_ref()],
+        bump,
+    )]
+    pub player_participation: Account<'info, PlayerParticipation>,
+    pub player: Signer<'info>,
+    #[account(
+        mut,
+        seeds = [b"player_balance", player.key().as_ref(), game.token_mint.as_ref()],
+        bump,
+    )]
+    pub player_balance: Account<'info, PlayerBalance>,
+    pub authority: Option<Signer<'info>>,
+    #[account(seeds = [b"game_token", game.token_mint.as_ref()], bump)]
+    pub game_token: Account<'info, GameToken>,
+    /// CHECK: PDA authority for game's token accounts
+    #[account(seeds = [b"game_vault", game.token_mint.as_ref()], bump)]
+    pub game_vault: AccountInfo<'info>,
+    #[account(
+        mut,
+        associated_token::mint = game.token_mint,
+        associated_token::authority = player,
+    )]
+    pub player_token_account: Account<'info, TokenAccount>,
+    #[account(
+        mut,
+        associated_token::mint = game.token_mint,
+        associated_token::authority = game_vault,
+    )]
+    pub game_token_account: Account<'info, TokenAccount>,
+    #[account(seeds = [b"oracle"], bump)]
+    pub oracle: Account<'info, Oracle>,
+    pub system_program: Program<'info, System>,
+    pub token_program: Program<'info, Token>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
+}

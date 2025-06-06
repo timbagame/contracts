@@ -14,10 +14,16 @@ pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
         return Err(GameWaitingForOracle.into());
     }
 
+    // If it is a Snowball game, only allow if there is only one player
+    if game.game_type == GameType::Snowball && game.player_count > 1 {
+        return Err(GameWaitingForOracle.into());
+    }
+
     // Return full funds without charging any fee when unjoining
-    if game.game_type == GameType::Coinflip {
+    if game.game_type != GameType::Giveaway {
         let player_balance = &mut ctx.accounts.player_balance;
         player_balance.refund(game.amount);
+        game.total_pot -= game.amount;
     }
 
     // Decrement player count and update last slot

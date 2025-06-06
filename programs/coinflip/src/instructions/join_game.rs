@@ -14,8 +14,8 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
         return Err(GameWaitingForOracle.into());
     }
 
-    // Check player token amount for coinflip games
-    if game.game_type == GameType::Coinflip {
+    // If it is not a giveaway, the player must pay the amount
+    if game.game_type != GameType::Giveaway {
         handle_player_token_transfer(
             &mut ctx.accounts.player_balance,
             game.amount,
@@ -24,6 +24,8 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
             ctx.accounts.player.to_account_info(),
             ctx.accounts.token_program.to_account_info(),
         )?;
+
+        game.total_pot += game.amount;
     }
 
     // Set player index for winner calculation
@@ -38,6 +40,7 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
         player: ctx.accounts.player.key(),
         game_type: game.game_type,
         amount: game.amount,
+        total_pot: game.total_pot,
         current_players: game.player_count,
     });
 

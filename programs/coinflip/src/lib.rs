@@ -92,6 +92,10 @@ pub mod coinflip {
         instructions::join_game::handler(ctx)
     }
 
+    pub fn roll_snowball_game(ctx: Context<RollSnowballGame>) -> Result<()> {
+        instructions::roll_snowball_game::handler(ctx)
+    }
+
     pub fn unjoin_game(ctx: Context<UnjoinGame>) -> Result<()> {
         instructions::unjoin_game::handler(ctx)
     }
