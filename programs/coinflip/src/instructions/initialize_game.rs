@@ -52,6 +52,7 @@ pub fn handler(ctx: Context<super::InitializeGame>, config: GameConfig) -> Resul
         is_private: game.is_private,
         created_at: game.created_at,
         timeout: game.timeout,
+        nonce: game_token.nonce - 1,
     });
 
     Ok(())
