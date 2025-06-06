@@ -36,6 +36,7 @@ pub fn handler(ctx: Context<super::RollSnowballGame>) -> Result<()> {
         amount: game.amount,
         total_pot: game.total_pot,
         current_players: game.player_count,
+        last_slot: game.last_slot,
     });
 
     Ok(())

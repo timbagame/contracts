@@ -42,6 +42,7 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
         amount: game.amount,
         total_pot: game.total_pot,
         current_players: game.player_count,
+        last_slot: game.last_slot,
     });
 
     Ok(())
