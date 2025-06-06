@@ -10,7 +10,7 @@ mod utils;
 use crate::instructions::*;
 use crate::state::GameType;
 
-declare_id!("Cuykfqo8k3yvYyTw9Gvttx1oiLsEF7GUeWHJ3YfsyuQL");
+declare_id!("2J1SejHvJ3SaXTHttMDnUHXNB2zcs1y5Gvkd4XxDB8Fj");
 
 // Configuration struct for oracle settings
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
