@@ -6,8 +6,9 @@ use anchor_lang::prelude::*;
 pub fn handler(ctx: Context<super::InitializeGame>, config: GameConfig) -> Result<()> {
     let game = &mut ctx.accounts.game;
     let clock = Clock::get()?;
+    let game_token = &mut ctx.accounts.game_token;
 
-    game.creator = ctx.accounts.player.key();
+    game.creator = ctx.accounts.creator.key();
     game.game_type = config.game_type;
     game.max_players = config.max_players;
     game.min_players = config.min_players;
@@ -20,11 +21,11 @@ pub fn handler(ctx: Context<super::InitializeGame>, config: GameConfig) -> Resul
     // If it is a giveaway, the creator will pay the pot
     if game.game_type == GameType::Giveaway {
         handle_player_token_transfer(
-            &mut ctx.accounts.player_balance,
+            &mut ctx.accounts.creator_balance,
             config.amount,
-            ctx.accounts.player_token_account.to_account_info(),
+            ctx.accounts.creator_token_account.to_account_info(),
             ctx.accounts.game_token_account.to_account_info(),
-            ctx.accounts.player.to_account_info(),
+            ctx.accounts.creator.to_account_info(),
             ctx.accounts.token_program.to_account_info(),
         )?;
 
@@ -34,6 +35,9 @@ pub fn handler(ctx: Context<super::InitializeGame>, config: GameConfig) -> Resul
         game.total_pot = 0;
         game.amount = config.amount;
     }
+
+    // Increment the nonce
+    game_token.nonce += 1;
 
     emit!(GameInitialized {
         game_key: game.key(),

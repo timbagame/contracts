@@ -108,6 +108,7 @@ pub mod coinflip {
         ctx: Context<CompleteGame>,
         _random_hash: [u8; 32],
         _secret_key: [u8; 32],
+        _nonce: u64,
     ) -> Result<()> {
         instructions::complete_game::handler(ctx)
     }

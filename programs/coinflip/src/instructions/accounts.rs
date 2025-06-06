@@ -174,9 +174,9 @@ pub struct WithdrawPlayerBalance<'info> {
 pub struct InitializeGame<'info> {
     #[account(
         init,
-        payer = player,
+        payer = creator,
         space = GAME_SIZE,
-        seeds = [b"game", random_hash.as_ref()],
+        seeds = [b"game", token_mint.key().as_ref(), random_hash.as_ref(), game_token.nonce.to_le_bytes().as_ref()],
         bump,
         constraint = game_token.is_enabled() @ ErrorCode::TokenNotEnabled,
         constraint = game_token.meets_min_amount(amount) @ ErrorCode::InvalidAmount,
@@ -186,13 +186,13 @@ pub struct InitializeGame<'info> {
     )]
     pub game: Account<'info, Game>,
     #[account(mut)]
-    pub player: Signer<'info>,
+    pub creator: Signer<'info>,
     #[account(
         mut,
-        seeds = [b"player_balance", player.key().as_ref(), token_mint.key().as_ref()],
+        seeds = [b"player_balance", creator.key().as_ref(), token_mint.key().as_ref()],
         bump,
     )]
-    pub player_balance: Account<'info, PlayerBalance>,
+    pub creator_balance: Account<'info, PlayerBalance>,
     #[account(mut, seeds = [b"oracle"], bump)]
     pub oracle: Account<'info, Oracle>,
     pub token_mint: Account<'info, Mint>,
@@ -204,9 +204,9 @@ pub struct InitializeGame<'info> {
     #[account(
         mut,
         associated_token::mint = token_mint,
-        associated_token::authority = player,
+        associated_token::authority = creator,
     )]
-    pub player_token_account: Account<'info, TokenAccount>,
+    pub creator_token_account: Account<'info, TokenAccount>,
     #[account(
         mut,
         associated_token::mint = token_mint,
@@ -270,16 +270,16 @@ pub struct JoinGame<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(random_hash: [u8; 32], secret_key: [u8; 32])]
+#[instruction(random_hash: [u8; 32], secret_key: [u8; 32], nonce: u64)]
 pub struct CompleteGame<'info> {
     #[account(
         mut,
-        seeds = [b"game", random_hash.as_ref()],
+        seeds = [b"game", game.token_mint.as_ref(), random_hash.as_ref(), &nonce.to_le_bytes()],
         bump,
         close = creator,
         constraint = game.is_creator(&creator.key()) @ ErrorCode::InvalidCreator,
         constraint = game.verify_secret_key(random_hash, secret_key) @ ErrorCode::InvalidSecretKey,
-        constraint = game.calculate_winner_index(secret_key) == player_participation.player_index @ ErrorCode::UnauthorizedPlayer,
+        constraint = game.calculate_winner_index(secret_key) == winner_participation.player_index @ ErrorCode::UnauthorizedPlayer,
     )]
     pub game: Account<'info, Game>,
     #[account(
@@ -291,23 +291,23 @@ pub struct CompleteGame<'info> {
     pub authority: Signer<'info>,
     #[account(
         mut,
-        close = player,
-        seeds = [b"player_participation", game.key().as_ref(), player.key().as_ref()],
+        close = winner,
+        seeds = [b"player_participation", game.key().as_ref(), winner.key().as_ref()],
         bump,
     )]
-    pub player_participation: Account<'info, PlayerParticipation>,
+    pub winner_participation: Account<'info, PlayerParticipation>,
     /// CHECK: Validated by game's winner calculation
     #[account(mut)]
-    pub player: AccountInfo<'info>,
+    pub winner: AccountInfo<'info>,
     /// CHECK: Game creator for rent refund
     #[account(mut)]
     pub creator: AccountInfo<'info>,
     #[account(
         mut,
-        seeds = [b"player_balance", player.key().as_ref(), game.token_mint.as_ref()],
+        seeds = [b"player_balance", winner.key().as_ref(), game.token_mint.as_ref()],
         bump,
     )]
-    pub player_balance: Account<'info, PlayerBalance>,
+    pub winner_balance: Account<'info, PlayerBalance>,
     #[account(seeds = [b"game_token", game.token_mint.as_ref()], bump)]
     pub game_token: Account<'info, GameToken>,
     pub system_program: Program<'info, System>,

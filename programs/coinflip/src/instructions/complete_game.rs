@@ -4,7 +4,7 @@ use anchor_lang::prelude::*;
 pub fn handler(ctx: Context<super::CompleteGame>) -> Result<()> {
     let game = &mut ctx.accounts.game;
     let game_token = &mut ctx.accounts.game_token;
-    let player_balance = &mut ctx.accounts.player_balance;
+    let winner_balance = &mut ctx.accounts.winner_balance;
     let current_time = Clock::get()?.unix_timestamp as u64;
 
     // Check that game is ready for oracle
@@ -17,12 +17,12 @@ pub fn handler(ctx: Context<super::CompleteGame>) -> Result<()> {
     let (winner_amount, fee_amount) = game.calculate_amounts(fee_percentage);
 
     game_token.fee_amount += fee_amount;
-    player_balance.amount += winner_amount;
+    winner_balance.amount += winner_amount;
 
     emit!(GameCompleted {
         game_key: game.key(),
         creator: game.creator,
-        winner: ctx.accounts.player.key(),
+        winner: ctx.accounts.winner.key(),
         game_type: game.game_type,
         amount: game.amount,
         players_count: game.player_count,
