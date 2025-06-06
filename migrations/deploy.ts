@@ -16,9 +16,9 @@ module.exports = async function (provider) {
     const config = {
       feePercentage: 1, // 1% fee
       oracleBufferTime: 300, // 5 minutes in seconds
-      maxPlayers: 1000,
-      maxTimeout: 3600, // 1 hour in seconds
-      minTimeout: 300, // 5 minutes in seconds
+      maxPlayers: 1000000,
+      maxTimeout: 86400, // 1 day in seconds
+      minTimeout: 60, // 1 minute in seconds
     };
 
     // Initialize Oracle
