@@ -1,6 +1,6 @@
 use crate::{
     error::ErrorCode::GameWaitingForOracle, error::ErrorCode::OnlyLastPlayerCanUnjoin,
-    events::PlayerUnjoined, state::GameType,
+    error::ErrorCode::SnowballMultiPlayerUnjoin, events::PlayerUnjoined, state::GameType,
 };
 use anchor_lang::prelude::*;
 
@@ -20,7 +20,7 @@ pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
 
     // If it is a Snowball game, only allow if there is only one player
     if game.game_type == GameType::Snowball && game.players_count > 1 {
-        return Err(GameWaitingForOracle.into());
+        return Err(SnowballMultiPlayerUnjoin.into());
     }
 
     // CRITICAL FIX: Only allow the last player to unjoin to prevent index gaps
