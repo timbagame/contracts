@@ -1,12 +1,11 @@
 use crate::{
-    error::ErrorCode::GameWaitingForOracle, events::PlayerJoined, state::GameType,
+    error::ErrorCode::GameWaitingForOracle, events::PlayerRolled, state::GameType,
     utils::handle_player_token_transfer,
 };
 use anchor_lang::prelude::*;
 
-pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
+pub fn handler(ctx: Context<super::RollGame>) -> Result<()> {
     let game = &mut ctx.accounts.game;
-    let player_participation = &mut ctx.accounts.player_participation;
     let clock = Clock::get()?;
 
     // Check that game is not ready for oracle
@@ -14,8 +13,8 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
         return Err(GameWaitingForOracle.into());
     }
 
-    // If it is not a giveaway, the player must pay the amount
-    if game.game_type != GameType::Giveaway {
+    // If it is a Snowball game, always collect the ticket amount
+    if game.game_type == GameType::Snowball {
         handle_player_token_transfer(
             &mut ctx.accounts.player_balance,
             game.ticket_amount,
@@ -28,14 +27,10 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
         game.total_amount += game.ticket_amount;
     }
 
-    // Set player index for winner calculation
-    player_participation.player_index = game.players_count;
-
-    // Increment player count and slot entropy
-    game.players_count += 1;
+    // Increment slot entropy for winner calculation
     game.slot_entropy += clock.slot;
 
-    emit!(PlayerJoined {
+    emit!(PlayerRolled {
         game_key: game.key(),
         creator: game.creator,
         player: ctx.accounts.player.key(),
@@ -47,7 +42,7 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
         total_amount: game.total_amount,
         players_count: game.players_count,
         slot_entropy: game.slot_entropy,
-        player_index: player_participation.player_index,
+        player_index: ctx.accounts.player_participation.player_index,
         is_private: game.is_private,
         created_at: game.created_at,
         timeout: game.timeout,

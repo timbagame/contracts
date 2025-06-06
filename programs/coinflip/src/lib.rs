@@ -17,7 +17,7 @@ declare_id!("Cuykfqo8k3yvYyTw9Gvttx1oiLsEF7GUeWHJ3YfsyuQL");
 pub struct OracleConfig {
     pub fee_percentage: u8,
     pub oracle_buffer_time: u16,
-    pub max_players: u16,
+    pub max_players: u32,
     pub max_timeout: u32,
     pub min_timeout: u32,
 }
@@ -34,8 +34,8 @@ pub struct TokenConfig {
 pub struct GameConfig {
     pub game_type: GameType,
     pub amount: u64,
-    pub max_players: u16,
-    pub min_players: u16,
+    pub max_players: u32,
+    pub min_players: u32,
     pub timeout: u32,
     pub is_private: bool,
 }
@@ -92,8 +92,8 @@ pub mod coinflip {
         instructions::join_game::handler(ctx)
     }
 
-    pub fn roll_snowball_game(ctx: Context<RollSnowballGame>) -> Result<()> {
-        instructions::roll_snowball_game::handler(ctx)
+    pub fn roll_game(ctx: Context<RollGame>) -> Result<()> {
+        instructions::roll_game::handler(ctx)
     }
 
     pub fn unjoin_game(ctx: Context<UnjoinGame>) -> Result<()> {

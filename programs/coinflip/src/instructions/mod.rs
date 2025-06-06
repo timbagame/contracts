@@ -19,7 +19,7 @@ pub mod clean_player_participation;
 pub mod complete_game;
 pub mod initialize_game;
 pub mod join_game;
-pub mod roll_snowball_game;
+pub mod roll_game;
 pub mod unjoin_game;
 
 // Fee management

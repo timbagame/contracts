@@ -32,6 +32,8 @@ pub enum ErrorCode {
     AlreadyJoined = 1200,
     #[msg("Insufficient balance")]
     InsufficientBalance = 1201,
+    #[msg("Only the last player can unjoin to prevent index gaps")]
+    OnlyLastPlayerCanUnjoin = 1202,
 
     // Configuration Errors (1300-1399)
     // --------------------------------

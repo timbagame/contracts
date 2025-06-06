@@ -19,7 +19,7 @@ pub struct Oracle {
     // Buffer time in seconds after game timeout before cancellation is allowed
     pub oracle_buffer_time: u16,
     // Maximum number of players allowed in a game
-    pub max_players: u16,
+    pub max_players: u32,
     // Maximum timeout duration in seconds for a game
     pub max_timeout: u32,
     // Minimum timeout duration in seconds for a game
@@ -32,7 +32,7 @@ impl Oracle {
         &mut self,
         fee_percentage: u8,
         oracle_buffer_time: u16,
-        max_players: u16,
+        max_players: u32,
         max_timeout: u32,
         min_timeout: u32,
         new_authority: Pubkey,
@@ -54,7 +54,7 @@ impl Oracle {
         max_timeout >= min_timeout
     }
 
-    pub fn is_valid_players_count(&self, max_players: u16) -> bool {
+    pub fn is_valid_players_count(&self, max_players: u32) -> bool {
         max_players > 0
     }
 
@@ -131,7 +131,7 @@ impl PlayerBalance {
 #[derive(Default)]
 pub struct PlayerParticipation {
     // Player's position/index in the game (for winner calculation)
-    pub player_index: u16,
+    pub player_index: u32,
 }
 
 // Type of game being played
@@ -162,38 +162,42 @@ pub struct Game {
     // Type of game being played
     pub game_type: GameType,
     // Amount each player must contribute
-    pub amount: u64,
+    pub ticket_amount: u64,
     // Maximum number of players allowed
-    pub max_players: u16,
+    pub max_players: u32,
     // Minimum number of players required
-    pub min_players: u16,
+    pub min_players: u32,
     // Current number of players who have joined
-    pub player_count: u16,
+    pub players_count: u32,
     // Token mint used for this game
     pub token_mint: Pubkey,
-    // Timestamp when game expires
-    pub expires_at: u64,
-    // Last slot number when game was updated
-    pub last_slot: u64,
+    // Timestamp when game was created
+    pub created_at: u64,
+    // Timeout duration in seconds
+    pub timeout: u32,
+    // Sum of all slots when players joined
+    pub slot_entropy: u64,
     // Whether this is a private game requiring oracle approval
     pub is_private: bool,
-    // Total accumulated pot
-    pub total_pot: u64,
+    // Total accumulated prize
+    pub total_amount: u64,
 }
 
 impl Game {
     // Checks if the game meets minimum requirements and timeout conditions
     pub fn ready_for_oracle(&self, current_time: u64) -> bool {
-        let has_min_players = self.player_count >= self.min_players;
-        let has_max_players = self.player_count == self.max_players;
-        let timeout_met = current_time >= self.expires_at;
+        let has_min_players = self.players_count >= self.min_players;
+        let has_max_players = self.players_count == self.max_players;
+        let expires_at = self.created_at + self.timeout as u64;
+        let timeout_met = current_time >= expires_at;
 
         (has_min_players && timeout_met) || has_max_players
     }
 
     // Checks if the oracle buffer time has passed for cancellation
     pub fn buffer_passed(&self, oracle_buffer_time: u64, current_time: u64) -> bool {
-        current_time >= self.expires_at + oracle_buffer_time
+        let expires_at = self.created_at + self.timeout as u64;
+        current_time >= expires_at + oracle_buffer_time
     }
 
     // Verifies the secret key matches the random hash
@@ -203,8 +207,8 @@ impl Game {
     }
 
     // Calculates the winner index using secret key revealed by oracle
-    pub fn calculate_winner_index(&self, secret_key: [u8; 32]) -> u16 {
-        let n_players = self.player_count as u64;
+    pub fn calculate_winner_index(&self, secret_key: [u8; 32]) -> u32 {
+        let n_players = self.players_count as u64;
         if n_players == 1 {
             return 0;
         }
@@ -212,7 +216,7 @@ impl Game {
         // Hash combination of secret key and last_slot for additional entropy
         let mut combined_data = Vec::with_capacity(40);
         combined_data.extend_from_slice(&secret_key);
-        combined_data.extend_from_slice(&self.last_slot.to_le_bytes());
+        combined_data.extend_from_slice(&self.slot_entropy.to_le_bytes());
         let entropy_hash = hash(&combined_data).to_bytes();
 
         // Try sliding 8-byte windows through the hashed entropy
@@ -223,7 +227,7 @@ impl Game {
 
             // Use this value if it's in the unbiased range
             if random_u64 < max_valid {
-                return (random_u64 % n_players) as u16;
+                return (random_u64 % n_players) as u32;
             }
         }
 
@@ -232,8 +236,8 @@ impl Game {
 
     // Calculates prize distribution with fee deduction
     pub fn calculate_amounts(&self, fee_percentage: u64) -> (u64, u64) {
-        let fee_amount = self.total_pot * fee_percentage / 100;
-        let winner_amount = self.total_pot - fee_amount;
+        let fee_amount = self.total_amount * fee_percentage / 100;
+        let winner_amount = self.total_amount - fee_amount;
         (winner_amount, fee_amount)
     }
 
@@ -243,17 +247,17 @@ impl Game {
     }
 
     pub fn is_not_full(&self) -> bool {
-        self.player_count < self.max_players
+        self.players_count < self.max_players
     }
 
-    pub fn is_valid_players_count(max_players: u16, min_players: u16, oracle_max: u16) -> bool {
+    pub fn is_valid_players_count(max_players: u32, min_players: u32, oracle_max: u32) -> bool {
         max_players <= oracle_max && min_players <= max_players
     }
 
     pub fn is_valid_game_type_players(
         game_type: GameType,
-        max_players: u16,
-        min_players: u16,
+        max_players: u32,
+        min_players: u32,
     ) -> bool {
         if game_type == GameType::Giveaway {
             max_players >= 1 && min_players >= 1
@@ -267,13 +271,13 @@ impl Game {
     }
 
     pub fn has_sufficient_balance_for_join(&self, token_balance: u64, player_balance: u64) -> bool {
-        self.game_type == GameType::Giveaway || token_balance + player_balance >= self.amount
+        self.game_type == GameType::Giveaway || token_balance + player_balance >= self.ticket_amount
     }
 
     // Checks if the game has no active participants that would prevent cancellation
     // Returns true if: no players or giveaway type
     pub fn has_no_active_participants(&self) -> bool {
-        self.player_count == 0 || self.game_type == GameType::Giveaway
+        self.players_count == 0 || self.game_type == GameType::Giveaway
     }
 
     // Checks if the timing allows for cancellation/unjoining
