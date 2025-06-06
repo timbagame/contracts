@@ -21,15 +21,9 @@ pub fn handler(ctx: Context<super::CompleteGame>) -> Result<()> {
 
     emit!(GameCompleted {
         game_key: game.key(),
-        creator: game.creator,
         winner: ctx.accounts.winner.key(),
-        game_type: game.game_type,
-        ticket_amount: game.ticket_amount,
         total_amount: game.total_amount,
         players_count: game.players_count,
-        max_players: game.max_players,
-        min_players: game.min_players,
-        token_mint: game.token_mint,
         winner_amount,
         fee_amount,
         timestamp: current_time,
