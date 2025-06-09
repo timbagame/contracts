@@ -25,6 +25,8 @@ pub enum ErrorCode {
     GameNotCompleted = 1104,
     #[msg("Invalid game type")]
     InvalidGameType = 1105,
+    #[msg("Game expired")]
+    GameExpired = 1106,
 
     // Player Action Errors (1200-1299)
     // --------------------------------

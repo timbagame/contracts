@@ -7,7 +7,7 @@ pub fn handler(ctx: Context<super::CompleteGame>) -> Result<()> {
     let winner_balance = &mut ctx.accounts.winner_balance;
     let current_time = Clock::get()?.unix_timestamp as u64;
 
-    // Check that game is ready for oracle
+    // Block completion if game is not ready for oracle
     if !game.ready_for_oracle(current_time) {
         return Err(GameNotReadyForOracle.into());
     }

@@ -1,5 +1,5 @@
 use crate::{
-    error::ErrorCode::GameWaitingForOracle, events::PlayerJoined, state::GameType,
+    error::ErrorCode::GameExpired, events::PlayerJoined, state::GameType,
     utils::handle_player_token_transfer,
 };
 use anchor_lang::prelude::*;
@@ -9,9 +9,9 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
     let player_participation = &mut ctx.accounts.player_participation;
     let clock = Clock::get()?;
 
-    // Check that game is not ready for oracle
-    if game.ready_for_oracle(clock.unix_timestamp as u64) {
-        return Err(GameWaitingForOracle.into());
+    // Block join if game is expired
+    if game.is_expired(clock.unix_timestamp as u64) {
+        return Err(GameExpired.into());
     }
 
     // If it is not a giveaway, the player must pay the amount
@@ -26,6 +26,7 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
         )?;
 
         game.total_amount += game.ticket_amount;
+        player_participation.player_amount = game.ticket_amount;
     }
 
     // Set player index for winner calculation
