@@ -1,14 +1,22 @@
 use crate::{
-    error::ErrorCode::GameWaitingForOracle, events::PlayerRolled, state::GameType,
+    error::ErrorCode::{GameExpired, GameWaitingForOracle},
+    events::PlayerRolled,
+    state::GameType,
     utils::handle_player_token_transfer,
 };
 use anchor_lang::prelude::*;
 
 pub fn handler(ctx: Context<super::RollGame>) -> Result<()> {
     let game = &mut ctx.accounts.game;
+    let player_participation = &mut ctx.accounts.player_participation;
     let clock = Clock::get()?;
 
-    // Check that game is not ready for oracle
+    // Block roll if game is expired
+    if game.is_expired(clock.unix_timestamp as u64) {
+        return Err(GameExpired.into());
+    }
+
+    // Block roll if game is ready for oracle
     if game.ready_for_oracle(clock.unix_timestamp as u64) {
         return Err(GameWaitingForOracle.into());
     }
@@ -25,6 +33,7 @@ pub fn handler(ctx: Context<super::RollGame>) -> Result<()> {
         )?;
 
         game.total_amount += game.ticket_amount;
+        player_participation.player_amount += game.ticket_amount;
     }
 
     // Increment slot entropy for winner calculation
@@ -34,7 +43,7 @@ pub fn handler(ctx: Context<super::RollGame>) -> Result<()> {
         game_key: game.key(),
         player: ctx.accounts.player.key(),
         total_amount: game.total_amount,
-        player_index: ctx.accounts.player_participation.player_index,
+        player_index: player_participation.player_index,
         slot_entropy: game.slot_entropy,
         timestamp: clock.unix_timestamp as u64,
     });

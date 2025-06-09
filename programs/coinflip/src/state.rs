@@ -5,7 +5,7 @@ use anchor_lang::solana_program::hash::hash;
 pub const ORACLE_SIZE: usize = 8 + 32 + 1 + 2 + 4 + 4 + 4; // discriminator + authority + fee_percentage + oracle_buffer_time + max_players + max_timeout + min_timeout
 pub const GAME_TOKEN_SIZE: usize = 8 + 8 + 8 + 1 + 8; // discriminator + min_amount + fee_amount + enabled + nonce
 pub const PLAYER_BALANCE_SIZE: usize = 8 + 8; // discriminator + amount
-pub const PLAYER_PARTICIPATION_SIZE: usize = 8 + 4; // discriminator + player_index
+pub const PLAYER_PARTICIPATION_SIZE: usize = 8 + 4 + 8; // discriminator + player_index + player_amount
 pub const GAME_SIZE: usize = 8 + 32 + 1 + 8 + 4 + 4 + 4 + 32 + 8 + 4 + 8 + 1 + 8; // discriminator + creator + game_type + ticket_amount + max_players + min_players + players_count + token_mint + created_at + timeout + slot_entropy + is_private + total_amount
 
 // Oracle account that manages global game settings and authority
@@ -132,6 +132,8 @@ impl PlayerBalance {
 pub struct PlayerParticipation {
     // Player's position/index in the game (for winner calculation)
     pub player_index: u32,
+    // Amount contributed by the player
+    pub player_amount: u64,
 }
 
 // Type of game being played
@@ -184,6 +186,11 @@ pub struct Game {
 }
 
 impl Game {
+    // Checks if the game is expired
+    pub fn is_expired(&self, current_time: u64) -> bool {
+        current_time >= self.created_at + self.timeout as u64
+    }
+
     // Checks if the game meets minimum requirements and timeout conditions
     pub fn ready_for_oracle(&self, current_time: u64) -> bool {
         let has_min_players = self.players_count >= self.min_players;
@@ -278,15 +285,5 @@ impl Game {
     // Returns true if: no players or giveaway type
     pub fn has_no_active_participants(&self) -> bool {
         self.players_count == 0 || self.game_type == GameType::Giveaway
-    }
-
-    // Checks if the timing allows for cancellation/unjoining
-    // Returns true if: game not ready for oracle OR oracle buffer time has passed
-    pub fn is_within_cancellation_window(
-        &self,
-        oracle_buffer_time: u64,
-        current_time: u64,
-    ) -> bool {
-        !self.ready_for_oracle(current_time) || self.buffer_passed(oracle_buffer_time, current_time)
     }
 }

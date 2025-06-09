@@ -9,12 +9,12 @@ pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
     let oracle = &ctx.accounts.oracle;
     let player_participation = &ctx.accounts.player_participation;
     let clock = Clock::get()?;
+    let current_time = clock.unix_timestamp as u64;
 
-    // Check that game is within cancellation window
-    if !game.is_within_cancellation_window(
-        oracle.oracle_buffer_time as u64,
-        clock.unix_timestamp as u64,
-    ) {
+    // Block unjoin if game is ready for oracle AND buffer time has not passed
+    if game.ready_for_oracle(current_time)
+        && !game.buffer_passed(oracle.oracle_buffer_time as u64, current_time)
+    {
         return Err(GameWaitingForOracle.into());
     }
 
@@ -29,11 +29,11 @@ pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
         return Err(OnlyLastPlayerCanUnjoin.into());
     }
 
-    // Return full funds without charging any fee when unjoining
+    // Return funds based on game type
     if game.game_type != GameType::Giveaway {
         let player_balance = &mut ctx.accounts.player_balance;
-        player_balance.refund(game.ticket_amount);
-        game.total_amount -= game.ticket_amount;
+        player_balance.refund(player_participation.player_amount);
+        game.total_amount -= player_participation.player_amount;
     }
 
     // Decrement player count and increment slot entropy
@@ -47,7 +47,7 @@ pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
         players_count: game.players_count,
         player_index: player_participation.player_index,
         slot_entropy: game.slot_entropy,
-        timestamp: clock.unix_timestamp as u64,
+        timestamp: current_time,
     });
 
     Ok(())

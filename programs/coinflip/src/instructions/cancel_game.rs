@@ -4,11 +4,12 @@ use anchor_lang::prelude::*;
 pub fn handler(ctx: Context<super::CancelGame>) -> Result<()> {
     let game = &ctx.accounts.game;
     let creator_balance = &mut ctx.accounts.creator_balance;
+    let oracle = &ctx.accounts.oracle;
     let current_time = Clock::get()?.unix_timestamp as u64;
 
-    // Check that game is within cancellation window
-    if !game
-        .is_within_cancellation_window(ctx.accounts.oracle.oracle_buffer_time as u64, current_time)
+    // Block cancellation if game is ready for oracle AND buffer time has not passed
+    if game.ready_for_oracle(current_time)
+        && !game.buffer_passed(oracle.oracle_buffer_time as u64, current_time)
     {
         return Err(GameWaitingForOracle.into());
     }
