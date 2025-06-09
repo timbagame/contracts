@@ -3,7 +3,7 @@ use anchor_lang::solana_program::hash::hash;
 
 // Constants for space calculation
 pub const ORACLE_SIZE: usize = 8 + 32 + 1 + 2 + 4 + 4 + 4; // discriminator + authority + fee_percentage + oracle_buffer_time + max_players + max_timeout + min_timeout
-pub const GAME_TOKEN_SIZE: usize = 8 + 8 + 8 + 1 + 8; // discriminator + min_amount + fee_amount + enabled + nonce
+pub const GAME_TOKEN_SIZE: usize = 8 + 8 + 8 + 1; // discriminator + min_amount + fee_amount + enabled
 pub const PLAYER_BALANCE_SIZE: usize = 8 + 8; // discriminator + amount
 pub const PLAYER_PARTICIPATION_SIZE: usize = 8 + 4 + 8; // discriminator + player_index + player_amount
 pub const GAME_SIZE: usize = 8 + 32 + 1 + 8 + 4 + 4 + 4 + 32 + 8 + 4 + 8 + 1 + 8; // discriminator + creator + game_type + ticket_amount + max_players + min_players + players_count + token_mint + created_at + timeout + slot_entropy + is_private + total_amount
@@ -77,8 +77,6 @@ pub struct GameToken {
     pub fee_amount: u64,
     // Whether this token is enabled for games
     pub enabled: bool,
-    // Nonce to prevent replay attacks
-    pub nonce: u64,
 }
 
 impl GameToken {
@@ -93,7 +91,6 @@ impl GameToken {
         self.min_amount = min_amount;
         self.fee_amount = 0;
         self.enabled = enabled;
-        self.nonce = 0;
     }
 
     // Validation helpers for constraints

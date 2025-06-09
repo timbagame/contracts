@@ -6,7 +6,6 @@ use anchor_lang::prelude::*;
 pub fn handler(ctx: Context<super::InitializeGame>, config: GameConfig) -> Result<()> {
     let game = &mut ctx.accounts.game;
     let clock = Clock::get()?;
-    let game_token = &mut ctx.accounts.game_token;
 
     game.creator = ctx.accounts.creator.key();
     game.game_type = config.game_type;
@@ -37,9 +36,6 @@ pub fn handler(ctx: Context<super::InitializeGame>, config: GameConfig) -> Resul
         game.ticket_amount = config.amount;
     }
 
-    // Increment the nonce
-    game_token.nonce += 1;
-
     emit!(GameInitialized {
         game_key: game.key(),
         creator: game.creator,
@@ -52,7 +48,6 @@ pub fn handler(ctx: Context<super::InitializeGame>, config: GameConfig) -> Resul
         is_private: game.is_private,
         created_at: game.created_at,
         timeout: game.timeout,
-        nonce: game_token.nonce - 1,
     });
 
     Ok(())

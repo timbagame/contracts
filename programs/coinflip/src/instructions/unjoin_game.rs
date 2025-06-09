@@ -27,8 +27,8 @@ pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
         return Err(OnlyLastPlayerCanUnjoin.into());
     }
 
-    // Return funds based on game type
-    if game.game_type != GameType::Giveaway {
+    // Return funds if player contributed any amount
+    if player_participation.player_amount > 0 {
         let player_balance = &mut ctx.accounts.player_balance;
         player_balance.refund(player_participation.player_amount);
         game.total_amount -= player_participation.player_amount;
