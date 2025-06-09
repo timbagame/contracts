@@ -176,7 +176,7 @@ pub struct InitializeGame<'info> {
         init,
         payer = creator,
         space = GAME_SIZE,
-        seeds = [b"game", token_mint.key().as_ref(), random_hash.as_ref()],
+        seeds = [b"game", random_hash.as_ref()],
         bump,
         constraint = game_token.is_enabled() @ ErrorCode::TokenNotEnabled,
         constraint = game_token.meets_min_amount(amount) @ ErrorCode::InvalidAmount,
@@ -274,7 +274,7 @@ pub struct JoinGame<'info> {
 pub struct CompleteGame<'info> {
     #[account(
         mut,
-        seeds = [b"game", game.token_mint.as_ref(), random_hash.as_ref()],
+        seeds = [b"game", random_hash.as_ref()],
         bump,
         close = creator,
         constraint = game.is_creator(&creator.key()) @ ErrorCode::InvalidCreator,
