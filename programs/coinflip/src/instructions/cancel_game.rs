@@ -7,10 +7,8 @@ pub fn handler(ctx: Context<super::CancelGame>) -> Result<()> {
     let oracle = &ctx.accounts.oracle;
     let current_time = Clock::get()?.unix_timestamp as u64;
 
-    // Block cancellation if game is ready for oracle AND buffer time has not passed
-    if game.ready_for_oracle(current_time)
-        && !game.buffer_passed(oracle.oracle_buffer_time as u64, current_time)
-    {
+    // Block cancellation if game is ready for oracle
+    if game.waiting_for_oracle(oracle.oracle_buffer_time as u64, current_time) {
         return Err(GameWaitingForOracle.into());
     }
 

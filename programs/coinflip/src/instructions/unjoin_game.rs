@@ -11,10 +11,8 @@ pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
     let clock = Clock::get()?;
     let current_time = clock.unix_timestamp as u64;
 
-    // Block unjoin if game is ready for oracle AND buffer time has not passed
-    if game.ready_for_oracle(current_time)
-        && !game.buffer_passed(oracle.oracle_buffer_time as u64, current_time)
-    {
+    // Block unjoin if game is waiting for oracle
+    if game.waiting_for_oracle(oracle.oracle_buffer_time as u64, current_time) {
         return Err(GameWaitingForOracle.into());
     }
 

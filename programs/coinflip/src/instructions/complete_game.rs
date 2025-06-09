@@ -4,11 +4,12 @@ use anchor_lang::prelude::*;
 pub fn handler(ctx: Context<super::CompleteGame>) -> Result<()> {
     let game = &mut ctx.accounts.game;
     let game_token = &mut ctx.accounts.game_token;
+    let oracle = &ctx.accounts.oracle;
     let winner_balance = &mut ctx.accounts.winner_balance;
     let current_time = Clock::get()?.unix_timestamp as u64;
 
-    // Block completion if game is not ready for oracle
-    if !game.ready_for_oracle(current_time) {
+    // Block completion if game is not waiting for oracle
+    if !game.waiting_for_oracle(oracle.oracle_buffer_time as u64, current_time) {
         return Err(GameNotReadyForOracle.into());
     }
 

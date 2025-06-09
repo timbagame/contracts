@@ -191,20 +191,21 @@ impl Game {
         current_time >= self.created_at + self.timeout as u64
     }
 
-    // Checks if the game meets minimum requirements and timeout conditions
-    pub fn ready_for_oracle(&self, current_time: u64) -> bool {
+    // Checks if the game meets minimum requirements and timeout conditions for oracle to complete
+    pub fn waiting_for_oracle(&self, oracle_buffer_time: u64, current_time: u64) -> bool {
         let has_min_players = self.players_count >= self.min_players;
         let has_max_players = self.players_count == self.max_players;
         let expires_at = self.created_at + self.timeout as u64;
         let timeout_met = current_time >= expires_at;
+        let buffer_passed = current_time >= expires_at + oracle_buffer_time;
 
+        // If buffer time has passed, the game is not waiting for oracle
+        if buffer_passed {
+            return false;
+        }
+
+        // If the game has minimum players and timeout has met, or has max players, it is waiting for oracle
         (has_min_players && timeout_met) || has_max_players
-    }
-
-    // Checks if the oracle buffer time has passed for cancellation
-    pub fn buffer_passed(&self, oracle_buffer_time: u64, current_time: u64) -> bool {
-        let expires_at = self.created_at + self.timeout as u64;
-        current_time >= expires_at + oracle_buffer_time
     }
 
     // Verifies the secret key matches the random hash
