@@ -1,7 +1,5 @@
 use crate::{
-    error::ErrorCode::{GameExpired, GameWaitingForOracle},
-    events::PlayerRolled,
-    state::GameType,
+    error::ErrorCode::GameExpired, events::PlayerRolled, state::GameType,
     utils::handle_player_token_transfer,
 };
 use anchor_lang::prelude::*;
