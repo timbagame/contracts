@@ -16,11 +16,6 @@ pub fn handler(ctx: Context<super::RollGame>) -> Result<()> {
         return Err(GameExpired.into());
     }
 
-    // Block roll if game is ready for oracle
-    if game.ready_for_oracle(clock.unix_timestamp as u64) {
-        return Err(GameWaitingForOracle.into());
-    }
-
     // If it is a Snowball game, always collect the ticket amount
     if game.game_type == GameType::Snowball {
         handle_player_token_transfer(
