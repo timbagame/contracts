@@ -19,8 +19,8 @@ pub enum ErrorCode {
     GameWaitingForOracle = 1101,
     #[msg("Game not ready for oracle")]
     GameNotReadyForOracle = 1102,
-    #[msg("Cannot cancel coinflip game with active players")]
-    CoinflipHasActivePlayers = 1103,
+    #[msg("Cannot cancel game with active players")]
+    GameHasActivePlayers = 1103,
     #[msg("Game not completed")]
     GameNotCompleted = 1104,
     #[msg("Invalid game type")]
