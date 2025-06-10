@@ -989,6 +989,16 @@ describe("coinflip", () => {
       .signers([creator])
       .rpc();
 
+    // Creator joins their own game
+    await program.methods
+      .joinGame()
+      .accounts({
+        game: gamePDA,
+        player: creator.publicKey,
+      })
+      .signers([creator])
+      .rpc();
+
     // Create and join with second player
     const {
       player,
@@ -998,7 +1008,7 @@ describe("coinflip", () => {
     // Mint tokens to player
     await mintTokens(mintAuthority, mint, playerTokenAccount.address, amount);
 
-    // Join game
+    // Second player joins game
     await program.methods
       .joinGame()
       .accounts({
