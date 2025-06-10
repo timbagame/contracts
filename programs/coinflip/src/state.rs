@@ -206,6 +206,11 @@ impl Game {
 
     // Checks if the game is waiting for oracle to complete it
     pub fn waiting_for_oracle(&self, oracle_buffer_time: u64, current_time: u64) -> bool {
+        // If game is already completed, no need to wait for oracle
+        if self.total_amount == 0 {
+            return false;
+        }
+
         self.is_ready_for_completion(current_time)
             && !self.is_buffer_expired(oracle_buffer_time, current_time)
     }
