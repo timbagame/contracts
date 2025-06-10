@@ -232,7 +232,7 @@ pub struct JoinGame<'info> {
         init,
         payer = player,
         space = PLAYER_PARTICIPATION_SIZE,
-        seeds = [b"player_participation", game.key().as_ref(), player.key().as_ref(), game.created_at_slot.to_le_bytes().as_ref()],
+        seeds = [b"player_participation", game.key().as_ref(), player.key().as_ref()],
         bump,
     )]
     pub player_participation: Account<'info, PlayerParticipation>,
@@ -292,7 +292,7 @@ pub struct CompleteGame<'info> {
     #[account(
         mut,
         close = winner,
-        seeds = [b"player_participation", game.key().as_ref(), winner.key().as_ref(), game.created_at_slot.to_le_bytes().as_ref()],
+        seeds = [b"player_participation", game.key().as_ref(), winner.key().as_ref()],
         bump,
     )]
     pub winner_participation: Account<'info, PlayerParticipation>,
@@ -324,7 +324,7 @@ pub struct UnjoinGame<'info> {
     #[account(
         mut,
         close = player,
-        seeds = [b"player_participation", game.key().as_ref(), player.key().as_ref(), game.created_at_slot.to_le_bytes().as_ref()],
+        seeds = [b"player_participation", game.key().as_ref(), player.key().as_ref()],
         bump,
     )]
     pub player_participation: Account<'info, PlayerParticipation>,
@@ -375,7 +375,7 @@ pub struct RollGame<'info> {
     )]
     pub game: Account<'info, Game>,
     #[account(
-        seeds = [b"player_participation", game.key().as_ref(), player.key().as_ref(), game.created_at_slot.to_le_bytes().as_ref()],
+        seeds = [b"player_participation", game.key().as_ref(), player.key().as_ref()],
         bump,
     )]
     pub player_participation: Account<'info, PlayerParticipation>,
@@ -437,7 +437,7 @@ pub struct CleanPlayerParticipation<'info> {
     #[account(
         mut,
         close = player,
-        seeds = [b"player_participation", game.key().as_ref(), player.key().as_ref(), game.created_at_slot.to_le_bytes().as_ref()],
+        seeds = [b"player_participation", game.key().as_ref(), player.key().as_ref()],
         bump,
     )]
     pub player_participation: Account<'info, PlayerParticipation>,
