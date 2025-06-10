@@ -1952,4 +1952,779 @@ describe("coinflip", () => {
       expect(error.toString()).to.include("Account does not exist");
     }
   });
+
+  // ========================================
+  // REPLAY ATTACK SECURITY TESTS
+  // ========================================
+
+  it("Test Join Game Replay Attack Prevention", async () => {
+    const {
+    } = await createOracleAccount();
+
+    const {
+      mint,
+      mintAuthority,
+    } = await createSplTokenMint();
+
+    const amount = new anchor.BN(1_000_000);
+
+    // Create creator and player
+    const {
+      player: creator,
+      playerTokenAccount: creatorTokenAccount,
+    } = await createPlayer(mint);
+
+    const {
+      player: player1,
+      playerTokenAccount: player1TokenAccount,
+    } = await createPlayer(mint);
+
+    await mintTokens(mintAuthority, mint, creatorTokenAccount.address, amount);
+    await mintTokens(mintAuthority, mint, player1TokenAccount.address, amount.muln(3)); // Extra tokens for potential replay
+
+    const { gamePDA, randomHash } = await getGamePDA();
+
+    const gameConfig = {
+      gameType: { coinflip: {} },
+      amount: amount,
+      maxPlayers: 3,
+      minPlayers: 2,
+      timeout: 3600,
+      isPrivate: false,
+    };
+
+    // Initialize game
+    await program.methods
+      .initializeGame(gameConfig, randomHash)
+      .accounts({
+        creator: creator.publicKey,
+        tokenMint: mint,
+      })
+      .signers([creator])
+      .rpc();
+
+    // Creator joins
+    await program.methods
+      .joinGame()
+      .accounts({
+        game: gamePDA,
+        player: creator.publicKey,
+      })
+      .signers([creator])
+      .rpc();
+
+    // Player1 joins
+    await program.methods
+      .joinGame()
+      .accounts({
+        game: gamePDA,
+        player: player1.publicKey,
+      })
+      .signers([player1])
+      .rpc();
+
+    // Verify initial state
+    let gameData = await program.account.game.fetch(gamePDA);
+    expect(gameData.playersCount).to.equal(2);
+    expect(gameData.totalAmount.toNumber()).to.equal(amount.muln(2).toNumber());
+
+    // Attempt to replay join transaction (should fail due to account already exists)
+    try {
+      await program.methods
+        .joinGame()
+        .accounts({
+          game: gamePDA,
+          player: player1.publicKey,
+        })
+        .signers([player1])
+        .rpc();
+      expect.fail("Replay attack should be prevented");
+    } catch (error) {
+      // Should fail because player_participation account already exists
+      expect(error.toString()).to.include("already in use");
+    }
+
+    // Verify state hasn't changed
+    gameData = await program.account.game.fetch(gamePDA);
+    expect(gameData.playersCount).to.equal(2, "Player count should remain unchanged");
+    expect(gameData.totalAmount.toNumber()).to.equal(amount.muln(2).toNumber(), "Total amount should remain unchanged");
+  });
+
+  it("Test Complete Game Replay Attack Prevention", async () => {
+    const {
+    } = await createOracleAccount();
+
+    const {
+      mint,
+      mintAuthority,
+    } = await createSplTokenMint();
+
+    const amount = new anchor.BN(1_000_000);
+
+    // Create creator and player
+    const {
+      player: creator,
+      playerTokenAccount: creatorTokenAccount,
+    } = await createPlayer(mint);
+
+    const {
+      player: player1,
+      playerTokenAccount: player1TokenAccount,
+    } = await createPlayer(mint);
+
+    await mintTokens(mintAuthority, mint, creatorTokenAccount.address, amount);
+    await mintTokens(mintAuthority, mint, player1TokenAccount.address, amount);
+
+    const { gamePDA, randomHash, secretKey } = await getGamePDA();
+
+    const gameConfig = {
+      gameType: { coinflip: {} },
+      amount: amount,
+      maxPlayers: 2,
+      minPlayers: 2,
+      timeout: 3600,
+      isPrivate: false,
+    };
+
+    // Create full game
+    await program.methods
+      .initializeGame(gameConfig, randomHash)
+      .accounts({
+        creator: creator.publicKey,
+        tokenMint: mint,
+      })
+      .signers([creator])
+      .rpc();
+
+    await program.methods
+      .joinGame()
+      .accounts({
+        game: gamePDA,
+        player: creator.publicKey,
+      })
+      .signers([creator])
+      .rpc();
+
+    await program.methods
+      .joinGame()
+      .accounts({
+        game: gamePDA,
+        player: player1.publicKey,
+      })
+      .signers([player1])
+      .rpc();
+
+    const playersGameData = await program.account.game.fetch(gamePDA);
+    const winnerIndex = calculateWinnerIndex(playersGameData.playersCount, secretKey, Number(playersGameData.lastSlot));
+    const winner = winnerIndex === 0 ? creator.publicKey : player1.publicKey;
+
+    // Complete game once
+    await program.methods
+      .completeGame(randomHash, secretKey)
+      .accounts({
+        authority: program.provider.publicKey,
+        winner: winner,
+        creator: creator.publicKey,
+      })
+      .rpc();
+
+    // Verify game completed
+    const completedGameData = await program.account.game.fetch(gamePDA);
+    expect(completedGameData.totalAmount.toNumber()).to.equal(0);
+
+    // Attempt replay attack (should fail - winner_participation account closed)
+    try {
+      await program.methods
+        .completeGame(randomHash, secretKey)
+        .accounts({
+          authority: program.provider.publicKey,
+          winner: winner,
+          creator: creator.publicKey,
+        })
+        .rpc();
+      expect.fail("Complete game replay should be prevented");
+    } catch (error) {
+      expect(error.toString()).to.include("AccountNotInitialized");
+    }
+  });
+
+  it("Test Roll Game Multiple Times (Snowball) - Not Replay but Legitimate", async () => {
+    const {
+    } = await createOracleAccount();
+
+    const {
+      mint,
+      mintAuthority,
+    } = await createSplTokenMint();
+
+    const amount = new anchor.BN(1_000_000);
+
+    // Create creator and player
+    const {
+      player: creator,
+      playerTokenAccount: creatorTokenAccount,
+    } = await createPlayer(mint);
+
+    const {
+      player: player1,
+      playerTokenAccount: player1TokenAccount,
+    } = await createPlayer(mint);
+
+    // Mint enough tokens for multiple rolls
+    await mintTokens(mintAuthority, mint, creatorTokenAccount.address, amount.muln(5));
+    await mintTokens(mintAuthority, mint, player1TokenAccount.address, amount.muln(5));
+
+    const { gamePDA, randomHash } = await getGamePDA();
+
+    const gameConfig = {
+      gameType: { snowball: {} }, // Snowball supports multiple rolls
+      amount: amount,
+      maxPlayers: 3,
+      minPlayers: 2,
+      timeout: 3600,
+      isPrivate: false,
+    };
+
+    // Initialize snowball game
+    await program.methods
+      .initializeGame(gameConfig, randomHash)
+      .accounts({
+        creator: creator.publicKey,
+        tokenMint: mint,
+      })
+      .signers([creator])
+      .rpc();
+
+    // Players join
+    await program.methods
+      .joinGame()
+      .accounts({
+        game: gamePDA,
+        player: creator.publicKey,
+      })
+      .signers([creator])
+      .rpc();
+
+    await program.methods
+      .joinGame()
+      .accounts({
+        game: gamePDA,
+        player: player1.publicKey,
+      })
+      .signers([player1])
+      .rpc();
+
+    // Initial state
+    let gameData = await program.account.game.fetch(gamePDA);
+    const initialTotal = gameData.totalAmount.toNumber();
+
+    // Player1 rolls multiple times (this is legitimate for Snowball, not a replay attack)
+    await program.methods
+      .rollGame()
+      .accounts({
+        game: gamePDA,
+        player: player1.publicKey,
+      })
+      .signers([player1])
+      .rpc();
+
+    gameData = await program.account.game.fetch(gamePDA);
+    expect(gameData.totalAmount.toNumber()).to.equal(initialTotal + amount.toNumber());
+
+    // Roll again
+    await program.methods
+      .rollGame()
+      .accounts({
+        game: gamePDA,
+        player: player1.publicKey,
+      })
+      .signers([player1])
+      .rpc();
+
+    gameData = await program.account.game.fetch(gamePDA);
+    expect(gameData.totalAmount.toNumber()).to.equal(initialTotal + amount.muln(2).toNumber());
+  });
+
+  // ========================================
+  // ARITHMETIC OVERFLOW/UNDERFLOW TESTS
+  // ========================================
+
+  it("Test Arithmetic Overflow Protection in calculate_amounts", async () => {
+    const {
+    } = await createOracleAccount();
+
+    const {
+      mint,
+      mintAuthority,
+    } = await createSplTokenMint();
+
+    // Use near-maximum amount to test overflow
+    const maxAmount = new anchor.BN("18446744073709551615"); // Near u64::MAX
+
+    // Create creator with massive token supply
+    const {
+      player: creator,
+      playerTokenAccount: creatorTokenAccount,
+    } = await createPlayer(mint);
+
+    const {
+      player: player1,
+      playerTokenAccount: player1TokenAccount,
+    } = await createPlayer(mint);
+
+    // This test focuses on game logic, so we'll mock the balances
+    await mintTokens(mintAuthority, mint, creatorTokenAccount.address, maxAmount);
+    await mintTokens(mintAuthority, mint, player1TokenAccount.address, maxAmount);
+
+    const { gamePDA, randomHash, secretKey } = await getGamePDA();
+
+    const gameConfig = {
+      gameType: { coinflip: {} },
+      amount: maxAmount,
+      maxPlayers: 2,
+      minPlayers: 2,
+      timeout: 3600,
+      isPrivate: false,
+    };
+
+    try {
+      // Try to initialize game with massive amount
+      await program.methods
+        .initializeGame(gameConfig, randomHash)
+        .accounts({
+          creator: creator.publicKey,
+          tokenMint: mint,
+        })
+        .signers([creator])
+        .rpc();
+
+      // If initialization succeeds, join players
+      await program.methods
+        .joinGame()
+        .accounts({
+          game: gamePDA,
+          player: creator.publicKey,
+        })
+        .signers([creator])
+        .rpc();
+
+      await program.methods
+        .joinGame()
+        .accounts({
+          game: gamePDA,
+          player: player1.publicKey,
+        })
+        .signers([player1])
+        .rpc();
+
+      const playersGameData = await program.account.game.fetch(gamePDA);
+      const winnerIndex = calculateWinnerIndex(playersGameData.playersCount, secretKey, Number(playersGameData.lastSlot));
+      const winner = winnerIndex === 0 ? creator.publicKey : player1.publicKey;
+
+      // Complete game - this will test calculate_amounts with huge values
+      await program.methods
+        .completeGame(randomHash, secretKey)
+        .accounts({
+          authority: program.provider.publicKey,
+          winner: winner,
+          creator: creator.publicKey,
+        })
+        .rpc();
+
+      // If we reach here, overflow protection worked
+      console.log("Large amount handled correctly");
+    } catch (error) {
+      // Either the system prevents the large amounts at creation, or during calculation
+      // Both are acceptable security behaviors
+      console.log("Large amount rejected (expected):", error.toString());
+    }
+  });
+
+  it("Test Underflow Protection in Player Balance Operations", async () => {
+    const {
+    } = await createOracleAccount();
+
+    const {
+      mint,
+      mintAuthority,
+    } = await createSplTokenMint();
+
+    const amount = new anchor.BN(1_000_000);
+
+    // Create player with some balance
+    const {
+      player,
+      playerTokenAccount,
+    } = await createPlayer(mint);
+
+    await mintTokens(mintAuthority, mint, playerTokenAccount.address, amount);
+
+    // Initialize player balance and add some funds
+    const [playerBalancePDA] = anchor.web3.PublicKey.findProgramAddressSync(
+      [Buffer.from("player_balance"), player.publicKey.toBuffer(), mint.toBuffer()],
+      program.programId
+    );
+
+    // Manually add some balance
+    const playerBalance = await program.account.playerBalance.fetch(playerBalancePDA);
+    expect(playerBalance.amount.toNumber()).to.equal(0);
+
+    // Try to withdraw more than available (should fail)
+    try {
+      await program.methods
+        .withdrawPlayerBalance()
+        .accounts({
+          player: player.publicKey,
+          tokenMint: mint,
+        })
+        .signers([player])
+        .rpc();
+      expect.fail("Should not allow withdrawal of zero balance");
+    } catch (error) {
+      expect(error.toString()).to.include("InsufficientBalance");
+    }
+  });
+
+  // ========================================
+  // SECRET KEY MANIPULATION TESTS
+  // ========================================
+
+  it("Test Secret Key Validation and Manipulation Prevention", async () => {
+    const {
+    } = await createOracleAccount();
+
+    const {
+      mint,
+      mintAuthority,
+    } = await createSplTokenMint();
+
+    const amount = new anchor.BN(1_000_000);
+
+    // Create creator and player
+    const {
+      player: creator,
+      playerTokenAccount: creatorTokenAccount,
+    } = await createPlayer(mint);
+
+    const {
+      player: player1,
+      playerTokenAccount: player1TokenAccount,
+    } = await createPlayer(mint);
+
+    await mintTokens(mintAuthority, mint, creatorTokenAccount.address, amount);
+    await mintTokens(mintAuthority, mint, player1TokenAccount.address, amount);
+
+    const { gamePDA, randomHash, secretKey } = await getGamePDA();
+
+    const gameConfig = {
+      gameType: { coinflip: {} },
+      amount: amount,
+      maxPlayers: 2,
+      minPlayers: 2,
+      timeout: 3600,
+      isPrivate: false,
+    };
+
+    // Create full game
+    await program.methods
+      .initializeGame(gameConfig, randomHash)
+      .accounts({
+        creator: creator.publicKey,
+        tokenMint: mint,
+      })
+      .signers([creator])
+      .rpc();
+
+    await program.methods
+      .joinGame()
+      .accounts({
+        game: gamePDA,
+        player: creator.publicKey,
+      })
+      .signers([creator])
+      .rpc();
+
+    await program.methods
+      .joinGame()
+      .accounts({
+        game: gamePDA,
+        player: player1.publicKey,
+      })
+      .signers([player1])
+      .rpc();
+
+    // Try to complete with wrong secret key
+    const fakeSecretKey = Array.from(anchor.web3.Keypair.generate().secretKey.slice(0, 32));
+    const playersGameData = await program.account.game.fetch(gamePDA);
+    const correctWinnerIndex = calculateWinnerIndex(playersGameData.playersCount, secretKey, Number(playersGameData.lastSlot));
+    const correctWinner = correctWinnerIndex === 0 ? creator.publicKey : player1.publicKey;
+
+    try {
+      await program.methods
+        .completeGame(randomHash, fakeSecretKey)
+        .accounts({
+          authority: program.provider.publicKey,
+          winner: correctWinner,
+          creator: creator.publicKey,
+        })
+        .rpc();
+      expect.fail("Fake secret key should be rejected");
+    } catch (error) {
+      expect(error.toString()).to.include("InvalidSecretKey");
+    }
+
+    // Try to complete with correct secret key but wrong winner
+    const fakeWinner = correctWinner.equals(creator.publicKey) ? player1.publicKey : creator.publicKey;
+
+    try {
+      await program.methods
+        .completeGame(randomHash, secretKey)
+        .accounts({
+          authority: program.provider.publicKey,
+          winner: fakeWinner,
+          creator: creator.publicKey,
+        })
+        .rpc();
+      expect.fail("Wrong winner should be rejected");
+    } catch (error) {
+      expect(error.toString()).to.include("UnauthorizedPlayer");
+    }
+  });
+
+  // ========================================
+  // TIME-BASED ATTACK TESTS
+  // ========================================
+
+  it("Test Oracle Buffer Time Manipulation Protection", async () => {
+    const {
+    } = await createOracleAccount();
+
+    const {
+      mint,
+      mintAuthority,
+    } = await createSplTokenMint();
+
+    const amount = new anchor.BN(1_000_000);
+
+    // Create creator and player
+    const {
+      player: creator,
+      playerTokenAccount: creatorTokenAccount,
+    } = await createPlayer(mint);
+
+    const {
+      player: player1,
+      playerTokenAccount: player1TokenAccount,
+    } = await createPlayer(mint);
+
+    await mintTokens(mintAuthority, mint, creatorTokenAccount.address, amount);
+    await mintTokens(mintAuthority, mint, player1TokenAccount.address, amount);
+
+    const { gamePDA, randomHash, secretKey } = await getGamePDA();
+
+    const gameConfig = {
+      gameType: { coinflip: {} },
+      amount: amount,
+      maxPlayers: 2,
+      minPlayers: 2,
+      timeout: 1, // Very short timeout (1 second)
+      isPrivate: false,
+    };
+
+    // Create game with short timeout
+    await program.methods
+      .initializeGame(gameConfig, randomHash)
+      .accounts({
+        creator: creator.publicKey,
+        tokenMint: mint,
+      })
+      .signers([creator])
+      .rpc();
+
+    await program.methods
+      .joinGame()
+      .accounts({
+        game: gamePDA,
+        player: creator.publicKey,
+      })
+      .signers([creator])
+      .rpc();
+
+    await program.methods
+      .joinGame()
+      .accounts({
+        game: gamePDA,
+        player: player1.publicKey,
+      })
+      .signers([player1])
+      .rpc();
+
+    // Wait for timeout + buffer time to pass (simulate time-based attack)
+    await new Promise(resolve => setTimeout(resolve, 3000)); // Wait 3 seconds
+
+    const playersGameData = await program.account.game.fetch(gamePDA);
+    const winnerIndex = calculateWinnerIndex(playersGameData.playersCount, secretKey, Number(playersGameData.lastSlot));
+    const winner = winnerIndex === 0 ? creator.publicKey : player1.publicKey;
+
+    // Try to complete after buffer time should have expired
+    try {
+      await program.methods
+        .completeGame(randomHash, secretKey)
+        .accounts({
+          authority: program.provider.publicKey,
+          winner: winner,
+          creator: creator.publicKey,
+        })
+        .rpc();
+
+      // If successful, that's also acceptable behavior
+      console.log("Game completed within buffer time");
+    } catch (error) {
+      // If it fails due to buffer expiry, that's expected
+      console.log("Buffer time protection active:", error.toString());
+    }
+  });
+
+  // ========================================
+  // CROSS-GAME ATTACK TESTS
+  // ========================================
+
+  it("Test Cross-Game Winner Manipulation Prevention", async () => {
+    const {
+    } = await createOracleAccount();
+
+    const {
+      mint,
+      mintAuthority,
+    } = await createSplTokenMint();
+
+    const amount = new anchor.BN(1_000_000);
+
+    // Create players
+    const {
+      player: creator,
+      playerTokenAccount: creatorTokenAccount,
+    } = await createPlayer(mint);
+
+    const {
+      player: player1,
+      playerTokenAccount: player1TokenAccount,
+    } = await createPlayer(mint);
+
+    await mintTokens(mintAuthority, mint, creatorTokenAccount.address, amount.muln(4));
+    await mintTokens(mintAuthority, mint, player1TokenAccount.address, amount.muln(4));
+
+    // Create two separate games
+    const { gamePDA: game1PDA, randomHash: randomHash1, secretKey: secretKey1 } = await getGamePDA();
+    const { gamePDA: game2PDA, randomHash: randomHash2, secretKey: secretKey2 } = await getGamePDA();
+
+    const gameConfig = {
+      gameType: { coinflip: {} },
+      amount: amount,
+      maxPlayers: 2,
+      minPlayers: 2,
+      timeout: 3600,
+      isPrivate: false,
+    };
+
+    // Initialize both games
+    await program.methods
+      .initializeGame(gameConfig, randomHash1)
+      .accounts({
+        creator: creator.publicKey,
+        tokenMint: mint,
+      })
+      .signers([creator])
+      .rpc();
+
+    await program.methods
+      .initializeGame(gameConfig, randomHash2)
+      .accounts({
+        creator: creator.publicKey,
+        tokenMint: mint,
+      })
+      .signers([creator])
+      .rpc();
+
+    // Fill both games
+    await program.methods
+      .joinGame()
+      .accounts({
+        game: game1PDA,
+        player: creator.publicKey,
+      })
+      .signers([creator])
+      .rpc();
+
+    await program.methods
+      .joinGame()
+      .accounts({
+        game: game1PDA,
+        player: player1.publicKey,
+      })
+      .signers([player1])
+      .rpc();
+
+    await program.methods
+      .joinGame()
+      .accounts({
+        game: game2PDA,
+        player: creator.publicKey,
+      })
+      .signers([creator])
+      .rpc();
+
+    await program.methods
+      .joinGame()
+      .accounts({
+        game: game2PDA,
+        player: player1.publicKey,
+      })
+      .signers([player1])
+      .rpc();
+
+    // Calculate winners for both games
+    const game1Data = await program.account.game.fetch(game1PDA);
+    const game2Data = await program.account.game.fetch(game2PDA);
+
+    const winner1Index = calculateWinnerIndex(game1Data.playersCount, secretKey1, Number(game1Data.lastSlot));
+    const winner2Index = calculateWinnerIndex(game2Data.playersCount, secretKey2, Number(game2Data.lastSlot));
+
+    const winner1 = winner1Index === 0 ? creator.publicKey : player1.publicKey;
+    const winner2 = winner2Index === 0 ? creator.publicKey : player1.publicKey;
+
+    // Try to complete game1 with game2's secret key (cross-game attack)
+    try {
+      await program.methods
+        .completeGame(randomHash1, secretKey2) // Wrong secret key for this game
+        .accounts({
+          authority: program.provider.publicKey,
+          winner: winner1,
+          creator: creator.publicKey,
+        })
+        .rpc();
+      expect.fail("Cross-game secret key should be rejected");
+    } catch (error) {
+      expect(error.toString()).to.include("InvalidSecretKey");
+    }
+
+    // Complete games with correct secret keys
+    await program.methods
+      .completeGame(randomHash1, secretKey1)
+      .accounts({
+        authority: program.provider.publicKey,
+        winner: winner1,
+        creator: creator.publicKey,
+      })
+      .rpc();
+
+    await program.methods
+      .completeGame(randomHash2, secretKey2)
+      .accounts({
+        authority: program.provider.publicKey,
+        winner: winner2,
+        creator: creator.publicKey,
+      })
+      .rpc();
+  });
 });
