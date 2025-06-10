@@ -343,7 +343,7 @@ pub struct CancelGame<'info> {
         mut,
         close = creator,
         constraint = game.is_creator(&creator.key()) @ ErrorCode::InvalidCreator,
-        constraint = game.has_no_active_participants() @ ErrorCode::CoinflipHasActivePlayers,
+        constraint = game.has_no_active_participants() @ ErrorCode::GameHasActivePlayers,
     )]
     pub game: Account<'info, Game>,
     #[account(mut)]
