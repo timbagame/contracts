@@ -14,7 +14,6 @@ pub fn handler(ctx: Context<super::InitializeGame>, config: GameConfig) -> Resul
     game.players_count = 0;
     game.token_mint = ctx.accounts.token_mint.key();
     game.created_at = clock.unix_timestamp as u64;
-    game.created_at_slot = clock.slot;
     game.timeout = config.timeout;
     game.last_slot = clock.slot;
     game.is_private = config.is_private;
