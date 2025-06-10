@@ -803,15 +803,15 @@ describe("coinflip", () => {
     // Try to set oracle random number with fake oracle authority
     const fakeAuthority = anchor.web3.Keypair.generate();
     const playersGameData = await program.account.game.fetch(gamePDA);
-    const winner = calculateWinner(playersGameData.players, secretKey);
+    const winnerIndex = calculateWinnerIndex(playersGameData.playersCount, secretKey, Number(playersGameData.lastSlot));
+    const winner = winnerIndex === 0 ? creator.publicKey : player1.publicKey;
 
     try {
       await program.methods
-        .completeGame(secretKey)
+        .completeGame(randomHash, secretKey)
         .accounts({
-          game: gamePDA,
           authority: fakeAuthority.publicKey,
-          player: winner,
+          winner: winner,
           creator: creator.publicKey,
         })
         .signers([fakeAuthority])
@@ -867,11 +867,10 @@ describe("coinflip", () => {
     // Try to set oracle random number before game is full
     try {
       await program.methods
-        .completeGame(secretKey)
+        .completeGame(randomHash, secretKey)
         .accounts({
-          game: gamePDA,
           authority: program.provider.publicKey,
-          creator: creator.publicKey,
+          winner: creator.publicKey,
           creator: creator.publicKey,
         })
         .rpc();
@@ -943,15 +942,15 @@ describe("coinflip", () => {
       .rpc();
 
     const playersGameData = await program.account.game.fetch(gamePDA);
-    const winner = calculateWinner(playersGameData.players, secretKey);
+    const winnerIndex = calculateWinnerIndex(playersGameData.playersCount, secretKey, Number(playersGameData.lastSlot));
+    const winner = winnerIndex === 0 ? creator.publicKey : player.publicKey;
 
     // Set oracle random number first time
     await program.methods
-      .completeGame(secretKey)
+      .completeGame(randomHash, secretKey)
       .accounts({
-        game: gamePDA,
         authority: program.provider.publicKey,
-        player: winner,
+        winner: winner,
         creator: creator.publicKey,
       })
       .rpc();
@@ -959,11 +958,10 @@ describe("coinflip", () => {
     // Try to set oracle random number second time (should fail since game account was closed)
     try {
       await program.methods
-        .completeGame(secretKey)
+        .completeGame(randomHash, secretKey)
         .accounts({
-          game: gamePDA,
           authority: program.provider.publicKey,
-          player: winner,
+          winner: winner,
           creator: creator.publicKey,
         })
         .rpc();
