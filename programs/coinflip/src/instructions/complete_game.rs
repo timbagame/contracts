@@ -9,13 +9,13 @@ pub fn handler(ctx: Context<super::CompleteGame>) -> Result<()> {
     let oracle = &ctx.accounts.oracle;
     let current_time = Clock::get()?.unix_timestamp as u64;
 
-    // Block completion if game is not waiting for oracle
+    // Block completion if game is not ready for oracle
     if !game.waiting_for_oracle(oracle.oracle_buffer_time as u64, current_time) {
         return Err(GameNotReadyForOracle.into());
     }
 
     // ===============================
-    // EFFECTS - Update all state first
+    // EFFECTS - Update state first
     // ===============================
     let game_token = &mut ctx.accounts.game_token;
     let winner_balance = &mut ctx.accounts.winner_balance;
@@ -26,7 +26,7 @@ pub fn handler(ctx: Context<super::CompleteGame>) -> Result<()> {
     game_token.fee_amount += fee_amount;
     winner_balance.amount += winner_amount;
 
-    // Mark game as completed (but don't close it yet)
+    // Mark game as completed
     game.complete();
 
     // ===============================

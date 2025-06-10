@@ -35,7 +35,7 @@ pub fn handler(ctx: Context<super::InitializeGame>, config: GameConfig) -> Resul
     // INTERACTIONS - External calls
     // ===============================
 
-    // Transfer tokens if it's a giveaway (ticket_amount == 0)
+    // Transfer tokens for giveaway games
     if game.ticket_amount == 0 {
         handle_player_token_transfer(
             &mut ctx.accounts.creator_balance,
