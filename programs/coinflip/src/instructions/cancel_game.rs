@@ -1,4 +1,4 @@
-use crate::{error::ErrorCode::GameWaitingForOracle, events::GameCancelled, state::GameType};
+use crate::{error::ErrorCode::GameWaitingForOracle, events::GameCancelled};
 use anchor_lang::prelude::*;
 
 pub fn handler(ctx: Context<super::CancelGame>) -> Result<()> {
@@ -24,11 +24,10 @@ pub fn handler(ctx: Context<super::CancelGame>) -> Result<()> {
     // EFFECTS - Update state first
     // ===============================
 
-    // Refund creator for giveaway games
-    let should_refund = game.game_type == GameType::Giveaway;
-    if should_refund {
+    // Refund creator for giveaway games (ticket_amount == 0)
+    if game.ticket_amount == 0 {
         if let Some(creator_balance) = &mut ctx.accounts.creator_balance {
-            creator_balance.refund(game.ticket_amount);
+            creator_balance.refund(game.total_amount);
         }
     }
 

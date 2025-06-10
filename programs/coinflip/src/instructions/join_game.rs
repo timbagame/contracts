@@ -1,6 +1,5 @@
 use crate::{
-    error::ErrorCode::GameExpired, events::PlayerJoined, state::GameType,
-    utils::handle_player_token_transfer,
+    error::ErrorCode::GameExpired, events::PlayerJoined, utils::handle_player_token_transfer,
 };
 use anchor_lang::prelude::*;
 
@@ -21,15 +20,14 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
     // EFFECTS - Update all state first
     // ===============================
     let player_participation = &mut ctx.accounts.player_participation;
-    let is_non_giveaway = game.game_type != GameType::Giveaway;
 
     // Set player index and update counts
     player_participation.player_index = game.players_count;
     game.players_count += 1;
     game.last_slot = clock.slot;
 
-    // Update amounts for non-giveaway games
-    if is_non_giveaway {
+    // Update amounts for non-giveaway games (ticket_amount > 0)
+    if game.ticket_amount > 0 {
         player_participation.player_amount = game.ticket_amount;
         game.total_amount += game.ticket_amount;
     }
@@ -38,8 +36,8 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
     // INTERACTIONS - External calls
     // ===============================
 
-    // Transfer tokens for non-giveaway games
-    if is_non_giveaway {
+    // Transfer tokens for non-giveaway games (ticket_amount > 0)
+    if game.ticket_amount > 0 {
         handle_player_token_transfer(
             &mut ctx.accounts.player_balance,
             game.ticket_amount,
