@@ -9,21 +9,33 @@ import {
 import { PublicKey } from "@solana/web3.js";
 import { createHash } from "crypto";
 
-function calculateWinner(players: PublicKey[], secretKey: number[]): PublicKey {
-  if (players.length === 1) {
-    return players[0];
+function calculateWinnerIndex(playersCount: number, secretKey: number[], lastSlot: number): number {
+  if (playersCount === 1) {
+    return 0;
   }
 
-  // Convert first 8 bytes of secret key to number (same as contract)
-  const randomBytes = new Uint8Array(secretKey.slice(0, 8));
-  const randomNumber = new DataView(randomBytes.buffer).getBigUint64(0, true); // true for little-endian
+  const nPlayers = BigInt(playersCount);
 
-  const nPlayers = BigInt(players.length);
+  // Hash combination of secret key and last_slot for additional entropy (same as contract)
+  const combinedData = new Uint8Array(40);
+  combinedData.set(secretKey, 0);
+  combinedData.set(new Uint8Array(new BigUint64Array([BigInt(lastSlot)]).buffer), 32);
+
+  const entropyHash = createHash('sha256').update(combinedData).digest();
+
+  // Try sliding 8-byte windows through the hashed entropy
   const maxValid = BigInt('0xFFFFFFFFFFFFFFFF') - (BigInt('0xFFFFFFFFFFFFFFFF') % nPlayers);
-  const finalNumber = randomNumber % maxValid;
-  const index = Number(finalNumber % nPlayers);
 
-  return players[index];
+  for (let startPos = 0; startPos <= 32 - 8; startPos++) {
+    const randomBytes = entropyHash.slice(startPos, startPos + 8);
+    const randomU64 = new DataView(randomBytes.buffer).getBigUint64(0, true);
+
+    if (randomU64 < maxValid) {
+      return Number(randomU64 % nPlayers);
+    }
+  }
+
+  throw new Error("Unable to generate unbiased random number");
 }
 
 describe("coinflip", () => {
@@ -283,7 +295,7 @@ describe("coinflip", () => {
       await program.methods
         .initializeGame(gameConfig, randomHash)
         .accounts({
-          player: player.publicKey,
+          creator: player.publicKey,
           tokenMint: mint,
         })
         .signers([player])
