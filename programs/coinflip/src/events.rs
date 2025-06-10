@@ -118,7 +118,7 @@ pub struct GameCompleted {
 }
 
 #[event]
-pub struct GameCancelled {
+pub struct GameClosed {
     pub game_key: Pubkey,
     pub timestamp: u64,
 }

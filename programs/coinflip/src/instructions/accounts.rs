@@ -342,7 +342,7 @@ pub struct UnjoinGame<'info> {
 }
 
 #[derive(Accounts)]
-pub struct CancelGame<'info> {
+pub struct CloseGame<'info> {
     #[account(
         mut,
         close = creator,

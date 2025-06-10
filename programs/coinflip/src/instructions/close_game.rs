@@ -1,7 +1,7 @@
-use crate::{error::ErrorCode::GameWaitingForOracle, events::GameCancelled};
+use crate::{error::ErrorCode::GameWaitingForOracle, events::GameClosed};
 use anchor_lang::prelude::*;
 
-pub fn handler(ctx: Context<super::CancelGame>) -> Result<()> {
+pub fn handler(ctx: Context<super::CloseGame>) -> Result<()> {
     // ===============================
     // CHECKS
     // ===============================
@@ -14,8 +14,8 @@ pub fn handler(ctx: Context<super::CancelGame>) -> Result<()> {
         return Ok(());
     }
 
-    // Active cancellation operation - perform validation checks
-    // Block cancellation if game is ready for oracle
+    // Active close operation - perform validation checks
+    // Block close if game is ready for oracle
     if game.waiting_for_oracle(oracle.oracle_buffer_time as u64, current_time) {
         return Err(GameWaitingForOracle.into());
     }
@@ -36,7 +36,7 @@ pub fn handler(ctx: Context<super::CancelGame>) -> Result<()> {
     // ===============================
 
     // Emit event
-    emit!(GameCancelled {
+    emit!(GameClosed {
         game_key: game.key(),
         timestamp: current_time,
     });
