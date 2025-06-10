@@ -297,10 +297,4 @@ impl Game {
     pub fn has_sufficient_balance_for_join(&self, token_balance: u64, player_balance: u64) -> bool {
         self.game_type == GameType::Giveaway || token_balance + player_balance >= self.ticket_amount
     }
-
-    // Checks if the game has no active participants that would prevent cancellation
-    // Returns true if: no players or giveaway type
-    pub fn has_no_active_participants(&self) -> bool {
-        self.players_count == 0 || self.game_type == GameType::Giveaway
-    }
 }
