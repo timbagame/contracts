@@ -3,10 +3,6 @@ use anchor_lang::prelude::*;
 
 pub fn handler(ctx: Context<super::InitializePlayerBalance>) -> Result<()> {
     // ===============================
-    // CHECKS (handled by constraints)
-    // ===============================
-
-    // ===============================
     // EFFECTS - Update state
     // ===============================
     let player_balance = &mut ctx.accounts.player_balance;

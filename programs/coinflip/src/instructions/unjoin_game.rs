@@ -9,7 +9,7 @@ pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
     // ===============================
     // CHECKS
     // ===============================
-    let game = &ctx.accounts.game;
+    let game = &mut ctx.accounts.game;
     let player_participation = &ctx.accounts.player_participation;
     let oracle = &ctx.accounts.oracle;
     let clock = Clock::get()?;
@@ -17,8 +17,6 @@ pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
 
     // Check if this is a cleanup operation for a completed game
     if game.is_completed_but_not_cleaned() {
-        // This is a cleanup operation - just decrement players count and return
-        let game = &mut ctx.accounts.game;
         game.players_count -= 1;
         return Ok(());
     }
@@ -42,7 +40,6 @@ pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
     // ===============================
     // EFFECTS - Update all state first
     // ===============================
-    let game = &mut ctx.accounts.game;
     let should_refund = player_participation.player_amount > 0;
     let refund_amount = player_participation.player_amount;
 

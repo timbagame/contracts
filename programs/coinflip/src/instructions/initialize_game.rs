@@ -5,14 +5,11 @@ use anchor_lang::prelude::*;
 
 pub fn handler(ctx: Context<super::InitializeGame>, config: GameConfig) -> Result<()> {
     // ===============================
-    // CHECKS (handled by constraints)
-    // ===============================
-
-    // ===============================
     // EFFECTS - Update all state first
     // ===============================
     let game = &mut ctx.accounts.game;
     let clock = Clock::get()?;
+    let is_giveaway = config.game_type == GameType::Giveaway;
 
     // Initialize game state
     game.creator = ctx.accounts.creator.key();
@@ -27,7 +24,7 @@ pub fn handler(ctx: Context<super::InitializeGame>, config: GameConfig) -> Resul
     game.is_private = config.is_private;
 
     // Set amounts based on game type
-    if game.game_type == GameType::Giveaway {
+    if is_giveaway {
         game.total_amount = config.amount;
         game.ticket_amount = 0;
     } else {
@@ -40,7 +37,7 @@ pub fn handler(ctx: Context<super::InitializeGame>, config: GameConfig) -> Resul
     // ===============================
 
     // Transfer tokens if it's a giveaway (creator funds the pot)
-    if game.game_type == GameType::Giveaway {
+    if is_giveaway {
         handle_player_token_transfer(
             &mut ctx.accounts.creator_balance,
             config.amount,

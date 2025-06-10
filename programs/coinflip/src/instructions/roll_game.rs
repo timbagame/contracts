@@ -8,22 +8,23 @@ pub fn handler(ctx: Context<super::RollGame>) -> Result<()> {
     // ===============================
     // CHECKS
     // ===============================
-    let game = &ctx.accounts.game;
+    let game = &mut ctx.accounts.game;
     let clock = Clock::get()?;
+    let current_time = clock.unix_timestamp as u64;
 
     // Block roll if game is expired
-    if game.is_expired(clock.unix_timestamp as u64) {
+    if game.is_expired(current_time) {
         return Err(GameExpired.into());
     }
 
     // ===============================
     // EFFECTS - Update all state first
     // ===============================
-    let game = &mut ctx.accounts.game;
     let player_participation = &mut ctx.accounts.player_participation;
+    let is_snowball = game.game_type == GameType::Snowball;
 
     // For Snowball games, update amounts
-    if game.game_type == GameType::Snowball {
+    if is_snowball {
         game.total_amount += game.ticket_amount;
         player_participation.player_amount += game.ticket_amount;
     }
@@ -36,7 +37,7 @@ pub fn handler(ctx: Context<super::RollGame>) -> Result<()> {
     // ===============================
 
     // Transfer tokens if it's a Snowball game (always collect ticket amount)
-    if game.game_type == GameType::Snowball {
+    if is_snowball {
         handle_player_token_transfer(
             &mut ctx.accounts.player_balance,
             game.ticket_amount,
@@ -54,7 +55,7 @@ pub fn handler(ctx: Context<super::RollGame>) -> Result<()> {
         total_amount: game.total_amount,
         player_index: player_participation.player_index,
         last_slot: game.last_slot,
-        timestamp: clock.unix_timestamp as u64,
+        timestamp: current_time,
     });
 
     Ok(())

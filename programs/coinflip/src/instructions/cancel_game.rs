@@ -11,8 +11,6 @@ pub fn handler(ctx: Context<super::CancelGame>) -> Result<()> {
 
     // Check if this is a cleanup operation for a completed game
     if game.is_completed_but_not_cleaned() {
-        // This is a cleanup operation - no additional logic needed
-        // The account closure is handled by the #[account(close = creator)] constraint
         return Ok(());
     }
 
