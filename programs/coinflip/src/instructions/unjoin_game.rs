@@ -1,7 +1,6 @@
 use crate::{
     error::ErrorCode::{
-        GameWaitingForOracle, InvalidParticipation, OnlyLastPlayerCanUnjoin, SameSlotReuse,
-        SnowballMultiPlayerUnjoin,
+        GameWaitingForOracle, OnlyLastPlayerCanUnjoin, SameSlotReuse, SnowballMultiPlayerUnjoin,
     },
     events::PlayerUnjoined,
     state::GameType,

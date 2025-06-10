@@ -29,9 +29,8 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
         player_participation.player_amount = game.ticket_amount;
     }
 
-    // Set player index for winner calculation and slot when the player joined the game
+    // Set player index for winner calculation
     player_participation.player_index = game.players_count;
-    player_participation.joined_at = clock.slot;
 
     // Increment players count
     game.players_count += 1;
