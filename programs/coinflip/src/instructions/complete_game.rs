@@ -5,14 +5,12 @@ pub fn handler(ctx: Context<super::CompleteGame>) -> Result<()> {
     // ===============================
     // CHECKS
     // ===============================
+    let game = &ctx.accounts.game;
+    let oracle = &ctx.accounts.oracle;
     let current_time = Clock::get()?.unix_timestamp as u64;
 
     // Block completion if game is not waiting for oracle
-    if !ctx
-        .accounts
-        .game
-        .waiting_for_oracle(ctx.accounts.oracle.oracle_buffer_time as u64, current_time)
-    {
+    if !game.waiting_for_oracle(oracle.oracle_buffer_time as u64, current_time) {
         return Err(GameNotReadyForOracle.into());
     }
 
@@ -24,7 +22,7 @@ pub fn handler(ctx: Context<super::CompleteGame>) -> Result<()> {
     let winner_balance = &mut ctx.accounts.winner_balance;
 
     // Calculate winner amount and fee amount
-    let fee_percentage = ctx.accounts.oracle.fee_percentage as u64;
+    let fee_percentage = oracle.fee_percentage as u64;
     let (winner_amount, fee_amount) = game.calculate_amounts(fee_percentage);
 
     // Update balances

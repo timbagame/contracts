@@ -10,6 +10,8 @@ pub fn handler(ctx: Context<super::WithdrawTokenFee>) -> Result<()> {
     // EFFECTS - Update state first
     // ===============================
     let game_token = &mut ctx.accounts.game_token;
+    let authority = &ctx.accounts.authority;
+    let token_mint = &ctx.accounts.token_mint;
     let withdrawal_amount = game_token.fee_amount;
 
     // Clear the fee amount
@@ -25,15 +27,15 @@ pub fn handler(ctx: Context<super::WithdrawTokenFee>) -> Result<()> {
         ctx.accounts.authority_token_account.to_account_info(),
         ctx.accounts.game_vault.to_account_info(),
         ctx.accounts.token_program.to_account_info(),
-        ctx.accounts.token_mint.key(),
+        token_mint.key(),
         ctx.bumps.game_vault,
         withdrawal_amount,
     )?;
 
     // Emit event
     emit!(TokenFeeWithdrawn {
-        authority: ctx.accounts.authority.key(),
-        token_mint: ctx.accounts.token_mint.key(),
+        authority: authority.key(),
+        token_mint: token_mint.key(),
         amount: withdrawal_amount,
     });
 

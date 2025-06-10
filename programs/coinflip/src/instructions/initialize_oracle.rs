@@ -10,13 +10,15 @@ pub fn handler(ctx: Context<super::InitializeOracle>, config: OracleConfig) -> R
     // EFFECTS - Update state
     // ===============================
     let oracle = &mut ctx.accounts.oracle;
+    let authority = &ctx.accounts.authority;
+
     oracle.update_config(
         config.fee_percentage,
         config.oracle_buffer_time,
         config.max_players,
         config.max_timeout,
         config.min_timeout,
-        ctx.accounts.authority.key(),
+        authority.key(),
     );
 
     // ===============================
@@ -25,7 +27,7 @@ pub fn handler(ctx: Context<super::InitializeOracle>, config: OracleConfig) -> R
 
     // Emit event
     emit!(OracleInitialized {
-        authority: ctx.accounts.authority.key(),
+        authority: authority.key(),
         fee_percentage: config.fee_percentage,
         oracle_buffer_time: config.oracle_buffer_time,
         max_players: config.max_players,
