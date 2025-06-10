@@ -1,4 +1,4 @@
-use crate::events::PlayerUnjoined;
+use crate::events::PlayerParticipationCleaned;
 use anchor_lang::prelude::*;
 
 pub fn handler(ctx: Context<super::CleanPlayerParticipation>) -> Result<()> {
@@ -24,32 +24,35 @@ pub fn handler(ctx: Context<super::CleanPlayerParticipation>) -> Result<()> {
     // EFFECTS - Update state first
     // ===============================
 
-    // Handle refunds if buffer expired and game not completed
-    if is_buffer_expired && !is_completed && player_participation.player_amount > 0 {
-        // Refund player for uncompleted game
-        if let Some(player_balance) = &mut ctx.accounts.player_balance {
-            player_balance.refund(player_participation.player_amount);
-        }
-        // Deduct from game's total amount
-        game.total_amount -= player_participation.player_amount;
-    }
+    let refund_amount =
+        if is_buffer_expired && !is_completed && player_participation.player_amount > 0 {
+            // Refund player for uncompleted game
+            if let Some(player_balance) = &mut ctx.accounts.player_balance {
+                player_balance.refund(player_participation.player_amount);
+            }
+            // Deduct from game's total amount
+            game.total_amount -= player_participation.player_amount;
+            player_participation.player_amount
+        } else {
+            0
+        };
 
     // Decrement player count
     game.players_count -= 1;
-    game.last_slot = clock.slot;
 
     // ===============================
     // INTERACTIONS - External calls
     // ===============================
 
     // Emit event
-    emit!(PlayerUnjoined {
+    emit!(PlayerParticipationCleaned {
         game_key: game.key(),
         player: ctx.accounts.player.key(),
         total_amount: game.total_amount,
         players_count: game.players_count,
         player_index: player_participation.player_index,
-        last_slot: game.last_slot,
+        refund_amount,
+        is_completed_game: is_completed,
         timestamp: current_time,
     });
 

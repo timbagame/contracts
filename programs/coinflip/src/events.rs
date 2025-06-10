@@ -82,6 +82,18 @@ pub struct PlayerUnjoined {
 }
 
 #[event]
+pub struct PlayerParticipationCleaned {
+    pub game_key: Pubkey,
+    pub player: Pubkey,
+    pub total_amount: u64,
+    pub players_count: u32,
+    pub player_index: u32,
+    pub refund_amount: u64,
+    pub is_completed_game: bool,
+    pub timestamp: u64,
+}
+
+#[event]
 pub struct PlayerRolled {
     pub game_key: Pubkey,
     pub player: Pubkey,
