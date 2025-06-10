@@ -38,6 +38,10 @@ pub enum ErrorCode {
     OnlyLastPlayerCanUnjoin = 1202,
     #[msg("Cannot unjoin Snowball game with multiple players")]
     SnowballMultiPlayerUnjoin = 1203,
+    #[msg("Player participation does not belong to current game instance")]
+    InvalidParticipation = 1204,
+    #[msg("Cannot reuse the same slot for game actions")]
+    SameSlotReuse = 1205,
 
     // Configuration Errors (1300-1399)
     // --------------------------------

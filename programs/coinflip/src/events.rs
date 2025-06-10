@@ -66,7 +66,7 @@ pub struct PlayerJoined {
     pub total_amount: u64,  // Current pot size (dynamic)
     pub players_count: u32, // Current player count (dynamic)
     pub player_index: u32,  // Player's index for winner calculation
-    pub slot_entropy: u64,  // For off-chain winner calculation
+    pub last_slot: u64,     // For off-chain winner calculation
     pub timestamp: u64,     // When the action occurred
 }
 
@@ -77,7 +77,7 @@ pub struct PlayerUnjoined {
     pub total_amount: u64,  // Updated pot size after unjoin
     pub players_count: u32, // Updated player count after unjoin
     pub player_index: u32,  // Player's index (for validation)
-    pub slot_entropy: u64,  // Updated entropy after unjoin
+    pub last_slot: u64,     // Updated entropy after unjoin
     pub timestamp: u64,     // When the action occurred
 }
 
@@ -87,7 +87,7 @@ pub struct PlayerRolled {
     pub player: Pubkey,
     pub total_amount: u64, // Updated pot size after roll
     pub player_index: u32, // Player's index
-    pub slot_entropy: u64, // Updated entropy for winner calculation
+    pub last_slot: u64,    // Updated entropy for winner calculation
     pub timestamp: u64,    // When the action occurred
 }
 

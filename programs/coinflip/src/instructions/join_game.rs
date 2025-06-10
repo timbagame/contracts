@@ -29,12 +29,18 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
         player_participation.player_amount = game.ticket_amount;
     }
 
-    // Set player index for winner calculation
+    // Set player index for winner calculation and slot when the player joined the game
     player_participation.player_index = game.players_count;
+    player_participation.joined_at = clock.slot;
 
-    // Increment player count and slot entropy
+    // Increment players count
     game.players_count += 1;
-    game.slot_entropy += clock.slot;
+
+    // Ensure we're not reusing the same slot
+    if clock.slot == game.last_slot {
+        return Err(crate::error::ErrorCode::SameSlotReuse.into());
+    }
+    game.last_slot = clock.slot;
 
     emit!(PlayerJoined {
         game_key: game.key(),
@@ -42,7 +48,7 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
         total_amount: game.total_amount,
         players_count: game.players_count,
         player_index: player_participation.player_index,
-        slot_entropy: game.slot_entropy,
+        last_slot: game.last_slot,
         timestamp: clock.unix_timestamp as u64,
     });
 
