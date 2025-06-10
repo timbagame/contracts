@@ -40,7 +40,6 @@ pub fn handler(ctx: Context<super::CompleteGame>) -> Result<()> {
     emit!(GameCompleted {
         game_key: game.key(),
         winner: ctx.accounts.winner.key(),
-        total_amount: game.total_amount,
         players_count: game.players_count,
         winner_amount,
         fee_amount,

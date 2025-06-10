@@ -63,32 +63,32 @@ pub struct PlayerBalanceWithdrawn {
 pub struct PlayerJoined {
     pub game_key: Pubkey,
     pub player: Pubkey,
-    pub total_amount: u64,  // Current pot size (dynamic)
-    pub players_count: u32, // Current player count (dynamic)
-    pub player_index: u32,  // Player's index for winner calculation
-    pub last_slot: u64,     // For off-chain winner calculation
-    pub timestamp: u64,     // When the action occurred
+    pub total_amount: u64,
+    pub players_count: u32,
+    pub player_index: u32,
+    pub last_slot: u64,
+    pub timestamp: u64,
 }
 
 #[event]
 pub struct PlayerUnjoined {
     pub game_key: Pubkey,
     pub player: Pubkey,
-    pub total_amount: u64,  // Updated pot size after unjoin
-    pub players_count: u32, // Updated player count after unjoin
-    pub player_index: u32,  // Player's index (for validation)
-    pub last_slot: u64,     // Updated entropy after unjoin
-    pub timestamp: u64,     // When the action occurred
+    pub total_amount: u64,
+    pub players_count: u32,
+    pub player_index: u32,
+    pub last_slot: u64,
+    pub timestamp: u64,
 }
 
 #[event]
 pub struct PlayerRolled {
     pub game_key: Pubkey,
     pub player: Pubkey,
-    pub total_amount: u64, // Updated pot size after roll
-    pub player_index: u32, // Player's index
-    pub last_slot: u64,    // Updated entropy for winner calculation
-    pub timestamp: u64,    // When the action occurred
+    pub total_amount: u64,
+    pub player_index: u32,
+    pub last_slot: u64,
+    pub timestamp: u64,
 }
 
 // Game Events
@@ -111,15 +111,14 @@ pub struct GameInitialized {
 pub struct GameCompleted {
     pub game_key: Pubkey,
     pub winner: Pubkey,
-    pub total_amount: u64,  // Final pot size
-    pub players_count: u32, // Final player count
-    pub winner_amount: u64, // Amount won by winner
-    pub fee_amount: u64,    // Fee collected
-    pub timestamp: u64,     // When game completed
+    pub players_count: u32,
+    pub winner_amount: u64,
+    pub fee_amount: u64,
+    pub timestamp: u64,
 }
 
 #[event]
 pub struct GameCancelled {
     pub game_key: Pubkey,
-    pub timestamp: u64, // When game was cancelled
+    pub timestamp: u64,
 }
