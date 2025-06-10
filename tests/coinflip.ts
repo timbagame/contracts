@@ -843,7 +843,7 @@ describe("coinflip", () => {
     // Mint tokens to creator
     await mintTokens(mintAuthority, mint, creatorTokenAccount.address, amount);
 
-    const { gamePDA, randomHash, secretKey } = await getGamePDA();
+    const { randomHash, secretKey } = await getGamePDA();
 
     const gameConfig = {
       gameType: { coinflip: {} },
@@ -1033,7 +1033,8 @@ describe("coinflip", () => {
       .rpc();
 
     const playersGameData = await program.account.game.fetch(gamePDA);
-    const winnerPubkey = calculateWinner(playersGameData.players, secretKey);
+    const winnerIndex = calculateWinnerIndex(playersGameData.playersCount, secretKey, Number(playersGameData.lastSlot));
+    const winnerPubkey = winnerIndex === 0 ? creator.publicKey : player1.publicKey;
 
     // Get initial balance of winner
     const winnerBalancePDA = winnerPubkey.equals(creator.publicKey)
@@ -1044,11 +1045,10 @@ describe("coinflip", () => {
 
     // Set oracle random number (which automatically transfers winnings)
     await program.methods
-      .completeGame(secretKey)
+      .completeGame(randomHash, secretKey)
       .accounts({
-        game: gamePDA,
         authority: program.provider.publicKey,
-        player: winnerPubkey,
+        winner: winnerPubkey,
         creator: creator.publicKey,
       })
       .rpc();
@@ -1142,7 +1142,7 @@ describe("coinflip", () => {
 
     // Verify game state
     const gameData = await program.account.game.fetch(gamePDA);
-    expect(gameData.players.length).to.equal(2);
+    expect(gameData.playersCount).to.equal(2);
     expect(gameData.gameType.giveaway).to.not.be.undefined;
     expect(gameData.creator.equals(creator.publicKey)).to.be.true;
   });
