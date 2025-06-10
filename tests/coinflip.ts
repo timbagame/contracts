@@ -1300,4 +1300,656 @@ describe("coinflip", () => {
       expect(error.toString()).to.include("InsufficientBalance");
     }
   });
+
+  // ========================================
+  // STATE INCONSISTENCY EXPLOIT TESTS
+  // ========================================
+
+  it("Test Player Count Inconsistency After Failed Join", async () => {
+    const {
+    } = await createOracleAccount();
+
+    const {
+      mint,
+      mintAuthority,
+    } = await createSplTokenMint();
+
+    const amount = new anchor.BN(1_000_000);
+
+    // Create creator
+    const {
+      player: creator,
+      playerTokenAccount: creatorTokenAccount,
+    } = await createPlayer(mint);
+
+    await mintTokens(mintAuthority, mint, creatorTokenAccount.address, amount);
+
+    const { gamePDA, randomHash } = await getGamePDA();
+
+    const gameConfig = {
+      gameType: { coinflip: {} },
+      amount: amount,
+      maxPlayers: 2,
+      minPlayers: 2,
+      timeout: 3600,
+      isPrivate: false,
+    };
+
+    // Initialize game
+    await program.methods
+      .initializeGame(gameConfig, randomHash)
+      .accounts({
+        creator: creator.publicKey,
+        tokenMint: mint,
+      })
+      .signers([creator])
+      .rpc();
+
+    // Creator joins
+    await program.methods
+      .joinGame()
+      .accounts({
+        game: gamePDA,
+        player: creator.publicKey,
+      })
+      .signers([creator])
+      .rpc();
+
+    // Create player with insufficient funds
+    const {
+      player: poorPlayer,
+      playerTokenAccount: poorPlayerTokenAccount,
+    } = await createPlayer(mint);
+
+    // Mint insufficient tokens (should cause join to fail)
+    await mintTokens(mintAuthority, mint, poorPlayerTokenAccount.address, amount.divn(2));
+
+    // Verify initial state
+    let gameData = await program.account.game.fetch(gamePDA);
+    expect(gameData.playersCount).to.equal(1);
+
+    // Attempt join with insufficient funds (should fail)
+    try {
+      await program.methods
+        .joinGame()
+        .accounts({
+          game: gamePDA,
+          player: poorPlayer.publicKey,
+        })
+        .signers([poorPlayer])
+        .rpc();
+      expect.fail("Join should have failed due to insufficient funds");
+    } catch (error) {
+      expect(error.toString()).to.include("InsufficientBalance");
+    }
+
+    // Verify player count remains consistent after failed join
+    gameData = await program.account.game.fetch(gamePDA);
+    expect(gameData.playersCount).to.equal(1, "Player count should not change after failed join");
+
+    // Verify no player participation account was created for failed join
+    const [poorPlayerParticipationPDA] = anchor.web3.PublicKey.findProgramAddressSync(
+      [Buffer.from("player_participation"), gamePDA.toBuffer(), poorPlayer.publicKey.toBuffer()],
+      program.programId
+    );
+
+    try {
+      await program.account.playerParticipation.fetch(poorPlayerParticipationPDA);
+      expect.fail("Player participation account should not exist after failed join");
+    } catch (error) {
+      expect(error.toString()).to.include("Account does not exist");
+    }
+  });
+
+  it("Test Unjoin Index Boundary Protection", async () => {
+    const {
+    } = await createOracleAccount();
+
+    const {
+      mint,
+      mintAuthority,
+    } = await createSplTokenMint();
+
+    const amount = new anchor.BN(1_000_000);
+
+    // Create creator and players
+    const {
+      player: creator,
+      playerTokenAccount: creatorTokenAccount,
+    } = await createPlayer(mint);
+
+    const {
+      player: player1,
+      playerTokenAccount: player1TokenAccount,
+    } = await createPlayer(mint);
+
+    const {
+      player: player2,
+      playerTokenAccount: player2TokenAccount,
+    } = await createPlayer(mint);
+
+    // Mint tokens to all players
+    await mintTokens(mintAuthority, mint, creatorTokenAccount.address, amount);
+    await mintTokens(mintAuthority, mint, player1TokenAccount.address, amount);
+    await mintTokens(mintAuthority, mint, player2TokenAccount.address, amount);
+
+    const { gamePDA, randomHash } = await getGamePDA();
+
+    const gameConfig = {
+      gameType: { coinflip: {} },
+      amount: amount,
+      maxPlayers: 5, // Increase max players to avoid "waiting for oracle" state
+      minPlayers: 4, // Set higher min players so 3 players don't trigger oracle waiting
+      timeout: 3600,
+      isPrivate: false,
+    };
+
+    // Initialize game
+    await program.methods
+      .initializeGame(gameConfig, randomHash)
+      .accounts({
+        creator: creator.publicKey,
+        tokenMint: mint,
+      })
+      .signers([creator])
+      .rpc();
+
+    // All players join (creator=index 0, player1=index 1, player2=index 2)
+    await program.methods
+      .joinGame()
+      .accounts({
+        game: gamePDA,
+        player: creator.publicKey,
+      })
+      .signers([creator])
+      .rpc();
+
+    await program.methods
+      .joinGame()
+      .accounts({
+        game: gamePDA,
+        player: player1.publicKey,
+      })
+      .signers([player1])
+      .rpc();
+
+    await program.methods
+      .joinGame()
+      .accounts({
+        game: gamePDA,
+        player: player2.publicKey,
+      })
+      .signers([player2])
+      .rpc();
+
+    // Verify all players joined
+    let gameData = await program.account.game.fetch(gamePDA);
+    expect(gameData.playersCount).to.equal(3);
+
+    // Try to unjoin player1 (index 1) when player2 (index 2) exists - should fail
+    try {
+      await program.methods
+        .unjoinGame()
+        .accounts({
+          game: gamePDA,
+          player: player1.publicKey,
+        })
+        .signers([player1])
+        .rpc();
+      expect.fail("Should not allow non-last player to unjoin");
+    } catch (error) {
+      expect(error.toString()).to.include("OnlyLastPlayerCanUnjoin");
+    }
+
+    // Try to unjoin creator (index 0) - should fail
+    try {
+      await program.methods
+        .unjoinGame()
+        .accounts({
+          game: gamePDA,
+          player: creator.publicKey,
+        })
+        .signers([creator])
+        .rpc();
+      expect.fail("Should not allow non-last player to unjoin");
+    } catch (error) {
+      expect(error.toString()).to.include("OnlyLastPlayerCanUnjoin");
+    }
+
+    // Only player2 (last player, index 2) should be able to unjoin
+    await program.methods
+      .unjoinGame()
+      .accounts({
+        game: gamePDA,
+        player: player2.publicKey,
+      })
+      .signers([player2])
+      .rpc();
+
+    // Verify state after valid unjoin
+    gameData = await program.account.game.fetch(gamePDA);
+    expect(gameData.playersCount).to.equal(2);
+
+    // Now player1 (now the last player at index 1) should be able to unjoin
+    await program.methods
+      .unjoinGame()
+      .accounts({
+        game: gamePDA,
+        player: player1.publicKey,
+      })
+      .signers([player1])
+      .rpc();
+
+    gameData = await program.account.game.fetch(gamePDA);
+    expect(gameData.playersCount).to.equal(1);
+  });
+
+  it("Test Orphaned Player Participation Account Prevention", async () => {
+    const {
+    } = await createOracleAccount();
+
+    const {
+      mint,
+      mintAuthority,
+    } = await createSplTokenMint();
+
+    const amount = new anchor.BN(1_000_000);
+
+    // Create creator and player
+    const {
+      player: creator,
+      playerTokenAccount: creatorTokenAccount,
+    } = await createPlayer(mint);
+
+    const {
+      player: player1,
+      playerTokenAccount: player1TokenAccount,
+    } = await createPlayer(mint);
+
+    await mintTokens(mintAuthority, mint, creatorTokenAccount.address, amount);
+    await mintTokens(mintAuthority, mint, player1TokenAccount.address, amount);
+
+    const { gamePDA, randomHash } = await getGamePDA();
+
+    const gameConfig = {
+      gameType: { coinflip: {} },
+      amount: amount,
+      maxPlayers: 5, // Higher max to avoid oracle waiting state
+      minPlayers: 4, // Higher min players requirement
+      timeout: 3600,
+      isPrivate: false,
+    };
+
+    // Initialize game
+    await program.methods
+      .initializeGame(gameConfig, randomHash)
+      .accounts({
+        creator: creator.publicKey,
+        tokenMint: mint,
+      })
+      .signers([creator])
+      .rpc();
+
+    // Creator and player join
+    await program.methods
+      .joinGame()
+      .accounts({
+        game: gamePDA,
+        player: creator.publicKey,
+      })
+      .signers([creator])
+      .rpc();
+
+    await program.methods
+      .joinGame()
+      .accounts({
+        game: gamePDA,
+        player: player1.publicKey,
+      })
+      .signers([player1])
+      .rpc();
+
+    // Get participation account addresses
+    const [creatorParticipationPDA] = anchor.web3.PublicKey.findProgramAddressSync(
+      [Buffer.from("player_participation"), gamePDA.toBuffer(), creator.publicKey.toBuffer()],
+      program.programId
+    );
+
+    const [player1ParticipationPDA] = anchor.web3.PublicKey.findProgramAddressSync(
+      [Buffer.from("player_participation"), gamePDA.toBuffer(), player1.publicKey.toBuffer()],
+      program.programId
+    );
+
+    // Verify both participation accounts exist
+    const creatorParticipation = await program.account.playerParticipation.fetch(creatorParticipationPDA);
+    const player1Participation = await program.account.playerParticipation.fetch(player1ParticipationPDA);
+
+    expect(creatorParticipation.playerIndex).to.equal(0);
+    expect(player1Participation.playerIndex).to.equal(1);
+
+    // Player1 unjoins (valid operation - only 2 players, need 4 min, so not waiting for oracle)
+    await program.methods
+      .unjoinGame()
+      .accounts({
+        game: gamePDA,
+        player: player1.publicKey,
+      })
+      .signers([player1])
+      .rpc();
+
+    // Verify player1's participation account was closed
+    try {
+      await program.account.playerParticipation.fetch(player1ParticipationPDA);
+      expect.fail("Player1 participation account should be closed after unjoin");
+    } catch (error) {
+      expect(error.toString()).to.include("Account does not exist");
+    }
+
+    // Verify creator's participation account still exists
+    const remainingCreatorParticipation = await program.account.playerParticipation.fetch(creatorParticipationPDA);
+    expect(remainingCreatorParticipation.playerIndex).to.equal(0);
+
+    // Verify game state is consistent
+    const gameData = await program.account.game.fetch(gamePDA);
+    expect(gameData.playersCount).to.equal(1);
+  });
+
+  it("Test Player Index Consistency After Multiple Operations", async () => {
+    const {
+    } = await createOracleAccount();
+
+    const {
+      mint,
+      mintAuthority,
+    } = await createSplTokenMint();
+
+    const amount = new anchor.BN(1_000_000);
+
+    // Create multiple players
+    const players = [];
+    for (let i = 0; i < 4; i++) {
+      const {
+        player,
+        playerTokenAccount,
+      } = await createPlayer(mint);
+      await mintTokens(mintAuthority, mint, playerTokenAccount.address, amount);
+      players.push({ player, playerTokenAccount });
+    }
+
+    const { gamePDA, randomHash } = await getGamePDA();
+
+    const gameConfig = {
+      gameType: { coinflip: {} },
+      amount: amount,
+      maxPlayers: 6, // Increase to avoid oracle waiting
+      minPlayers: 5, // Higher min requirement
+      timeout: 3600,
+      isPrivate: false,
+    };
+
+    // Initialize game
+    await program.methods
+      .initializeGame(gameConfig, randomHash)
+      .accounts({
+        creator: players[0].player.publicKey,
+        tokenMint: mint,
+      })
+      .signers([players[0].player])
+      .rpc();
+
+    // All players join sequentially
+    for (let i = 0; i < 4; i++) {
+      await program.methods
+        .joinGame()
+        .accounts({
+          game: gamePDA,
+          player: players[i].player.publicKey,
+        })
+        .signers([players[i].player])
+        .rpc();
+    }
+
+    // Verify all joined with correct indices
+    for (let i = 0; i < 4; i++) {
+      const [participationPDA] = anchor.web3.PublicKey.findProgramAddressSync(
+        [Buffer.from("player_participation"), gamePDA.toBuffer(), players[i].player.publicKey.toBuffer()],
+        program.programId
+      );
+      const participation = await program.account.playerParticipation.fetch(participationPDA);
+      expect(participation.playerIndex).to.equal(i, `Player ${i} should have index ${i}`);
+    }
+
+    // Complex sequence: last player unjoins, then rejoins
+    await program.methods
+      .unjoinGame()
+      .accounts({
+        game: gamePDA,
+        player: players[3].player.publicKey,
+      })
+      .signers([players[3].player])
+      .rpc();
+
+    let gameData = await program.account.game.fetch(gamePDA);
+    expect(gameData.playersCount).to.equal(3);
+
+    // Player 3 rejoins - should get index 3 again
+    await program.methods
+      .joinGame()
+      .accounts({
+        game: gamePDA,
+        player: players[3].player.publicKey,
+      })
+      .signers([players[3].player])
+      .rpc();
+
+    gameData = await program.account.game.fetch(gamePDA);
+    expect(gameData.playersCount).to.equal(4);
+
+    // Verify player 3 has correct index after rejoin
+    const [player3ParticipationPDA] = anchor.web3.PublicKey.findProgramAddressSync(
+      [Buffer.from("player_participation"), gamePDA.toBuffer(), players[3].player.publicKey.toBuffer()],
+      program.programId
+    );
+    const player3Participation = await program.account.playerParticipation.fetch(player3ParticipationPDA);
+    expect(player3Participation.playerIndex).to.equal(3, "Player 3 should have index 3 after rejoin");
+  });
+
+  it("Test State Consistency During Snowball Game Unjoin Restrictions", async () => {
+    const {
+    } = await createOracleAccount();
+
+    const {
+      mint,
+      mintAuthority,
+    } = await createSplTokenMint();
+
+    const amount = new anchor.BN(1_000_000);
+
+    // Create players
+    const {
+      player: creator,
+      playerTokenAccount: creatorTokenAccount,
+    } = await createPlayer(mint);
+
+    const {
+      player: player1,
+      playerTokenAccount: player1TokenAccount,
+    } = await createPlayer(mint);
+
+    await mintTokens(mintAuthority, mint, creatorTokenAccount.address, amount.muln(5));
+    await mintTokens(mintAuthority, mint, player1TokenAccount.address, amount.muln(5));
+
+    const { gamePDA, randomHash } = await getGamePDA();
+
+    const gameConfig = {
+      gameType: { snowball: {} }, // Snowball game type
+      amount: amount,
+      maxPlayers: 3,
+      minPlayers: 2,
+      timeout: 3600,
+      isPrivate: false,
+    };
+
+    // Initialize Snowball game
+    await program.methods
+      .initializeGame(gameConfig, randomHash)
+      .accounts({
+        creator: creator.publicKey,
+        tokenMint: mint,
+      })
+      .signers([creator])
+      .rpc();
+
+    // Creator joins
+    await program.methods
+      .joinGame()
+      .accounts({
+        game: gamePDA,
+        player: creator.publicKey,
+      })
+      .signers([creator])
+      .rpc();
+
+    // Player1 joins
+    await program.methods
+      .joinGame()
+      .accounts({
+        game: gamePDA,
+        player: player1.publicKey,
+      })
+      .signers([player1])
+      .rpc();
+
+    let gameData = await program.account.game.fetch(gamePDA);
+    expect(gameData.playersCount).to.equal(2);
+
+    // In Snowball games with multiple players, unjoin should be restricted
+    try {
+      await program.methods
+        .unjoinGame()
+        .accounts({
+          game: gamePDA,
+          player: player1.publicKey, // Last player trying to unjoin
+        })
+        .signers([player1])
+        .rpc();
+      expect.fail("Snowball game with multiple players should not allow unjoin");
+    } catch (error) {
+      expect(error.toString()).to.include("SnowballMultiPlayerUnjoin");
+    }
+
+    // Verify state remains unchanged after failed unjoin attempt
+    gameData = await program.account.game.fetch(gamePDA);
+    expect(gameData.playersCount).to.equal(2, "Player count should remain unchanged after failed unjoin");
+
+    // Verify both participation accounts still exist
+    const [creatorParticipationPDA] = anchor.web3.PublicKey.findProgramAddressSync(
+      [Buffer.from("player_participation"), gamePDA.toBuffer(), creator.publicKey.toBuffer()],
+      program.programId
+    );
+
+    const [player1ParticipationPDA] = anchor.web3.PublicKey.findProgramAddressSync(
+      [Buffer.from("player_participation"), gamePDA.toBuffer(), player1.publicKey.toBuffer()],
+      program.programId
+    );
+
+    const creatorParticipation = await program.account.playerParticipation.fetch(creatorParticipationPDA);
+    const player1Participation = await program.account.playerParticipation.fetch(player1ParticipationPDA);
+
+    expect(creatorParticipation.playerIndex).to.equal(0);
+    expect(player1Participation.playerIndex).to.equal(1);
+  });
+
+  it("Test Game State Consistency After Player Balance Insufficient During Join", async () => {
+    const {
+    } = await createOracleAccount();
+
+    const {
+      mint,
+      mintAuthority,
+    } = await createSplTokenMint();
+
+    const amount = new anchor.BN(1_000_000);
+
+    // Create creator
+    const {
+      player: creator,
+      playerTokenAccount: creatorTokenAccount,
+    } = await createPlayer(mint);
+
+    await mintTokens(mintAuthority, mint, creatorTokenAccount.address, amount);
+
+    const { gamePDA, randomHash } = await getGamePDA();
+
+    const gameConfig = {
+      gameType: { coinflip: {} },
+      amount: amount,
+      maxPlayers: 3,
+      minPlayers: 2,
+      timeout: 3600,
+      isPrivate: false,
+    };
+
+    // Initialize game
+    await program.methods
+      .initializeGame(gameConfig, randomHash)
+      .accounts({
+        creator: creator.publicKey,
+        tokenMint: mint,
+      })
+      .signers([creator])
+      .rpc();
+
+    // Creator joins
+    await program.methods
+      .joinGame()
+      .accounts({
+        game: gamePDA,
+        player: creator.publicKey,
+      })
+      .signers([creator])
+      .rpc();
+
+    // Create player with insufficient funds
+    const {
+      player: poorPlayer,
+      playerTokenAccount: poorPlayerTokenAccount,
+    } = await createPlayer(mint);
+
+    // Give player insufficient tokens (half of required amount)
+    const insufficientAmount = amount.divn(2);
+    await mintTokens(mintAuthority, mint, poorPlayerTokenAccount.address, insufficientAmount);
+
+    // Test that join fails with insufficient balance
+    try {
+      await program.methods
+        .joinGame()
+        .accounts({
+          game: gamePDA,
+          player: poorPlayer.publicKey,
+        })
+        .signers([poorPlayer])
+        .rpc();
+      expect.fail("Should fail with insufficient balance");
+    } catch (error) {
+      expect(error.toString()).to.include("InsufficientBalance");
+    }
+
+    // Verify game state remains consistent
+    const gameData = await program.account.game.fetch(gamePDA);
+    expect(gameData.playersCount).to.equal(1, "Player count should remain unchanged after failed join");
+
+    // Verify no orphaned participation account was created
+    const [poorPlayerParticipationPDA] = anchor.web3.PublicKey.findProgramAddressSync(
+      [Buffer.from("player_participation"), gamePDA.toBuffer(), poorPlayer.publicKey.toBuffer()],
+      program.programId
+    );
+
+    try {
+      await program.account.playerParticipation.fetch(poorPlayerParticipationPDA);
+      expect.fail("No participation account should exist after failed join");
+    } catch (error) {
+      expect(error.toString()).to.include("Account does not exist");
+    }
+  });
 });
