@@ -335,7 +335,7 @@ pub struct UnjoinGame<'info> {
         seeds = [b"player_balance", player.key().as_ref(), game.token_mint.as_ref()],
         bump,
     )]
-    pub player_balance: Account<'info, PlayerBalance>,
+    pub player_balance: Option<Account<'info, PlayerBalance>>,
     #[account(seeds = [b"oracle"], bump)]
     pub oracle: Account<'info, Oracle>,
     pub system_program: Program<'info, System>,
@@ -357,7 +357,7 @@ pub struct CancelGame<'info> {
         seeds = [b"player_balance", creator.key().as_ref(), game.token_mint.as_ref()],
         bump,
     )]
-    pub creator_balance: Account<'info, PlayerBalance>,
+    pub creator_balance: Option<Account<'info, PlayerBalance>>,
     #[account(seeds = [b"oracle"], bump)]
     pub oracle: Account<'info, Oracle>,
     pub system_program: Program<'info, System>,
@@ -409,42 +409,6 @@ pub struct RollGame<'info> {
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
     pub associated_token_program: Program<'info, AssociatedToken>,
-}
-
-#[derive(Accounts)]
-pub struct CleanGame<'info> {
-    #[account(
-        mut,
-        close = creator,
-        constraint = game.is_creator(&creator.key()) @ ErrorCode::InvalidCreator,
-        constraint = game.is_completed_but_not_cleaned() @ ErrorCode::GameNotCompleted,
-        constraint = game.players_count == 0 @ ErrorCode::GameHasActivePlayers,
-    )]
-    pub game: Account<'info, Game>,
-    /// CHECK: Game creator for rent refund
-    #[account(mut)]
-    pub creator: AccountInfo<'info>,
-    pub system_program: Program<'info, System>,
-}
-
-#[derive(Accounts)]
-pub struct CleanPlayerParticipation<'info> {
-    #[account(
-        mut,
-        constraint = game.is_completed_but_not_cleaned() @ ErrorCode::GameNotCompleted,
-    )]
-    pub game: Account<'info, Game>,
-    #[account(
-        mut,
-        close = player,
-        seeds = [b"player_participation", game.key().as_ref(), player.key().as_ref()],
-        bump,
-    )]
-    pub player_participation: Account<'info, PlayerParticipation>,
-    /// CHECK: Player checked by seeds constraint
-    #[account(mut)]
-    pub player: AccountInfo<'info>,
-    pub system_program: Program<'info, System>,
 }
 
 // Fee Management
