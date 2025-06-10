@@ -232,7 +232,7 @@ pub struct JoinGame<'info> {
         init,
         payer = player,
         space = PLAYER_PARTICIPATION_SIZE,
-        seeds = [b"player_participation", game.key().as_ref(), player.key().as_ref()],
+        seeds = [b"player_participation", game.key().as_ref(), player.key().as_ref(), game.created_at_slot.to_le_bytes().as_ref()],
         bump,
     )]
     pub player_participation: Account<'info, PlayerParticipation>,
@@ -292,9 +292,8 @@ pub struct CompleteGame<'info> {
     #[account(
         mut,
         close = winner,
-        seeds = [b"player_participation", game.key().as_ref(), winner.key().as_ref()],
+        seeds = [b"player_participation", game.key().as_ref(), winner.key().as_ref(), game.created_at_slot.to_le_bytes().as_ref()],
         bump,
-        constraint = winner_participation.is_valid_for_game(game.created_at_slot) @ ErrorCode::InvalidParticipation,
     )]
     pub winner_participation: Account<'info, PlayerParticipation>,
     /// CHECK: Validated by game's winner calculation
@@ -321,9 +320,8 @@ pub struct UnjoinGame<'info> {
     #[account(
         mut,
         close = player,
-        seeds = [b"player_participation", game.key().as_ref(), player.key().as_ref()],
+        seeds = [b"player_participation", game.key().as_ref(), player.key().as_ref(), game.created_at_slot.to_le_bytes().as_ref()],
         bump,
-        constraint = player_participation.is_valid_for_game(game.created_at_slot) @ ErrorCode::InvalidParticipation,
     )]
     pub player_participation: Account<'info, PlayerParticipation>,
     #[account(mut)]
@@ -373,9 +371,8 @@ pub struct RollGame<'info> {
     )]
     pub game: Account<'info, Game>,
     #[account(
-        seeds = [b"player_participation", game.key().as_ref(), player.key().as_ref()],
+        seeds = [b"player_participation", game.key().as_ref(), player.key().as_ref(), game.created_at_slot.to_le_bytes().as_ref()],
         bump,
-        constraint = player_participation.is_valid_for_game(game.created_at_slot) @ ErrorCode::InvalidParticipation,
     )]
     pub player_participation: Account<'info, PlayerParticipation>,
     pub player: Signer<'info>,

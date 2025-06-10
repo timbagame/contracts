@@ -131,15 +131,6 @@ pub struct PlayerParticipation {
     pub player_index: u32,
     // Amount contributed by the player
     pub player_amount: u64,
-    // Slot when the player joined the game
-    pub joined_at: u64,
-}
-
-impl PlayerParticipation {
-    // Validation helper to ensure participation was created after game creation
-    pub fn is_valid_for_game(&self, game_created_at_slot: u64) -> bool {
-        self.joined_at >= game_created_at_slot
-    }
 }
 
 // Type of game being played
