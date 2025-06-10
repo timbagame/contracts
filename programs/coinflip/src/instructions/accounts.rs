@@ -342,6 +342,31 @@ pub struct UnjoinGame<'info> {
 }
 
 #[derive(Accounts)]
+pub struct CleanPlayerParticipation<'info> {
+    #[account(mut)]
+    pub game: Account<'info, Game>,
+    #[account(
+        mut,
+        close = player,
+        seeds = [b"player_participation", game.key().as_ref(), player.key().as_ref()],
+        bump,
+    )]
+    pub player_participation: Account<'info, PlayerParticipation>,
+    /// CHECK: Player account that will receive the rent refund from closed participation account
+    #[account(mut)]
+    pub player: AccountInfo<'info>,
+    #[account(
+        mut,
+        seeds = [b"player_balance", player.key().as_ref(), game.token_mint.as_ref()],
+        bump,
+    )]
+    pub player_balance: Option<Account<'info, PlayerBalance>>,
+    #[account(seeds = [b"oracle"], bump)]
+    pub oracle: Account<'info, Oracle>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
 pub struct CloseGame<'info> {
     #[account(
         mut,

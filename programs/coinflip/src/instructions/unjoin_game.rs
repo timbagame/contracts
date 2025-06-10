@@ -15,13 +15,6 @@ pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
     let clock = Clock::get()?;
     let current_time = clock.unix_timestamp as u64;
 
-    // Check if this is a cleanup operation for a completed game
-    if game.is_completed_but_not_cleaned() {
-        game.players_count -= 1;
-        return Ok(());
-    }
-
-    // Active unjoin operation - perform all validation checks
     // Block unjoin if game is waiting for oracle
     if game.waiting_for_oracle(oracle.oracle_buffer_time as u64, current_time) {
         return Err(GameWaitingForOracle.into());
