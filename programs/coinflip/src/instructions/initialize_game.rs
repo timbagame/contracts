@@ -4,9 +4,17 @@ use crate::{
 use anchor_lang::prelude::*;
 
 pub fn handler(ctx: Context<super::InitializeGame>, config: GameConfig) -> Result<()> {
+    // ===============================
+    // CHECKS (handled by constraints)
+    // ===============================
+
+    // ===============================
+    // EFFECTS - Update all state first
+    // ===============================
     let game = &mut ctx.accounts.game;
     let clock = Clock::get()?;
 
+    // Initialize game state
     game.creator = ctx.accounts.creator.key();
     game.game_type = config.game_type;
     game.max_players = config.max_players;
@@ -18,7 +26,20 @@ pub fn handler(ctx: Context<super::InitializeGame>, config: GameConfig) -> Resul
     game.last_slot = clock.slot;
     game.is_private = config.is_private;
 
-    // If it is a giveaway, the creator will pay the pot
+    // Set amounts based on game type
+    if game.game_type == GameType::Giveaway {
+        game.total_amount = config.amount;
+        game.ticket_amount = 0;
+    } else {
+        game.total_amount = 0;
+        game.ticket_amount = config.amount;
+    }
+
+    // ===============================
+    // INTERACTIONS - External calls
+    // ===============================
+
+    // Transfer tokens if it's a giveaway (creator funds the pot)
     if game.game_type == GameType::Giveaway {
         handle_player_token_transfer(
             &mut ctx.accounts.creator_balance,
@@ -28,14 +49,9 @@ pub fn handler(ctx: Context<super::InitializeGame>, config: GameConfig) -> Resul
             ctx.accounts.creator.to_account_info(),
             ctx.accounts.token_program.to_account_info(),
         )?;
-
-        game.total_amount = config.amount;
-        game.ticket_amount = 0;
-    } else {
-        game.total_amount = 0;
-        game.ticket_amount = config.amount;
     }
 
+    // Emit event
     emit!(GameInitialized {
         game_key: game.key(),
         creator: game.creator,
