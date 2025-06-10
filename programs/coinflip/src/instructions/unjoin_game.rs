@@ -1,7 +1,5 @@
 use crate::{
-    error::ErrorCode::{
-        GameWaitingForOracle, OnlyLastPlayerCanUnjoin, SameSlotReuse, SnowballMultiPlayerUnjoin,
-    },
+    error::ErrorCode::{GameWaitingForOracle, OnlyLastPlayerCanUnjoin, SnowballMultiPlayerUnjoin},
     events::PlayerUnjoined,
     state::GameType,
 };
@@ -50,10 +48,7 @@ pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
     // Decrement player count
     game.players_count -= 1;
 
-    // Ensure we're not reusing the same slot
-    if clock.slot == game.last_slot {
-        return Err(SameSlotReuse.into());
-    }
+    // Update last slot for entropy
     game.last_slot = clock.slot;
 
     emit!(PlayerUnjoined {

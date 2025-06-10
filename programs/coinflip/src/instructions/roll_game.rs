@@ -29,10 +29,7 @@ pub fn handler(ctx: Context<super::RollGame>) -> Result<()> {
         player_participation.player_amount += game.ticket_amount;
     }
 
-    // Ensure we're not reusing the same slot
-    if clock.slot == game.last_slot {
-        return Err(crate::error::ErrorCode::SameSlotReuse.into());
-    }
+    // Update last slot for entropy
     game.last_slot = clock.slot;
 
     emit!(PlayerRolled {
