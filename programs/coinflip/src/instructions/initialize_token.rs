@@ -10,6 +10,8 @@ pub fn handler(ctx: Context<super::InitializeToken>, config: TokenConfig) -> Res
     // EFFECTS - Update state
     // ===============================
     let game_token = &mut ctx.accounts.game_token;
+    let token_mint = &ctx.accounts.token_mint;
+
     game_token.initialize(config.min_amount, config.enabled);
 
     // ===============================
@@ -18,7 +20,7 @@ pub fn handler(ctx: Context<super::InitializeToken>, config: TokenConfig) -> Res
 
     // Emit event
     emit!(TokenInitialized {
-        token_mint: ctx.accounts.token_mint.key(),
+        token_mint: token_mint.key(),
         min_amount: config.min_amount,
         enabled: config.enabled,
     });

@@ -8,10 +8,11 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
     // ===============================
     // CHECKS
     // ===============================
+    let game = &ctx.accounts.game;
     let clock = Clock::get()?;
 
     // Block join if game is expired
-    if ctx.accounts.game.is_expired(clock.unix_timestamp as u64) {
+    if game.is_expired(clock.unix_timestamp as u64) {
         return Err(GameExpired.into());
     }
 

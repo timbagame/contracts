@@ -10,6 +10,8 @@ pub fn handler(ctx: Context<super::WithdrawPlayerBalance>) -> Result<()> {
     // EFFECTS - Update state first
     // ===============================
     let player_balance = &mut ctx.accounts.player_balance;
+    let player = &ctx.accounts.player;
+    let token_mint = &ctx.accounts.token_mint;
     let withdrawal_amount = player_balance.amount;
 
     // Clear the balance
@@ -25,15 +27,15 @@ pub fn handler(ctx: Context<super::WithdrawPlayerBalance>) -> Result<()> {
         ctx.accounts.player_token_account.to_account_info(),
         ctx.accounts.game_vault.to_account_info(),
         ctx.accounts.token_program.to_account_info(),
-        ctx.accounts.token_mint.key(),
+        token_mint.key(),
         ctx.bumps.game_vault,
         withdrawal_amount,
     )?;
 
     // Emit event
     emit!(PlayerBalanceWithdrawn {
-        player: ctx.accounts.player.key(),
-        token_mint: ctx.accounts.token_mint.key(),
+        player: player.key(),
+        token_mint: token_mint.key(),
         amount: withdrawal_amount,
     });
 
