@@ -39,7 +39,7 @@ pub enum ErrorCode {
     #[msg("Cannot unjoin Snowball game with multiple players")]
     SnowballMultiPlayerUnjoin = 1203,
     #[msg("Cannot reuse the same slot for game actions")]
-    SameSlotReuse = 1205,
+    SameSlotReuse = 1204,
 
     // Configuration Errors (1300-1399)
     // --------------------------------
