@@ -1,7 +1,4 @@
-use crate::{
-    error::ErrorCode::GameExpired, events::PlayerRolled, state::GameType,
-    utils::handle_player_token_transfer,
-};
+use crate::{events::PlayerRolled, state::GameType, utils::handle_player_token_transfer};
 use anchor_lang::prelude::*;
 
 pub fn handler(ctx: Context<super::RollGame>) -> Result<()> {
@@ -13,9 +10,10 @@ pub fn handler(ctx: Context<super::RollGame>) -> Result<()> {
     let current_time = clock.unix_timestamp as u64;
 
     // Block roll if game is expired
-    if game.is_expired(current_time) {
-        return Err(GameExpired.into());
-    }
+    require!(
+        !game.is_expired(current_time),
+        crate::error::ErrorCode::GameExpired
+    );
 
     // ===============================
     // EFFECTS - Update all state first
