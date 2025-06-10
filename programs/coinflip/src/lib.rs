@@ -100,6 +100,10 @@ pub mod coinflip {
         instructions::unjoin_game::handler(ctx)
     }
 
+    pub fn clean_player_participation(ctx: Context<CleanPlayerParticipation>) -> Result<()> {
+        instructions::clean_player_participation::handler(ctx)
+    }
+
     pub fn close_game(ctx: Context<CloseGame>) -> Result<()> {
         instructions::close_game::handler(ctx)
     }
