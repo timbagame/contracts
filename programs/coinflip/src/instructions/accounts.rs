@@ -347,7 +347,7 @@ pub struct CancelGame<'info> {
         mut,
         close = creator,
         constraint = game.is_creator(&creator.key()) @ ErrorCode::InvalidCreator,
-        constraint = game.has_no_active_participants() @ ErrorCode::GameHasActivePlayers,
+        constraint = game.players_count == 0 @ ErrorCode::GameHasActivePlayers,
     )]
     pub game: Account<'info, Game>,
     #[account(mut)]
@@ -418,6 +418,7 @@ pub struct CleanGame<'info> {
         close = creator,
         constraint = game.is_creator(&creator.key()) @ ErrorCode::InvalidCreator,
         constraint = game.is_completed_but_not_cleaned() @ ErrorCode::GameNotCompleted,
+        constraint = game.players_count == 0 @ ErrorCode::GameHasActivePlayers,
     )]
     pub game: Account<'info, Game>,
     /// CHECK: Game creator for rent refund
@@ -429,6 +430,7 @@ pub struct CleanGame<'info> {
 #[derive(Accounts)]
 pub struct CleanPlayerParticipation<'info> {
     #[account(
+        mut,
         constraint = game.is_completed_but_not_cleaned() @ ErrorCode::GameNotCompleted,
     )]
     pub game: Account<'info, Game>,
