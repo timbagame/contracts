@@ -583,6 +583,16 @@ describe("coinflip", () => {
       .signers([creator])
       .rpc();
 
+    // Creator joins their own game
+    await program.methods
+      .joinGame()
+      .accounts({
+        game: gamePDA,
+        player: creator.publicKey,
+      })
+      .signers([creator])
+      .rpc();
+
     // Create player
     const {
       player,
@@ -591,7 +601,7 @@ describe("coinflip", () => {
     // Mint tokens to player
     await mintTokens(mintAuthority, mint, playerTokenAccount.address, amount.muln(2)); // Enough for two attempts
 
-    // First join should succeed
+    // Player joins game
     await program.methods
       .joinGame()
       .accounts({
@@ -601,7 +611,7 @@ describe("coinflip", () => {
       .signers([player])
       .rpc();
 
-    // Second join should fail
+    // Player tries to join again - should fail
     try {
       await program.methods
         .joinGame()
@@ -738,6 +748,16 @@ describe("coinflip", () => {
       .signers([creator])
       .rpc();
 
+    // Creator joins their own game
+    await program.methods
+      .joinGame()
+      .accounts({
+        game: gamePDA,
+        player: creator.publicKey,
+      })
+      .signers([creator])
+      .rpc();
+
     // Join game with second player
     await program.methods
       .joinGame()
@@ -821,6 +841,16 @@ describe("coinflip", () => {
       .signers([creator])
       .rpc();
 
+    // Creator joins their own game
+    await program.methods
+      .joinGame()
+      .accounts({
+        game: gamePDA,
+        player: creator.publicKey,
+      })
+      .signers([creator])
+      .rpc();
+
     // Join game with second player
     await program.methods
       .joinGame()
@@ -836,6 +866,7 @@ describe("coinflip", () => {
     const playersGameData = await program.account.game.fetch(gamePDA);
     const winnerIndex = calculateWinnerIndex(playersGameData.playersCount, secretKey, Number(playersGameData.lastSlot));
     const winner = winnerIndex === 0 ? creator.publicKey : player1.publicKey;
+
 
     try {
       await program.methods
