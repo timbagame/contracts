@@ -8,41 +8,38 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
     // ===============================
     // CHECKS
     // ===============================
-    let game = &ctx.accounts.game;
+    let game = &mut ctx.accounts.game;
     let clock = Clock::get()?;
+    let current_time = clock.unix_timestamp as u64;
 
     // Block join if game is expired
-    if game.is_expired(clock.unix_timestamp as u64) {
+    if game.is_expired(current_time) {
         return Err(GameExpired.into());
     }
 
     // ===============================
     // EFFECTS - Update all state first
     // ===============================
-    let game = &mut ctx.accounts.game;
     let player_participation = &mut ctx.accounts.player_participation;
+    let is_non_giveaway = game.game_type != GameType::Giveaway;
 
-    // Set player index for winner calculation
+    // Set player index and update counts
     player_participation.player_index = game.players_count;
+    game.players_count += 1;
+    game.last_slot = clock.slot;
 
-    // Update participation amount for non-giveaway games
-    if game.game_type != GameType::Giveaway {
+    // Update amounts for non-giveaway games
+    if is_non_giveaway {
         player_participation.player_amount = game.ticket_amount;
         game.total_amount += game.ticket_amount;
     }
-
-    // Increment players count
-    game.players_count += 1;
-
-    // Update last slot for entropy
-    game.last_slot = clock.slot;
 
     // ===============================
     // INTERACTIONS - External calls
     // ===============================
 
-    // Transfer tokens if it's not a giveaway (player pays ticket amount)
-    if game.game_type != GameType::Giveaway {
+    // Transfer tokens for non-giveaway games
+    if is_non_giveaway {
         handle_player_token_transfer(
             &mut ctx.accounts.player_balance,
             game.ticket_amount,
@@ -61,7 +58,7 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
         players_count: game.players_count,
         player_index: player_participation.player_index,
         last_slot: game.last_slot,
-        timestamp: clock.unix_timestamp as u64,
+        timestamp: current_time,
     });
 
     Ok(())

@@ -3,10 +3,6 @@ use anchor_lang::prelude::*;
 
 pub fn handler(ctx: Context<super::InitializeOracle>, config: OracleConfig) -> Result<()> {
     // ===============================
-    // CHECKS (handled by constraints)
-    // ===============================
-
-    // ===============================
     // EFFECTS - Update state
     // ===============================
     let oracle = &mut ctx.accounts.oracle;

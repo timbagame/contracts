@@ -5,7 +5,7 @@ pub fn handler(ctx: Context<super::CompleteGame>) -> Result<()> {
     // ===============================
     // CHECKS
     // ===============================
-    let game = &ctx.accounts.game;
+    let game = &mut ctx.accounts.game;
     let oracle = &ctx.accounts.oracle;
     let current_time = Clock::get()?.unix_timestamp as u64;
 
@@ -17,11 +17,8 @@ pub fn handler(ctx: Context<super::CompleteGame>) -> Result<()> {
     // ===============================
     // EFFECTS - Update all state first
     // ===============================
-    let game = &mut ctx.accounts.game;
     let game_token = &mut ctx.accounts.game_token;
     let winner_balance = &mut ctx.accounts.winner_balance;
-
-    // Calculate winner amount and fee amount
     let fee_percentage = oracle.fee_percentage as u64;
     let (winner_amount, fee_amount) = game.calculate_amounts(fee_percentage);
 

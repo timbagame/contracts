@@ -3,10 +3,6 @@ use anchor_lang::prelude::*;
 
 pub fn handler(ctx: Context<super::UpdateToken>, config: TokenConfig) -> Result<()> {
     // ===============================
-    // CHECKS (handled by constraints)
-    // ===============================
-
-    // ===============================
     // EFFECTS - Update state
     // ===============================
     let game_token = &mut ctx.accounts.game_token;
