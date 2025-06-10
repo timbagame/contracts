@@ -15,7 +15,7 @@ pub fn handler(ctx: Context<super::InitializeGame>, config: GameConfig) -> Resul
     game.token_mint = ctx.accounts.token_mint.key();
     game.created_at = clock.unix_timestamp as u64;
     game.timeout = config.timeout;
-    game.slot_entropy = clock.slot;
+    game.last_slot = clock.slot;
     game.is_private = config.is_private;
 
     // If it is a giveaway, the creator will pay the pot

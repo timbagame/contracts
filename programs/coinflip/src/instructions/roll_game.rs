@@ -29,15 +29,18 @@ pub fn handler(ctx: Context<super::RollGame>) -> Result<()> {
         player_participation.player_amount += game.ticket_amount;
     }
 
-    // Increment slot entropy for winner calculation
-    game.slot_entropy += clock.slot;
+    // Ensure we're not reusing the same slot
+    if clock.slot == game.last_slot {
+        return Err(crate::error::ErrorCode::SameSlotReuse.into());
+    }
+    game.last_slot = clock.slot;
 
     emit!(PlayerRolled {
         game_key: game.key(),
         player: ctx.accounts.player.key(),
         total_amount: game.total_amount,
         player_index: player_participation.player_index,
-        slot_entropy: game.slot_entropy,
+        last_slot: game.last_slot,
         timestamp: clock.unix_timestamp as u64,
     });
 

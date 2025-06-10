@@ -1,6 +1,10 @@
 use crate::{
-    error::ErrorCode::GameWaitingForOracle, error::ErrorCode::OnlyLastPlayerCanUnjoin,
-    error::ErrorCode::SnowballMultiPlayerUnjoin, events::PlayerUnjoined, state::GameType,
+    error::ErrorCode::{
+        GameWaitingForOracle, InvalidParticipation, OnlyLastPlayerCanUnjoin, SameSlotReuse,
+        SnowballMultiPlayerUnjoin,
+    },
+    events::PlayerUnjoined,
+    state::GameType,
 };
 use anchor_lang::prelude::*;
 
@@ -34,9 +38,14 @@ pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
         game.total_amount -= player_participation.player_amount;
     }
 
-    // Decrement player count and increment slot entropy
+    // Decrement player count
     game.players_count -= 1;
-    game.slot_entropy += clock.slot;
+
+    // Ensure we're not reusing the same slot
+    if clock.slot == game.last_slot {
+        return Err(SameSlotReuse.into());
+    }
+    game.last_slot = clock.slot;
 
     emit!(PlayerUnjoined {
         game_key: game.key(),
@@ -44,7 +53,7 @@ pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
         total_amount: game.total_amount,
         players_count: game.players_count,
         player_index: player_participation.player_index,
-        slot_entropy: game.slot_entropy,
+        last_slot: game.last_slot,
         timestamp: current_time,
     });
 
