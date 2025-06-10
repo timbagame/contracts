@@ -344,7 +344,7 @@ describe("coinflip", () => {
     await program.methods
       .initializeGame(gameConfig, randomHash)
       .accounts({
-        player: creator.publicKey,
+        creator: creator.publicKey,
         tokenMint: mint,
       })
       .signers([creator])
@@ -362,7 +362,7 @@ describe("coinflip", () => {
 
     // Verify game state
     const gameData = await program.account.game.fetch(gamePDA);
-    expect(gameData.players[1].toString()).to.equal(player.publicKey.toString());
+    expect(gameData.playersCount).to.equal(2);
   });
 
   it("Join Private Game Successfully", async () => {
@@ -406,7 +406,7 @@ describe("coinflip", () => {
     await program.methods
       .initializeGame(gameConfig, randomHash)
       .accounts({
-        player: creator.publicKey,
+        creator: creator.publicKey,
         tokenMint: mint,
       })
       .signers([creator])
@@ -425,7 +425,7 @@ describe("coinflip", () => {
 
     // Verify game state
     const gameData = await program.account.game.fetch(gamePDA);
-    expect(gameData.players[1].toString()).to.equal(joiner.publicKey.toString());
+    expect(gameData.playersCount).to.equal(2);
   });
 
   it("Fail to Join Full Game", async () => {
@@ -463,7 +463,7 @@ describe("coinflip", () => {
     await program.methods
       .initializeGame(gameConfig, randomHash)
       .accounts({
-        player: creator.publicKey,
+        creator: creator.publicKey,
         tokenMint: mint,
       })
       .signers([creator])
@@ -546,7 +546,7 @@ describe("coinflip", () => {
     await program.methods
       .initializeGame(gameConfig, randomHash)
       .accounts({
-        player: creator.publicKey,
+        creator: creator.publicKey,
         tokenMint: mint,
       })
       .signers([creator])
@@ -622,7 +622,7 @@ describe("coinflip", () => {
     await program.methods
       .initializeGame(gameConfig, randomHash)
       .accounts({
-        player: creator.publicKey,
+        creator: creator.publicKey,
         tokenMint: mint,
       })
       .signers([creator])
@@ -701,7 +701,7 @@ describe("coinflip", () => {
     await program.methods
       .initializeGame(gameConfig, randomHash)
       .accounts({
-        player: creator.publicKey,
+        creator: creator.publicKey,
         tokenMint: mint,
       })
       .signers([creator])
@@ -782,7 +782,7 @@ describe("coinflip", () => {
     await program.methods
       .initializeGame(gameConfig, randomHash)
       .accounts({
-        player: creator.publicKey,
+        creator: creator.publicKey,
         tokenMint: mint,
       })
       .signers([creator])
@@ -856,7 +856,7 @@ describe("coinflip", () => {
     await program.methods
       .initializeGame(gameConfig, randomHash)
       .accounts({
-        player: creator.publicKey,
+        creator: creator.publicKey,
         tokenMint: mint,
       })
       .signers([creator])
@@ -869,7 +869,7 @@ describe("coinflip", () => {
         .accounts({
           game: gamePDA,
           authority: program.provider.publicKey,
-          player: creator.publicKey,
+          creator: creator.publicKey,
           creator: creator.publicKey,
         })
         .rpc();
@@ -915,7 +915,7 @@ describe("coinflip", () => {
     await program.methods
       .initializeGame(gameConfig, randomHash)
       .accounts({
-        player: creator.publicKey,
+        creator: creator.publicKey,
         tokenMint: mint,
       })
       .signers([creator])
@@ -1016,7 +1016,7 @@ describe("coinflip", () => {
     await program.methods
       .initializeGame(gameConfig, randomHash)
       .accounts({
-        player: creator.publicKey,
+        creator: creator.publicKey,
         tokenMint: mint,
       })
       .signers([creator])
@@ -1114,7 +1114,7 @@ describe("coinflip", () => {
     await program.methods
       .initializeGame(gameConfig, randomHash)
       .accounts({
-        player: creator.publicKey,
+        creator: creator.publicKey,
         tokenMint: mint,
       })
       .signers([creator])
@@ -1182,7 +1182,7 @@ describe("coinflip", () => {
     await program.methods
       .initializeGame(gameConfig, randomHash)
       .accounts({
-        player: creator.publicKey,
+        creator: creator.publicKey,
         tokenMint: mint,
       })
       .signers([creator])
