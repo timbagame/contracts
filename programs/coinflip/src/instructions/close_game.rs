@@ -1,4 +1,4 @@
-use crate::{error::ErrorCode::GameWaitingForOracle, events::GameClosed};
+use crate::events::GameClosed;
 use anchor_lang::prelude::*;
 
 pub fn handler(ctx: Context<super::CloseGame>) -> Result<()> {
@@ -10,9 +10,10 @@ pub fn handler(ctx: Context<super::CloseGame>) -> Result<()> {
     let current_time = Clock::get()?.unix_timestamp as u64;
 
     // Block close if game is ready for oracle
-    if game.waiting_for_oracle(oracle.oracle_buffer_time as u64, current_time) {
-        return Err(GameWaitingForOracle.into());
-    }
+    require!(
+        !game.waiting_for_oracle(oracle.oracle_buffer_time as u64, current_time),
+        crate::error::ErrorCode::GameWaitingForOracle
+    );
 
     // ===============================
     // EFFECTS - Update state first

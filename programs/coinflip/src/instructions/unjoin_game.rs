@@ -1,8 +1,4 @@
-use crate::{
-    error::ErrorCode::{GameWaitingForOracle, OnlyLastPlayerCanUnjoin, SnowballMultiPlayerUnjoin},
-    events::PlayerUnjoined,
-    state::GameType,
-};
+use crate::{events::PlayerUnjoined, state::GameType};
 use anchor_lang::prelude::*;
 
 pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
@@ -16,19 +12,22 @@ pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
     let current_time = clock.unix_timestamp as u64;
 
     // Block unjoin if game is waiting for oracle
-    if game.waiting_for_oracle(oracle.oracle_buffer_time as u64, current_time) {
-        return Err(GameWaitingForOracle.into());
-    }
+    require!(
+        !game.waiting_for_oracle(oracle.oracle_buffer_time as u64, current_time),
+        crate::error::ErrorCode::GameWaitingForOracle
+    );
 
     // For Snowball games, only allow if there is only one player
-    if game.game_type == GameType::Snowball && game.players_count > 1 {
-        return Err(SnowballMultiPlayerUnjoin.into());
-    }
+    require!(
+        !(game.game_type == GameType::Snowball && game.players_count > 1),
+        crate::error::ErrorCode::SnowballMultiPlayerUnjoin
+    );
 
     // CRITICAL: Only allow the last player to unjoin to prevent index gaps
-    if player_participation.player_index != (game.players_count - 1) {
-        return Err(OnlyLastPlayerCanUnjoin.into());
-    }
+    require!(
+        player_participation.player_index == (game.players_count - 1),
+        crate::error::ErrorCode::OnlyLastPlayerCanUnjoin
+    );
 
     // ===============================
     // EFFECTS - Update all state first
