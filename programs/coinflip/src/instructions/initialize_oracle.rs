@@ -2,6 +2,13 @@ use crate::{events::OracleInitialized, OracleConfig};
 use anchor_lang::prelude::*;
 
 pub fn handler(ctx: Context<super::InitializeOracle>, config: OracleConfig) -> Result<()> {
+    // ===============================
+    // CHECKS (handled by constraints)
+    // ===============================
+
+    // ===============================
+    // EFFECTS - Update state
+    // ===============================
     let oracle = &mut ctx.accounts.oracle;
     oracle.update_config(
         config.fee_percentage,
@@ -12,6 +19,11 @@ pub fn handler(ctx: Context<super::InitializeOracle>, config: OracleConfig) -> R
         ctx.accounts.authority.key(),
     );
 
+    // ===============================
+    // INTERACTIONS - External calls
+    // ===============================
+
+    // Emit event
     emit!(OracleInitialized {
         authority: ctx.accounts.authority.key(),
         fee_percentage: config.fee_percentage,
