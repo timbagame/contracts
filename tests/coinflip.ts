@@ -718,14 +718,16 @@ describe("coinflip", () => {
       .rpc();
 
     const playersGameData = await program.account.game.fetch(gamePDA);
-    const winner = calculateWinner(playersGameData.players, secretKey);
+    const winnerIndex = calculateWinnerIndex(playersGameData.playersCount, secretKey, Number(playersGameData.lastSlot));
+
+    // Get winner key (creator is index 0, player is index 1)
+    const winner = winnerIndex === 0 ? creator.publicKey : player.publicKey;
 
     await program.methods
-      .completeGame(secretKey)
+      .completeGame(randomHash, secretKey)
       .accounts({
-        game: gamePDA,
         authority: program.provider.publicKey,
-        player: winner,
+        winner: winner,
         creator: creator.publicKey,
       })
       .rpc();
