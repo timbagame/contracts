@@ -350,7 +350,17 @@ describe("coinflip", () => {
       .signers([creator])
       .rpc();
 
-    // Join game
+    // Creator joins their own game
+    await program.methods
+      .joinGame()
+      .accounts({
+        game: gamePDA,
+        player: creator.publicKey,
+      })
+      .signers([creator])
+      .rpc();
+
+    // Second player joins game
     await program.methods
       .joinGame()
       .accounts({
@@ -412,7 +422,18 @@ describe("coinflip", () => {
       .signers([creator])
       .rpc();
 
-    // Join game with both player and oracle signatures
+    // Creator joins their own private game (with oracle authority)
+    await program.methods
+      .joinGame()
+      .accounts({
+        game: gamePDA,
+        player: creator.publicKey,
+        authority: program.provider.publicKey,
+      })
+      .signers([creator])
+      .rpc();
+
+    // Joiner joins game with oracle signatures
     await program.methods
       .joinGame()
       .accounts({
@@ -469,6 +490,16 @@ describe("coinflip", () => {
       .signers([creator])
       .rpc();
 
+    // Creator joins their own game
+    await program.methods
+      .joinGame()
+      .accounts({
+        game: gamePDA,
+        player: creator.publicKey,
+      })
+      .signers([creator])
+      .rpc();
+
     // Create first player
     const {
       player: player1,
@@ -485,7 +516,7 @@ describe("coinflip", () => {
     await mintTokens(mintAuthority, mint, player1TokenAccount.address, amount);
     await mintTokens(mintAuthority, mint, player2TokenAccount.address, amount);
 
-    // First player joins successfully
+    // First player joins successfully (game is now full)
     await program.methods
       .joinGame()
       .accounts({
