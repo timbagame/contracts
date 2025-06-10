@@ -100,8 +100,8 @@ pub mod coinflip {
         instructions::unjoin_game::handler(ctx)
     }
 
-    pub fn cancel_game(ctx: Context<CancelGame>) -> Result<()> {
-        instructions::cancel_game::handler(ctx)
+    pub fn close_game(ctx: Context<CloseGame>) -> Result<()> {
+        instructions::close_game::handler(ctx)
     }
 
     pub fn complete_game(
