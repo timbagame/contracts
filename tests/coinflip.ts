@@ -908,7 +908,7 @@ describe("coinflip", () => {
     // Mint tokens to creator
     await mintTokens(mintAuthority, mint, creatorTokenAccount.address, amount);
 
-    const { gamePDA, randomHash, secretKey } = await getGamePDA();
+    const { randomHash, secretKey } = await getGamePDA();
 
     const gameConfig = {
       gameType: { coinflip: {} },
@@ -1036,7 +1036,7 @@ describe("coinflip", () => {
       expect.fail("Should have thrown error since winner_participation was closed");
     } catch (error) {
       // The winner_participation account was closed in the first completeGame call
-      expect(error.toString()).to.include("winner_participation");
+      expect(error.toString()).to.include("AccountNotInitialized");
     }
   });
 
