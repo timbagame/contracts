@@ -220,11 +220,6 @@ impl Game {
         self.total_amount = 0;
     }
 
-    // Checks if the game is completed but not yet cleaned
-    pub fn is_completed_but_not_cleaned(&self) -> bool {
-        self.total_amount == 0 && self.players_count > 0
-    }
-
     // Verifies the secret key matches the random hash
     pub fn verify_secret_key(&self, random_hash: [u8; 32], secret_key: [u8; 32]) -> bool {
         let random_hash_calculated = hash(secret_key.as_ref()).to_bytes();
