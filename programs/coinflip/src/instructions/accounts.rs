@@ -294,6 +294,7 @@ pub struct CompleteGame<'info> {
         close = winner,
         seeds = [b"player_participation", game.key().as_ref(), winner.key().as_ref()],
         bump,
+        constraint = winner_participation.is_valid_for_game(game.created_at_slot) @ ErrorCode::InvalidParticipation,
     )]
     pub winner_participation: Account<'info, PlayerParticipation>,
     /// CHECK: Validated by game's winner calculation
@@ -322,6 +323,7 @@ pub struct UnjoinGame<'info> {
         close = player,
         seeds = [b"player_participation", game.key().as_ref(), player.key().as_ref()],
         bump,
+        constraint = player_participation.is_valid_for_game(game.created_at_slot) @ ErrorCode::InvalidParticipation,
     )]
     pub player_participation: Account<'info, PlayerParticipation>,
     #[account(mut)]
@@ -373,6 +375,7 @@ pub struct RollGame<'info> {
     #[account(
         seeds = [b"player_participation", game.key().as_ref(), player.key().as_ref()],
         bump,
+        constraint = player_participation.is_valid_for_game(game.created_at_slot) @ ErrorCode::InvalidParticipation,
     )]
     pub player_participation: Account<'info, PlayerParticipation>,
     pub player: Signer<'info>,

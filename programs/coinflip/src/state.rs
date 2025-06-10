@@ -6,7 +6,7 @@ pub const ORACLE_SIZE: usize = 8 + 32 + 1 + 2 + 4 + 4 + 4; // discriminator + au
 pub const GAME_TOKEN_SIZE: usize = 8 + 8 + 8 + 1; // discriminator + min_amount + fee_amount + enabled
 pub const PLAYER_BALANCE_SIZE: usize = 8 + 8; // discriminator + amount
 pub const PLAYER_PARTICIPATION_SIZE: usize = 8 + 4 + 8 + 8; // discriminator + player_index + player_amount + joined_at
-pub const GAME_SIZE: usize = 8 + 32 + 1 + 8 + 4 + 4 + 4 + 32 + 8 + 4 + 8 + 1 + 8; // discriminator + creator + game_type + ticket_amount + max_players + min_players + players_count + token_mint + created_at + timeout + last_slot + is_private + total_amount
+pub const GAME_SIZE: usize = 8 + 32 + 1 + 8 + 4 + 4 + 4 + 32 + 8 + 8 + 4 + 8 + 1 + 8; // discriminator + creator + game_type + ticket_amount + max_players + min_players + players_count + token_mint + created_at + created_at_slot + timeout + last_slot + is_private + total_amount
 
 // Oracle account that manages global game settings and authority
 #[account]
@@ -135,6 +135,13 @@ pub struct PlayerParticipation {
     pub joined_at: u64,
 }
 
+impl PlayerParticipation {
+    // Validation helper to ensure participation was created after game creation
+    pub fn is_valid_for_game(&self, game_created_at_slot: u64) -> bool {
+        self.joined_at >= game_created_at_slot
+    }
+}
+
 // Type of game being played
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Copy)]
 pub enum GameType {
@@ -174,6 +181,8 @@ pub struct Game {
     pub token_mint: Pubkey,
     // Timestamp when game was created
     pub created_at: u64,
+    // Slot when game was created
+    pub created_at_slot: u64,
     // Timeout duration in seconds
     pub timeout: u32,
     // Last slot when any player action occurred
