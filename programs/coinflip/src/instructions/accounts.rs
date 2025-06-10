@@ -279,7 +279,7 @@ pub struct CompleteGame<'info> {
         constraint = game.is_creator(&creator.key()) @ ErrorCode::InvalidCreator,
         constraint = game.verify_secret_key(random_hash, secret_key) @ ErrorCode::InvalidSecretKey,
         constraint = game.calculate_winner_index(secret_key) == winner_participation.player_index @ ErrorCode::UnauthorizedPlayer,
-        constraint = !game.is_completed @ ErrorCode::GameAlreadyCompleted,
+        constraint = game.total_amount > 0 @ ErrorCode::GameAlreadyCompleted,
     )]
     pub game: Account<'info, Game>,
     #[account(
