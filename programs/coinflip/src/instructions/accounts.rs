@@ -276,10 +276,10 @@ pub struct CompleteGame<'info> {
         mut,
         seeds = [b"game", random_hash.as_ref()],
         bump,
-        close = creator,
         constraint = game.is_creator(&creator.key()) @ ErrorCode::InvalidCreator,
         constraint = game.verify_secret_key(random_hash, secret_key) @ ErrorCode::InvalidSecretKey,
         constraint = game.calculate_winner_index(secret_key) == winner_participation.player_index @ ErrorCode::UnauthorizedPlayer,
+        constraint = !game.is_completed @ ErrorCode::GameAlreadyCompleted,
     )]
     pub game: Account<'info, Game>,
     #[account(
@@ -308,7 +308,11 @@ pub struct CompleteGame<'info> {
         bump,
     )]
     pub winner_balance: Account<'info, PlayerBalance>,
-    #[account(seeds = [b"game_token", game.token_mint.as_ref()], bump)]
+    #[account(
+        mut,
+        seeds = [b"game_token", game.token_mint.as_ref()],
+        bump,
+    )]
     pub game_token: Account<'info, GameToken>,
     pub system_program: Program<'info, System>,
 }
@@ -408,16 +412,30 @@ pub struct RollGame<'info> {
 }
 
 #[derive(Accounts)]
-pub struct CleanPlayerParticipation<'info> {
-    /// CHECK: Game account that has been completed (closed)
+pub struct CleanGame<'info> {
     #[account(
-        constraint = game.data_is_empty() @ ErrorCode::GameNotCompleted,
+        mut,
+        close = creator,
+        constraint = game.is_creator(&creator.key()) @ ErrorCode::InvalidCreator,
+        constraint = game.is_completed_but_not_cleaned() @ ErrorCode::GameNotCompleted,
     )]
-    pub game: AccountInfo<'info>,
+    pub game: Account<'info, Game>,
+    /// CHECK: Game creator for rent refund
+    #[account(mut)]
+    pub creator: AccountInfo<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct CleanPlayerParticipation<'info> {
+    #[account(
+        constraint = game.is_completed_but_not_cleaned() @ ErrorCode::GameNotCompleted,
+    )]
+    pub game: Account<'info, Game>,
     #[account(
         mut,
         close = player,
-        seeds = [b"player_participation", game.key().as_ref(), player.key().as_ref()],
+        seeds = [b"player_participation", game.key().as_ref(), player.key().as_ref(), game.created_at_slot.to_le_bytes().as_ref()],
         bump,
     )]
     pub player_participation: Account<'info, PlayerParticipation>,

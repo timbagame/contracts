@@ -112,6 +112,10 @@ pub mod coinflip {
         instructions::complete_game::handler(ctx)
     }
 
+    pub fn clean_game(ctx: Context<CleanGame>, _random_hash: [u8; 32]) -> Result<()> {
+        instructions::clean_game::handler(ctx)
+    }
+
     pub fn clean_player_participation(ctx: Context<CleanPlayerParticipation>) -> Result<()> {
         instructions::clean_player_participation::handler(ctx)
     }

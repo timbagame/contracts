@@ -6,7 +6,7 @@ pub const ORACLE_SIZE: usize = 8 + 32 + 1 + 2 + 4 + 4 + 4; // discriminator + au
 pub const GAME_TOKEN_SIZE: usize = 8 + 8 + 8 + 1; // discriminator + min_amount + fee_amount + enabled
 pub const PLAYER_BALANCE_SIZE: usize = 8 + 8; // discriminator + amount
 pub const PLAYER_PARTICIPATION_SIZE: usize = 8 + 4 + 8; // discriminator + player_index + player_amount
-pub const GAME_SIZE: usize = 8 + 32 + 1 + 8 + 4 + 4 + 4 + 32 + 8 + 8 + 4 + 8 + 1 + 8; // discriminator + creator + game_type + ticket_amount + max_players + min_players + players_count + token_mint + created_at + created_at_slot + timeout + last_slot + is_private + total_amount
+pub const GAME_SIZE: usize = 8 + 32 + 1 + 8 + 4 + 4 + 4 + 32 + 8 + 8 + 4 + 8 + 1 + 8 + 1; // discriminator + creator + game_type + ticket_amount + max_players + min_players + players_count + token_mint + created_at + created_at_slot + timeout + last_slot + is_private + total_amount + is_completed
 
 // Oracle account that manages global game settings and authority
 #[account]
@@ -182,6 +182,8 @@ pub struct Game {
     pub is_private: bool,
     // Total accumulated prize
     pub total_amount: u64,
+    // Whether the game is completed
+    pub is_completed: bool,
 }
 
 impl Game {
@@ -210,6 +212,16 @@ impl Game {
     pub fn waiting_for_oracle(&self, oracle_buffer_time: u64, current_time: u64) -> bool {
         self.is_ready_for_completion(current_time)
             && !self.is_buffer_expired(oracle_buffer_time, current_time)
+    }
+
+    // Marks the game as completed
+    pub fn complete(&mut self) {
+        self.is_completed = true;
+    }
+
+    // Checks if the game is completed but not yet cleaned
+    pub fn is_completed_but_not_cleaned(&self) -> bool {
+        self.is_completed
     }
 
     // Verifies the secret key matches the random hash

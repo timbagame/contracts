@@ -20,6 +20,9 @@ pub fn handler(ctx: Context<super::CompleteGame>) -> Result<()> {
     game_token.fee_amount += fee_amount;
     winner_balance.amount += winner_amount;
 
+    // Mark game as completed (but don't close it yet)
+    game.complete();
+
     emit!(GameCompleted {
         game_key: game.key(),
         winner: ctx.accounts.winner.key(),
