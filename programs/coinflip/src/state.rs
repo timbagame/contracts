@@ -5,8 +5,8 @@ use anchor_lang::solana_program::hash::hash;
 pub const ORACLE_SIZE: usize = 8 + 32 + 1 + 2 + 4 + 4 + 4; // discriminator + authority + fee_percentage + oracle_buffer_time + max_players + max_timeout + min_timeout
 pub const GAME_TOKEN_SIZE: usize = 8 + 8 + 8 + 1; // discriminator + min_amount + fee_amount + enabled
 pub const PLAYER_BALANCE_SIZE: usize = 8 + 8; // discriminator + amount
-pub const PLAYER_PARTICIPATION_SIZE: usize = 8 + 4 + 8 + 32; // discriminator + player_index + player_amount + previous_player
-pub const GAME_SIZE: usize = 8 + 32 + 1 + 8 + 4 + 4 + 4 + 32 + 8 + 4 + 8 + 1 + 8 + 32; // discriminator + creator + game_type + ticket_amount + max_players + min_players + players_count + token_mint + created_at + timeout + last_slot + is_private + total_amount + last_player
+pub const PLAYER_PARTICIPATION_SIZE: usize = 8 + 4 + 8; // discriminator + player_index + player_amount
+pub const GAME_SIZE: usize = 8 + 32 + 1 + 8 + 4 + 4 + 4 + 32 + 8 + 4 + 8 + 1 + 8; // discriminator + creator + game_type + ticket_amount + max_players + min_players + players_count + token_mint + created_at + timeout + last_slot + is_private + total_amount
 
 // Oracle account that manages global game settings and authority
 #[account]
@@ -131,8 +131,6 @@ pub struct PlayerParticipation {
     pub player_index: u32,
     // Amount contributed by the player
     pub player_amount: u64,
-    // Address of the player who joined before
-    pub previous_player: Pubkey,
 }
 
 // Type of game being played
@@ -182,8 +180,6 @@ pub struct Game {
     pub is_private: bool,
     // Total accumulated prize
     pub total_amount: u64,
-    // Address of the last player who joined
-    pub last_player: Pubkey,
 }
 
 impl Game {
