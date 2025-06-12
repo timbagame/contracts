@@ -22,6 +22,8 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
 
     // Set player index and update counts
     player_participation.player_index = game.players_count;
+    player_participation.previous_player = game.last_player; // Track the previous player's address
+    game.last_player = ctx.accounts.player.key(); // Track the last player's address
     game.players_count += 1;
     game.last_slot = clock.slot;
 

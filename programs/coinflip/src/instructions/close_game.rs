@@ -21,9 +21,8 @@ pub fn handler(ctx: Context<super::CloseGame>) -> Result<()> {
 
     // Refund creator for giveaway games with remaining funds
     if game.ticket_amount == 0 && game.total_amount > 0 {
-        if let Some(creator_balance) = &mut ctx.accounts.creator_balance {
-            creator_balance.refund(game.total_amount);
-        }
+        let creator_balance = &mut ctx.accounts.creator_balance;
+        creator_balance.refund(game.total_amount);
     }
 
     // ===============================
