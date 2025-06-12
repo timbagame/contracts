@@ -244,6 +244,58 @@ describe("coinflip", () => {
     };
   }
 
+  // Helper function to call unjoin with proper accounts for swap-with-last approach
+  async function unjoinPlayer(gamePDA: PublicKey, playerToUnjoin: anchor.web3.Keypair, gameData: any, allPlayers: anchor.web3.Keypair[] = []) {
+    // First, get the departing player's current index
+    const [departingPlayerParticipationPDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("player_participation"), gamePDA.toBuffer(), playerToUnjoin.publicKey.toBuffer()],
+      program.programId
+    );
+    
+    const departingPlayerParticipation = await program.account.playerParticipation.fetch(departingPlayerParticipationPDA);
+    const departingIndex = departingPlayerParticipation.playerIndex;
+    const lastIndex = gameData.playersCount - 1;
+    
+    const accounts: any = {
+      game: gamePDA,
+      player: playerToUnjoin.publicKey,
+    };
+
+    let remainingAccounts = [];
+    
+    // Only add last player account if departing player is NOT the last player
+    if (departingIndex !== lastIndex && gameData.playersCount > 1) {
+      // Find the actual last player by checking all provided players
+      for (const player of allPlayers) {
+        try {
+          const [participationPDA] = PublicKey.findProgramAddressSync(
+            [Buffer.from("player_participation"), gamePDA.toBuffer(), player.publicKey.toBuffer()],
+            program.programId
+          );
+          
+          const participationAccount = await program.account.playerParticipation.fetch(participationPDA);
+          if (participationAccount.playerIndex === lastIndex) {
+            remainingAccounts.push({
+              pubkey: participationPDA,
+              isWritable: true,
+              isSigner: false,
+            });
+            break;
+          }
+        } catch (e) {
+          // Account doesn't exist, continue
+        }
+      }
+    }
+
+    return await program.methods
+      .unjoinGame()
+      .accounts(accounts)
+      .remainingAccounts(remainingAccounts)
+      .signers([playerToUnjoin])
+      .rpc();
+  }
+
 
   it("Initialize Oracle Successfully", async () => {
     const { authority, feePercentage, oracleBufferTime } = await createOracleAccount();
@@ -1401,7 +1453,7 @@ describe("coinflip", () => {
     }
   });
 
-  it("Test Unjoin Index Boundary Protection", async () => {
+  it("Test Unjoin with Swap-with-Last Approach", async () => {
     const {
     } = await createOracleAccount();
 
@@ -1486,62 +1538,36 @@ describe("coinflip", () => {
     let gameData = await program.account.game.fetch(gamePDA);
     expect(gameData.playersCount).to.equal(3);
 
-    // Try to unjoin player1 (index 1) when player2 (index 2) exists - should fail
-    try {
-      await program.methods
-        .unjoinGame()
-        .accounts({
-          game: gamePDA,
-          player: player1.publicKey,
-        })
-        .signers([player1])
-        .rpc();
-      expect.fail("Should not allow non-last player to unjoin");
-    } catch (error) {
-      expect(error.toString()).to.include("OnlyLastPlayerCanUnjoin");
-    }
+    const allPlayers = [creator, player1, player2];
 
-    // Try to unjoin creator (index 0) - should fail
-    try {
-      await program.methods
-        .unjoinGame()
-        .accounts({
-          game: gamePDA,
-          player: creator.publicKey,
-        })
-        .signers([creator])
-        .rpc();
-      expect.fail("Should not allow non-last player to unjoin");
-    } catch (error) {
-      expect(error.toString()).to.include("OnlyLastPlayerCanUnjoin");
-    }
+    // Test: Any player can now unjoin (not just the last one)
+    // Let's have player1 (index 1) unjoin first - should work with swap
+    await unjoinPlayer(gamePDA, player1, gameData, allPlayers);
 
-    // Only player2 (last player, index 2) should be able to unjoin
-    await program.methods
-      .unjoinGame()
-      .accounts({
-        game: gamePDA,
-        player: player2.publicKey,
-      })
-      .signers([player2])
-      .rpc();
-
-    // Verify state after valid unjoin
+    // Verify state after unjoin - player count decreased
     gameData = await program.account.game.fetch(gamePDA);
     expect(gameData.playersCount).to.equal(2);
 
-    // Now player1 (now the last player at index 1) should be able to unjoin
-    await program.methods
-      .unjoinGame()
-      .accounts({
-        game: gamePDA,
-        player: player1.publicKey,
-      })
-      .signers([player1])
-      .rpc();
+    // Verify index swapping worked correctly:
+    // player2 should now have index 1 (swapped from index 2)
+    const [player2ParticipationPDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("player_participation"), gamePDA.toBuffer(), player2.publicKey.toBuffer()],
+      program.programId
+    );
+    
+    const player2Participation = await program.account.playerParticipation.fetch(player2ParticipationPDA);
+    expect(player2Participation.playerIndex).to.equal(1); // Should have been swapped to index 1
+
+    // Now test creator (index 0) can unjoin
+    gameData = await program.account.game.fetch(gamePDA);
+    await unjoinPlayer(gamePDA, creator, gameData, [creator, player2]);
 
     gameData = await program.account.game.fetch(gamePDA);
     expect(gameData.playersCount).to.equal(1);
+
+    // Verify player2 is now at index 0 (swapped from index 1)
+    const player2ParticipationAfterSwap = await program.account.playerParticipation.fetch(player2ParticipationPDA);
+    expect(player2ParticipationAfterSwap.playerIndex).to.equal(0);
   });
 
   it("Test Orphaned Player Participation Account Prevention", async () => {
@@ -1628,14 +1654,8 @@ describe("coinflip", () => {
     expect(player1Participation.playerIndex).to.equal(1);
 
     // Player1 unjoins (valid operation - only 2 players, need 4 min, so not waiting for oracle)
-    await program.methods
-      .unjoinGame()
-      .accounts({
-        game: gamePDA,
-        player: player1.publicKey,
-      })
-      .signers([player1])
-      .rpc();
+    let gameData = await program.account.game.fetch(gamePDA);
+    await unjoinPlayer(gamePDA, player1, gameData, [creator, player1]);
 
     // Verify player1's participation account was closed
     try {
@@ -1650,7 +1670,7 @@ describe("coinflip", () => {
     expect(remainingCreatorParticipation.playerIndex).to.equal(0);
 
     // Verify game state is consistent
-    const gameData = await program.account.game.fetch(gamePDA);
+    gameData = await program.account.game.fetch(gamePDA);
     expect(gameData.playersCount).to.equal(1);
   });
 
@@ -1720,16 +1740,10 @@ describe("coinflip", () => {
     }
 
     // Complex sequence: last player unjoins, then rejoins
-    await program.methods
-      .unjoinGame()
-      .accounts({
-        game: gamePDA,
-        player: players[3].player.publicKey,
-      })
-      .signers([players[3].player])
-      .rpc();
-
     let gameData = await program.account.game.fetch(gamePDA);
+    await unjoinPlayer(gamePDA, players[3].player, gameData, players.map(p => p.player));
+
+    gameData = await program.account.game.fetch(gamePDA);
     expect(gameData.playersCount).to.equal(3);
 
     // Player 3 rejoins - should get index 3 again
@@ -1825,14 +1839,7 @@ describe("coinflip", () => {
 
     // In Snowball games with multiple players, unjoin should be restricted
     try {
-      await program.methods
-        .unjoinGame()
-        .accounts({
-          game: gamePDA,
-          player: player1.publicKey, // Last player trying to unjoin
-        })
-        .signers([player1])
-        .rpc();
+      await unjoinPlayer(gamePDA, player1, gameData, [creator, player1]);
       expect.fail("Snowball game with multiple players should not allow unjoin");
     } catch (error) {
       expect(error.toString()).to.include("SnowballMultiPlayerUnjoin");
