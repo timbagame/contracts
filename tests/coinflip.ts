@@ -401,14 +401,9 @@ describe("coinflip", () => {
     const departingIndex = departingPlayerParticipation.playerIndex;
     const lastIndex = gameData.playersCount - 1;
 
-    const accounts: any = {
-      game: gamePDA,
-      player: playerToUnjoin.publicKey,
-    };
+    // Find the last player's pubkey if departing player is NOT the last player
+    let lastPlayerPubkey = playerToUnjoin.publicKey; // Default to self if they are the last player
 
-    let remainingAccounts = [];
-
-    // Only add last player account if departing player is NOT the last player
     if (departingIndex !== lastIndex && gameData.playersCount > 1) {
       // Find the actual last player by checking all provided players
       for (const player of allPlayers) {
@@ -420,11 +415,7 @@ describe("coinflip", () => {
 
           const participationAccount = await program.account.playerParticipation.fetch(participationPDA);
           if (participationAccount.playerIndex === lastIndex) {
-            remainingAccounts.push({
-              pubkey: participationPDA,
-              isWritable: true,
-              isSigner: false,
-            });
+            lastPlayerPubkey = player.publicKey;
             break;
           }
         } catch (e) {
@@ -434,9 +425,11 @@ describe("coinflip", () => {
     }
 
     return await program.methods
-      .unjoinGame()
-      .accounts(accounts)
-      .remainingAccounts(remainingAccounts)
+      .unjoinGame(lastPlayerPubkey)
+      .accounts({
+        game: gamePDA,
+        player: playerToUnjoin.publicKey,
+      })
       .signers([playerToUnjoin])
       .rpc();
   }
