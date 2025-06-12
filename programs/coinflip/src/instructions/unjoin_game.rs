@@ -26,9 +26,7 @@ pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
     // ===============================
     // EFFECTS - Update all state first
     // ===============================
-    // Update last player
     let last_player_participation = &mut ctx.accounts.last_player_participation;
-    game.last_player = last_player_participation.previous_player;
 
     // Get the departing player's index
     let departing_index = player_participation.player_index;
@@ -36,8 +34,11 @@ pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
 
     // If departing player is not the last player, we need to swap with the last player
     if departing_index != last_index {
+        game.last_player = last_player_participation.previous_player;
         last_player_participation.player_index = departing_index;
         last_player_participation.previous_player = player_participation.previous_player;
+    } else {
+        game.last_player = player_participation.previous_player;
     }
 
     let should_refund = player_participation.player_amount > 0;
