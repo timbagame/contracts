@@ -19,11 +19,16 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
     // EFFECTS - Update all state first
     // ===============================
     let player_participation = &mut ctx.accounts.player_participation;
+    let player = ctx.accounts.player.key();
 
     // Set player index and update counts
     player_participation.player_index = game.players_count;
-    player_participation.previous_player = game.last_player; // Track the previous player's address
-    game.last_player = ctx.accounts.player.key(); // Track the last player's address
+    if game.players_count > 0 {
+        player_participation.previous_player = game.last_player; // Track the previous player's address
+    } else {
+        player_participation.previous_player = player; // Same player to avoid account not found error
+    }
+    game.last_player = player; // Track the last player's address
     game.players_count += 1;
     game.last_slot = clock.slot;
 
@@ -52,7 +57,7 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
     // Emit event
     emit!(PlayerJoined {
         game_key: game.key(),
-        player: ctx.accounts.player.key(),
+        player: player,
         total_amount: game.total_amount,
         players_count: game.players_count,
         player_index: player_participation.player_index,
