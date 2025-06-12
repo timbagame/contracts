@@ -8,10 +8,10 @@
       "./node_modules/@types"
     ],
     "lib": [
-      "es2023"
+      "es2015"
     ],
     "module": "commonjs",
-    "target": "es2023",
+    "target": "es6",
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "noUnusedLocals": true,
