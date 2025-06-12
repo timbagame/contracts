@@ -26,14 +26,14 @@ pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
     // ===============================
     // EFFECTS - Update all state first
     // ===============================
-    let last_player_participation = &mut ctx.accounts.last_player_participation;
-
     // Get the departing player's index
     let departing_index = player_participation.player_index;
     let last_index = game.players_count - 1;
 
     // If departing player is not the last player, we need to swap with the last player
     if departing_index != last_index {
+        let last_player_participation = &mut ctx.accounts.last_player_participation;
+
         game.last_player = last_player_participation.previous_player;
         last_player_participation.player_index = departing_index;
         last_player_participation.previous_player = player_participation.previous_player;
