@@ -23,12 +23,6 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
 
     // Set player index and update counts
     player_participation.player_index = game.players_count;
-    if game.players_count > 0 {
-        player_participation.previous_player = game.last_player; // Track the previous player's address
-    } else {
-        player_participation.previous_player = player; // Same player to avoid account not found error
-    }
-    game.last_player = player; // Track the last player's address
     game.players_count += 1;
     game.last_slot = clock.slot;
 
