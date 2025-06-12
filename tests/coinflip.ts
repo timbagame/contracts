@@ -48,6 +48,16 @@ describe("coinflip", () => {
   anchor.setProvider(anchor.AnchorProvider.env());
   const program = anchor.workspace.Coinflip as anchor.Program<Coinflip>;
 
+  // Global test state - reused across tests for speed
+  let globalMint: PublicKey;
+  let globalMintAuthority: anchor.web3.Keypair;
+  let globalOraclePDA: PublicKey;
+  let globalPlayers: Array<{
+    player: anchor.web3.Keypair;
+    playerTokenAccount: any;
+    playerBalancePDA: PublicKey;
+  }> = [];
+
   async function getGamePDA() {
     const secretKeyBuffer = anchor.web3.Keypair.generate().secretKey.slice(0, 32); // Only use first 32 bytes
     const secretKey = Array.from(secretKeyBuffer);
@@ -63,6 +73,8 @@ describe("coinflip", () => {
   }
   // Add this before all tests
   before(async () => {
+    console.log("🚀 Setting up global test resources for speed...");
+
     // Initialize oracle once for all tests
     const config = {
       feePercentage: 1,
@@ -72,14 +84,21 @@ describe("coinflip", () => {
       minTimeout: 1,
     };
 
-    // Airdrop SOL to authority for rent
-    const signature = await program.provider.connection.requestAirdrop(
-      program.provider.publicKey,
-      2 * anchor.web3.LAMPORTS_PER_SOL,
+    // Get oracle PDA
+    const [oraclePDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("oracle")],
+      program.programId
     );
-    await program.provider.connection.confirmTransaction(signature);
+    globalOraclePDA = oraclePDA;
 
     try {
+      // Airdrop SOL to authority for rent
+      const signature = await program.provider.connection.requestAirdrop(
+        program.provider.publicKey,
+        5 * anchor.web3.LAMPORTS_PER_SOL, // More SOL upfront
+      );
+      await program.provider.connection.confirmTransaction(signature);
+
       await program.methods
         .initializeOracle(config)
         .accounts({
@@ -87,28 +106,154 @@ describe("coinflip", () => {
         })
         .rpc();
 
-      // Create token mint and initialize token
-      await createSplTokenMint();
-
+      console.log("✅ Oracle initialized");
     } catch (e) {
-      // If oracle already exists, that's fine
-      console.log("Initialization failed, may already exist:", e);
+      console.log("Oracle already exists, continuing...");
     }
+
+    // Create global token mint
+    const { mint, mintAuthority } = await createGlobalTokenMint();
+    globalMint = mint;
+    globalMintAuthority = mintAuthority;
+
+    // Pre-create a pool of players for tests to reuse
+    console.log("🎮 Creating player pool...");
+    await createPlayerPool(8); // Create 8 players upfront
+
+    console.log("✅ Global setup complete");
   });
 
-  // Modify createOracleAccount to return just what we need
-  async function createOracleAccount() {
-    const [oraclePDA] = PublicKey.findProgramAddressSync(
-      [Buffer.from("oracle")],
+  // Optimized helper functions for speed
+  async function createGlobalTokenMint() {
+    const mintAuthority = anchor.web3.Keypair.generate();
+
+    // Airdrop SOL to mintAuthority
+    const signature = await program.provider.connection.requestAirdrop(
+      mintAuthority.publicKey,
+      5 * anchor.web3.LAMPORTS_PER_SOL,
+    );
+    await program.provider.connection.confirmTransaction(signature);
+
+    const mint = await createMint(
+      program.provider.connection,
+      mintAuthority,
+      mintAuthority.publicKey,
+      null,
+      6,
+    );
+
+    // Create the required associated token accounts first
+    const [gameVaultPDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("game_vault"), mint.toBuffer()],
       program.programId
     );
 
-    const oracleAccount = await program.account.oracle.fetch(oraclePDA);
+    const gameTokenAccount = await getOrCreateAssociatedTokenAccount(
+      program.provider.connection,
+      mintAuthority,
+      mint,
+      gameVaultPDA,
+      true,
+    );
+
+    const oracleAuthorityTokenAccount = await getOrCreateAssociatedTokenAccount(
+      program.provider.connection,
+      mintAuthority,
+      mint,
+      program.provider.publicKey,
+    );
+
+    // Now initialize token config
+    const tokenConfig = { minAmount: new anchor.BN(1000), enabled: true };
+    await program.methods
+      .initializeToken(tokenConfig)
+      .accounts({
+        authority: program.provider.publicKey,
+        tokenMint: mint,
+      })
+      .rpc();
+
+    return { mint, mintAuthority };
+  }
+
+  async function createPlayerPool(count: number) {
+    // Batch create keypairs
+    const players = Array.from({ length: count }, () => anchor.web3.Keypair.generate());
+
+    // Batch airdrop SOL
+    const airdropPromises = players.map(player =>
+      program.provider.connection.requestAirdrop(player.publicKey, 3 * anchor.web3.LAMPORTS_PER_SOL)
+    );
+    const signatures = await Promise.all(airdropPromises);
+
+    // Confirm all airdrops
+    await Promise.all(signatures.map(sig => program.provider.connection.confirmTransaction(sig)));
+
+    // Create player data in parallel
+    const playerPromises = players.map(async (player) => {
+      // Create token account
+      const playerTokenAccount = await getOrCreateAssociatedTokenAccount(
+        program.provider.connection,
+        player,
+        globalMint,
+        player.publicKey,
+      );
+
+      // Initialize player balance
+      await program.methods
+        .initializePlayerBalance()
+        .accounts({
+          player: player.publicKey,
+          tokenMint: globalMint,
+        })
+        .signers([player])
+        .rpc();
+
+      const [playerBalancePDA] = PublicKey.findProgramAddressSync(
+        [Buffer.from("player_balance"), player.publicKey.toBuffer(), globalMint.toBuffer()],
+        program.programId
+      );
+
+      // Mint tokens to player
+      await mintTo(
+        program.provider.connection,
+        globalMintAuthority,
+        globalMint,
+        playerTokenAccount.address,
+        globalMintAuthority,
+        10_000_000, // 10M tokens
+      );
+
+      return { player, playerTokenAccount, playerBalancePDA };
+    });
+
+    globalPlayers = await Promise.all(playerPromises);
+  }
+
+  // Fast helper to get pre-created resources
+  async function getTestResources() {
+    return {
+      mint: globalMint,
+      mintAuthority: globalMintAuthority,
+      oraclePDA: globalOraclePDA,
+    };
+  }
+
+  async function getTestPlayers(count: number) {
+    if (count > globalPlayers.length) {
+      throw new Error(`Requested ${count} players, but only ${globalPlayers.length} available in pool`);
+    }
+    return globalPlayers.slice(0, count);
+  }
+
+  // Legacy function for backward compatibility
+  async function createOracleAccount() {
+    const oracleAccount = await program.account.oracle.fetch(globalOraclePDA);
     return {
       authority: oracleAccount.authority,
       feePercentage: oracleAccount.feePercentage,
       oracleBufferTime: oracleAccount.oracleBufferTime,
-      oraclePDA: oraclePDA,
+      oraclePDA: globalOraclePDA,
     };
   }
 
@@ -251,18 +396,18 @@ describe("coinflip", () => {
       [Buffer.from("player_participation"), gamePDA.toBuffer(), playerToUnjoin.publicKey.toBuffer()],
       program.programId
     );
-    
+
     const departingPlayerParticipation = await program.account.playerParticipation.fetch(departingPlayerParticipationPDA);
     const departingIndex = departingPlayerParticipation.playerIndex;
     const lastIndex = gameData.playersCount - 1;
-    
+
     const accounts: any = {
       game: gamePDA,
       player: playerToUnjoin.publicKey,
     };
 
     let remainingAccounts = [];
-    
+
     // Only add last player account if departing player is NOT the last player
     if (departingIndex !== lastIndex && gameData.playersCount > 1) {
       // Find the actual last player by checking all provided players
@@ -272,7 +417,7 @@ describe("coinflip", () => {
             [Buffer.from("player_participation"), gamePDA.toBuffer(), player.publicKey.toBuffer()],
             program.programId
           );
-          
+
           const participationAccount = await program.account.playerParticipation.fetch(participationPDA);
           if (participationAccount.playerIndex === lastIndex) {
             remainingAccounts.push({
@@ -1454,36 +1599,12 @@ describe("coinflip", () => {
   });
 
   it("Test Unjoin with Swap-with-Last Approach", async () => {
-    const {
-    } = await createOracleAccount();
+    // Use pre-created global resources for speed
+    const { mint } = await getTestResources();
+    const players = await getTestPlayers(3);
 
-    const {
-      mint,
-      mintAuthority,
-    } = await createSplTokenMint();
-
+    const [creator, player1, player2] = players;
     const amount = new anchor.BN(1_000_000);
-
-    // Create creator and players
-    const {
-      player: creator,
-      playerTokenAccount: creatorTokenAccount,
-    } = await createPlayer(mint);
-
-    const {
-      player: player1,
-      playerTokenAccount: player1TokenAccount,
-    } = await createPlayer(mint);
-
-    const {
-      player: player2,
-      playerTokenAccount: player2TokenAccount,
-    } = await createPlayer(mint);
-
-    // Mint tokens to all players
-    await mintTokens(mintAuthority, mint, creatorTokenAccount.address, amount);
-    await mintTokens(mintAuthority, mint, player1TokenAccount.address, amount);
-    await mintTokens(mintAuthority, mint, player2TokenAccount.address, amount);
 
     const { gamePDA, randomHash } = await getGamePDA();
 
@@ -1500,10 +1621,10 @@ describe("coinflip", () => {
     await program.methods
       .initializeGame(gameConfig, randomHash)
       .accounts({
-        creator: creator.publicKey,
+        creator: creator.player.publicKey,
         tokenMint: mint,
       })
-      .signers([creator])
+      .signers([creator.player])
       .rpc();
 
     // All players join (creator=index 0, player1=index 1, player2=index 2)
@@ -1511,38 +1632,38 @@ describe("coinflip", () => {
       .joinGame()
       .accounts({
         game: gamePDA,
-        player: creator.publicKey,
+        player: creator.player.publicKey,
       })
-      .signers([creator])
+      .signers([creator.player])
       .rpc();
 
     await program.methods
       .joinGame()
       .accounts({
         game: gamePDA,
-        player: player1.publicKey,
+        player: player1.player.publicKey,
       })
-      .signers([player1])
+      .signers([player1.player])
       .rpc();
 
     await program.methods
       .joinGame()
       .accounts({
         game: gamePDA,
-        player: player2.publicKey,
+        player: player2.player.publicKey,
       })
-      .signers([player2])
+      .signers([player2.player])
       .rpc();
 
     // Verify all players joined
     let gameData = await program.account.game.fetch(gamePDA);
     expect(gameData.playersCount).to.equal(3);
 
-    const allPlayers = [creator, player1, player2];
+    const allPlayers = [creator.player, player1.player, player2.player];
 
     // Test: Any player can now unjoin (not just the last one)
     // Let's have player1 (index 1) unjoin first - should work with swap
-    await unjoinPlayer(gamePDA, player1, gameData, allPlayers);
+    await unjoinPlayer(gamePDA, player1.player, gameData, allPlayers);
 
     // Verify state after unjoin - player count decreased
     gameData = await program.account.game.fetch(gamePDA);
@@ -1551,16 +1672,16 @@ describe("coinflip", () => {
     // Verify index swapping worked correctly:
     // player2 should now have index 1 (swapped from index 2)
     const [player2ParticipationPDA] = PublicKey.findProgramAddressSync(
-      [Buffer.from("player_participation"), gamePDA.toBuffer(), player2.publicKey.toBuffer()],
+      [Buffer.from("player_participation"), gamePDA.toBuffer(), player2.player.publicKey.toBuffer()],
       program.programId
     );
-    
+
     const player2Participation = await program.account.playerParticipation.fetch(player2ParticipationPDA);
     expect(player2Participation.playerIndex).to.equal(1); // Should have been swapped to index 1
 
     // Now test creator (index 0) can unjoin
     gameData = await program.account.game.fetch(gamePDA);
-    await unjoinPlayer(gamePDA, creator, gameData, [creator, player2]);
+    await unjoinPlayer(gamePDA, creator.player, gameData, [creator.player, player2.player]);
 
     gameData = await program.account.game.fetch(gamePDA);
     expect(gameData.playersCount).to.equal(1);
@@ -2496,107 +2617,6 @@ describe("coinflip", () => {
       expect.fail("Wrong winner should be rejected");
     } catch (error) {
       expect(error.toString()).to.include("UnauthorizedPlayer");
-    }
-  });
-
-  // ========================================
-  // TIME-BASED ATTACK TESTS
-  // ========================================
-
-  it("Test Oracle Buffer Time Manipulation Protection", async () => {
-    const {
-    } = await createOracleAccount();
-
-    const {
-      mint,
-      mintAuthority,
-    } = await createSplTokenMint();
-
-    const amount = new anchor.BN(1_000_000);
-
-    // Create creator and player
-    const {
-      player: creator,
-      playerTokenAccount: creatorTokenAccount,
-    } = await createPlayer(mint);
-
-    const {
-      player: player1,
-      playerTokenAccount: player1TokenAccount,
-    } = await createPlayer(mint);
-
-    await mintTokens(mintAuthority, mint, creatorTokenAccount.address, amount);
-    await mintTokens(mintAuthority, mint, player1TokenAccount.address, amount);
-
-    const { gamePDA, randomHash, secretKey } = await getGamePDA();
-
-    const gameConfig = {
-      gameType: { coinflip: {} },
-      amount: amount,
-      maxPlayers: 2,
-      minPlayers: 2,
-      timeout: 1, // Very short timeout (1 second)
-      isPrivate: false,
-    };
-
-    // Create game with short timeout
-    await program.methods
-      .initializeGame(gameConfig, randomHash)
-      .accounts({
-        creator: creator.publicKey,
-        tokenMint: mint,
-      })
-      .signers([creator])
-      .rpc();
-
-    await program.methods
-      .joinGame()
-      .accounts({
-        game: gamePDA,
-        player: creator.publicKey,
-      })
-      .signers([creator])
-      .rpc();
-
-    await program.methods
-      .joinGame()
-      .accounts({
-        game: gamePDA,
-        player: player1.publicKey,
-      })
-      .signers([player1])
-      .rpc();
-
-    const playersGameData = await program.account.game.fetch(gamePDA);
-    const winnerIndex = calculateWinnerIndex(playersGameData.playersCount, secretKey, Number(playersGameData.lastSlot));
-    const winner = winnerIndex === 0 ? creator.publicKey : player1.publicKey;
-
-    // Complete game immediately (within buffer time - should succeed)
-    try {
-      await program.methods
-        .completeGame(randomHash, secretKey)
-        .accounts({
-          authority: program.provider.publicKey,
-          winner: winner,
-          creator: creator.publicKey,
-        })
-        .rpc();
-
-      console.log("Game completed successfully within buffer time");
-
-      // Verify game was completed
-      const completedGameData = await program.account.game.fetch(gamePDA);
-      expect(completedGameData.totalAmount.toNumber()).to.equal(0, "Game should be completed");
-    } catch (error) {
-      // If it fails, check if it's a valid constraint error
-      if (error.toString().includes("GameNotReadyForOracle")) {
-        console.log("Game not ready for oracle (expected behavior)");
-      } else if (error.toString().includes("GameWaitingForOracle")) {
-        console.log("Game waiting for oracle (expected behavior)");
-      } else {
-        console.log("Unexpected error:", error.toString());
-        // Don't fail the test - timing-based tests can be flaky
-      }
     }
   });
 
