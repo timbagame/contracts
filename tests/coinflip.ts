@@ -148,7 +148,7 @@ describe("coinflip", () => {
       program.programId
     );
 
-    const gameTokenAccount = await getOrCreateAssociatedTokenAccount(
+    await getOrCreateAssociatedTokenAccount(
       program.provider.connection,
       mintAuthority,
       mint,
@@ -156,7 +156,7 @@ describe("coinflip", () => {
       true,
     );
 
-    const oracleAuthorityTokenAccount = await getOrCreateAssociatedTokenAccount(
+    await getOrCreateAssociatedTokenAccount(
       program.provider.connection,
       mintAuthority,
       mint,
