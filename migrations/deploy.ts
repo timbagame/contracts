@@ -27,7 +27,7 @@ module.exports = async function (provider) {
       .accounts({
         authority: provider.wallet.publicKey,
       })
-      .rpc({ commitment: 'confirmed' });
+      .rpc({ commitment: "confirmed" });
 
     console.log("Oracle initialized with transaction signature:", tx);
   } catch (error) {

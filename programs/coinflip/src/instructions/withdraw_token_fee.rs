@@ -3,10 +3,6 @@ use anchor_lang::prelude::*;
 
 pub fn handler(ctx: Context<super::WithdrawTokenFee>) -> Result<()> {
     // ===============================
-    // CHECKS (handled by constraints)
-    // ===============================
-
-    // ===============================
     // EFFECTS - Update state first
     // ===============================
     let game_token = &mut ctx.accounts.game_token;

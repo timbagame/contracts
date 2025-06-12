@@ -23,7 +23,6 @@ pub fn handler(ctx: Context<super::CleanPlayerParticipation>) -> Result<()> {
     // ===============================
     // EFFECTS - Update state first
     // ===============================
-
     let refund_amount =
         if is_buffer_expired && !is_completed && player_participation.player_amount > 0 {
             // Refund player for uncompleted game
