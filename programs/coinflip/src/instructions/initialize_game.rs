@@ -21,7 +21,6 @@ pub fn handler(ctx: Context<super::InitializeGame>, config: GameConfig) -> Resul
     game.timeout = config.timeout;
     game.last_slot = clock.slot;
     game.is_private = config.is_private;
-    game.last_player = Pubkey::default();
 
     // Set amounts based on game type
     if config.game_type == GameType::Giveaway {

@@ -318,6 +318,7 @@ pub struct CompleteGame<'info> {
 }
 
 #[derive(Accounts)]
+#[instruction(last_player: Pubkey)]
 pub struct UnjoinGame<'info> {
     #[account(mut)]
     pub game: Account<'info, Game>,
@@ -338,9 +339,9 @@ pub struct UnjoinGame<'info> {
     pub player_balance: Account<'info, PlayerBalance>,
     #[account(
         mut,
-        seeds = [b"player_participation", game.key().as_ref(), game.last_player.as_ref()],
+        seeds = [b"player_participation", game.key().as_ref(), last_player.as_ref()],
         bump,
-    )]
+        constraint = last_player_participation.player_index == game.players_count - 1 @ ErrorCode::InvalidLastPlayerIndex)]
     pub last_player_participation: Account<'info, PlayerParticipation>,
     #[account(seeds = [b"oracle"], bump)]
     pub oracle: Account<'info, Oracle>,
