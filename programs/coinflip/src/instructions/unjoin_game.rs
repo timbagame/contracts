@@ -26,6 +26,7 @@ pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
     // ===============================
     // EFFECTS - Update all state first
     // ===============================
+
     // Get the departing player's index
     let departing_index = player_participation.player_index;
     let last_index = game.players_count - 1;
@@ -45,7 +46,7 @@ pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
         let player_balance = &mut ctx.accounts.player_balance;
         player_balance.refund(refund_amount);
     }
-    
+
     game.players_count -= 1;
     game.last_slot = clock.slot;
 
