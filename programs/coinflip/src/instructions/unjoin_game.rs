@@ -39,18 +39,15 @@ pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
     let should_refund = player_participation.player_amount > 0;
     let refund_amount = player_participation.player_amount;
 
-    // Update game state
+    // Update game state and player balance if refund is needed
     if should_refund {
         game.total_amount -= refund_amount;
-    }
-    game.players_count -= 1;
-    game.last_slot = clock.slot;
-
-    // Update player balance if refund is needed
-    if should_refund {
         let player_balance = &mut ctx.accounts.player_balance;
         player_balance.refund(refund_amount);
     }
+    
+    game.players_count -= 1;
+    game.last_slot = clock.slot;
 
     // ===============================
     // INTERACTIONS - External calls
