@@ -425,10 +425,11 @@ describe("coinflip", () => {
     }
 
     return await program.methods
-      .unjoinGame(lastPlayerPubkey)
+      .unjoinGame()
       .accounts({
         game: gamePDA,
         player: playerToUnjoin.publicKey,
+        lastPlayer: lastPlayerPubkey,
       })
       .signers([playerToUnjoin])
       .rpc();
