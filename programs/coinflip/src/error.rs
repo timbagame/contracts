@@ -38,10 +38,8 @@ pub enum ErrorCode {
     InsufficientBalance = 1201,
     #[msg("Cannot unjoin Snowball game with multiple players")]
     SnowballMultiPlayerUnjoin = 1202,
-    #[msg("Missing last player account for index swap")]
-    MissingLastPlayerAccount = 1203,
     #[msg("Invalid last player index")]
-    InvalidLastPlayerIndex = 1204,
+    InvalidLastPlayerIndex = 1203,
 
     // Configuration Errors (1300-1399)
     // --------------------------------
