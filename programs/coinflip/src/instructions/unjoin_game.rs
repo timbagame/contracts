@@ -23,24 +23,23 @@ pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
         crate::error::ErrorCode::SnowballMultiPlayerUnjoin
     );
 
+    // ===============================
+    // EFFECTS - Update all state first
+    // ===============================
+    // Update last player
+    let last_player_participation = &mut ctx.accounts.last_player_participation;
+    game.last_player = last_player_participation.previous_player;
+
     // Get the departing player's index
     let departing_index = player_participation.player_index;
     let last_index = game.players_count - 1;
 
     // If departing player is not the last player, we need to swap with the last player
     if departing_index != last_index {
-        // Get the last player's participation account
-        let last_player_participation = &mut ctx.accounts.last_player_participation;
-
-        // Swap: Move the last player to the departing player's position
-        game.last_player = last_player_participation.previous_player;
         last_player_participation.player_index = departing_index;
         last_player_participation.previous_player = player_participation.previous_player;
     }
 
-    // ===============================
-    // EFFECTS - Update all state first
-    // ===============================
     let should_refund = player_participation.player_amount > 0;
     let refund_amount = player_participation.player_amount;
 
