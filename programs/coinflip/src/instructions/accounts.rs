@@ -335,7 +335,13 @@ pub struct UnjoinGame<'info> {
         seeds = [b"player_balance", player.key().as_ref(), game.token_mint.as_ref()],
         bump,
     )]
-    pub player_balance: Option<Account<'info, PlayerBalance>>,
+    pub player_balance: Account<'info, PlayerBalance>,
+    #[account(
+        mut,
+        seeds = [b"player_participation", game.key().as_ref(), game.last_player.as_ref()],
+        bump,
+    )]
+    pub last_player_participation: Account<'info, PlayerParticipation>,
     #[account(seeds = [b"oracle"], bump)]
     pub oracle: Account<'info, Oracle>,
     pub system_program: Program<'info, System>,
@@ -360,7 +366,7 @@ pub struct CleanPlayerParticipation<'info> {
         seeds = [b"player_balance", player.key().as_ref(), game.token_mint.as_ref()],
         bump,
     )]
-    pub player_balance: Option<Account<'info, PlayerBalance>>,
+    pub player_balance: Account<'info, PlayerBalance>,
     #[account(seeds = [b"oracle"], bump)]
     pub oracle: Account<'info, Oracle>,
     pub system_program: Program<'info, System>,
@@ -382,7 +388,7 @@ pub struct CloseGame<'info> {
         seeds = [b"player_balance", creator.key().as_ref(), game.token_mint.as_ref()],
         bump,
     )]
-    pub creator_balance: Option<Account<'info, PlayerBalance>>,
+    pub creator_balance: Account<'info, PlayerBalance>,
     #[account(seeds = [b"oracle"], bump)]
     pub oracle: Account<'info, Oracle>,
     pub system_program: Program<'info, System>,

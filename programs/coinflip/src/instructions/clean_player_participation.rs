@@ -27,9 +27,9 @@ pub fn handler(ctx: Context<super::CleanPlayerParticipation>) -> Result<()> {
     let refund_amount =
         if is_buffer_expired && !is_completed && player_participation.player_amount > 0 {
             // Refund player for uncompleted game
-            if let Some(player_balance) = &mut ctx.accounts.player_balance {
-                player_balance.refund(player_participation.player_amount);
-            }
+            let player_balance = &mut ctx.accounts.player_balance;
+            player_balance.refund(player_participation.player_amount);
+
             // Deduct from game's total amount
             game.total_amount -= player_participation.player_amount;
             player_participation.player_amount

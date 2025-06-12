@@ -29,29 +29,13 @@ pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
 
     // If departing player is not the last player, we need to swap with the last player
     if departing_index != last_index {
-        // We need exactly one remaining account (the last player's participation account)
-        require!(
-            ctx.remaining_accounts.len() == 1,
-            crate::error::ErrorCode::MissingLastPlayerAccount
-        );
-        
-        let last_player_participation_info = &ctx.remaining_accounts[0];
-        
-        // Deserialize the last player's participation account
-        let mut last_player_participation_data = last_player_participation_info.try_borrow_mut_data()?;
-        let mut last_player_participation = crate::state::PlayerParticipation::try_deserialize(&mut last_player_participation_data.as_ref())?;
-        
-        // Verify the last player's participation account has the correct index
-        require!(
-            last_player_participation.player_index == last_index,
-            crate::error::ErrorCode::InvalidLastPlayerIndex
-        );
-        
+        // Get the last player's participation account
+        let last_player_participation = &mut ctx.accounts.last_player_participation;
+
         // Swap: Move the last player to the departing player's position
+        game.last_player = last_player_participation.previous_player;
         last_player_participation.player_index = departing_index;
-        
-        // Serialize the updated account back
-        last_player_participation.try_serialize(&mut last_player_participation_data.as_mut())?;
+        last_player_participation.previous_player = player_participation.previous_player;
     }
 
     // ===============================
@@ -69,9 +53,8 @@ pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
 
     // Update player balance if refund is needed
     if should_refund {
-        if let Some(player_balance) = &mut ctx.accounts.player_balance {
-            player_balance.refund(refund_amount);
-        }
+        let player_balance = &mut ctx.accounts.player_balance;
+        player_balance.refund(refund_amount);
     }
 
     // ===============================
