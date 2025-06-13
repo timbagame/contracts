@@ -2,11 +2,12 @@ use crate::{events::OracleInitialized, OracleConfig};
 use anchor_lang::prelude::*;
 
 pub fn handler(ctx: Context<super::InitializeOracle>, config: OracleConfig) -> Result<()> {
-    // ===============================
-    // EFFECTS - Update state
-    // ===============================
     let oracle = &mut ctx.accounts.oracle;
-    let authority = &ctx.accounts.authority;
+    let authority_key = ctx.accounts.authority.key();
+
+    // ===============================
+    // STATE INITIALIZATION
+    // ===============================
 
     oracle.update_config(
         config.fee_percentage,
@@ -14,16 +15,15 @@ pub fn handler(ctx: Context<super::InitializeOracle>, config: OracleConfig) -> R
         config.max_players,
         config.max_timeout,
         config.min_timeout,
-        authority.key(),
+        authority_key,
     );
 
     // ===============================
-    // INTERACTIONS - External calls
+    // EVENT EMISSION
     // ===============================
 
-    // Emit event
     emit!(OracleInitialized {
-        authority: authority.key(),
+        authority: authority_key,
         fee_percentage: config.fee_percentage,
         oracle_buffer_time: config.oracle_buffer_time,
         max_players: config.max_players,
