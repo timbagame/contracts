@@ -2,34 +2,32 @@ use crate::events::GameClosed;
 use anchor_lang::prelude::*;
 
 pub fn handler(ctx: Context<super::CloseGame>) -> Result<()> {
-    // ===============================
-    // CHECKS
-    // ===============================
     let game = &ctx.accounts.game;
     let oracle = &ctx.accounts.oracle;
     let current_time = Clock::get()?.unix_timestamp as u64;
 
-    // Block close if game is ready for oracle
+    // ===============================
+    // VALIDATION
+    // ===============================
+
     require!(
         !game.waiting_for_oracle(oracle.oracle_buffer_time as u64, current_time),
         crate::error::ErrorCode::GameWaitingForOracle
     );
 
     // ===============================
-    // EFFECTS - Update state first
+    // STATE UPDATES
     // ===============================
 
     // Refund creator for giveaway games with remaining funds
     if game.ticket_amount == 0 && game.total_amount > 0 {
-        let creator_balance = &mut ctx.accounts.creator_balance;
-        creator_balance.refund(game.total_amount);
+        ctx.accounts.creator_balance.refund(game.total_amount);
     }
 
     // ===============================
-    // INTERACTIONS - External calls
+    // EVENT EMISSION
     // ===============================
 
-    // Emit event
     emit!(GameClosed {
         game_key: game.key(),
         timestamp: current_time,

@@ -2,39 +2,37 @@ use crate::events::GameCompleted;
 use anchor_lang::prelude::*;
 
 pub fn handler(ctx: Context<super::CompleteGame>) -> Result<()> {
-    // ===============================
-    // CHECKS
-    // ===============================
     let game = &mut ctx.accounts.game;
     let oracle = &ctx.accounts.oracle;
     let current_time = Clock::get()?.unix_timestamp as u64;
 
-    // Block completion if game is not ready for oracle
+    // ===============================
+    // VALIDATION
+    // ===============================
+
     require!(
         game.waiting_for_oracle(oracle.oracle_buffer_time as u64, current_time),
         crate::error::ErrorCode::GameNotReadyForOracle
     );
 
     // ===============================
-    // EFFECTS - Update state first
+    // STATE UPDATES
     // ===============================
-    let game_token = &mut ctx.accounts.game_token;
-    let winner_balance = &mut ctx.accounts.winner_balance;
+
     let fee_percentage = oracle.fee_percentage as u64;
     let (winner_amount, fee_amount) = game.calculate_amounts(fee_percentage);
 
     // Update balances
-    game_token.fee_amount += fee_amount;
-    winner_balance.amount += winner_amount;
+    ctx.accounts.game_token.fee_amount += fee_amount;
+    ctx.accounts.winner_balance.amount += winner_amount;
 
     // Mark game as completed
     game.complete();
 
     // ===============================
-    // INTERACTIONS - External calls
+    // EVENT EMISSION
     // ===============================
 
-    // Emit event
     emit!(GameCompleted {
         game_key: game.key(),
         winner: ctx.accounts.winner.key(),
