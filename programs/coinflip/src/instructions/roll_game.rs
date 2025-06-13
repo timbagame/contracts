@@ -2,43 +2,43 @@ use crate::{events::PlayerRolled, state::GameType, utils::handle_player_token_tr
 use anchor_lang::prelude::*;
 
 pub fn handler(ctx: Context<super::RollGame>) -> Result<()> {
-    // ===============================
-    // CHECKS
-    // ===============================
     let game = &mut ctx.accounts.game;
+    let player_participation = &mut ctx.accounts.player_participation;
     let clock = Clock::get()?;
     let current_time = clock.unix_timestamp as u64;
 
-    // Block roll if game is expired
+    // ===============================
+    // VALIDATION
+    // ===============================
+
     require!(
         !game.is_expired(current_time),
         crate::error::ErrorCode::GameExpired
     );
 
     // ===============================
-    // EFFECTS - Update all state first
+    // STATE UPDATES
     // ===============================
-    let player_participation = &mut ctx.accounts.player_participation;
+
     let is_snowball = game.game_type == GameType::Snowball;
+    let ticket_amount = game.ticket_amount;
 
     // For Snowball games, update amounts
     if is_snowball {
-        game.total_amount += game.ticket_amount;
-        player_participation.player_amount += game.ticket_amount;
+        game.total_amount += ticket_amount;
+        player_participation.player_amount += ticket_amount;
     }
 
-    // Update last slot for entropy
     game.last_slot = clock.slot;
 
     // ===============================
-    // INTERACTIONS - External calls
+    // TOKEN TRANSFER
     // ===============================
 
-    // Transfer tokens if it's a Snowball game (always collect ticket amount)
     if is_snowball {
         handle_player_token_transfer(
             &mut ctx.accounts.player_balance,
-            game.ticket_amount,
+            ticket_amount,
             ctx.accounts.player_token_account.to_account_info(),
             ctx.accounts.game_token_account.to_account_info(),
             ctx.accounts.player.to_account_info(),
@@ -46,7 +46,10 @@ pub fn handler(ctx: Context<super::RollGame>) -> Result<()> {
         )?;
     }
 
-    // Emit event
+    // ===============================
+    // EVENT EMISSION
+    // ===============================
+
     emit!(PlayerRolled {
         game_key: game.key(),
         player: ctx.accounts.player.key(),

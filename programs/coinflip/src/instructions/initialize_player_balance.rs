@@ -2,23 +2,23 @@ use crate::events::PlayerBalanceInitialized;
 use anchor_lang::prelude::*;
 
 pub fn handler(ctx: Context<super::InitializePlayerBalance>) -> Result<()> {
-    // ===============================
-    // EFFECTS - Update state
-    // ===============================
     let player_balance = &mut ctx.accounts.player_balance;
-    let player = &ctx.accounts.player;
-    let token_mint = &ctx.accounts.token_mint;
+    let player_key = ctx.accounts.player.key();
+    let token_mint_key = ctx.accounts.token_mint.key();
+
+    // ===============================
+    // STATE INITIALIZATION
+    // ===============================
 
     player_balance.amount = 0;
 
     // ===============================
-    // INTERACTIONS - External calls
+    // EVENT EMISSION
     // ===============================
 
-    // Emit event
     emit!(PlayerBalanceInitialized {
-        player: player.key(),
-        token_mint: token_mint.key(),
+        player: player_key,
+        token_mint: token_mint_key,
     });
 
     Ok(())
