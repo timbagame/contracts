@@ -35,7 +35,7 @@ The coinflip program (`programs/coinflip/src/`) is organized as follows:
 - **state.rs**: Account structures (Oracle, Game, GameToken, PlayerBalance, PlayerParticipation) with size constants
 - **instructions/**: Modular instruction handlers organized by functionality:
   - Oracle management (initialize/update oracle)
-  - Token management (initialize/update token configs)  
+  - Token management (initialize/update token configs)
   - Player management (balance initialization/withdrawal)
   - Game lifecycle (initialize/join/roll/unjoin/complete/close)
   - Fee management (withdraw token fees)
@@ -58,12 +58,12 @@ The codebase implements several security patterns that must be preserved:
 1. **CEI Pattern**: All instructions follow Checks-Effects-Interactions pattern:
    - VALIDATION: Input validation and constraint checking
    - STATE UPDATES: Modify account states
-   - TOKEN TRANSFER: External SPL token interactions  
+   - TOKEN TRANSFER: External SPL token interactions
    - EVENT EMISSION: Emit events for off-chain monitoring
 
 2. **Commit-Reveal Scheme**: Games use hash-based randomness where:
    - Game creation commits to a random hash
-   - Game completion reveals the secret key 
+   - Game completion reveals the secret key
    - Winner selection uses cryptographically secure randomness with bias elimination
 
 3. **Player Index Management**: When players unjoin, the last player's index is swapped to maintain contiguous indices for winner calculation
@@ -91,7 +91,7 @@ The project uses devcontainer configuration for consistent development setup wit
 - State structs include size constants for precise account space allocation
 
 ## Program ID
-- Devnet/Localnet: `2J1SejHvJ3SaXTHttMDnUHXNB2zcs1y5Gvkd4XxDB8Fj`
+- Devnet/Localnet: `GLAicVgkhvVtAbcf9aF4iLqAXZ9GSrsfexoDUN2fBPCG`
 
 ## Important Development Notes
 - When modifying winner calculation logic, ensure the TypeScript test implementation stays synchronized
