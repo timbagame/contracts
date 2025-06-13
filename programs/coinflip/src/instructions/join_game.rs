@@ -31,7 +31,7 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
     game.players_count += 1;
     game.last_slot = clock.slot;
 
-    // Update amounts for non-giveaway games (ticket_amount > 0)
+    // Update amounts for non-giveaway games
     if ticket_amount > 0 {
         player_participation.player_amount = ticket_amount;
         game.total_amount += ticket_amount;
