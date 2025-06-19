@@ -157,10 +157,6 @@ pub mod coinflip {
         instructions::unjoin_game::handler(ctx, player_merkle_proof, updated_merkle_root)
     }
 
-    /// Cleans up expired player participation accounts
-    pub fn clean_player_participation(ctx: Context<CleanPlayerParticipation>) -> Result<()> {
-        instructions::clean_player_participation::handler(ctx)
-    }
 
     /// Closes a game with no active players (creator only)
     pub fn close_game(ctx: Context<CloseGame>) -> Result<()> {
