@@ -368,24 +368,6 @@ pub struct UnjoinGame<'info> {
     pub system_program: Program<'info, System>,
 }
 
-// DEPRECATED: CleanPlayerParticipation no longer needed with merkle trees
-#[derive(Accounts)]
-pub struct CleanPlayerParticipation<'info> {
-    #[account(mut)]
-    pub game: Account<'info, Game>,
-    /// CHECK: Player account (deprecated)
-    #[account(mut)]
-    pub player: AccountInfo<'info>,
-    #[account(
-        mut,
-        seeds = [b"player_balance", player.key().as_ref(), game.token_mint.as_ref()],
-        bump,
-    )]
-    pub player_balance: Account<'info, PlayerBalance>,
-    #[account(seeds = [b"oracle"], bump)]
-    pub oracle: Account<'info, Oracle>,
-    pub system_program: Program<'info, System>,
-}
 
 #[derive(Accounts)]
 pub struct CloseGame<'info> {
