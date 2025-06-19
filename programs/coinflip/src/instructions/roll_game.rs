@@ -1,4 +1,6 @@
-use crate::{events::PlayerRolled, state::{GameType, SubtreeProof}, utils::handle_player_token_transfer};
+use crate::events::PlayerRolled;
+use crate::state::{GameType, SubtreeProof};
+use crate::utils::handle_player_token_transfer;
 use anchor_lang::prelude::*;
 
 pub fn handler(
@@ -40,7 +42,7 @@ pub fn handler(
     if game.game_type == GameType::Snowball {
         // Create a new participation entry for this additional roll
         let new_entry_count = 1; // TODO: Get actual entry count from existing participation
-        let participation = crate::state::Game::create_participation_entry(
+        let participation = game.create_participation_entry(
             player_key,
             ticket_amount,
             game.players_count, // TODO: This should be the next available index
