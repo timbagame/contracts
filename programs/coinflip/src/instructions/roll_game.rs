@@ -1,11 +1,15 @@
-use crate::{events::PlayerRolled, state::GameType, utils::handle_player_token_transfer};
+use crate::{events::PlayerRolled, state::{GameType, SubtreeProof}, utils::handle_player_token_transfer};
 use anchor_lang::prelude::*;
 
-pub fn handler(ctx: Context<super::RollGame>) -> Result<()> {
+pub fn handler(
+    ctx: Context<super::RollGame>,
+    new_merkle_root: [u8; 32],
+    unchanged_subtrees: Vec<SubtreeProof>,
+) -> Result<()> {
     let game = &mut ctx.accounts.game;
-    let player_participation = &mut ctx.accounts.player_participation;
     let clock = Clock::get()?;
     let current_time = clock.unix_timestamp as u64;
+    let player_key = ctx.accounts.player.key();
 
     // ===============================
     // VALIDATION
@@ -16,26 +20,48 @@ pub fn handler(ctx: Context<super::RollGame>) -> Result<()> {
         crate::error::ErrorCode::GameExpired
     );
 
+    require!(
+        game.game_type == GameType::Snowball || game.game_type == GameType::Dumbflip,
+        crate::error::ErrorCode::InvalidGameType
+    );
+
     // ===============================
-    // STATE UPDATES
+    // MERKLE TREE UPDATE FOR ADDITIONAL ROLL
     // ===============================
 
-    let is_snowball = game.game_type == GameType::Snowball;
     let ticket_amount = game.ticket_amount;
+    
+    // TODO: For Snowball games, we need to add a new entry to the merkle tree
+    // representing this additional roll. The client must provide:
+    // 1. Updated merkle root with new entry
+    // 2. Unchanged subtree proofs for verification
+    
+    // For now, simplified implementation
+    if game.game_type == GameType::Snowball {
+        // Create a new participation entry for this additional roll
+        let new_entry_count = 1; // TODO: Get actual entry count from existing participation
+        let participation = crate::state::Game::create_participation_entry(
+            player_key,
+            ticket_amount,
+            game.players_count, // TODO: This should be the next available index
+            current_time,
+            new_entry_count,
+        );
 
-    // For Snowball games, update amounts
-    if is_snowball {
-        game.total_amount += ticket_amount;
-        player_participation.player_amount += ticket_amount;
+        // Add to merkle tree (this updates the root and validates the change)
+        game.add_player_to_merkle_tree(&participation, new_merkle_root, &unchanged_subtrees)?;
+        
+        game.last_slot = clock.slot;
+    } else {
+        // For Dumbflip, no state changes needed - just emit event
+        game.last_slot = clock.slot;
     }
-
-    game.last_slot = clock.slot;
 
     // ===============================
     // TOKEN TRANSFER
     // ===============================
 
-    if is_snowball {
+    if game.game_type == GameType::Snowball {
         handle_player_token_transfer(
             &mut ctx.accounts.player_balance,
             ticket_amount,
@@ -54,7 +80,7 @@ pub fn handler(ctx: Context<super::RollGame>) -> Result<()> {
         game_key: game.key(),
         player: ctx.accounts.player.key(),
         total_amount: game.total_amount,
-        player_index: player_participation.player_index,
+        player_index: game.players_count - 1, // TODO: Get actual player index from merkle tree
         last_slot: game.last_slot,
         timestamp: current_time,
     });

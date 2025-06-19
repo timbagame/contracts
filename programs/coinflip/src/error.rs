@@ -5,10 +5,10 @@ use anchor_lang::prelude::*;
 // =============================================================================
 
 /// Custom error codes for the coinflip program.
-/// 
+///
 /// Error codes are organized into ranges by category:
 /// - 1000-1099: Authority and Permission Errors
-/// - 1100-1199: Game State Errors  
+/// - 1100-1199: Game State Errors
 /// - 1200-1299: Player Action Errors
 /// - 1300-1399: Configuration Errors
 /// - 1400-1499: Token Errors
@@ -17,7 +17,6 @@ pub enum ErrorCode {
     // =========================================================================
     // AUTHORITY AND PERMISSION ERRORS (1000-1099)
     // =========================================================================
-
     /// The provided authority does not match the required authority
     #[msg("Unauthorized authority")]
     UnauthorizedAuthority = 1000,
@@ -33,7 +32,6 @@ pub enum ErrorCode {
     // =========================================================================
     // GAME STATE ERRORS (1100-1199)
     // =========================================================================
-
     /// Game has reached maximum player capacity
     #[msg("Game already full")]
     GameFull = 1100,
@@ -69,7 +67,6 @@ pub enum ErrorCode {
     // =========================================================================
     // PLAYER ACTION ERRORS (1200-1299)
     // =========================================================================
-
     /// Player has already joined this game
     #[msg("Player already joined")]
     AlreadyJoined = 1200,
@@ -78,9 +75,9 @@ pub enum ErrorCode {
     #[msg("Insufficient balance")]
     InsufficientBalance = 1201,
 
-    /// Cannot unjoin Snowball game when multiple players are present
-    #[msg("Cannot unjoin Snowball game with multiple players")]
-    SnowballMultiPlayerUnjoin = 1202,
+    /// Cannot unjoin Snowball games at all
+    #[msg("Cannot unjoin Snowball games")]
+    SnowballUnjoinNotAllowed = 1202,
 
     /// The provided last player index is invalid
     #[msg("Invalid last player index")]
@@ -89,7 +86,6 @@ pub enum ErrorCode {
     // =========================================================================
     // CONFIGURATION ERRORS (1300-1399)
     // =========================================================================
-
     /// Player count configuration is invalid
     #[msg("Invalid players count")]
     InvalidPlayersCount = 1300,
@@ -109,7 +105,6 @@ pub enum ErrorCode {
     // =========================================================================
     // TOKEN ERRORS (1400-1499)
     // =========================================================================
-
     /// Token is not enabled for game operations
     #[msg("Token not enabled")]
     TokenNotEnabled = 1400,

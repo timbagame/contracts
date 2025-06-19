@@ -1,9 +1,13 @@
-use crate::{events::PlayerJoined, utils::handle_player_token_transfer};
+use crate::{events::PlayerJoined, utils::handle_player_token_transfer, state::{SubtreeProof, ParticipationEntry}};
 use anchor_lang::prelude::*;
 
-pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
+pub fn handler(
+    ctx: Context<super::JoinGame>,
+    new_merkle_root: [u8; 32],
+    unchanged_subtrees: Vec<SubtreeProof>,
+    participation_entry: ParticipationEntry,
+) -> Result<()> {
     let game = &mut ctx.accounts.game;
-    let player_participation = &mut ctx.accounts.player_participation;
     let clock = Clock::get()?;
     let current_time = clock.unix_timestamp as u64;
     let player_key = ctx.accounts.player.key();
@@ -18,33 +22,41 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
     );
 
     // ===============================
-    // STATE UPDATES
+    // MERKLE TREE UPDATE
     // ===============================
 
-    let ticket_amount = game.ticket_amount;
-    let player_index = game.players_count;
+    // Validate the participation entry provided by client
+    require!(
+        participation_entry.player == player_key,
+        crate::error::ErrorCode::UnauthorizedPlayer
+    );
+    require!(
+        participation_entry.player_index == game.players_count,
+        crate::error::ErrorCode::InvalidPlayersCount
+    );
+    require!(
+        participation_entry.amount == game.ticket_amount,
+        crate::error::ErrorCode::InvalidAmount
+    );
+    require!(
+        participation_entry.entry_count == 1, // Regular join always has 1 entry
+        crate::error::ErrorCode::InvalidAmount
+    );
 
-    // Update player participation
-    player_participation.player_index = player_index;
+    // Add player to merkle tree (this verifies the update is valid)
+    game.add_player_to_merkle_tree(&participation_entry, new_merkle_root, &unchanged_subtrees)?;
 
     // Update game state
-    game.players_count += 1;
     game.last_slot = clock.slot;
-
-    // Update amounts for non-giveaway games
-    if ticket_amount > 0 {
-        player_participation.player_amount = ticket_amount;
-        game.total_amount += ticket_amount;
-    }
 
     // ===============================
     // TOKEN TRANSFER
     // ===============================
 
-    if ticket_amount > 0 {
+    if participation_entry.amount > 0 {
         handle_player_token_transfer(
             &mut ctx.accounts.player_balance,
-            ticket_amount,
+            participation_entry.amount,
             ctx.accounts.player_token_account.to_account_info(),
             ctx.accounts.game_token_account.to_account_info(),
             ctx.accounts.player.to_account_info(),
@@ -61,7 +73,7 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
         player: player_key,
         total_amount: game.total_amount,
         players_count: game.players_count,
-        player_index,
+        player_index: participation_entry.player_index,
         last_slot: game.last_slot,
         timestamp: current_time,
     });

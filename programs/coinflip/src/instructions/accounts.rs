@@ -246,6 +246,11 @@ pub struct InitializeGame<'info> {
 }
 
 #[derive(Accounts)]
+#[instruction(
+    new_merkle_root: [u8; 32],
+    unchanged_subtrees: Vec<SubtreeProof>,
+    participation_entry: ParticipationEntry,
+)]
 pub struct JoinGame<'info> {
     #[account(
         mut,
@@ -255,14 +260,7 @@ pub struct JoinGame<'info> {
         constraint = game_token.is_enabled() @ ErrorCode::TokenNotEnabled,
     )]
     pub game: Account<'info, Game>,
-    #[account(
-        init,
-        payer = player,
-        space = PLAYER_PARTICIPATION_SIZE,
-        seeds = [b"player_participation", game.key().as_ref(), player.key().as_ref()],
-        bump,
-    )]
-    pub player_participation: Account<'info, PlayerParticipation>,
+    // No more player_participation account - using merkle trees!
     #[account(mut)]
     pub player: Signer<'info>,
     #[account(
@@ -297,7 +295,12 @@ pub struct JoinGame<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(random_hash: [u8; 32], secret_key: [u8; 32])]
+#[instruction(
+    random_hash: [u8; 32],
+    secret_key: [u8; 32],
+    winner_participation: ParticipationEntry,
+    winner_merkle_proof: Vec<[u8; 32]>,
+)]
 pub struct CompleteGame<'info> {
     #[account(
         mut,
@@ -305,8 +308,9 @@ pub struct CompleteGame<'info> {
         bump,
         constraint = game.is_creator(&creator.key()) @ ErrorCode::InvalidCreator,
         constraint = game.verify_secret_key(random_hash, secret_key) @ ErrorCode::InvalidSecretKey,
-        constraint = game.calculate_winner_index(secret_key) == winner_participation.player_index @ ErrorCode::UnauthorizedPlayer,
         constraint = game.total_amount > 0 @ ErrorCode::GameAlreadyCompleted,
+        // TODO: Add winner verification with merkle proof
+        // constraint = Game::verify_merkle_proof(...) @ ErrorCode::UnauthorizedPlayer,
     )]
     pub game: Account<'info, Game>,
     #[account(
@@ -316,14 +320,8 @@ pub struct CompleteGame<'info> {
     )]
     pub oracle: Account<'info, Oracle>,
     pub authority: Signer<'info>,
-    #[account(
-        mut,
-        close = winner,
-        seeds = [b"player_participation", game.key().as_ref(), winner.key().as_ref()],
-        bump,
-    )]
-    pub winner_participation: Account<'info, PlayerParticipation>,
-    /// CHECK: Validated by game's winner calculation
+    // No more winner_participation account - winner verified via merkle proof
+    /// CHECK: Validated by merkle proof verification
     #[account(mut)]
     pub winner: AccountInfo<'info>,
     /// CHECK: Game creator for rent refund
@@ -345,16 +343,17 @@ pub struct CompleteGame<'info> {
 }
 
 #[derive(Accounts)]
+#[instruction(
+    player_merkle_proof: Vec<[u8; 32]>,
+    updated_merkle_root: [u8; 32],
+)]
 pub struct UnjoinGame<'info> {
-    #[account(mut)]
-    pub game: Account<'info, Game>,
     #[account(
         mut,
-        close = player,
-        seeds = [b"player_participation", game.key().as_ref(), player.key().as_ref()],
-        bump,
+        constraint = game.game_type != GameType::Snowball @ ErrorCode::SnowballUnjoinNotAllowed,
     )]
-    pub player_participation: Account<'info, PlayerParticipation>,
+    pub game: Account<'info, Game>,
+    // No more PlayerParticipation accounts - using merkle trees!
     #[account(mut)]
     pub player: Signer<'info>,
     #[account(
@@ -363,31 +362,18 @@ pub struct UnjoinGame<'info> {
         bump,
     )]
     pub player_balance: Account<'info, PlayerBalance>,
-    /// CHECK: Last player is validated by last_player_participation constraint
-    pub last_player: AccountInfo<'info>,
-    #[account(
-        mut,
-        seeds = [b"player_participation", game.key().as_ref(), last_player.key().as_ref()],
-        bump,
-        constraint = last_player_participation.player_index == game.players_count - 1 @ ErrorCode::InvalidLastPlayerIndex)]
-    pub last_player_participation: Account<'info, PlayerParticipation>,
+    // Last player management handled via merkle tree reconstruction
     #[account(seeds = [b"oracle"], bump)]
     pub oracle: Account<'info, Oracle>,
     pub system_program: Program<'info, System>,
 }
 
+// DEPRECATED: CleanPlayerParticipation no longer needed with merkle trees
 #[derive(Accounts)]
 pub struct CleanPlayerParticipation<'info> {
     #[account(mut)]
     pub game: Account<'info, Game>,
-    #[account(
-        mut,
-        close = player,
-        seeds = [b"player_participation", game.key().as_ref(), player.key().as_ref()],
-        bump,
-    )]
-    pub player_participation: Account<'info, PlayerParticipation>,
-    /// CHECK: Player account that will receive the rent refund from closed participation account
+    /// CHECK: Player account (deprecated)
     #[account(mut)]
     pub player: AccountInfo<'info>,
     #[account(
@@ -424,6 +410,10 @@ pub struct CloseGame<'info> {
 }
 
 #[derive(Accounts)]
+#[instruction(
+    new_merkle_root: [u8; 32],
+    unchanged_subtrees: Vec<SubtreeProof>,
+)]
 pub struct RollGame<'info> {
     #[account(
         mut,
@@ -434,11 +424,8 @@ pub struct RollGame<'info> {
         constraint = game.game_type == GameType::Snowball || game.game_type == GameType::Dumbflip @ ErrorCode::InvalidGameType,
     )]
     pub game: Account<'info, Game>,
-    #[account(
-        seeds = [b"player_participation", game.key().as_ref(), player.key().as_ref()],
-        bump,
-    )]
-    pub player_participation: Account<'info, PlayerParticipation>,
+    // No more PlayerParticipation accounts - using merkle trees!
+    #[account(mut)]
     pub player: Signer<'info>,
     #[account(
         mut,

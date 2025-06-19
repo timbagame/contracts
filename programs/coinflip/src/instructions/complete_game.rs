@@ -1,7 +1,13 @@
-use crate::events::GameCompleted;
+use crate::{events::GameCompleted, state::ParticipationEntry};
 use anchor_lang::prelude::*;
 
-pub fn handler(ctx: Context<super::CompleteGame>) -> Result<()> {
+pub fn handler(
+    ctx: Context<super::CompleteGame>,
+    _random_hash: [u8; 32],
+    secret_key: [u8; 32],
+    winner_participation: ParticipationEntry,
+    winner_merkle_proof: Vec<[u8; 32]>,
+) -> Result<()> {
     let game = &mut ctx.accounts.game;
     let oracle = &ctx.accounts.oracle;
     let current_time = Clock::get()?.unix_timestamp as u64;
@@ -13,6 +19,35 @@ pub fn handler(ctx: Context<super::CompleteGame>) -> Result<()> {
     require!(
         game.waiting_for_oracle(oracle.oracle_buffer_time as u64, current_time),
         crate::error::ErrorCode::GameNotReadyForOracle
+    );
+
+    // ===============================
+    // WINNER VERIFICATION
+    // ===============================
+
+    // 1. Verify the winner participation entry is in the merkle tree
+    let winner_leaf = crate::state::Game::hash_participation_entry(&winner_participation);
+    require!(
+        crate::state::Game::verify_merkle_proof(
+            winner_leaf,
+            &winner_merkle_proof,
+            game.merkle_root,
+            winner_participation.player_index,
+        ),
+        crate::error::ErrorCode::UnauthorizedPlayer
+    );
+
+    // 2. Verify the winner index is correctly calculated from secret key
+    let calculated_winner_index = game.calculate_winner_index(secret_key);
+    require!(
+        winner_participation.player_index == calculated_winner_index,
+        crate::error::ErrorCode::UnauthorizedPlayer
+    );
+
+    // 3. Verify the winner's pubkey matches the account provided
+    require!(
+        winner_participation.player == ctx.accounts.winner.key(),
+        crate::error::ErrorCode::UnauthorizedPlayer
     );
 
     // ===============================

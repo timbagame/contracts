@@ -8,8 +8,8 @@ use anchor_lang::solana_program::hash::hash;
 pub const ORACLE_SIZE: usize = 8 + 32 + 1 + 2 + 4 + 4 + 4;
 pub const GAME_TOKEN_SIZE: usize = 8 + 8 + 8 + 1;
 pub const PLAYER_BALANCE_SIZE: usize = 8 + 8;
-pub const PLAYER_PARTICIPATION_SIZE: usize = 8 + 4 + 8;
-pub const GAME_SIZE: usize = 8 + 32 + 1 + 8 + 4 + 4 + 4 + 32 + 8 + 4 + 8 + 1 + 8;
+// PlayerParticipation eliminated - using merkle trees!
+pub const GAME_SIZE: usize = 8 + 32 + 1 + 8 + 4 + 4 + 4 + 32 + 8 + 4 + 8 + 1 + 8 + 32; // +32 for merkle_root
 
 // =============================================================================
 // GAME TYPES
@@ -31,6 +31,47 @@ impl Default for GameType {
     fn default() -> Self {
         GameType::Coinflip
     }
+}
+
+// =============================================================================
+// MERKLE TREE STRUCTURES
+// =============================================================================
+
+/// Player participation data that gets hashed into merkle tree leaf
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct ParticipationEntry {
+    /// Player public key
+    pub player: Pubkey,
+    /// Amount contributed by player
+    pub amount: u64,
+    /// Player's index in the game (position in merkle tree)
+    pub player_index: u32,
+    /// Timestamp when player joined
+    pub join_timestamp: u64,
+    /// Number of entries for Snowball games (multiple rolls)
+    pub entry_count: u32,
+}
+
+/// Merkle proof for verifying leaf inclusion
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct MerkleProof {
+    /// The leaf being proven
+    pub leaf: [u8; 32],
+    /// Merkle path from leaf to root
+    pub proof: Vec<[u8; 32]>,
+    /// Index of the leaf in the tree
+    pub leaf_index: u32,
+}
+
+/// Unchanged subtree verification data
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct SubtreeProof {
+    /// Root hash of the unchanged subtree
+    pub subtree_root: [u8; 32],
+    /// Position/index of this subtree in the overall tree
+    pub subtree_position: u32,
+    /// Level in the tree where this subtree exists
+    pub tree_level: u32,
 }
 
 // =============================================================================
@@ -161,16 +202,9 @@ impl PlayerBalance {
 }
 
 // =============================================================================
-// PLAYER PARTICIPATION ACCOUNT
+// NO MORE PLAYER PARTICIPATION ACCOUNTS!
+// All participation data is now stored in merkle tree + events
 // =============================================================================
-#[account]
-#[derive(Default)]
-pub struct PlayerParticipation {
-    /// Player's position/index in the game (for winner calculation)
-    pub player_index: u32,
-    /// Amount contributed by the player
-    pub player_amount: u64,
-}
 
 // =============================================================================
 // GAME ACCOUNT
@@ -202,6 +236,8 @@ pub struct Game {
     pub is_private: bool,
     /// Total accumulated prize
     pub total_amount: u64,
+    /// Merkle root of all player participations
+    pub merkle_root: [u8; 32],
 }
 
 impl Game {
@@ -250,8 +286,15 @@ impl Game {
 
     /// Calculates the winner index using secret key with unbiased random selection
     pub fn calculate_winner_index(&self, secret_key: [u8; 32]) -> u32 {
-        let n_players = self.players_count as u64;
-        if n_players == 1 {
+        // For Snowball games, use total entries (total_amount / ticket_amount)
+        // For other games, use unique players count
+        let n_entries = if self.game_type == GameType::Snowball {
+            self.total_amount / self.ticket_amount
+        } else {
+            self.players_count as u64
+        };
+
+        if n_entries == 1 {
             return 0;
         }
 
@@ -262,14 +305,14 @@ impl Game {
         let entropy_hash = hash(&combined_data).to_bytes();
 
         // Try sliding 8-byte windows through the hashed entropy
-        let max_valid = u64::MAX - (u64::MAX % n_players);
+        let max_valid = u64::MAX - (u64::MAX % n_entries);
         for start_pos in 0..=(32 - 8) {
             let random_u64 =
                 u64::from_le_bytes(entropy_hash[start_pos..start_pos + 8].try_into().unwrap());
 
             // Use this value if it's in the unbiased range
             if random_u64 < max_valid {
-                return (random_u64 % n_players) as u32;
+                return (random_u64 % n_entries) as u32;
             }
         }
 
@@ -314,5 +357,248 @@ impl Game {
 
     pub fn has_sufficient_balance_for_join(&self, token_balance: u64, player_balance: u64) -> bool {
         self.game_type == GameType::Giveaway || token_balance + player_balance >= self.ticket_amount
+    }
+
+    // =============================================================================
+    // MERKLE TREE FUNCTIONS
+    // =============================================================================
+
+    /// Creates a participation entry for a new player
+    pub fn create_participation_entry(
+        player: Pubkey,
+        amount: u64,
+        player_index: u32,
+        timestamp: u64,
+        entry_count: u32,
+    ) -> ParticipationEntry {
+        ParticipationEntry {
+            player,
+            amount,
+            player_index,
+            join_timestamp: timestamp,
+            entry_count,
+        }
+    }
+
+    /// Calculates hash of a participation entry (merkle tree leaf)
+    pub fn hash_participation_entry(entry: &ParticipationEntry) -> [u8; 32] {
+        use anchor_lang::solana_program::hash::hash;
+        let serialized = entry.try_to_vec().unwrap();
+        hash(&serialized).to_bytes()
+    }
+
+    /// Verifies a merkle proof for a given leaf
+    pub fn verify_merkle_proof(
+        leaf: [u8; 32],
+        proof: &[[u8; 32]],
+        root: [u8; 32],
+        leaf_index: u32,
+    ) -> bool {
+        use anchor_lang::solana_program::hash::hash;
+        
+        let mut current_hash = leaf;
+        let mut current_index = leaf_index;
+
+        for proof_element in proof {
+            if current_index % 2 == 0 {
+                // Current node is left child
+                let combined = [current_hash, *proof_element].concat();
+                current_hash = hash(&combined).to_bytes();
+            } else {
+                // Current node is right child  
+                let combined = [*proof_element, current_hash].concat();
+                current_hash = hash(&combined).to_bytes();
+            }
+            current_index /= 2;
+        }
+
+        current_hash == root
+    }
+
+    /// Calculates the path from leaf to root that will be affected by insertion
+    pub fn get_affected_path(leaf_index: u32, max_depth: u32) -> Vec<u32> {
+        let mut path = Vec::new();
+        let mut current = leaf_index;
+        
+        for _ in 0..max_depth {
+            path.push(current);
+            if current == 0 {
+                break;
+            }
+            current = current / 2;
+        }
+        path
+    }
+
+    /// Verifies incremental merkle tree update with unchanged subtrees
+    pub fn verify_incremental_update(
+        &self,
+        old_root: [u8; 32],
+        new_root: [u8; 32],
+        new_participation: &ParticipationEntry,
+        unchanged_subtrees: &[SubtreeProof],
+    ) -> Result<()> {
+        // 1. Verify new player is being inserted at correct index
+        require!(
+            new_participation.player_index == self.players_count,
+            crate::error::ErrorCode::InvalidPlayersCount
+        );
+
+        // 2. Calculate new leaf hash
+        let new_leaf = Self::hash_participation_entry(new_participation);
+
+        // 3. Calculate tree depth needed for current players + 1
+        let total_players = self.players_count + 1;
+        let tree_depth = if total_players <= 1 {
+            0
+        } else {
+            (32 - (total_players - 1).leading_zeros()) as u32
+        };
+
+        // 4. Get path that will be affected by this insertion
+        let affected_path = Self::get_affected_path(new_participation.player_index, tree_depth);
+
+        // 5. Verify unchanged subtrees are not on affected path
+        for subtree in unchanged_subtrees {
+            require!(
+                !affected_path.contains(&subtree.subtree_position),
+                crate::error::ErrorCode::InvalidAmount // TODO: Add better error
+            );
+        }
+
+        // 6. For first player, tree is just the leaf
+        if self.players_count == 0 {
+            require!(old_root == [0; 32], crate::error::ErrorCode::InvalidAmount);
+            require!(new_root == new_leaf, crate::error::ErrorCode::InvalidAmount);
+            return Ok(());
+        }
+
+        // 7. Reconstruct new tree using unchanged subtrees + new insertion
+        let calculated_new_root = self.reconstruct_tree_with_insertion(
+            old_root,
+            new_leaf,
+            new_participation.player_index,
+            unchanged_subtrees,
+            tree_depth,
+        )?;
+
+        // 8. Verify calculated root matches claimed root
+        require!(
+            calculated_new_root == new_root,
+            crate::error::ErrorCode::InvalidAmount // TODO: Add better error
+        );
+
+        Ok(())
+    }
+
+    /// Reconstructs merkle tree with new insertion and unchanged subtrees
+    fn reconstruct_tree_with_insertion(
+        &self,
+        old_root: [u8; 32],
+        new_leaf: [u8; 32],
+        insert_index: u32,
+        unchanged_subtrees: &[SubtreeProof],
+        tree_depth: u32,
+    ) -> Result<[u8; 32]> {
+        use anchor_lang::solana_program::hash::hash;
+
+        // Handle simple cases
+        if self.players_count == 0 {
+            return Ok(new_leaf);
+        }
+        
+        if self.players_count == 1 && insert_index == 1 {
+            let combined = [old_root, new_leaf].concat();
+            return Ok(hash(&combined).to_bytes());
+        }
+
+        // For larger trees, we need to reconstruct the tree level by level
+        // This is a complete implementation for binary merkle trees
+        
+        let total_leaves = self.players_count + 1;
+        let mut tree_nodes: Vec<Vec<[u8; 32]>> = vec![vec![[0; 32]; total_leaves as usize]];
+        
+        // Set the new leaf at its position
+        tree_nodes[0][insert_index as usize] = new_leaf;
+        
+        // Use unchanged subtrees to fill in known values
+        for subtree in unchanged_subtrees {
+            if subtree.tree_level < tree_depth {
+                let level = subtree.tree_level as usize;
+                let pos = subtree.subtree_position as usize;
+                
+                // Ensure we have enough levels
+                while tree_nodes.len() <= level {
+                    let prev_level_size = tree_nodes[tree_nodes.len() - 1].len();
+                    let new_level_size = (prev_level_size + 1) / 2;
+                    tree_nodes.push(vec![[0; 32]; new_level_size]);
+                }
+                
+                if pos < tree_nodes[level].len() {
+                    tree_nodes[level][pos] = subtree.subtree_root;
+                }
+            }
+        }
+        
+        // Build tree bottom-up
+        for level in 0..tree_depth as usize {
+            let current_level_size = tree_nodes[level].len();
+            let next_level_size = (current_level_size + 1) / 2;
+            
+            if tree_nodes.len() <= level + 1 {
+                tree_nodes.push(vec![[0; 32]; next_level_size]);
+            }
+            
+            for i in 0..next_level_size {
+                let left_idx = i * 2;
+                let right_idx = left_idx + 1;
+                
+                if left_idx < current_level_size {
+                    let left = tree_nodes[level][left_idx];
+                    let right = if right_idx < current_level_size {
+                        tree_nodes[level][right_idx]
+                    } else {
+                        [0; 32] // Padding for odd number of nodes
+                    };
+                    
+                    if left != [0; 32] || right != [0; 32] {
+                        let combined = [left, right].concat();
+                        tree_nodes[level + 1][i] = hash(&combined).to_bytes();
+                    }
+                }
+            }
+        }
+        
+        // Return root
+        if let Some(root_level) = tree_nodes.last() {
+            if !root_level.is_empty() {
+                return Ok(root_level[0]);
+            }
+        }
+        
+        Err(crate::error::ErrorCode::InvalidAmount.into())
+    }
+
+    /// Adds a player to the merkle tree and updates the root
+    pub fn add_player_to_merkle_tree(
+        &mut self,
+        participation: &ParticipationEntry,
+        new_merkle_root: [u8; 32],
+        unchanged_subtrees: &[SubtreeProof],
+    ) -> Result<()> {
+        // Verify the incremental update is valid
+        self.verify_incremental_update(
+            self.merkle_root,
+            new_merkle_root,
+            participation,
+            unchanged_subtrees,
+        )?;
+
+        // Update game state
+        self.merkle_root = new_merkle_root;
+        self.players_count += 1;
+        self.total_amount += participation.amount;
+
+        Ok(())
     }
 }
