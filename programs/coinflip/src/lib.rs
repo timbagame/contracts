@@ -13,7 +13,7 @@ mod state;
 mod utils;
 
 use crate::instructions::*;
-use crate::state::GameType;
+use crate::state::{GameType, SubtreeProof, ParticipationEntry};
 
 // =============================================================================
 // PROGRAM ID
@@ -133,8 +133,8 @@ pub mod coinflip {
     pub fn join_game(
         ctx: Context<JoinGame>,
         new_merkle_root: [u8; 32],
-        unchanged_subtrees: Vec<crate::state::SubtreeProof>,
-        participation_entry: crate::state::ParticipationEntry,
+        unchanged_subtrees: Vec<SubtreeProof>,
+        participation_entry: ParticipationEntry,
     ) -> Result<()> {
         instructions::join_game::handler(ctx, new_merkle_root, unchanged_subtrees, participation_entry)
     }
@@ -143,7 +143,7 @@ pub mod coinflip {
     pub fn roll_game(
         ctx: Context<RollGame>,
         new_merkle_root: [u8; 32],
-        unchanged_subtrees: Vec<crate::state::SubtreeProof>,
+        unchanged_subtrees: Vec<SubtreeProof>,
     ) -> Result<()> {
         instructions::roll_game::handler(ctx, new_merkle_root, unchanged_subtrees)
     }
@@ -168,7 +168,7 @@ pub mod coinflip {
         ctx: Context<CompleteGame>,
         random_hash: [u8; 32],
         secret_key: [u8; 32],
-        winner_participation: crate::state::ParticipationEntry,
+        winner_participation: ParticipationEntry,
         winner_merkle_proof: Vec<[u8; 32]>,
     ) -> Result<()> {
         instructions::complete_game::handler(ctx, random_hash, secret_key, winner_participation, winner_merkle_proof)

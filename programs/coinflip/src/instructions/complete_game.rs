@@ -1,4 +1,5 @@
-use crate::{events::GameCompleted, state::ParticipationEntry};
+use crate::events::GameCompleted;
+use crate::state::ParticipationEntry;
 use anchor_lang::prelude::*;
 
 pub fn handler(
@@ -26,9 +27,9 @@ pub fn handler(
     // ===============================
 
     // 1. Verify the winner participation entry is in the merkle tree
-    let winner_leaf = crate::state::Game::hash_participation_entry(&winner_participation);
+    let winner_leaf = game.hash_participation_entry(&winner_participation);
     require!(
-        crate::state::Game::verify_merkle_proof(
+        game.verify_merkle_proof(
             winner_leaf,
             &winner_merkle_proof,
             game.merkle_root,
