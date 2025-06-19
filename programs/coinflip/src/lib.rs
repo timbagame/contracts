@@ -130,18 +130,31 @@ pub mod coinflip {
     }
 
     /// Allows a player to join an existing game
-    pub fn join_game(ctx: Context<JoinGame>) -> Result<()> {
-        instructions::join_game::handler(ctx)
+    pub fn join_game(
+        ctx: Context<JoinGame>,
+        new_merkle_root: [u8; 32],
+        unchanged_subtrees: Vec<crate::state::SubtreeProof>,
+        participation_entry: crate::state::ParticipationEntry,
+    ) -> Result<()> {
+        instructions::join_game::handler(ctx, new_merkle_root, unchanged_subtrees, participation_entry)
     }
 
     /// Allows a player to roll in Snowball/Dumbflip games (multiple participation)
-    pub fn roll_game(ctx: Context<RollGame>) -> Result<()> {
-        instructions::roll_game::handler(ctx)
+    pub fn roll_game(
+        ctx: Context<RollGame>,
+        new_merkle_root: [u8; 32],
+        unchanged_subtrees: Vec<crate::state::SubtreeProof>,
+    ) -> Result<()> {
+        instructions::roll_game::handler(ctx, new_merkle_root, unchanged_subtrees)
     }
 
     /// Allows a player to leave a game before completion (with refund)
-    pub fn unjoin_game(ctx: Context<UnjoinGame>) -> Result<()> {
-        instructions::unjoin_game::handler(ctx)
+    pub fn unjoin_game(
+        ctx: Context<UnjoinGame>,
+        player_merkle_proof: Vec<[u8; 32]>,
+        updated_merkle_root: [u8; 32],
+    ) -> Result<()> {
+        instructions::unjoin_game::handler(ctx, player_merkle_proof, updated_merkle_root)
     }
 
     /// Cleans up expired player participation accounts
@@ -157,10 +170,12 @@ pub mod coinflip {
     /// Completes a game by revealing the secret key and distributing winnings
     pub fn complete_game(
         ctx: Context<CompleteGame>,
-        _random_hash: [u8; 32],
-        _secret_key: [u8; 32],
+        random_hash: [u8; 32],
+        secret_key: [u8; 32],
+        winner_participation: crate::state::ParticipationEntry,
+        winner_merkle_proof: Vec<[u8; 32]>,
     ) -> Result<()> {
-        instructions::complete_game::handler(ctx)
+        instructions::complete_game::handler(ctx, random_hash, secret_key, winner_participation, winner_merkle_proof)
     }
 
     // =========================================================================

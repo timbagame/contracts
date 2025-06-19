@@ -12,13 +12,24 @@ import { createHash } from "crypto";
 function calculateWinnerIndex(
   playersCount: number,
   secretKey: number[],
-  lastSlot: number
+  lastSlot: number,
+  gameType?: any,
+  totalAmount?: number,
+  ticketAmount?: number
 ): number {
-  if (playersCount === 1) {
+  // Calculate entries: for Snowball games use total_amount/ticket_amount, for others use player count
+  let nEntries: number;
+  if (gameType && gameType.snowball && totalAmount && ticketAmount) {
+    nEntries = totalAmount / ticketAmount;
+  } else {
+    nEntries = playersCount;
+  }
+
+  if (nEntries === 1) {
     return 0;
   }
 
-  const nPlayers = BigInt(playersCount);
+  const nPlayers = BigInt(nEntries);
 
   // Hash combination of secret key and last_slot for additional entropy (same as contract)
   const combinedData = new Uint8Array(40);
