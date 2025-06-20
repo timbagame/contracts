@@ -1,12 +1,11 @@
-use crate::{
-    events::GameInitialized, state::GameType, utils::handle_player_token_transfer, GameConfig,
-};
+use crate::{events::GameInitialized, state::GameType, GameConfig};
 use anchor_lang::prelude::*;
 
 pub fn handler(ctx: Context<super::InitializeGame>, config: GameConfig) -> Result<()> {
-    let game = &mut ctx.accounts.game;
+    let game: &mut Account<'_, crate::state::Game> = &mut ctx.accounts.game;
     let clock = Clock::get()?;
     let creator_key = ctx.accounts.creator.key();
+    let creator_balance = &mut ctx.accounts.creator_balance;
     let token_mint_key = ctx.accounts.token_mint.key();
 
     // ===============================
@@ -39,8 +38,7 @@ pub fn handler(ctx: Context<super::InitializeGame>, config: GameConfig) -> Resul
 
     // Transfer tokens for giveaway games
     if game.ticket_amount == 0 {
-        handle_player_token_transfer(
-            &mut ctx.accounts.creator_balance,
+        creator_balance.handle_token_transfer(
             config.amount,
             ctx.accounts.creator_token_account.to_account_info(),
             ctx.accounts.game_token_account.to_account_info(),

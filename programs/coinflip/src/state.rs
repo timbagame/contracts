@@ -113,21 +113,6 @@ impl Oracle {
         self.authority = new_authority;
     }
 
-    /// Validates fee percentage is within acceptable range (0-100)
-    pub fn is_valid_fee_percentage(&self, fee_percentage: u8) -> bool {
-        fee_percentage <= 100
-    }
-
-    /// Validates timeout configuration (max >= min)
-    pub fn is_valid_timeout(&self, max_timeout: u32, min_timeout: u32) -> bool {
-        max_timeout >= min_timeout
-    }
-
-    /// Validates players count is greater than zero
-    pub fn is_valid_players_count(&self, max_players: u32) -> bool {
-        max_players > 0
-    }
-
     /// Checks if given authority matches oracle authority
     pub fn is_authorized_authority(&self, authority: &Pubkey) -> bool {
         self.authority == *authority
@@ -146,6 +131,10 @@ impl Oracle {
 #[account]
 #[derive(Default)]
 pub struct GameToken {
+    /// Token mint for this game token configuration
+    pub token_mint: Pubkey,
+    /// Vault bump seed for PDA token transfers
+    pub vault_bump: u8,
     /// Minimum amount required to participate in games
     pub min_amount: u64,
     /// Accumulated fee amount for this token
@@ -162,7 +151,9 @@ impl GameToken {
     }
 
     /// Initializes token configuration for new token
-    pub fn initialize(&mut self, min_amount: u64, enabled: bool) {
+    pub fn initialize(&mut self, token_mint: Pubkey, vault_bump: u8, min_amount: u64, enabled: bool) {
+        self.token_mint = token_mint;
+        self.vault_bump = vault_bump;
         self.min_amount = min_amount;
         self.fee_amount = 0;
         self.enabled = enabled;
@@ -176,6 +167,35 @@ impl GameToken {
     /// Validates amount meets minimum requirement
     pub fn meets_min_amount(&self, amount: u64) -> bool {
         amount >= self.min_amount
+    }
+
+    /// Handles PDA-signed token transfers from game vault
+    pub fn handle_pda_token_transfer<'info>(
+        &self,
+        from_account: AccountInfo<'info>,
+        to_account: AccountInfo<'info>,
+        authority: AccountInfo<'info>,
+        token_program: AccountInfo<'info>,
+        amount: u64,
+    ) -> Result<()> {
+        use anchor_spl::token::{transfer, Transfer};
+        
+        let signer_seeds = &[b"game_vault", self.token_mint.as_ref(), &[self.vault_bump]];
+
+        transfer(
+            CpiContext::new_with_signer(
+                token_program,
+                Transfer {
+                    from: from_account,
+                    to: to_account,
+                    authority,
+                },
+                &[signer_seeds],
+            ),
+            amount,
+        )?;
+
+        Ok(())
     }
 }
 
@@ -198,6 +218,48 @@ impl PlayerBalance {
     /// Checks if player has sufficient balance for withdrawal
     pub fn has_sufficient_balance(&self) -> bool {
         self.amount > 0
+    }
+
+    /// Calculates contribution from balance, returns amount needed from wallet
+    pub fn calculate_contribution(&mut self, required_amount: u64) -> u64 {
+        if self.amount >= required_amount {
+            self.amount -= required_amount;
+            0
+        } else {
+            let tokens_needed = required_amount - self.amount;
+            self.amount = 0;
+            tokens_needed
+        }
+    }
+
+    /// Handles token transfer from player balance and wallet to game vault
+    pub fn handle_token_transfer<'info>(
+        &mut self,
+        game_amount: u64,
+        player_token_account: AccountInfo<'info>,
+        game_token_account: AccountInfo<'info>,
+        player: AccountInfo<'info>,
+        token_program: AccountInfo<'info>,
+    ) -> Result<()> {
+        use anchor_spl::token::{transfer, Transfer};
+        
+        let needed_amount = self.calculate_contribution(game_amount);
+
+        if needed_amount > 0 {
+            transfer(
+                CpiContext::new(
+                    token_program,
+                    Transfer {
+                        from: player_token_account,
+                        to: game_token_account,
+                        authority: player,
+                    },
+                ),
+                needed_amount,
+            )?;
+        }
+
+        Ok(())
     }
 }
 
@@ -279,7 +341,7 @@ impl Game {
     }
 
     /// Verifies the secret key matches the random hash using SHA256
-    pub fn verify_secret_key(&self, random_hash: [u8; 32], secret_key: [u8; 32]) -> bool {
+    pub fn verify_secret_key(random_hash: [u8; 32], secret_key: [u8; 32]) -> bool {
         let random_hash_calculated = hash(secret_key.as_ref()).to_bytes();
         random_hash_calculated == random_hash
     }
@@ -382,20 +444,12 @@ impl Game {
 
     /// Calculates hash of a participation entry (merkle tree leaf)
     pub fn hash_participation_entry(entry: &ParticipationEntry) -> [u8; 32] {
-        use anchor_lang::solana_program::hash::hash;
         let serialized = entry.try_to_vec().unwrap();
         hash(&serialized).to_bytes()
     }
 
-    /// Verifies a merkle proof for a given leaf
-    pub fn verify_merkle_proof(
-        leaf: [u8; 32],
-        proof: &[[u8; 32]],
-        root: [u8; 32],
-        leaf_index: u32,
-    ) -> bool {
-        use anchor_lang::solana_program::hash::hash;
-        
+    /// Verifies a merkle proof for a given leaf against this game's merkle root
+    pub fn verify_merkle_proof(&self, leaf: [u8; 32], proof: &[[u8; 32]], leaf_index: u32) -> bool {
         let mut current_hash = leaf;
         let mut current_index = leaf_index;
 
@@ -405,21 +459,21 @@ impl Game {
                 let combined = [current_hash, *proof_element].concat();
                 current_hash = hash(&combined).to_bytes();
             } else {
-                // Current node is right child  
+                // Current node is right child
                 let combined = [*proof_element, current_hash].concat();
                 current_hash = hash(&combined).to_bytes();
             }
             current_index /= 2;
         }
 
-        current_hash == root
+        current_hash == self.merkle_root
     }
 
     /// Calculates the path from leaf to root that will be affected by insertion
     pub fn get_affected_path(leaf_index: u32, max_depth: u32) -> Vec<u32> {
         let mut path = Vec::new();
         let mut current = leaf_index;
-        
+
         for _ in 0..max_depth {
             path.push(current);
             if current == 0 {
@@ -500,13 +554,11 @@ impl Game {
         unchanged_subtrees: &[SubtreeProof],
         tree_depth: u32,
     ) -> Result<[u8; 32]> {
-        use anchor_lang::solana_program::hash::hash;
-
         // Handle simple cases
         if self.players_count == 0 {
             return Ok(new_leaf);
         }
-        
+
         if self.players_count == 1 && insert_index == 1 {
             let combined = [old_root, new_leaf].concat();
             return Ok(hash(&combined).to_bytes());
@@ -514,45 +566,45 @@ impl Game {
 
         // For larger trees, we need to reconstruct the tree level by level
         // This is a complete implementation for binary merkle trees
-        
+
         let total_leaves = self.players_count + 1;
         let mut tree_nodes: Vec<Vec<[u8; 32]>> = vec![vec![[0; 32]; total_leaves as usize]];
-        
+
         // Set the new leaf at its position
         tree_nodes[0][insert_index as usize] = new_leaf;
-        
+
         // Use unchanged subtrees to fill in known values
         for subtree in unchanged_subtrees {
             if subtree.tree_level < tree_depth {
                 let level = subtree.tree_level as usize;
                 let pos = subtree.subtree_position as usize;
-                
+
                 // Ensure we have enough levels
                 while tree_nodes.len() <= level {
                     let prev_level_size = tree_nodes[tree_nodes.len() - 1].len();
                     let new_level_size = (prev_level_size + 1) / 2;
                     tree_nodes.push(vec![[0; 32]; new_level_size]);
                 }
-                
+
                 if pos < tree_nodes[level].len() {
                     tree_nodes[level][pos] = subtree.subtree_root;
                 }
             }
         }
-        
+
         // Build tree bottom-up
         for level in 0..tree_depth as usize {
             let current_level_size = tree_nodes[level].len();
             let next_level_size = (current_level_size + 1) / 2;
-            
+
             if tree_nodes.len() <= level + 1 {
                 tree_nodes.push(vec![[0; 32]; next_level_size]);
             }
-            
+
             for i in 0..next_level_size {
                 let left_idx = i * 2;
                 let right_idx = left_idx + 1;
-                
+
                 if left_idx < current_level_size {
                     let left = tree_nodes[level][left_idx];
                     let right = if right_idx < current_level_size {
@@ -560,7 +612,7 @@ impl Game {
                     } else {
                         [0; 32] // Padding for odd number of nodes
                     };
-                    
+
                     if left != [0; 32] || right != [0; 32] {
                         let combined = [left, right].concat();
                         tree_nodes[level + 1][i] = hash(&combined).to_bytes();
@@ -568,14 +620,14 @@ impl Game {
                 }
             }
         }
-        
+
         // Return root
         if let Some(root_level) = tree_nodes.last() {
             if !root_level.is_empty() {
                 return Ok(root_level[0]);
             }
         }
-        
+
         Err(crate::error::ErrorCode::InvalidAmount.into())
     }
 

@@ -1,4 +1,4 @@
-use crate::{events::TokenFeeWithdrawn, utils::handle_pda_token_transfer};
+use crate::events::TokenFeeWithdrawn;
 use anchor_lang::prelude::*;
 
 pub fn handler(ctx: Context<super::WithdrawTokenFee>) -> Result<()> {
@@ -17,13 +17,11 @@ pub fn handler(ctx: Context<super::WithdrawTokenFee>) -> Result<()> {
     // TOKEN TRANSFER
     // ===============================
 
-    handle_pda_token_transfer(
+    game_token.handle_pda_token_transfer(
         ctx.accounts.game_token_account.to_account_info(),
         ctx.accounts.authority_token_account.to_account_info(),
         ctx.accounts.game_vault.to_account_info(),
         ctx.accounts.token_program.to_account_info(),
-        token_mint_key,
-        ctx.bumps.game_vault,
         withdrawal_amount,
     )?;
 

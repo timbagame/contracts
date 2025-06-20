@@ -1,6 +1,5 @@
 use crate::events::PlayerRolled;
-use crate::state::{GameType, SubtreeProof};
-use crate::utils::handle_player_token_transfer;
+use crate::state::{Game, GameType, SubtreeProof};
 use anchor_lang::prelude::*;
 
 pub fn handler(
@@ -12,6 +11,7 @@ pub fn handler(
     let clock = Clock::get()?;
     let current_time = clock.unix_timestamp as u64;
     let player_key = ctx.accounts.player.key();
+    let player_balance = &mut ctx.accounts.player_balance;
 
     // ===============================
     // VALIDATION
@@ -32,17 +32,17 @@ pub fn handler(
     // ===============================
 
     let ticket_amount = game.ticket_amount;
-    
+
     // TODO: For Snowball games, we need to add a new entry to the merkle tree
     // representing this additional roll. The client must provide:
     // 1. Updated merkle root with new entry
     // 2. Unchanged subtree proofs for verification
-    
+
     // For now, simplified implementation
     if game.game_type == GameType::Snowball {
         // Create a new participation entry for this additional roll
         let new_entry_count = 1; // TODO: Get actual entry count from existing participation
-        let participation = game.create_participation_entry(
+        let participation = Game::create_participation_entry(
             player_key,
             ticket_amount,
             game.players_count, // TODO: This should be the next available index
@@ -52,7 +52,7 @@ pub fn handler(
 
         // Add to merkle tree (this updates the root and validates the change)
         game.add_player_to_merkle_tree(&participation, new_merkle_root, &unchanged_subtrees)?;
-        
+
         game.last_slot = clock.slot;
     } else {
         // For Dumbflip, no state changes needed - just emit event
@@ -64,8 +64,7 @@ pub fn handler(
     // ===============================
 
     if game.game_type == GameType::Snowball {
-        handle_player_token_transfer(
-            &mut ctx.accounts.player_balance,
+        player_balance.handle_token_transfer(
             ticket_amount,
             ctx.accounts.player_token_account.to_account_info(),
             ctx.accounts.game_token_account.to_account_info(),

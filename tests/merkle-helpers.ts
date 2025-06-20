@@ -168,7 +168,7 @@ export function addEntryToTree(
   unchangedSubtrees: SubtreeProof[];
 } {
   const allEntries = [...existingEntries, newEntry];
-  const { root: newRoot, tree } = buildMerkleTree(allEntries);
+  const { root: newRoot } = buildMerkleTree(allEntries);
   
   // For simplicity in tests, we'll mark all existing subtrees as unchanged
   // In practice, the client would calculate which subtrees are actually unchanged

@@ -18,9 +18,9 @@ pub struct InitializeOracle<'info> {
         space = ORACLE_SIZE,
         seeds = [b"oracle"],
         bump,
-        constraint = Oracle::is_valid_fee_percentage(&Oracle::default(), fee_percentage) @ ErrorCode::InvalidAmount,
-        constraint = Oracle::is_valid_timeout(&Oracle::default(), max_timeout, min_timeout) @ ErrorCode::InvalidTimeout,
-        constraint = Oracle::is_valid_players_count(&Oracle::default(), max_players) @ ErrorCode::InvalidPlayersCount,
+        constraint = fee_percentage <= 100 @ ErrorCode::InvalidAmount,
+        constraint = max_timeout >= min_timeout @ ErrorCode::InvalidTimeout,
+        constraint = max_players > 0 @ ErrorCode::InvalidPlayersCount,
     )]
     pub oracle: Account<'info, Oracle>,
 
@@ -38,9 +38,9 @@ pub struct UpdateOracle<'info> {
         seeds = [b"oracle"],
         bump,
         constraint = oracle.is_authorized_authority(&old_authority.key()) @ ErrorCode::UnauthorizedAuthority,
-        constraint = oracle.is_valid_fee_percentage(fee_percentage) @ ErrorCode::InvalidAmount,
-        constraint = oracle.is_valid_timeout(max_timeout, min_timeout) @ ErrorCode::InvalidTimeout,
-        constraint = oracle.is_valid_players_count(max_players) @ ErrorCode::InvalidPlayersCount,
+        constraint = fee_percentage <= 100 @ ErrorCode::InvalidAmount,
+        constraint = max_timeout >= min_timeout @ ErrorCode::InvalidTimeout,
+        constraint = max_players > 0 @ ErrorCode::InvalidPlayersCount,
     )]
     pub oracle: Account<'info, Oracle>,
 
@@ -184,7 +184,7 @@ pub struct WithdrawPlayerBalance<'info> {
     pub game_token_account: Account<'info, TokenAccount>,
 
     /// CHECK: PDA authority for game's token accounts
-    #[account(seeds = [b"game_vault", token_mint.key().as_ref()], bump)]
+    #[account(seeds = [b"game_vault", token_mint.key().as_ref()], bump = game_token.vault_bump)]
     pub game_vault: AccountInfo<'info>,
 
     pub system_program: Program<'info, System>,
@@ -226,7 +226,7 @@ pub struct InitializeGame<'info> {
     #[account(seeds = [b"game_token", token_mint.key().as_ref()], bump)]
     pub game_token: Account<'info, GameToken>,
     /// CHECK: PDA authority for game's token accounts
-    #[account(seeds = [b"game_vault", token_mint.key().as_ref()], bump)]
+    #[account(seeds = [b"game_vault", token_mint.key().as_ref()], bump = game_token.vault_bump)]
     pub game_vault: AccountInfo<'info>,
     #[account(
         mut,
@@ -273,7 +273,7 @@ pub struct JoinGame<'info> {
     #[account(seeds = [b"game_token", game.token_mint.as_ref()], bump)]
     pub game_token: Account<'info, GameToken>,
     /// CHECK: PDA authority for game's token accounts
-    #[account(seeds = [b"game_vault", game.token_mint.as_ref()], bump)]
+    #[account(seeds = [b"game_vault", game.token_mint.as_ref()], bump = game_token.vault_bump)]
     pub game_vault: AccountInfo<'info>,
     #[account(
         mut,
@@ -307,7 +307,7 @@ pub struct CompleteGame<'info> {
         seeds = [b"game", random_hash.as_ref()],
         bump,
         constraint = game.is_creator(&creator.key()) @ ErrorCode::InvalidCreator,
-        constraint = game.verify_secret_key(random_hash, secret_key) @ ErrorCode::InvalidSecretKey,
+        constraint = Game::verify_secret_key(random_hash, secret_key) @ ErrorCode::InvalidSecretKey,
         constraint = game.total_amount > 0 @ ErrorCode::GameAlreadyCompleted,
         // TODO: Add winner verification with merkle proof
         // constraint = Game::verify_merkle_proof(...) @ ErrorCode::UnauthorizedPlayer,
@@ -368,7 +368,6 @@ pub struct UnjoinGame<'info> {
     pub system_program: Program<'info, System>,
 }
 
-
 #[derive(Accounts)]
 pub struct CloseGame<'info> {
     #[account(
@@ -419,7 +418,7 @@ pub struct RollGame<'info> {
     #[account(seeds = [b"game_token", game.token_mint.as_ref()], bump)]
     pub game_token: Account<'info, GameToken>,
     /// CHECK: PDA authority for game's token accounts
-    #[account(seeds = [b"game_vault", game.token_mint.as_ref()], bump)]
+    #[account(seeds = [b"game_vault", game.token_mint.as_ref()], bump = game_token.vault_bump)]
     pub game_vault: AccountInfo<'info>,
     #[account(
         mut,
@@ -454,7 +453,7 @@ pub struct WithdrawTokenFee<'info> {
     pub game_token: Account<'info, GameToken>,
     pub token_mint: Account<'info, Mint>,
     /// CHECK: PDA authority for game's token accounts
-    #[account(seeds = [b"game_vault", token_mint.key().as_ref()], bump)]
+    #[account(seeds = [b"game_vault", token_mint.key().as_ref()], bump = game_token.vault_bump)]
     pub game_vault: AccountInfo<'info>,
     #[account(
         mut,
