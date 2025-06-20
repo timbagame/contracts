@@ -40,17 +40,8 @@ pub fn handler(
     // FIXME: Simplified implementation - needs proper merkle tree handling for multiple rolls
     if game.game_type == GameType::Snowball || game.game_type == GameType::Dumbball {
         // Create a new participation entry for this additional roll
-        // Use total entries as the next index (total_amount / ticket_amount)
-        let next_entry_index = (game.total_amount / game.ticket_amount) as u32;
-        let participation = Game::create_participation_entry(
-            player_key,
-            ticket_amount,
-            next_entry_index,
-            current_time,
-        );
-
-        // Add to merkle tree
-        game.add_player_to_merkle_tree(&participation)?;
+        // Add to merkle tree (it will create the participation entry internally)
+        game.add_player_to_merkle_tree(player_key, current_time)?;
 
         game.last_slot = clock.slot;
     } else {

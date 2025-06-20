@@ -1,10 +1,8 @@
 use crate::events::PlayerJoined;
-use crate::state::ParticipationEntry;
 use anchor_lang::prelude::*;
 
 pub fn handler(
     ctx: Context<super::JoinGame>,
-    participation_entry: ParticipationEntry,
 ) -> Result<()> {
     let game = &mut ctx.accounts.game;
     let clock = Clock::get()?;
@@ -25,22 +23,8 @@ pub fn handler(
     // MERKLE TREE UPDATE
     // ===============================
 
-    // Validate the participation entry provided by client
-    require!(
-        participation_entry.player == player_key,
-        crate::error::ErrorCode::UnauthorizedPlayer
-    );
-    require!(
-        participation_entry.player_index == game.players_count,
-        crate::error::ErrorCode::InvalidPlayersCount
-    );
-    require!(
-        participation_entry.amount == game.ticket_amount,
-        crate::error::ErrorCode::InvalidAmount
-    );
-
     // Add player to merkle tree
-    game.add_player_to_merkle_tree(&participation_entry)?;
+    game.add_player_to_merkle_tree(player_key, current_time)?;
 
     // Update game state
     game.last_slot = clock.slot;
@@ -49,9 +33,9 @@ pub fn handler(
     // TOKEN TRANSFER
     // ===============================
 
-    if participation_entry.amount > 0 {
+    if game.ticket_amount > 0 {
         player_balance.handle_token_transfer(
-            participation_entry.amount,
+            game.ticket_amount,
             ctx.accounts.player_token_account.to_account_info(),
             ctx.accounts.game_token_account.to_account_info(),
             ctx.accounts.player.to_account_info(),
@@ -68,7 +52,7 @@ pub fn handler(
         player: player_key,
         total_amount: game.total_amount,
         players_count: game.players_count,
-        player_index: participation_entry.player_index,
+        player_index: game.players_count - 1, // Just joined, so index is players_count - 1
         last_slot: game.last_slot,
         timestamp: current_time,
     });
