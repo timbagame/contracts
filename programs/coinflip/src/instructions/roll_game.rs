@@ -1,10 +1,8 @@
 use crate::events::PlayerRolled;
-use crate::state::{Game, GameType};
+use crate::state::GameType;
 use anchor_lang::prelude::*;
 
-pub fn handler(
-    ctx: Context<super::RollGame>,
-) -> Result<()> {
+pub fn handler(ctx: Context<super::RollGame>) -> Result<()> {
     let game = &mut ctx.accounts.game;
     let clock = Clock::get()?;
     let current_time = clock.unix_timestamp as u64;
@@ -21,7 +19,10 @@ pub fn handler(
     );
 
     require!(
-        game.game_type == GameType::Snowball || game.game_type == GameType::Dumbflip || game.game_type == GameType::Dumbball || game.game_type == GameType::Dumbaway,
+        game.game_type == GameType::Snowball
+            || game.game_type == GameType::Dumbflip
+            || game.game_type == GameType::Dumbball
+            || game.game_type == GameType::Dumbaway,
         crate::error::ErrorCode::InvalidGameType
     );
 

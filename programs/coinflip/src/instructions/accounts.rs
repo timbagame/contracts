@@ -246,11 +246,6 @@ pub struct InitializeGame<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(
-    new_merkle_root: [u8; 32],
-    unchanged_subtrees: Vec<SubtreeProof>,
-    participation_entry: ParticipationEntry,
-)]
 pub struct JoinGame<'info> {
     #[account(
         mut,
@@ -391,10 +386,6 @@ pub struct CloseGame<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(
-    new_merkle_root: [u8; 32],
-    unchanged_subtrees: Vec<SubtreeProof>,
-)]
 pub struct RollGame<'info> {
     #[account(
         mut,
