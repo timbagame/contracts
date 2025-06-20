@@ -10,8 +10,28 @@ pub const ORACLE_SIZE: usize = 8 + 32 + 1 + 2 + 4 + 4 + 4;
 pub const GAME_TOKEN_SIZE: usize = 8 + 32 + 1 + 8 + 8 + 1;
 pub const PLAYER_BALANCE_SIZE: usize = 8 + 8;
 // PlayerParticipation eliminated - using merkle trees!
-pub const GAME_SIZE: usize =
-    8 + 32 + 1 + 8 + 4 + 4 + 4 + 32 + 8 + 4 + 8 + 1 + 8 + 32 + 4 + 512 + 4 + 640 + 4 + 128 + 4 + 576; // Zero-proof merkle data + recent leaf hashes
+pub const GAME_SIZE: usize = 8
+    + 32
+    + 1
+    + 8
+    + 4
+    + 4
+    + 4
+    + 32
+    + 8
+    + 4
+    + 8
+    + 1
+    + 8
+    + 32
+    + 4
+    + 512
+    + 4
+    + 640
+    + 4
+    + 128
+    + 4
+    + 576; // Zero-proof merkle data + recent leaf hashes
 
 // =============================================================================
 // GAME TYPES
@@ -522,7 +542,7 @@ impl Game {
             player_index: participation.player_index,
             leaf_hash,
         });
-        
+
         // Keep only last 16 players to avoid bloating account size
         const MAX_RECENT_PLAYERS: usize = 16;
         if self.recent_players.len() > MAX_RECENT_PLAYERS {
@@ -678,13 +698,13 @@ impl Game {
         // For stable subtrees, we need to reconstruct from existing stable proofs
         // This is a simplified implementation - in practice, we'd need to store
         // more intermediate state or reconstruct from events
-        
+
         // For now, calculate a deterministic hash based on level and current state
         let mut combined_data = Vec::new();
         combined_data.extend_from_slice(&self.merkle_root);
         combined_data.push(level);
         combined_data.extend_from_slice(&self.players_count.to_le_bytes());
-        
+
         Ok(hash(&combined_data).to_bytes())
     }
 
@@ -698,37 +718,40 @@ impl Game {
         if let Some(stable_proof) = self.find_stable_proof(level, sibling_index) {
             return Ok(stable_proof.hash);
         }
-        
+
         // If not stable, calculate from recent players data
         if level == 0 {
             // At leaf level, find the actual player
-            if let Some(recent_player) = self.recent_players.iter()
-                .find(|p| p.player_index == sibling_index) {
+            if let Some(recent_player) = self
+                .recent_players
+                .iter()
+                .find(|p| p.player_index == sibling_index)
+            {
                 return Ok(recent_player.leaf_hash);
             }
-            
+
             // If sibling is beyond current players, return zero hash
             if sibling_index >= self.players_count {
                 return Ok([0; 32]);
             }
-            
+
             // Player exists but not in recent_players - this shouldn't happen
             // with proper recent_players management, but fallback gracefully
             return Err(crate::error::ErrorCode::InvalidAmount.into());
         }
-        
+
         // For higher levels, recursively calculate from lower levels
         let left_child = sibling_index * 2;
         let right_child = left_child + 1;
-        
+
         let left_hash = self.calculate_current_sibling_hash(level - 1, left_child)?;
         let right_hash = self.calculate_current_sibling_hash(level - 1, right_child)?;
-        
+
         // If both children are zero, this subtree is empty
         if left_hash == [0; 32] && right_hash == [0; 32] {
             return Ok([0; 32]);
         }
-        
+
         // Calculate parent hash from children
         let combined = [left_hash, right_hash].concat();
         Ok(hash(&combined).to_bytes())
