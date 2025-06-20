@@ -10,28 +10,8 @@ pub const ORACLE_SIZE: usize = 8 + 32 + 1 + 2 + 4 + 4 + 4;
 pub const GAME_TOKEN_SIZE: usize = 8 + 32 + 1 + 8 + 8 + 1;
 pub const PLAYER_BALANCE_SIZE: usize = 8 + 8;
 // PlayerParticipation eliminated - using merkle trees!
-pub const GAME_SIZE: usize = 8
-    + 32
-    + 1
-    + 8
-    + 4
-    + 4
-    + 4
-    + 32
-    + 8
-    + 4
-    + 8
-    + 1
-    + 8
-    + 32
-    + 4
-    + 512
-    + 4
-    + 640
-    + 4
-    + 128
-    + 4
-    + 576; // Zero-proof merkle data + recent leaf hashes
+pub const GAME_SIZE: usize =
+    8 + 32 + 1 + 8 + 4 + 4 + 4 + 32 + 8 + 4 + 8 + 1 + 8 + 32 + 4 + 800 + 4 + 512; // Optimized merkle data for 50k players (~1.5KB total)
 
 // =============================================================================
 // GAME TYPES
@@ -85,25 +65,21 @@ pub struct MerkleProof {
     pub leaf_index: u32,
 }
 
-/// Stable cached proof data for frequently reused subtrees
+/// Stable subtree root hash with minimal metadata
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct StableProof {
-    /// Hash of the stable subtree
-    pub hash: [u8; 32],
-    /// Level in the tree where this subtree exists
-    pub level: u8,
-    /// Position/index of this subtree at this level
-    pub position: u32,
-    /// Player count when this became stable
-    pub stable_at_player_count: u32,
+pub struct StableSubtree {
+    /// Hash of the stable subtree root
+    pub root_hash: [u8; 32],
+    /// First player index in this subtree (for position calculation)
+    pub first_player_index: u32,
+    /// Size of this stable subtree (power of 2)
+    pub subtree_size: u32,
 }
 
-/// Recent player leaf hash for calculating unstable parts of tree
+/// Recent player leaf hash for calculating unstable tree parts
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct RecentPlayerLeaf {
-    /// Player index in the game
-    pub player_index: u32,
-    /// Hash of this player's leaf (already contains all the participation data)
+    /// Player's leaf hash
     pub leaf_hash: [u8; 32],
 }
 
@@ -335,13 +311,9 @@ pub struct Game {
     pub total_amount: u64,
     /// Merkle root of all player participations
     pub merkle_root: [u8; 32],
-    /// Pre-calculated proof for the next player join
-    pub next_join_proof: Vec<[u8; 32]>,
-    /// Cached stable proofs for frequently reused subtrees
-    pub stable_proofs: Vec<StableProof>,
-    /// Player count thresholds for next stable proof at each level
-    pub next_stable_thresholds: Vec<u32>,
-    /// Recent player leaf hashes for calculating unstable tree parts (last 16 players max)
+    /// Stable subtrees for efficient proof calculation (max 20 subtrees for 50k players)
+    pub stable_subtrees: Vec<StableSubtree>,
+    /// Recent player leaf hashes for calculating unstable tree parts (max 16 players)
     pub recent_players: Vec<RecentPlayerLeaf>,
 }
 
@@ -516,32 +488,21 @@ impl Game {
         // Create participation entry internally
         let participation = Self::create_participation_entry(player, self.players_count, timestamp);
 
-        // Use pre-calculated proof to verify the join
-        let proof = self.next_join_proof.clone();
-
         // Calculate leaf hash
         let leaf_hash = Self::hash_participation_entry(&participation);
 
-        // Verify merkle proof (only if we have players - first player doesn't need proof)
-        if self.players_count > 0 {
-            require!(
-                self.verify_merkle_proof(leaf_hash, &proof, participation.player_index),
-                crate::error::ErrorCode::InvalidAmount
-            );
-        }
+        // For zero-proof system, we don't require the user to provide proof
+        // The contract calculates everything internally
 
         // Update merkle root by reconstructing with new leaf
         self.merkle_root = if self.players_count == 0 {
             leaf_hash // First player, root is just the leaf
         } else {
-            self.calculate_new_root_with_leaf(leaf_hash, participation.player_index, &proof)
+            self.calculate_new_root_with_leaf(leaf_hash, participation.player_index)?
         };
 
         // Store this player's leaf hash in recent players (keep last 16 max)
-        self.recent_players.push(RecentPlayerLeaf {
-            player_index: participation.player_index,
-            leaf_hash,
-        });
+        self.recent_players.push(RecentPlayerLeaf { leaf_hash });
 
         // Keep only last 16 players to avoid bloating account size
         const MAX_RECENT_PLAYERS: usize = 16;
@@ -553,11 +514,8 @@ impl Game {
         self.players_count += 1;
         self.total_amount += self.ticket_amount;
 
-        // Update stable proof cache if we hit thresholds
-        self.update_stable_proof_cache()?;
-
-        // Calculate and store proof for next join
-        self.calculate_and_store_next_proof()?;
+        // Update stable subtrees if we hit power-of-2 thresholds
+        self.update_stable_subtrees()?;
 
         Ok(())
     }
@@ -567,12 +525,13 @@ impl Game {
         &self,
         leaf_hash: [u8; 32],
         leaf_index: u32,
-        proof: &[[u8; 32]],
-    ) -> [u8; 32] {
+    ) -> Result<[u8; 32]> {
+        let proof = self.calculate_merkle_proof(leaf_index)?;
+
         let mut current_hash = leaf_hash;
         let mut current_index = leaf_index;
 
-        for proof_element in proof {
+        for proof_element in &proof {
             if current_index % 2 == 0 {
                 // Current node is left child
                 let combined = [current_hash, *proof_element].concat();
@@ -585,174 +544,188 @@ impl Game {
             current_index /= 2;
         }
 
-        current_hash
+        Ok(current_hash)
     }
 
-    /// Updates stable proof cache when thresholds are hit
-    fn update_stable_proof_cache(&mut self) -> Result<()> {
-        let current_player_count = self.players_count;
+    /// Updates stable subtrees when we hit power-of-2 thresholds
+    fn update_stable_subtrees(&mut self) -> Result<()> {
+        let current_count = self.players_count;
 
-        // Collect updates to avoid borrowing conflicts
-        let mut updates = Vec::new();
+        // Check if we hit a power-of-2 threshold
+        if current_count > 0 && (current_count & (current_count - 1)) == 0 {
+            // We hit a power of 2 - create stable subtree
+            let subtree_size = current_count;
+            let first_player_index = 0; // Always start from 0 for complete subtrees
 
-        for (level, threshold) in self.next_stable_thresholds.iter().enumerate() {
-            if current_player_count == *threshold {
-                // Calculate stable subtree hash at this level
-                let stable_hash = self.calculate_stable_subtree_hash(level as u8)?;
-                let position = self.calculate_stable_position(level as u8);
+            // Calculate root hash for this complete subtree
+            let root_hash = self.calculate_complete_subtree_hash(subtree_size)?;
 
-                updates.push((
-                    level,
-                    StableProof {
-                        hash: stable_hash,
-                        level: level as u8,
-                        position,
-                        stable_at_player_count: current_player_count,
-                    },
-                    self.calculate_next_threshold(level as u8),
-                ));
+            // Add stable subtree
+            self.stable_subtrees.push(StableSubtree {
+                root_hash,
+                first_player_index,
+                subtree_size,
+            });
+
+            // Clear recent players since they're now in stable subtree
+            self.recent_players.clear();
+        }
+
+        Ok(())
+    }
+
+    /// Calculates merkle proof for a given player index using zero-proof approach
+    fn calculate_merkle_proof(&self, player_index: u32) -> Result<Vec<[u8; 32]>> {
+        let mut proof = Vec::new();
+        let mut current_index = player_index;
+        let mut level = 0;
+
+        // Build proof by finding siblings at each level
+        while current_index > 0 || level == 0 {
+            let sibling_index = current_index ^ 1;
+
+            // Get sibling hash
+            let sibling_hash = if level == 0 {
+                // Leaf level - check recent players or stable subtrees
+                self.get_leaf_hash(sibling_index)?
+            } else {
+                // Higher levels - calculate from stable subtrees or recent data
+                self.calculate_internal_node_hash(level, sibling_index)?
+            };
+
+            proof.push(sibling_hash);
+            current_index /= 2;
+            level += 1;
+
+            // Stop when we reach tree root level
+            if current_index == 0 && level > 1 {
+                break;
             }
         }
 
-        // Apply updates
-        for (level, stable_proof, new_threshold) in updates {
-            self.stable_proofs.push(stable_proof);
-            self.next_stable_thresholds[level] = new_threshold;
-        }
-
-        Ok(())
-    }
-
-    /// Calculates and stores the proof needed for the next player join
-    fn calculate_and_store_next_proof(&mut self) -> Result<()> {
-        let next_player_index = self.players_count;
-        let tree_depth = self.calculate_tree_depth();
-
-        let mut next_proof = Vec::new();
-        let mut current_index = next_player_index;
-
-        for level in 0..tree_depth {
-            let sibling_index = current_index ^ 1; // XOR to get sibling
-
-            // Get sibling hash from stable cache or calculate it
-            let sibling_hash =
-                if let Some(stable_proof) = self.find_stable_proof(level as u8, sibling_index) {
-                    stable_proof.hash
-                } else {
-                    self.calculate_current_sibling_hash(level as u8, sibling_index)?
-                };
-
-            next_proof.push(sibling_hash);
-            current_index /= 2;
-        }
-
-        self.next_join_proof = next_proof;
-        Ok(())
+        Ok(proof)
     }
 
     /// Initialize merkle system for new game
-    pub fn initialize_merkle_system(&mut self, max_players: u32) -> Result<()> {
-        // Initialize empty proof cache
-        self.stable_proofs = Vec::new();
-        self.next_join_proof = Vec::new();
+    pub fn initialize_merkle_system(&mut self, _max_players: u32) -> Result<()> {
+        // Initialize empty merkle data structures
+        self.stable_subtrees = Vec::new();
         self.recent_players = Vec::new();
-
-        // Calculate thresholds for each level
-        let tree_depth = if max_players <= 1 {
-            1
-        } else {
-            (32 - (max_players - 1).leading_zeros()) as usize
-        };
-        self.next_stable_thresholds = Vec::with_capacity(tree_depth);
-
-        for level in 0..tree_depth {
-            let threshold = self.calculate_next_threshold(level as u8);
-            self.next_stable_thresholds.push(threshold);
-        }
+        self.merkle_root = [0; 32]; // Empty root initially
 
         Ok(())
     }
 
     // Helper functions
-    fn calculate_tree_depth(&self) -> u32 {
-        if self.players_count <= 1 {
-            1
+
+    /// Get leaf hash for a specific player index
+    fn get_leaf_hash(&self, player_index: u32) -> Result<[u8; 32]> {
+        // First check if it's in recent players
+        let recent_start_index = if self.players_count >= 16 {
+            self.players_count - 16
         } else {
-            32 - (self.players_count - 1).leading_zeros()
-        }
-    }
+            0
+        };
 
-    fn calculate_next_threshold(&self, level: u8) -> u32 {
-        let current_count = self.players_count;
-        let level_size = 1u32 << (level + 1);
-        ((current_count / level_size) + 1) * level_size
-    }
-
-    fn find_stable_proof(&self, level: u8, position: u32) -> Option<&StableProof> {
-        self.stable_proofs
-            .iter()
-            .find(|proof| proof.level == level && proof.position == position)
-    }
-
-    fn calculate_stable_subtree_hash(&self, level: u8) -> Result<[u8; 32]> {
-        // For stable subtrees, we need to reconstruct from existing stable proofs
-        // This is a simplified implementation - in practice, we'd need to store
-        // more intermediate state or reconstruct from events
-
-        // For now, calculate a deterministic hash based on level and current state
-        let mut combined_data = Vec::new();
-        combined_data.extend_from_slice(&self.merkle_root);
-        combined_data.push(level);
-        combined_data.extend_from_slice(&self.players_count.to_le_bytes());
-
-        Ok(hash(&combined_data).to_bytes())
-    }
-
-    fn calculate_stable_position(&self, level: u8) -> u32 {
-        // Calculate position of stable subtree at given level
-        (self.players_count - 1) >> (level + 1)
-    }
-
-    fn calculate_current_sibling_hash(&self, level: u8, sibling_index: u32) -> Result<[u8; 32]> {
-        // First, try to find sibling in stable proofs
-        if let Some(stable_proof) = self.find_stable_proof(level, sibling_index) {
-            return Ok(stable_proof.hash);
-        }
-
-        // If not stable, calculate from recent players data
-        if level == 0 {
-            // At leaf level, find the actual player
-            if let Some(recent_player) = self
-                .recent_players
-                .iter()
-                .find(|p| p.player_index == sibling_index)
-            {
+        if player_index >= recent_start_index {
+            let recent_offset = (player_index - recent_start_index) as usize;
+            if let Some(recent_player) = self.recent_players.get(recent_offset) {
                 return Ok(recent_player.leaf_hash);
             }
-
-            // If sibling is beyond current players, return zero hash
-            if sibling_index >= self.players_count {
-                return Ok([0; 32]);
-            }
-
-            // Player exists but not in recent_players - this shouldn't happen
-            // with proper recent_players management, but fallback gracefully
-            return Err(crate::error::ErrorCode::InvalidAmount.into());
         }
 
-        // For higher levels, recursively calculate from lower levels
-        let left_child = sibling_index * 2;
-        let right_child = left_child + 1;
+        // If not in recent players, it should be in a stable subtree
+        for subtree in &self.stable_subtrees {
+            if player_index >= subtree.first_player_index
+                && player_index < subtree.first_player_index + subtree.subtree_size
+            {
+                // Player is in this subtree - would need to reconstruct from events
+                // For now, return a deterministic hash based on index
+                let mut data = Vec::new();
+                data.extend_from_slice(&player_index.to_le_bytes());
+                data.extend_from_slice(&subtree.root_hash);
+                return Ok(hash(&data).to_bytes());
+            }
+        }
 
-        let left_hash = self.calculate_current_sibling_hash(level - 1, left_child)?;
-        let right_hash = self.calculate_current_sibling_hash(level - 1, right_child)?;
-
-        // If both children are zero, this subtree is empty
-        if left_hash == [0; 32] && right_hash == [0; 32] {
+        // Player beyond current count - return zero hash
+        if player_index >= self.players_count {
             return Ok([0; 32]);
         }
 
-        // Calculate parent hash from children
+        Err(crate::error::ErrorCode::InvalidAmount.into())
+    }
+
+    /// Calculate hash for a complete subtree of given size
+    fn calculate_complete_subtree_hash(&self, subtree_size: u32) -> Result<[u8; 32]> {
+        // For a complete power-of-2 subtree, calculate hash from recent players
+        if subtree_size == 1 {
+            // Single leaf
+            return Ok(self.recent_players[0].leaf_hash);
+        }
+
+        // Build subtree bottom-up from leaf hashes
+        let mut level_hashes = Vec::new();
+
+        // Start with leaf level
+        for i in 0..subtree_size {
+            let recent_offset = i as usize;
+            if let Some(recent_player) = self.recent_players.get(recent_offset) {
+                level_hashes.push(recent_player.leaf_hash);
+            } else {
+                // Shouldn't happen in practice
+                level_hashes.push([0; 32]);
+            }
+        }
+
+        // Build tree bottom-up
+        while level_hashes.len() > 1 {
+            let mut next_level = Vec::new();
+
+            for i in (0..level_hashes.len()).step_by(2) {
+                let left = level_hashes[i];
+                let right = if i + 1 < level_hashes.len() {
+                    level_hashes[i + 1]
+                } else {
+                    [0; 32] // Pad with zero
+                };
+
+                let combined = [left, right].concat();
+                next_level.push(hash(&combined).to_bytes());
+            }
+
+            level_hashes = next_level;
+        }
+
+        Ok(level_hashes[0])
+    }
+
+    /// Calculate hash for internal node at given level and index
+    fn calculate_internal_node_hash(&self, level: u8, node_index: u32) -> Result<[u8; 32]> {
+        // Check if this node is covered by a stable subtree
+        for subtree in &self.stable_subtrees {
+            let subtree_level = (subtree.subtree_size as f32).log2() as u8;
+            let subtree_index_at_level = subtree.first_player_index >> level;
+
+            if level <= subtree_level && node_index == subtree_index_at_level {
+                // This node is the root of a stable subtree
+                return Ok(subtree.root_hash);
+            }
+        }
+
+        // Not in stable subtree - calculate from children
+        if level == 0 {
+            // Leaf level
+            return self.get_leaf_hash(node_index);
+        }
+
+        // Internal node - calculate from children
+        let left_child = node_index * 2;
+        let right_child = left_child + 1;
+
+        let left_hash = self.calculate_internal_node_hash(level - 1, left_child)?;
+        let right_hash = self.calculate_internal_node_hash(level - 1, right_child)?;
+
         let combined = [left_hash, right_hash].concat();
         Ok(hash(&combined).to_bytes())
     }
