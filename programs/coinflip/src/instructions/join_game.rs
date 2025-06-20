@@ -1,4 +1,5 @@
-use crate::{events::PlayerJoined, utils::handle_player_token_transfer, state::{SubtreeProof, ParticipationEntry}};
+use crate::events::PlayerJoined;
+use crate::state::{ParticipationEntry, SubtreeProof};
 use anchor_lang::prelude::*;
 
 pub fn handler(
@@ -10,6 +11,7 @@ pub fn handler(
     let game = &mut ctx.accounts.game;
     let clock = Clock::get()?;
     let current_time = clock.unix_timestamp as u64;
+    let player_balance = &mut ctx.accounts.player_balance;
     let player_key = ctx.accounts.player.key();
 
     // ===============================
@@ -54,8 +56,7 @@ pub fn handler(
     // ===============================
 
     if participation_entry.amount > 0 {
-        handle_player_token_transfer(
-            &mut ctx.accounts.player_balance,
+        player_balance.handle_token_transfer(
             participation_entry.amount,
             ctx.accounts.player_token_account.to_account_info(),
             ctx.accounts.game_token_account.to_account_info(),
