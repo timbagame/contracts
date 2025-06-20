@@ -24,10 +24,10 @@ pub const GAME_SIZE: usize = 8
     + 1   // is_private
     + 8   // total_amount
     + 32  // merkle_root
-    + 4   // stable_subtrees length
-    + 640 // stable_subtrees: max 16 subtrees × 40 bytes each (log2(50k) = 16)
-    + 4   // recent_players length
-    + 512; // recent_players: max 16 players × 32 bytes each (~1.2KB total)
+    + 1   // subtree_count
+    + 640 // subtrees: 16 × 40 bytes (fixed size)
+    + 1   // recent_count
+    + 512; // recent_players: 16 × 32 bytes (fixed size) = 1,367 bytes total
 
 // =============================================================================
 // GAME TYPES
@@ -81,22 +81,22 @@ pub struct MerkleProof {
     pub leaf_index: u32,
 }
 
-/// Stable subtree root hash with minimal metadata
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct StableSubtree {
-    /// Hash of the stable subtree root
+/// Optimized subtree structure (40 bytes)
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Default)]
+pub struct Subtree {
+    /// Hash of the subtree root
     pub root_hash: [u8; 32],
-    /// First player index in this subtree (for position calculation)
-    pub first_player_index: u32,
-    /// Size of this stable subtree (power of 2)
-    pub subtree_size: u32,
+    /// First player index in this subtree
+    pub start_index: u32,
+    /// Size of this subtree (power of 2)
+    pub size: u32,
 }
 
-/// Recent player leaf hash for calculating unstable tree parts
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct RecentPlayerLeaf {
+/// Recent player leaf hash (32 bytes)
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Default)]
+pub struct RecentLeaf {
     /// Player's leaf hash
-    pub leaf_hash: [u8; 32],
+    pub hash: [u8; 32],
 }
 
 // =============================================================================
@@ -327,10 +327,14 @@ pub struct Game {
     pub total_amount: u64,
     /// Merkle root of all player participations
     pub merkle_root: [u8; 32],
-    /// Stable subtrees for efficient proof calculation (max 20 subtrees for 50k players)
-    pub stable_subtrees: Vec<StableSubtree>,
-    /// Recent player leaf hashes for calculating unstable tree parts (max 16 players)
-    pub recent_players: Vec<RecentPlayerLeaf>,
+    /// Number of active subtrees (0-16)
+    pub subtree_count: u8,
+    /// Fixed-size array for subtree storage
+    pub subtrees: [Subtree; 16],
+    /// Number of players in recent buffer (0-16)
+    pub recent_count: u8,
+    /// Recent player leaves (before subtree aggregation)
+    pub recent_players: [RecentLeaf; 16],
 }
 
 impl Game {
@@ -499,77 +503,82 @@ impl Game {
         current_hash == self.merkle_root
     }
 
-    /// Adds a player to the merkle tree
+    /// Adds a player to the merkle tree using buffer-based aggregation
     pub fn add_player_to_merkle_tree(&mut self, player: Pubkey, timestamp: u64) -> Result<()> {
         // Create participation entry internally
         let participation = Self::create_participation_entry(player, self.players_count, timestamp);
-
-        // Calculate leaf hash
         let leaf_hash = Self::hash_participation_entry(&participation);
 
-        // For zero-proof system, we don't require the user to provide proof
-        // The contract calculates everything internally
-
-        // Update merkle root by reconstructing with new leaf
-        self.merkle_root = if self.players_count == 0 {
-            leaf_hash // First player, root is just the leaf
+        // Add to recent buffer or trigger subtree creation
+        if self.recent_count < 16 {
+            // Add to buffer (O(1) operation)
+            self.recent_players[self.recent_count as usize] = RecentLeaf { hash: leaf_hash };
+            self.recent_count += 1;
         } else {
-            self.calculate_new_root_with_leaf(leaf_hash, participation.player_index)?
-        };
-
-        // Store this player's leaf hash in recent players (keep last 16 max)
-        self.recent_players.push(RecentPlayerLeaf { leaf_hash });
-
-        // Keep only last 16 players to avoid bloating account size
-        const MAX_RECENT_PLAYERS: usize = 16;
-        if self.recent_players.len() > MAX_RECENT_PLAYERS {
-            self.recent_players.remove(0);
+            // Buffer is full - create subtree and merge
+            let new_subtree = self.build_subtree_from_recent()?;
+            self.merge_subtree(new_subtree)?;
+            
+            // Reset buffer with new player
+            self.recent_players[0] = RecentLeaf { hash: leaf_hash };
+            self.recent_count = 1;
         }
 
         // Update game state
         self.players_count += 1;
         self.total_amount += self.ticket_amount;
 
-        // Update stable subtrees if we hit power-of-2 thresholds
-        self.update_stable_subtrees()?;
+        // Update global merkle root
+        self.update_merkle_root()?;
 
         Ok(())
     }
 
-    /// Calculates new merkle root with a new leaf at given index
-    fn calculate_new_root_with_leaf(
-        &self,
-        leaf_hash: [u8; 32],
-        leaf_index: u32,
-    ) -> Result<[u8; 32]> {
-        let proof = self.calculate_merkle_proof(leaf_index)?;
-
-        let mut current_hash = leaf_hash;
-        let mut current_index = leaf_index;
-
-        for proof_element in &proof {
-            if current_index % 2 == 0 {
-                // Current node is left child
-                let combined = [current_hash, *proof_element].concat();
-                current_hash = hash(&combined).to_bytes();
-            } else {
-                // Current node is right child
-                let combined = [*proof_element, current_hash].concat();
-                current_hash = hash(&combined).to_bytes();
-            }
-            current_index /= 2;
-        }
-
-        Ok(current_hash)
+    /// Builds 16-player subtree from recent buffer
+    fn build_subtree_from_recent(&self) -> Result<Subtree> {
+        require!(self.recent_count == 16, crate::error::ErrorCode::InvalidAmount);
+        
+        let start_index = self.players_count.saturating_sub(15);
+        let leaves: Vec<[u8; 32]> = self.recent_players[..16]
+            .iter()
+            .map(|leaf| leaf.hash)
+            .collect();
+        
+        Ok(Subtree {
+            root_hash: Self::compute_merkle_root(&leaves),
+            start_index,
+            size: 16,
+        })
     }
 
-    /// Updates stable subtrees using proper binary decomposition aggregation
-    fn update_stable_subtrees(&mut self) -> Result<()> {
-        let current_count = self.players_count;
-        
-        // Reconstruct optimal stable subtrees using binary decomposition
-        // Example: 50,000 = 32768 + 16384 + 1024 + 128 (4 subtrees, not 16)
-        self.aggregate_stable_subtrees(current_count)?;
+    /// Merges new subtree with existing ones using size-based merging
+    fn merge_subtree(&mut self, mut new: Subtree) -> Result<()> {
+        // Continuously merge same-sized subtrees
+        while let Some(existing_idx) = self.find_subtree_by_size(new.size) {
+            let existing = self.subtrees[existing_idx];
+            
+            // Remove existing subtree by moving last element to this position
+            self.subtrees[existing_idx] = self.subtrees[self.subtree_count as usize - 1];
+            self.subtree_count -= 1;
+
+            // Create merged subtree (double size)
+            let (left, right) = if existing.start_index < new.start_index {
+                (existing.root_hash, new.root_hash)
+            } else {
+                (new.root_hash, existing.root_hash)
+            };
+            
+            new = Subtree {
+                root_hash: hash(&[left, right].concat()).to_bytes(),
+                start_index: existing.start_index.min(new.start_index),
+                size: new.size * 2,
+            };
+        }
+
+        // Add final merged subtree
+        require!(self.subtree_count < 16, crate::error::ErrorCode::InvalidAmount);
+        self.subtrees[self.subtree_count as usize] = new;
+        self.subtree_count += 1;
         
         Ok(())
     }
@@ -724,10 +733,12 @@ impl Game {
 
     /// Initialize merkle system for new game
     pub fn initialize_merkle_system(&mut self) -> Result<()> {
-        // Initialize empty merkle data structures
-        self.stable_subtrees = Vec::new();
-        self.recent_players = Vec::new();
-        self.merkle_root = [0; 32]; // Empty root initially
+        // Initialize fixed-size arrays with default values
+        self.subtree_count = 0;
+        self.subtrees = [Subtree::default(); 16];
+        self.recent_count = 0;
+        self.recent_players = [RecentLeaf::default(); 16];
+        self.merkle_root = [0; 32];
 
         Ok(())
     }
