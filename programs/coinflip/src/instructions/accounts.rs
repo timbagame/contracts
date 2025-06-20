@@ -350,7 +350,7 @@ pub struct CompleteGame<'info> {
 pub struct UnjoinGame<'info> {
     #[account(
         mut,
-        constraint = game.game_type != GameType::Snowball @ ErrorCode::SnowballUnjoinNotAllowed,
+        constraint = game.game_type != GameType::Snowball && game.game_type != GameType::Dumbball @ ErrorCode::SnowballUnjoinNotAllowed,
     )]
     pub game: Account<'info, Game>,
     // No more PlayerParticipation accounts - using merkle trees!
@@ -402,7 +402,7 @@ pub struct RollGame<'info> {
         constraint = game.can_join_private(authority.as_ref(), &oracle.authority) @ ErrorCode::UnauthorizedPlayer,
         constraint = game.has_sufficient_balance_for_join(player_token_account.amount, player_balance.amount) @ ErrorCode::InsufficientBalance,
         constraint = game_token.is_enabled() @ ErrorCode::TokenNotEnabled,
-        constraint = game.game_type == GameType::Snowball || game.game_type == GameType::Dumbflip @ ErrorCode::InvalidGameType,
+        constraint = game.game_type == GameType::Snowball || game.game_type == GameType::Dumbflip || game.game_type == GameType::Dumbball || game.game_type == GameType::Dumbaway @ ErrorCode::InvalidGameType,
     )]
     pub game: Account<'info, Game>,
     // No more PlayerParticipation accounts - using merkle trees!

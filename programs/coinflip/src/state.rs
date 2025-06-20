@@ -20,12 +20,16 @@ pub const GAME_SIZE: usize = 8 + 32 + 1 + 8 + 4 + 4 + 4 + 32 + 8 + 4 + 8 + 1 + 8
 pub enum GameType {
     /// Two or more players compete for the pot
     Coinflip,
-    /// One or more players compete for a giveaway from the creator
-    Giveaway,
     /// Two or more players compete for the pot, reveal winner in real-time
     Dumbflip,
-    /// Snowball: multi-join, no unjoin, accumulating pot, real-time winner reveal
+    /// One or more players compete for a giveaway from the creator
+    Giveaway,
+    /// One or more players compete for a giveaway from the creator, reveal winner in real-time
+    Dumbaway,
+    /// Multi-join, no unjoin, accumulating pot
     Snowball,
+    /// Multi-join, no unjoin, accumulating pot, reveal winner in real-time
+    Dumbball,
 }
 
 impl Default for GameType {
@@ -351,9 +355,9 @@ impl Game {
 
     /// Calculates the winner index using secret key with unbiased random selection
     pub fn calculate_winner_index(&self, secret_key: [u8; 32]) -> u32 {
-        // For Snowball games, use total entries (total_amount / ticket_amount)
+        // For Snowball and Dumbball games, use total entries (total_amount / ticket_amount)
         // For other games, use unique players count
-        let n_entries = if self.game_type == GameType::Snowball {
+        let n_entries = if self.game_type == GameType::Snowball || self.game_type == GameType::Dumbball {
             self.total_amount / self.ticket_amount
         } else {
             self.players_count as u64
@@ -409,7 +413,7 @@ impl Game {
         max_players: u32,
         min_players: u32,
     ) -> bool {
-        if game_type == GameType::Giveaway {
+        if game_type == GameType::Giveaway || game_type == GameType::Dumbaway {
             max_players >= 1 && min_players >= 1
         } else {
             max_players >= 2 && min_players >= 2
@@ -421,7 +425,7 @@ impl Game {
     }
 
     pub fn has_sufficient_balance_for_join(&self, token_balance: u64, player_balance: u64) -> bool {
-        self.game_type == GameType::Giveaway || token_balance + player_balance >= self.ticket_amount
+        self.game_type == GameType::Giveaway || self.game_type == GameType::Dumbaway || token_balance + player_balance >= self.ticket_amount
     }
 
     // =============================================================================
