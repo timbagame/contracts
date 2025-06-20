@@ -607,7 +607,7 @@ impl Game {
     }
 
     /// Initialize merkle system for new game
-    pub fn initialize_merkle_system(&mut self, _max_players: u32) -> Result<()> {
+    pub fn initialize_merkle_system(&mut self) -> Result<()> {
         // Initialize empty merkle data structures
         self.stable_subtrees = Vec::new();
         self.recent_players = Vec::new();
