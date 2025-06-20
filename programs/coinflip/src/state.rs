@@ -10,8 +10,24 @@ pub const ORACLE_SIZE: usize = 8 + 32 + 1 + 2 + 4 + 4 + 4;
 pub const GAME_TOKEN_SIZE: usize = 8 + 32 + 1 + 8 + 8 + 1;
 pub const PLAYER_BALANCE_SIZE: usize = 8 + 8;
 // PlayerParticipation eliminated - using merkle trees!
-pub const GAME_SIZE: usize =
-    8 + 32 + 1 + 8 + 4 + 4 + 4 + 32 + 8 + 4 + 8 + 1 + 8 + 32 + 4 + 800 + 4 + 512; // Optimized merkle data for 50k players (~1.5KB total)
+pub const GAME_SIZE: usize = 8
+    + 32  // creator
+    + 1   // game_type
+    + 8   // ticket_amount
+    + 4   // max_players
+    + 4   // min_players
+    + 4   // players_count
+    + 32  // token_mint
+    + 8   // created_at
+    + 4   // timeout
+    + 8   // last_slot
+    + 1   // is_private
+    + 8   // total_amount
+    + 32  // merkle_root
+    + 4   // stable_subtrees length
+    + 640 // stable_subtrees: max 16 subtrees × 40 bytes each (log2(50k) = 16)
+    + 4   // recent_players length
+    + 512; // recent_players: max 16 players × 32 bytes each (~1.2KB total)
 
 // =============================================================================
 // GAME TYPES
@@ -547,31 +563,131 @@ impl Game {
         Ok(current_hash)
     }
 
-    /// Updates stable subtrees when we hit power-of-2 thresholds
+    /// Updates stable subtrees using proper binary decomposition aggregation
     fn update_stable_subtrees(&mut self) -> Result<()> {
         let current_count = self.players_count;
-
-        // Check if we hit a power-of-2 threshold
-        if current_count > 0 && (current_count & (current_count - 1)) == 0 {
-            // We hit a power of 2 - create stable subtree
-            let subtree_size = current_count;
-            let first_player_index = 0; // Always start from 0 for complete subtrees
-
-            // Calculate root hash for this complete subtree
-            let root_hash = self.calculate_complete_subtree_hash(subtree_size)?;
-
-            // Add stable subtree
+        
+        // Reconstruct optimal stable subtrees using binary decomposition
+        // Example: 50,000 = 32768 + 16384 + 1024 + 128 (4 subtrees, not 16)
+        self.aggregate_stable_subtrees(current_count)?;
+        
+        Ok(())
+    }
+    
+    /// Aggregates stable subtrees when recent players can form new power-of-2 subtrees
+    fn aggregate_stable_subtrees(&mut self, total_players: u32) -> Result<()> {
+        let stable_players_count = self.stable_subtrees.iter()
+            .map(|subtree| subtree.subtree_size)
+            .sum::<u32>();
+        
+        let recent_players_count = total_players - stable_players_count;
+        
+        // Check if recent players can form a new power-of-2 subtree
+        if recent_players_count > 0 && (recent_players_count & (recent_players_count - 1)) == 0 {
+            // Recent players form a perfect power of 2 - create new stable subtree
+            let new_subtree_size = recent_players_count;
+            let new_subtree_start = stable_players_count;
+            
+            // Calculate hash from all current recent players
+            let root_hash = if new_subtree_size == 1 {
+                self.recent_players[0].leaf_hash
+            } else {
+                self.calculate_recent_players_tree_hash()?
+            };
+            
+            // Add new stable subtree
             self.stable_subtrees.push(StableSubtree {
                 root_hash,
-                first_player_index,
-                subtree_size,
+                first_player_index: new_subtree_start,
+                subtree_size: new_subtree_size,
             });
-
-            // Clear recent players since they're now in stable subtree
+            
+            // Clear recent players since they're now stable
             self.recent_players.clear();
+            
+            // After creating new subtree, check if we can merge with existing ones
+            self.merge_adjacent_subtrees()?;
         }
-
+        
         Ok(())
+    }
+    
+    /// Merge adjacent subtrees of the same size to maintain optimal binary decomposition
+    fn merge_adjacent_subtrees(&mut self) -> Result<()> {
+        let mut merged = true;
+        
+        while merged {
+            merged = false;
+            
+            // Sort subtrees by first_player_index to find adjacent ones
+            self.stable_subtrees.sort_by_key(|s| s.first_player_index);
+            
+            let mut i = 0;
+            while i < self.stable_subtrees.len() - 1 {
+                let current = &self.stable_subtrees[i];
+                let next = &self.stable_subtrees[i + 1];
+                
+                // Check if these subtrees can be merged (same size and adjacent)
+                if current.subtree_size == next.subtree_size && 
+                   current.first_player_index + current.subtree_size == next.first_player_index {
+                    
+                    // Merge the two subtrees
+                    let merged_size = current.subtree_size * 2;
+                    let merged_start = current.first_player_index;
+                    
+                    // Calculate merged hash
+                    let combined = [current.root_hash, next.root_hash].concat();
+                    let merged_hash = hash(&combined).to_bytes();
+                    
+                    // Replace with merged subtree
+                    let merged_subtree = StableSubtree {
+                        root_hash: merged_hash,
+                        first_player_index: merged_start,
+                        subtree_size: merged_size,
+                    };
+                    
+                    // Remove the two old subtrees and add merged one
+                    self.stable_subtrees.remove(i + 1);
+                    self.stable_subtrees.remove(i);
+                    self.stable_subtrees.insert(i, merged_subtree);
+                    
+                    merged = true;
+                    break; // Restart the merge process
+                }
+                i += 1;
+            }
+        }
+        
+        Ok(())
+    }
+    
+    /// Calculate tree hash from all current recent players
+    fn calculate_recent_players_tree_hash(&self) -> Result<[u8; 32]> {
+        let mut level_hashes: Vec<[u8; 32]> = self.recent_players
+            .iter()
+            .map(|p| p.leaf_hash)
+            .collect();
+        
+        // Build tree bottom-up
+        while level_hashes.len() > 1 {
+            let mut next_level = Vec::new();
+            
+            for i in (0..level_hashes.len()).step_by(2) {
+                let left = level_hashes[i];
+                let right = if i + 1 < level_hashes.len() {
+                    level_hashes[i + 1]
+                } else {
+                    [0; 32] // Pad with zero for incomplete trees
+                };
+                
+                let combined = [left, right].concat();
+                next_level.push(hash(&combined).to_bytes());
+            }
+            
+            level_hashes = next_level;
+        }
+        
+        Ok(level_hashes[0])
     }
 
     /// Calculates merkle proof for a given player index using zero-proof approach
@@ -620,61 +736,69 @@ impl Game {
 
     /// Get leaf hash for a specific player index
     fn get_leaf_hash(&self, player_index: u32) -> Result<[u8; 32]> {
-        // First check if it's in recent players
-        let recent_start_index = if self.players_count >= 16 {
-            self.players_count - 16
-        } else {
-            0
-        };
-
-        if player_index >= recent_start_index {
-            let recent_offset = (player_index - recent_start_index) as usize;
-            if let Some(recent_player) = self.recent_players.get(recent_offset) {
-                return Ok(recent_player.leaf_hash);
-            }
-        }
-
-        // If not in recent players, it should be in a stable subtree
-        for subtree in &self.stable_subtrees {
-            if player_index >= subtree.first_player_index
-                && player_index < subtree.first_player_index + subtree.subtree_size
-            {
-                // Player is in this subtree - would need to reconstruct from events
-                // For now, return a deterministic hash based on index
-                let mut data = Vec::new();
-                data.extend_from_slice(&player_index.to_le_bytes());
-                data.extend_from_slice(&subtree.root_hash);
-                return Ok(hash(&data).to_bytes());
-            }
-        }
-
         // Player beyond current count - return zero hash
         if player_index >= self.players_count {
             return Ok([0; 32]);
         }
-
+        
+        // Check if player is in a stable subtree
+        for subtree in &self.stable_subtrees {
+            if player_index >= subtree.first_player_index && 
+               player_index < subtree.first_player_index + subtree.subtree_size {
+                // Player is in a stable subtree - we can't get individual leaf hashes
+                // This should only happen during proof calculation, not direct access
+                return Err(crate::error::ErrorCode::InvalidAmount.into());
+            }
+        }
+        
+        // Player must be in recent players (beyond stable subtrees)
+        let stable_players_count = self.stable_subtrees.iter()
+            .map(|subtree| subtree.subtree_size)
+            .sum::<u32>();
+        
+        if player_index >= stable_players_count {
+            let recent_offset = (player_index - stable_players_count) as usize;
+            if let Some(recent_player) = self.recent_players.get(recent_offset) {
+                return Ok(recent_player.leaf_hash);
+            }
+        }
+        
+        // Should never reach here with valid indices
         Err(crate::error::ErrorCode::InvalidAmount.into())
     }
 
-    /// Calculate hash for a complete subtree of given size
-    fn calculate_complete_subtree_hash(&self, subtree_size: u32) -> Result<[u8; 32]> {
-        // For a complete power-of-2 subtree, calculate hash from recent players
+    /// Calculate hash for a subtree covering recent players only
+    fn calculate_subtree_range_hash(&self, start_index: u32, subtree_size: u32) -> Result<[u8; 32]> {
+        // This should only be called for ranges that are within recent players
+        let stable_players_count = self.stable_subtrees.iter()
+            .map(|subtree| subtree.subtree_size)
+            .sum::<u32>();
+
+        require!(
+            start_index >= stable_players_count,
+            crate::error::ErrorCode::InvalidAmount
+        );
+
         if subtree_size == 1 {
-            // Single leaf
-            return Ok(self.recent_players[0].leaf_hash);
+            // Single leaf from recent players
+            let recent_offset = (start_index - stable_players_count) as usize;
+            if let Some(recent_player) = self.recent_players.get(recent_offset) {
+                return Ok(recent_player.leaf_hash);
+            }
+            return Err(crate::error::ErrorCode::InvalidAmount.into());
         }
 
-        // Build subtree bottom-up from leaf hashes
+        // Build subtree from recent players only
         let mut level_hashes = Vec::new();
 
-        // Start with leaf level
         for i in 0..subtree_size {
-            let recent_offset = i as usize;
+            let player_index = start_index + i;
+            let recent_offset = (player_index - stable_players_count) as usize;
+            
             if let Some(recent_player) = self.recent_players.get(recent_offset) {
                 level_hashes.push(recent_player.leaf_hash);
             } else {
-                // Shouldn't happen in practice
-                level_hashes.push([0; 32]);
+                return Err(crate::error::ErrorCode::InvalidAmount.into());
             }
         }
 
@@ -687,7 +811,7 @@ impl Game {
                 let right = if i + 1 < level_hashes.len() {
                     level_hashes[i + 1]
                 } else {
-                    [0; 32] // Pad with zero
+                    [0; 32] // Pad with zero for incomplete trees
                 };
 
                 let combined = [left, right].concat();
@@ -700,32 +824,33 @@ impl Game {
         Ok(level_hashes[0])
     }
 
+
     /// Calculate hash for internal node at given level and index
     fn calculate_internal_node_hash(&self, level: u8, node_index: u32) -> Result<[u8; 32]> {
-        // Check if this node is covered by a stable subtree
-        for subtree in &self.stable_subtrees {
-            let subtree_level = (subtree.subtree_size as f32).log2() as u8;
-            let subtree_index_at_level = subtree.first_player_index >> level;
+        // Base case: leaf level
+        if level == 0 {
+            return self.get_leaf_hash(node_index);
+        }
 
-            if level <= subtree_level && node_index == subtree_index_at_level {
-                // This node is the root of a stable subtree
+        // Check if this node is exactly a stable subtree root
+        for subtree in &self.stable_subtrees {
+            let subtree_depth = (subtree.subtree_size as f32).log2() as u8;
+            let subtree_root_index = subtree.first_player_index >> level;
+
+            if level == subtree_depth && node_index == subtree_root_index {
+                // This node is exactly the root of this stable subtree
                 return Ok(subtree.root_hash);
             }
         }
 
-        // Not in stable subtree - calculate from children
-        if level == 0 {
-            // Leaf level
-            return self.get_leaf_hash(node_index);
-        }
-
-        // Internal node - calculate from children
+        // Not a stable subtree root - calculate from children
         let left_child = node_index * 2;
         let right_child = left_child + 1;
 
         let left_hash = self.calculate_internal_node_hash(level - 1, left_child)?;
         let right_hash = self.calculate_internal_node_hash(level - 1, right_child)?;
 
+        // Handle empty right child (for incomplete trees)
         let combined = [left_hash, right_hash].concat();
         Ok(hash(&combined).to_bytes())
     }
