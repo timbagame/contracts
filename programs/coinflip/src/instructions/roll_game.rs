@@ -33,21 +33,22 @@ pub fn handler(
 
     let ticket_amount = game.ticket_amount;
 
-    // TODO: For Snowball games, we need to add a new entry to the merkle tree
+    // TODO: For Snowball/Dumbball games, we need to add a new entry to the merkle tree
     // representing this additional roll. The client must provide:
     // 1. Updated merkle root with new entry
     // 2. Unchanged subtree proofs for verification
+    // 3. Current player's participation data to determine next entry index
 
-    // For now, simplified implementation
+    // FIXME: Simplified implementation - needs proper merkle tree handling for multiple rolls
     if game.game_type == GameType::Snowball || game.game_type == GameType::Dumbball {
         // Create a new participation entry for this additional roll
-        let new_entry_count = 1; // TODO: Get actual entry count from existing participation
+        // Use total entries as the next index (total_amount / ticket_amount)
+        let next_entry_index = (game.total_amount / game.ticket_amount) as u32;
         let participation = Game::create_participation_entry(
             player_key,
             ticket_amount,
-            game.players_count, // TODO: This should be the next available index
+            next_entry_index,
             current_time,
-            new_entry_count,
         );
 
         // Add to merkle tree (this updates the root and validates the change)
@@ -81,7 +82,7 @@ pub fn handler(
         game_key: game.key(),
         player: ctx.accounts.player.key(),
         total_amount: game.total_amount,
-        player_index: game.players_count - 1, // TODO: Get actual player index from merkle tree
+        player_index: (game.total_amount / game.ticket_amount) as u32 - 1, // Entry index for this roll
         last_slot: game.last_slot,
         timestamp: current_time,
     });

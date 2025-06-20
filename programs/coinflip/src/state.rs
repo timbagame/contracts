@@ -53,8 +53,6 @@ pub struct ParticipationEntry {
     pub player_index: u32,
     /// Timestamp when player joined
     pub join_timestamp: u64,
-    /// Number of entries for Snowball games (multiple rolls)
-    pub entry_count: u32,
 }
 
 /// Merkle proof for verifying leaf inclusion
@@ -438,14 +436,12 @@ impl Game {
         amount: u64,
         player_index: u32,
         timestamp: u64,
-        entry_count: u32,
     ) -> ParticipationEntry {
         ParticipationEntry {
             player,
             amount,
             player_index,
             join_timestamp: timestamp,
-            entry_count,
         }
     }
 

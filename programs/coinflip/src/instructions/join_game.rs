@@ -40,10 +40,6 @@ pub fn handler(
         participation_entry.amount == game.ticket_amount,
         crate::error::ErrorCode::InvalidAmount
     );
-    require!(
-        participation_entry.entry_count == 1, // Regular join always has 1 entry
-        crate::error::ErrorCode::InvalidAmount
-    );
 
     // Add player to merkle tree (this verifies the update is valid)
     game.add_player_to_merkle_tree(&participation_entry, new_merkle_root, &unchanged_subtrees)?;
