@@ -12,7 +12,7 @@ mod instructions;
 mod state;
 
 use crate::instructions::*;
-use crate::state::{GameType, SubtreeProof, ParticipationEntry};
+use crate::state::{GameType, ParticipationEntry};
 
 // =============================================================================
 // PROGRAM ID
@@ -129,22 +129,13 @@ pub mod coinflip {
     }
 
     /// Allows a player to join an existing game
-    pub fn join_game(
-        ctx: Context<JoinGame>,
-        new_merkle_root: [u8; 32],
-        unchanged_subtrees: Vec<SubtreeProof>,
-        participation_entry: ParticipationEntry,
-    ) -> Result<()> {
-        instructions::join_game::handler(ctx, new_merkle_root, unchanged_subtrees, participation_entry)
+    pub fn join_game(ctx: Context<JoinGame>) -> Result<()> {
+        instructions::join_game::handler(ctx)
     }
 
     /// Allows a player to roll in Snowball/Dumbflip games (multiple participation)
-    pub fn roll_game(
-        ctx: Context<RollGame>,
-        new_merkle_root: [u8; 32],
-        unchanged_subtrees: Vec<SubtreeProof>,
-    ) -> Result<()> {
-        instructions::roll_game::handler(ctx, new_merkle_root, unchanged_subtrees)
+    pub fn roll_game(ctx: Context<RollGame>) -> Result<()> {
+        instructions::roll_game::handler(ctx)
     }
 
     /// Allows a player to leave a game before completion (with refund)
@@ -155,7 +146,6 @@ pub mod coinflip {
     ) -> Result<()> {
         instructions::unjoin_game::handler(ctx, player_merkle_proof, updated_merkle_root)
     }
-
 
     /// Closes a game with no active players (creator only)
     pub fn close_game(ctx: Context<CloseGame>) -> Result<()> {
@@ -170,7 +160,13 @@ pub mod coinflip {
         winner_participation: ParticipationEntry,
         winner_merkle_proof: Vec<[u8; 32]>,
     ) -> Result<()> {
-        instructions::complete_game::handler(ctx, random_hash, secret_key, winner_participation, winner_merkle_proof)
+        instructions::complete_game::handler(
+            ctx,
+            random_hash,
+            secret_key,
+            winner_participation,
+            winner_merkle_proof,
+        )
     }
 
     // =========================================================================

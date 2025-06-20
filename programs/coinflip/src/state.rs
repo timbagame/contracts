@@ -10,7 +10,8 @@ pub const ORACLE_SIZE: usize = 8 + 32 + 1 + 2 + 4 + 4 + 4;
 pub const GAME_TOKEN_SIZE: usize = 8 + 32 + 1 + 8 + 8 + 1;
 pub const PLAYER_BALANCE_SIZE: usize = 8 + 8;
 // PlayerParticipation eliminated - using merkle trees!
-pub const GAME_SIZE: usize = 8 + 32 + 1 + 8 + 4 + 4 + 4 + 32 + 8 + 4 + 8 + 1 + 8 + 32 + 4 + 512 + 4 + 640 + 4 + 128; // Zero-proof merkle data
+pub const GAME_SIZE: usize =
+    8 + 32 + 1 + 8 + 4 + 4 + 4 + 32 + 8 + 4 + 8 + 1 + 8 + 32 + 4 + 512 + 4 + 640 + 4 + 128; // Zero-proof merkle data
 
 // =============================================================================
 // GAME TYPES
@@ -361,11 +362,12 @@ impl Game {
     pub fn calculate_winner_index(&self, secret_key: [u8; 32]) -> u32 {
         // For Snowball and Dumbball games, use total entries (total_amount / ticket_amount)
         // For other games, use unique players count
-        let n_entries = if self.game_type == GameType::Snowball || self.game_type == GameType::Dumbball {
-            self.total_amount / self.ticket_amount
-        } else {
-            self.players_count as u64
-        };
+        let n_entries =
+            if self.game_type == GameType::Snowball || self.game_type == GameType::Dumbball {
+                self.total_amount / self.ticket_amount
+            } else {
+                self.players_count as u64
+            };
 
         if n_entries == 1 {
             return 0;
@@ -429,7 +431,9 @@ impl Game {
     }
 
     pub fn has_sufficient_balance_for_join(&self, token_balance: u64, player_balance: u64) -> bool {
-        self.game_type == GameType::Giveaway || self.game_type == GameType::Dumbaway || token_balance + player_balance >= self.ticket_amount
+        self.game_type == GameType::Giveaway
+            || self.game_type == GameType::Dumbaway
+            || token_balance + player_balance >= self.ticket_amount
     }
 
     // =============================================================================
@@ -476,214 +480,50 @@ impl Game {
         current_hash == self.merkle_root
     }
 
-    /// Calculates the path from leaf to root that will be affected by insertion
-    pub fn get_affected_path(leaf_index: u32, max_depth: u32) -> Vec<u32> {
-        let mut path = Vec::new();
-        let mut current = leaf_index;
-
-        for _ in 0..max_depth {
-            path.push(current);
-            if current == 0 {
-                break;
-            }
-            current = current / 2;
-        }
-        path
-    }
-
-    /// Verifies incremental merkle tree update with unchanged subtrees
-    pub fn verify_incremental_update(
-        &self,
-        old_root: [u8; 32],
-        new_root: [u8; 32],
-        new_participation: &ParticipationEntry,
-        unchanged_subtrees: &[SubtreeProof],
-    ) -> Result<()> {
-        // 1. Verify new player is being inserted at correct index
-        require!(
-            new_participation.player_index == self.players_count,
-            crate::error::ErrorCode::InvalidPlayersCount
-        );
-
-        // 2. Calculate new leaf hash
-        let new_leaf = Self::hash_participation_entry(new_participation);
-
-        // 3. Calculate tree depth needed for current players + 1
-        let total_players = self.players_count + 1;
-        let tree_depth = if total_players <= 1 {
-            0
-        } else {
-            (32 - (total_players - 1).leading_zeros()) as u32
-        };
-
-        // 4. Get path that will be affected by this insertion
-        let affected_path = Self::get_affected_path(new_participation.player_index, tree_depth);
-
-        // 5. Verify unchanged subtrees are not on affected path
-        for subtree in unchanged_subtrees {
-            require!(
-                !affected_path.contains(&subtree.subtree_position),
-                crate::error::ErrorCode::InvalidAmount // TODO: Add better error
-            );
-        }
-
-        // 6. For first player, tree is just the leaf
-        if self.players_count == 0 {
-            require!(old_root == [0; 32], crate::error::ErrorCode::InvalidAmount);
-            require!(new_root == new_leaf, crate::error::ErrorCode::InvalidAmount);
-            return Ok(());
-        }
-
-        // 7. Reconstruct new tree using unchanged subtrees + new insertion
-        let calculated_new_root = self.reconstruct_tree_with_insertion(
-            old_root,
-            new_leaf,
-            new_participation.player_index,
-            unchanged_subtrees,
-            tree_depth,
-        )?;
-
-        // 8. Verify calculated root matches claimed root
-        require!(
-            calculated_new_root == new_root,
-            crate::error::ErrorCode::InvalidAmount // TODO: Add better error
-        );
-
-        Ok(())
-    }
-
-    /// Reconstructs merkle tree with new insertion and unchanged subtrees
-    fn reconstruct_tree_with_insertion(
-        &self,
-        old_root: [u8; 32],
-        new_leaf: [u8; 32],
-        insert_index: u32,
-        unchanged_subtrees: &[SubtreeProof],
-        tree_depth: u32,
-    ) -> Result<[u8; 32]> {
-        // Handle simple cases
-        if self.players_count == 0 {
-            return Ok(new_leaf);
-        }
-
-        if self.players_count == 1 && insert_index == 1 {
-            let combined = [old_root, new_leaf].concat();
-            return Ok(hash(&combined).to_bytes());
-        }
-
-        // For larger trees, we need to reconstruct the tree level by level
-        // This is a complete implementation for binary merkle trees
-
-        let total_leaves = self.players_count + 1;
-        let mut tree_nodes: Vec<Vec<[u8; 32]>> = vec![vec![[0; 32]; total_leaves as usize]];
-
-        // Set the new leaf at its position
-        tree_nodes[0][insert_index as usize] = new_leaf;
-
-        // Use unchanged subtrees to fill in known values
-        for subtree in unchanged_subtrees {
-            if subtree.tree_level < tree_depth {
-                let level = subtree.tree_level as usize;
-                let pos = subtree.subtree_position as usize;
-
-                // Ensure we have enough levels
-                while tree_nodes.len() <= level {
-                    let prev_level_size = tree_nodes[tree_nodes.len() - 1].len();
-                    let new_level_size = (prev_level_size + 1) / 2;
-                    tree_nodes.push(vec![[0; 32]; new_level_size]);
-                }
-
-                if pos < tree_nodes[level].len() {
-                    tree_nodes[level][pos] = subtree.subtree_root;
-                }
-            }
-        }
-
-        // Build tree bottom-up
-        for level in 0..tree_depth as usize {
-            let current_level_size = tree_nodes[level].len();
-            let next_level_size = (current_level_size + 1) / 2;
-
-            if tree_nodes.len() <= level + 1 {
-                tree_nodes.push(vec![[0; 32]; next_level_size]);
-            }
-
-            for i in 0..next_level_size {
-                let left_idx = i * 2;
-                let right_idx = left_idx + 1;
-
-                if left_idx < current_level_size {
-                    let left = tree_nodes[level][left_idx];
-                    let right = if right_idx < current_level_size {
-                        tree_nodes[level][right_idx]
-                    } else {
-                        [0; 32] // Padding for odd number of nodes
-                    };
-
-                    if left != [0; 32] || right != [0; 32] {
-                        let combined = [left, right].concat();
-                        tree_nodes[level + 1][i] = hash(&combined).to_bytes();
-                    }
-                }
-            }
-        }
-
-        // Return root
-        if let Some(root_level) = tree_nodes.last() {
-            if !root_level.is_empty() {
-                return Ok(root_level[0]);
-            }
-        }
-
-        Err(crate::error::ErrorCode::InvalidAmount.into())
-    }
-
     /// Adds a player to the merkle tree
-    pub fn add_player_to_merkle_tree(
-        &mut self,
-        player: Pubkey,
-        timestamp: u64,
-    ) -> Result<()> {
+    pub fn add_player_to_merkle_tree(&mut self, player: Pubkey, timestamp: u64) -> Result<()> {
         // Create participation entry internally
-        let participation = Self::create_participation_entry(
-            player,
-            self.players_count,
-            timestamp,
-        );
-        
+        let participation = Self::create_participation_entry(player, self.players_count, timestamp);
+
         // Use pre-calculated proof to verify the join
         let proof = self.next_join_proof.clone();
-        
+
         // Calculate leaf hash
         let leaf_hash = Self::hash_participation_entry(&participation);
-        
+
         // Verify merkle proof
         require!(
             self.verify_merkle_proof(leaf_hash, &proof, participation.player_index),
             crate::error::ErrorCode::InvalidAmount
         );
-        
+
         // Update merkle root by reconstructing with new leaf
-        self.merkle_root = self.calculate_new_root_with_leaf(leaf_hash, participation.player_index, &proof);
-        
+        self.merkle_root =
+            self.calculate_new_root_with_leaf(leaf_hash, participation.player_index, &proof);
+
         // Update game state
         self.players_count += 1;
         self.total_amount += self.ticket_amount; // Use ticket_amount from game
-        
+
         // Update stable proof cache if we hit thresholds
         self.update_stable_proof_cache()?;
-        
+
         // Calculate and store proof for next join
         self.calculate_and_store_next_proof()?;
 
         Ok(())
     }
-    
+
     /// Calculates new merkle root with a new leaf at given index
-    fn calculate_new_root_with_leaf(&self, leaf_hash: [u8; 32], leaf_index: u32, proof: &[[u8; 32]]) -> [u8; 32] {
+    fn calculate_new_root_with_leaf(
+        &self,
+        leaf_hash: [u8; 32],
+        leaf_index: u32,
+        proof: &[[u8; 32]],
+    ) -> [u8; 32] {
         let mut current_hash = leaf_hash;
         let mut current_index = leaf_index;
-        
+
         for proof_element in proof {
             if current_index % 2 == 0 {
                 // Current node is left child
@@ -696,106 +536,126 @@ impl Game {
             }
             current_index /= 2;
         }
-        
+
         current_hash
     }
-    
+
     /// Updates stable proof cache when thresholds are hit
     fn update_stable_proof_cache(&mut self) -> Result<()> {
         let current_player_count = self.players_count;
-        
-        for (level, threshold) in self.next_stable_thresholds.iter_mut().enumerate() {
+
+        // Collect updates to avoid borrowing conflicts
+        let mut updates = Vec::new();
+
+        for (level, threshold) in self.next_stable_thresholds.iter().enumerate() {
             if current_player_count == *threshold {
                 // Calculate stable subtree hash at this level
                 let stable_hash = self.calculate_stable_subtree_hash(level as u8)?;
                 let position = self.calculate_stable_position(level as u8);
-                
-                // Add to stable proof cache
-                self.stable_proofs.push(StableProof {
-                    hash: stable_hash,
-                    level: level as u8,
-                    position,
-                    stable_at_player_count: current_player_count,
-                });
-                
-                // Update next threshold for this level
-                *threshold = self.calculate_next_threshold(level as u8);
+
+                updates.push((
+                    level,
+                    StableProof {
+                        hash: stable_hash,
+                        level: level as u8,
+                        position,
+                        stable_at_player_count: current_player_count,
+                    },
+                    self.calculate_next_threshold(level as u8),
+                ));
             }
         }
-        
+
+        // Apply updates
+        for (level, stable_proof, new_threshold) in updates {
+            self.stable_proofs.push(stable_proof);
+            self.next_stable_thresholds[level] = new_threshold;
+        }
+
         Ok(())
     }
-    
+
     /// Calculates and stores the proof needed for the next player join
     fn calculate_and_store_next_proof(&mut self) -> Result<()> {
         let next_player_index = self.players_count;
         let tree_depth = self.calculate_tree_depth();
-        
+
         let mut next_proof = Vec::new();
         let mut current_index = next_player_index;
-        
+
         for level in 0..tree_depth {
             let sibling_index = current_index ^ 1; // XOR to get sibling
-            
+
             // Get sibling hash from stable cache or calculate it
-            let sibling_hash = if let Some(stable_proof) = self.find_stable_proof(level as u8, sibling_index) {
-                stable_proof.hash
-            } else {
-                self.calculate_current_sibling_hash(level as u8, sibling_index)?
-            };
-            
+            let sibling_hash =
+                if let Some(stable_proof) = self.find_stable_proof(level as u8, sibling_index) {
+                    stable_proof.hash
+                } else {
+                    self.calculate_current_sibling_hash(level as u8, sibling_index)?
+                };
+
             next_proof.push(sibling_hash);
             current_index /= 2;
         }
-        
+
         self.next_join_proof = next_proof;
         Ok(())
     }
-    
+
     /// Initialize merkle system for new game
     pub fn initialize_merkle_system(&mut self, max_players: u32) -> Result<()> {
         // Initialize empty proof cache
         self.stable_proofs = Vec::new();
         self.next_join_proof = Vec::new();
-        
+
         // Calculate thresholds for each level
-        let tree_depth = if max_players <= 1 { 1 } else { (32 - (max_players - 1).leading_zeros()) as usize };
+        let tree_depth = if max_players <= 1 {
+            1
+        } else {
+            (32 - (max_players - 1).leading_zeros()) as usize
+        };
         self.next_stable_thresholds = Vec::with_capacity(tree_depth);
-        
+
         for level in 0..tree_depth {
             let threshold = self.calculate_next_threshold(level as u8);
             self.next_stable_thresholds.push(threshold);
         }
-        
+
         Ok(())
     }
-    
+
     // Helper functions
     fn calculate_tree_depth(&self) -> u32 {
-        if self.players_count <= 1 { 1 } else { 32 - (self.players_count - 1).leading_zeros() }
+        if self.players_count <= 1 {
+            1
+        } else {
+            32 - (self.players_count - 1).leading_zeros()
+        }
     }
-    
+
     fn calculate_next_threshold(&self, level: u8) -> u32 {
         let current_count = self.players_count;
         let level_size = 1u32 << (level + 1);
         ((current_count / level_size) + 1) * level_size
     }
-    
+
     fn find_stable_proof(&self, level: u8, position: u32) -> Option<&StableProof> {
-        self.stable_proofs.iter().find(|proof| proof.level == level && proof.position == position)
+        self.stable_proofs
+            .iter()
+            .find(|proof| proof.level == level && proof.position == position)
     }
-    
-    fn calculate_stable_subtree_hash(&self, level: u8) -> Result<[u8; 32]> {
+
+    fn calculate_stable_subtree_hash(&self, _level: u8) -> Result<[u8; 32]> {
         // Placeholder - implement actual stable subtree calculation
         Ok([0; 32])
     }
-    
+
     fn calculate_stable_position(&self, level: u8) -> u32 {
         // Calculate position of stable subtree at given level
         (self.players_count - 1) >> (level + 1)
     }
-    
-    fn calculate_current_sibling_hash(&self, level: u8, sibling_index: u32) -> Result<[u8; 32]> {
+
+    fn calculate_current_sibling_hash(&self, _level: u8, _sibling_index: u32) -> Result<[u8; 32]> {
         // Placeholder - implement calculation from current tree state and stable proofs
         Ok([0; 32])
     }
