@@ -23,7 +23,7 @@ pub fn handler(
     );
 
     require!(
-        game.game_type == GameType::Snowball || game.game_type == GameType::Dumbflip,
+        game.game_type == GameType::Snowball || game.game_type == GameType::Dumbflip || game.game_type == GameType::Dumbball || game.game_type == GameType::Dumbaway,
         crate::error::ErrorCode::InvalidGameType
     );
 
@@ -39,7 +39,7 @@ pub fn handler(
     // 2. Unchanged subtree proofs for verification
 
     // For now, simplified implementation
-    if game.game_type == GameType::Snowball {
+    if game.game_type == GameType::Snowball || game.game_type == GameType::Dumbball {
         // Create a new participation entry for this additional roll
         let new_entry_count = 1; // TODO: Get actual entry count from existing participation
         let participation = Game::create_participation_entry(
@@ -55,7 +55,7 @@ pub fn handler(
 
         game.last_slot = clock.slot;
     } else {
-        // For Dumbflip, no state changes needed - just emit event
+        // For Dumbflip and Dumbaway, no state changes needed - just emit event
         game.last_slot = clock.slot;
     }
 
@@ -63,7 +63,7 @@ pub fn handler(
     // TOKEN TRANSFER
     // ===============================
 
-    if game.game_type == GameType::Snowball {
+    if game.game_type == GameType::Snowball || game.game_type == GameType::Dumbball {
         player_balance.handle_token_transfer(
             ticket_amount,
             ctx.accounts.player_token_account.to_account_info(),
