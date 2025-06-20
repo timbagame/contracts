@@ -47,8 +47,6 @@ impl Default for GameType {
 pub struct ParticipationEntry {
     /// Player public key
     pub player: Pubkey,
-    /// Amount contributed by player
-    pub amount: u64,
     /// Player's index in the game (position in merkle tree)
     pub player_index: u32,
     /// Timestamp when player joined
@@ -441,13 +439,11 @@ impl Game {
     /// Creates a participation entry for a new player
     pub fn create_participation_entry(
         player: Pubkey,
-        amount: u64,
         player_index: u32,
         timestamp: u64,
     ) -> ParticipationEntry {
         ParticipationEntry {
             player,
-            amount,
             player_index,
             join_timestamp: timestamp,
         }
@@ -645,19 +641,21 @@ impl Game {
     /// Adds a player to the merkle tree
     pub fn add_player_to_merkle_tree(
         &mut self,
-        participation: &ParticipationEntry,
+        player: Pubkey,
+        timestamp: u64,
     ) -> Result<()> {
+        // Create participation entry internally
+        let participation = Self::create_participation_entry(
+            player,
+            self.players_count,
+            timestamp,
+        );
+        
         // Use pre-calculated proof to verify the join
         let proof = self.next_join_proof.clone();
         
-        // Verify the participation entry
-        require!(
-            participation.player_index == self.players_count,
-            crate::error::ErrorCode::InvalidPlayersCount
-        );
-        
         // Calculate leaf hash
-        let leaf_hash = Self::hash_participation_entry(participation);
+        let leaf_hash = Self::hash_participation_entry(&participation);
         
         // Verify merkle proof
         require!(
@@ -670,7 +668,7 @@ impl Game {
         
         // Update game state
         self.players_count += 1;
-        self.total_amount += participation.amount;
+        self.total_amount += self.ticket_amount; // Use ticket_amount from game
         
         // Update stable proof cache if we hit thresholds
         self.update_stable_proof_cache()?;
