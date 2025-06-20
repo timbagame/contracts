@@ -644,4 +644,16 @@ impl Game {
             .iter()
             .position(|s| s.size == size)
     }
+
+    /// Initialize merkle system for new game
+    pub fn initialize_merkle_system(&mut self) -> Result<()> {
+        // Initialize fixed-size arrays with default values
+        self.subtree_count = 0;
+        self.subtrees = [Subtree::default(); 16];
+        self.recent_count = 0;
+        self.recent_players = [RecentLeaf::default(); 16];
+        self.merkle_root = [0; 32];
+
+        Ok(())
+    }
 }
