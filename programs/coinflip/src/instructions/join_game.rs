@@ -1,11 +1,9 @@
 use crate::events::PlayerJoined;
-use crate::state::{ParticipationEntry, SubtreeProof};
+use crate::state::ParticipationEntry;
 use anchor_lang::prelude::*;
 
 pub fn handler(
     ctx: Context<super::JoinGame>,
-    new_merkle_root: [u8; 32],
-    unchanged_subtrees: Vec<SubtreeProof>,
     participation_entry: ParticipationEntry,
 ) -> Result<()> {
     let game = &mut ctx.accounts.game;
@@ -41,8 +39,8 @@ pub fn handler(
         crate::error::ErrorCode::InvalidAmount
     );
 
-    // Add player to merkle tree (this verifies the update is valid)
-    game.add_player_to_merkle_tree(&participation_entry, new_merkle_root, &unchanged_subtrees)?;
+    // Add player to merkle tree
+    game.add_player_to_merkle_tree(&participation_entry)?;
 
     // Update game state
     game.last_slot = clock.slot;

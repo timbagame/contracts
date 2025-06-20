@@ -1,11 +1,9 @@
 use crate::events::PlayerRolled;
-use crate::state::{Game, GameType, SubtreeProof};
+use crate::state::{Game, GameType};
 use anchor_lang::prelude::*;
 
 pub fn handler(
     ctx: Context<super::RollGame>,
-    new_merkle_root: [u8; 32],
-    unchanged_subtrees: Vec<SubtreeProof>,
 ) -> Result<()> {
     let game = &mut ctx.accounts.game;
     let clock = Clock::get()?;
@@ -51,8 +49,8 @@ pub fn handler(
             current_time,
         );
 
-        // Add to merkle tree (this updates the root and validates the change)
-        game.add_player_to_merkle_tree(&participation, new_merkle_root, &unchanged_subtrees)?;
+        // Add to merkle tree
+        game.add_player_to_merkle_tree(&participation)?;
 
         game.last_slot = clock.slot;
     } else {
