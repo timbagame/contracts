@@ -1,5 +1,6 @@
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::hash::hash;
+use anchor_spl::token::{transfer, Transfer};
 
 // =============================================================================
 // ACCOUNT SIZE CONSTANTS
@@ -151,7 +152,13 @@ impl GameToken {
     }
 
     /// Initializes token configuration for new token
-    pub fn initialize(&mut self, token_mint: Pubkey, vault_bump: u8, min_amount: u64, enabled: bool) {
+    pub fn initialize(
+        &mut self,
+        token_mint: Pubkey,
+        vault_bump: u8,
+        min_amount: u64,
+        enabled: bool,
+    ) {
         self.token_mint = token_mint;
         self.vault_bump = vault_bump;
         self.min_amount = min_amount;
@@ -178,8 +185,6 @@ impl GameToken {
         token_program: AccountInfo<'info>,
         amount: u64,
     ) -> Result<()> {
-        use anchor_spl::token::{transfer, Transfer};
-        
         let signer_seeds = &[b"game_vault", self.token_mint.as_ref(), &[self.vault_bump]];
 
         transfer(
@@ -241,8 +246,6 @@ impl PlayerBalance {
         player: AccountInfo<'info>,
         token_program: AccountInfo<'info>,
     ) -> Result<()> {
-        use anchor_spl::token::{transfer, Transfer};
-        
         let needed_amount = self.calculate_contribution(game_amount);
 
         if needed_amount > 0 {
