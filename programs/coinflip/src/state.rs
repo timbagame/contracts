@@ -6,7 +6,7 @@ use anchor_lang::solana_program::hash::hash;
 // =============================================================================
 
 pub const ORACLE_SIZE: usize = 8 + 32 + 1 + 2 + 4 + 4 + 4;
-pub const GAME_TOKEN_SIZE: usize = 8 + 8 + 8 + 1;
+pub const GAME_TOKEN_SIZE: usize = 8 + 32 + 1 + 8 + 8 + 1;
 pub const PLAYER_BALANCE_SIZE: usize = 8 + 8;
 // PlayerParticipation eliminated - using merkle trees!
 pub const GAME_SIZE: usize = 8 + 32 + 1 + 8 + 4 + 4 + 4 + 32 + 8 + 4 + 8 + 1 + 8 + 32; // +32 for merkle_root
