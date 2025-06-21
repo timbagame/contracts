@@ -547,7 +547,7 @@ impl Game {
         })
     }
 
-    /// Merges new subtree with existing ones using improved storage-efficient strategy
+    /// Merges new subtree with existing ones using same-sized merging for optimal tree balance
     fn merge_subtree(&mut self, mut new: Subtree) -> Result<()> {
         // If we have space, just add the new subtree
         if self.subtree_count < 16 {
@@ -556,34 +556,94 @@ impl Game {
             return Ok(());
         }
 
-        // Storage is full - find the smallest subtree to merge with
-        let smallest_idx = self.find_smallest_subtree();
-        let smallest = self.subtrees[smallest_idx];
+        // Storage is full - try to find two same-sized subtrees to merge first
+        if let Some((idx1, idx2)) = self.find_same_sized_pair() {
+            let subtree1 = self.subtrees[idx1];
+            let subtree2 = self.subtrees[idx2];
 
-        // Remove smallest subtree by moving last element to this position
-        if smallest_idx < self.subtree_count as usize - 1 {
-            self.subtrees[smallest_idx] = self.subtrees[self.subtree_count as usize - 1];
-        }
-        self.subtree_count -= 1;
+            // Remove both subtrees (remove higher index first to avoid shifting)
+            let (first_idx, second_idx) = if idx1 > idx2 { (idx1, idx2) } else { (idx2, idx1) };
+            
+            // Remove first (higher index)
+            if first_idx < self.subtree_count as usize - 1 {
+                self.subtrees[first_idx] = self.subtrees[self.subtree_count as usize - 1];
+            }
+            self.subtree_count -= 1;
+            
+            // Remove second (adjust index if it was affected by first removal)
+            let adjusted_second_idx = if second_idx == self.subtree_count as usize {
+                first_idx  // The last element moved to first_idx position
+            } else {
+                second_idx
+            };
+            
+            if adjusted_second_idx < self.subtree_count as usize - 1 {
+                self.subtrees[adjusted_second_idx] = self.subtrees[self.subtree_count as usize - 1];
+            }
+            self.subtree_count -= 1;
 
-        // Create merged subtree (combine sizes)
-        let (left, right) = if smallest.start_index < new.start_index {
-            (smallest.root_hash, new.root_hash)
+            // Create merged subtree from the two same-sized ones
+            let (left, right) = if subtree1.start_index < subtree2.start_index {
+                (subtree1.root_hash, subtree2.root_hash)
+            } else {
+                (subtree2.root_hash, subtree1.root_hash)
+            };
+
+            let merged_subtree = Subtree {
+                root_hash: hash(&[left, right].concat()).to_bytes(),
+                start_index: subtree1.start_index.min(subtree2.start_index),
+                size: subtree1.size + subtree2.size,  // Should be subtree1.size * 2 since they're same-sized
+            };
+
+            // Add merged subtree back
+            self.subtrees[self.subtree_count as usize] = merged_subtree;
+            self.subtree_count += 1;
+
+            // Now we have space for the new subtree
+            self.subtrees[self.subtree_count as usize] = new;
+            self.subtree_count += 1;
         } else {
-            (new.root_hash, smallest.root_hash)
-        };
+            // Fallback: no same-sized pairs found, merge new with smallest
+            let smallest_idx = self.find_smallest_subtree();
+            let smallest = self.subtrees[smallest_idx];
 
-        new = Subtree {
-            root_hash: hash(&[left, right].concat()).to_bytes(),
-            start_index: smallest.start_index.min(new.start_index),
-            size: smallest.size + new.size,
-        };
+            // Remove smallest subtree
+            if smallest_idx < self.subtree_count as usize - 1 {
+                self.subtrees[smallest_idx] = self.subtrees[self.subtree_count as usize - 1];
+            }
+            self.subtree_count -= 1;
 
-        // Add the merged subtree back
-        self.subtrees[self.subtree_count as usize] = new;
-        self.subtree_count += 1;
+            // Create merged subtree
+            let (left, right) = if smallest.start_index < new.start_index {
+                (smallest.root_hash, new.root_hash)
+            } else {
+                (new.root_hash, smallest.root_hash)
+            };
+
+            new = Subtree {
+                root_hash: hash(&[left, right].concat()).to_bytes(),
+                start_index: smallest.start_index.min(new.start_index),
+                size: smallest.size + new.size,
+            };
+
+            // Add the merged subtree back
+            self.subtrees[self.subtree_count as usize] = new;
+            self.subtree_count += 1;
+        }
 
         Ok(())
+    }
+
+    /// Helper to find a pair of same-sized subtrees
+    fn find_same_sized_pair(&self) -> Option<(usize, usize)> {
+        for i in 0..self.subtree_count as usize {
+            for j in (i + 1)..self.subtree_count as usize {
+                if self.subtrees[i].size == self.subtrees[j].size {
+                    return Some((i, j));
+                }
+            }
+        }
+        None
     }
 
     /// Helper to find the smallest subtree by size
