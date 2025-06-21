@@ -505,32 +505,25 @@ impl Game {
 
     /// Adds a player to the merkle tree using buffer-based aggregation
     pub fn add_player_to_merkle_tree(&mut self, player: Pubkey, timestamp: u64) -> Result<()> {
-        // Create participation entry internally
         let participation = Self::create_participation_entry(player, self.players_count, timestamp);
         let leaf_hash = Self::hash_participation_entry(&participation);
 
-        // Add to recent buffer or trigger subtree creation
         if self.recent_count < 16 {
-            // Add to buffer (O(1) operation)
+            // Just add to buffer - no structure change
             self.recent_players[self.recent_count as usize] = RecentLeaf { hash: leaf_hash };
             self.recent_count += 1;
+            // NO root update needed!
         } else {
-            // Buffer is full - create subtree and merge
+            // Structure changes - update root
             let new_subtree = self.build_subtree_from_recent()?;
             self.merge_subtree(new_subtree)?;
-
-            // Reset buffer with new player
             self.recent_players[0] = RecentLeaf { hash: leaf_hash };
             self.recent_count = 1;
+            self.update_merkle_root()?; // Only update when structure changes
         }
 
-        // Update game state
         self.players_count += 1;
         self.total_amount += self.ticket_amount;
-
-        // Update global merkle root
-        self.update_merkle_root()?;
-
         Ok(())
     }
 
@@ -554,39 +547,58 @@ impl Game {
         })
     }
 
-    /// Merges new subtree with existing ones using size-based merging
+    /// Merges new subtree with existing ones using improved storage-efficient strategy
     fn merge_subtree(&mut self, mut new: Subtree) -> Result<()> {
-        // Continuously merge same-sized subtrees
-        while let Some(existing_idx) = self.find_subtree_by_size(new.size) {
-            let existing = self.subtrees[existing_idx];
-
-            // Remove existing subtree by moving last element to this position
-            self.subtrees[existing_idx] = self.subtrees[self.subtree_count as usize - 1];
-            self.subtree_count -= 1;
-
-            // Create merged subtree (double size)
-            let (left, right) = if existing.start_index < new.start_index {
-                (existing.root_hash, new.root_hash)
-            } else {
-                (new.root_hash, existing.root_hash)
-            };
-
-            new = Subtree {
-                root_hash: hash(&[left, right].concat()).to_bytes(),
-                start_index: existing.start_index.min(new.start_index),
-                size: new.size * 2,
-            };
+        // If we have space, just add the new subtree
+        if self.subtree_count < 16 {
+            self.subtrees[self.subtree_count as usize] = new;
+            self.subtree_count += 1;
+            return Ok(());
         }
 
-        // Add final merged subtree
-        require!(
-            self.subtree_count < 16,
-            crate::error::ErrorCode::InvalidAmount
-        );
+        // Storage is full - find the smallest subtree to merge with
+        let smallest_idx = self.find_smallest_subtree();
+        let smallest = self.subtrees[smallest_idx];
+
+        // Remove smallest subtree by moving last element to this position
+        if smallest_idx < self.subtree_count as usize - 1 {
+            self.subtrees[smallest_idx] = self.subtrees[self.subtree_count as usize - 1];
+        }
+        self.subtree_count -= 1;
+
+        // Create merged subtree (combine sizes)
+        let (left, right) = if smallest.start_index < new.start_index {
+            (smallest.root_hash, new.root_hash)
+        } else {
+            (new.root_hash, smallest.root_hash)
+        };
+
+        new = Subtree {
+            root_hash: hash(&[left, right].concat()).to_bytes(),
+            start_index: smallest.start_index.min(new.start_index),
+            size: smallest.size + new.size,
+        };
+
+        // Add the merged subtree back
         self.subtrees[self.subtree_count as usize] = new;
         self.subtree_count += 1;
 
         Ok(())
+    }
+
+    /// Helper to find the smallest subtree by size
+    fn find_smallest_subtree(&self) -> usize {
+        let mut smallest_idx = 0;
+        let mut smallest_size = u32::MAX;
+
+        for i in 0..self.subtree_count as usize {
+            if self.subtrees[i].size < smallest_size {
+                smallest_size = self.subtrees[i].size;
+                smallest_idx = i;
+            }
+        }
+
+        smallest_idx
     }
 
     /// Updates global Merkle root from all components
@@ -636,13 +648,6 @@ impl Game {
                 .collect();
         }
         layer[0]
-    }
-
-    /// Helper to find subtree by size
-    fn find_subtree_by_size(&self, size: u32) -> Option<usize> {
-        self.subtrees[..self.subtree_count as usize]
-            .iter()
-            .position(|s| s.size == size)
     }
 
     /// Initialize merkle system for new game
