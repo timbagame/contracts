@@ -634,16 +634,20 @@ impl Game {
         Ok(())
     }
 
-    /// Helper to find a pair of same-sized subtrees
+    /// Helper to find the smallest pair of same-sized subtrees
     fn find_same_sized_pair(&self) -> Option<(usize, usize)> {
+        let mut best_pair: Option<(usize, usize)> = None;
+        let mut smallest_size = u32::MAX;
+        
         for i in 0..self.subtree_count as usize {
             for j in (i + 1)..self.subtree_count as usize {
-                if self.subtrees[i].size == self.subtrees[j].size {
-                    return Some((i, j));
+                if self.subtrees[i].size == self.subtrees[j].size && self.subtrees[i].size < smallest_size {
+                    smallest_size = self.subtrees[i].size;
+                    best_pair = Some((i, j));
                 }
             }
         }
-        None
+        best_pair
     }
 
     /// Helper to find the smallest subtree by size
