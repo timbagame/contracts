@@ -26,10 +26,10 @@ pub const GAME_BASE_SIZE: usize = 8
     + 1   // is_private
     + 8   // total_amount
     + 32  // merkle_root
+    + 1   // subtree_count
     + 4   // subtrees length (Vec<T> serialization)
     + 1   // recent_count
-    + 4   // recent_players length (Vec<T> serialization)
-    + 64; // 2 recent players: 2 × 32 bytes (optimized buffer) = 217 bytes base
+    + 4;  // recent_players length (Vec<T> serialization) = 154 bytes base
 
 // =============================================================================
 // GAME TYPES
@@ -358,7 +358,9 @@ impl Game {
     /// Calculates the total dynamic storage size for a game
     pub fn calculate_storage_size(max_players: u32) -> usize {
         let required_subtrees = Self::calculate_required_subtrees(max_players);
-        GAME_BASE_SIZE + (required_subtrees * 40) // 40 bytes per subtree
+        GAME_BASE_SIZE 
+            + (required_subtrees * 40)  // Subtree data: 40 bytes per Subtree
+            + (2 * 32)                  // RecentLeaf data: 32 bytes per RecentLeaf, max 2
     }
 
     /// Checks if the game has exceeded its timeout duration
