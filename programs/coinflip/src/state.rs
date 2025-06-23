@@ -29,7 +29,7 @@ pub const GAME_BASE_SIZE: usize = 8
     + 1   // subtree_count
     + 4   // subtrees length (Vec<T> serialization)
     + 1   // recent_count
-    + 4;  // recent_players length (Vec<T> serialization) = 154 bytes base
+    + 4; // recent_players length (Vec<T> serialization) = 154 bytes base
 
 // =============================================================================
 // GAME TYPES
@@ -346,21 +346,21 @@ impl Game {
         if max_players <= 2 {
             return 0; // All players fit in recent buffer
         }
-        
+
         // Calculate how many times we'll fill the 2-player buffer
         let buffer_fills = (max_players + 1) / 2; // ceil(max_players / 2)
-        
+
         // Use binary decomposition to find minimum subtrees needed
         // Each subtree merge doubles the capacity, so we need count_ones bits
         buffer_fills.count_ones() as usize
     }
-    
+
     /// Calculates the total dynamic storage size for a game
     pub fn calculate_storage_size(max_players: u32) -> usize {
         let required_subtrees = Self::calculate_required_subtrees(max_players);
-        GAME_BASE_SIZE 
+        GAME_BASE_SIZE
             + (required_subtrees * 40)  // Subtree data: 40 bytes per Subtree
-            + (2 * 32)                  // RecentLeaf data: 32 bytes per RecentLeaf, max 2
+            + (2 * 32) // RecentLeaf data: 32 bytes per RecentLeaf, max 2
     }
 
     /// Checks if the game has exceeded its timeout duration
@@ -561,10 +561,7 @@ impl Game {
         );
 
         let start_index = self.players_count.saturating_sub(1);
-        let leaves: Vec<[u8; 32]> = self.recent_players
-            .iter()
-            .map(|leaf| leaf.hash)
-            .collect();
+        let leaves: Vec<[u8; 32]> = self.recent_players.iter().map(|leaf| leaf.hash).collect();
 
         Ok(Subtree {
             root_hash: Self::compute_merkle_root(&leaves),
@@ -588,8 +585,12 @@ impl Game {
             let subtree2 = self.subtrees[idx2];
 
             // Remove both subtrees (remove higher index first to avoid shifting)
-            let (first_idx, second_idx) = if idx1 > idx2 { (idx1, idx2) } else { (idx2, idx1) };
-            
+            let (first_idx, second_idx) = if idx1 > idx2 {
+                (idx1, idx2)
+            } else {
+                (idx2, idx1)
+            };
+
             // Remove using Vec operations
             self.subtrees.remove(first_idx);
             // Adjust second index after first removal
@@ -629,7 +630,7 @@ impl Game {
                 self.subtree_count += 1;
                 return Ok(());
             }
-            
+
             let smallest_idx = self.find_smallest_subtree();
             let smallest = self.subtrees[smallest_idx];
 
@@ -662,10 +663,12 @@ impl Game {
     fn find_same_sized_pair(&self) -> Option<(usize, usize)> {
         let mut best_pair: Option<(usize, usize)> = None;
         let mut smallest_size = u32::MAX;
-        
+
         for i in 0..self.subtrees.len() {
             for j in (i + 1)..self.subtrees.len() {
-                if self.subtrees[i].size == self.subtrees[j].size && self.subtrees[i].size < smallest_size {
+                if self.subtrees[i].size == self.subtrees[j].size
+                    && self.subtrees[i].size < smallest_size
+                {
                     smallest_size = self.subtrees[i].size;
                     best_pair = Some((i, j));
                 }
@@ -699,11 +702,7 @@ impl Game {
         hashes.extend(subtrees.iter().map(|s| s.root_hash));
 
         // Add recent player leaves
-        hashes.extend(
-            self.recent_players
-                .iter()
-                .map(|leaf| leaf.hash),
-        );
+        hashes.extend(self.recent_players.iter().map(|leaf| leaf.hash));
 
         self.merkle_root = if hashes.is_empty() {
             [0; 32] // Empty tree
@@ -740,7 +739,7 @@ impl Game {
     pub fn initialize_merkle_system(&mut self, max_players: u32) -> Result<()> {
         // Calculate required capacity
         let required_subtrees = Self::calculate_required_subtrees(max_players);
-        
+
         // Initialize dynamic vectors with exact capacity needed
         self.subtree_count = 0;
         self.subtrees = Vec::with_capacity(required_subtrees);
