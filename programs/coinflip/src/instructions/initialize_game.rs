@@ -51,7 +51,7 @@ pub fn handler(ctx: Context<super::InitializeGame>, config: GameConfig) -> Resul
     // MERKLE SYSTEM INITIALIZATION
     // ===============================
 
-    game.initialize_merkle_system()?;
+    game.initialize_merkle_system(config.max_players)?;
 
     // ===============================
     // EVENT EMISSION

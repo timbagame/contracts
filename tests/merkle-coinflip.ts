@@ -9,7 +9,6 @@ import {
 import { PublicKey } from "@solana/web3.js";
 import { createHash } from "crypto";
 import {
-  SubtreeProof,
   hashParticipationEntry,
   buildMerkleTree,
   addEntryToTree,
@@ -335,22 +334,11 @@ describe("coinflip-merkle", () => {
 
       // We need to calculate what the contract will create as the participation entry
       // The contract creates: player, ticket_amount, player_index=0, current_time, entry_count=1
-      const currentTime = Math.floor(Date.now() / 1000); // Unix timestamp
-      const participation = createParticipationEntry(
-        player.player.publicKey,
-        1000, // ticket_amount from game
-        0,    // player_index (first player)
-        currentTime, // This won't match exactly, but let's try
-        1     // entry_count for regular join
-      );
+      // For first player, merkle tree is managed automatically
 
-      // For first player, root = leaf hash directly
-      const leafHash = hashParticipationEntry(participation);
-      const unchangedSubtrees: SubtreeProof[] = []; // No existing subtrees
-
-      // Join game - pass the leaf hash as the new root and the participation entry
+      // Join game - merkle tree is now managed automatically
       await program.methods
-        .joinGame(leafHash, unchangedSubtrees, participation)
+        .joinGame()
         .accounts({
           game: gamePDA,
           player: player.player.publicKey,
@@ -389,11 +377,9 @@ describe("coinflip-merkle", () => {
         .rpc();
 
       // First player joins
-      const participation1 = createParticipationEntry(player1.player.publicKey, 1000, 0);
-      const { root: root1 } = buildMerkleTree([participation1]);
 
       await program.methods
-        .joinGame(Array.from(root1), [], participation1)
+        .joinGame()
         .accounts({
           game: gamePDA,
           player: player1.player.publicKey,
@@ -402,11 +388,9 @@ describe("coinflip-merkle", () => {
         .rpc();
 
       // Second player joins
-      const participation2 = createParticipationEntry(player2.player.publicKey, 1000, 1);
-      const { newRoot: root2, unchangedSubtrees } = addEntryToTree([participation1], participation2);
 
       await program.methods
-        .joinGame(Array.from(root2), unchangedSubtrees, participation2)
+        .joinGame()
         .accounts({
           game: gamePDA,
           player: player2.player.publicKey,
@@ -445,11 +429,9 @@ describe("coinflip-merkle", () => {
         .rpc();
 
       // Add both players
-      const participation1 = createParticipationEntry(player1.player.publicKey, 1000, 0);
-      const { root: root1 } = buildMerkleTree([participation1]);
 
       await program.methods
-        .joinGame(Array.from(root1), [], participation1)
+        .joinGame()
         .accounts({
           game: gamePDA,
           player: player1.player.publicKey,
@@ -457,11 +439,9 @@ describe("coinflip-merkle", () => {
         .signers([player1.player])
         .rpc();
 
-      const participation2 = createParticipationEntry(player2.player.publicKey, 1000, 1);
-      const { newRoot: finalRoot, unchangedSubtrees: subtrees2 } = addEntryToTree([participation1], participation2);
-
+      // Second player joins
       await program.methods
-        .joinGame(Array.from(finalRoot), subtrees2, participation2)
+        .joinGame()
         .accounts({
           game: gamePDA,
           player: player2.player.publicKey,
@@ -473,12 +453,15 @@ describe("coinflip-merkle", () => {
       const gameAccount = await program.account.game.fetch(gamePDA);
       const winnerIndex = calculateWinnerIndex(2, secretKey, gameAccount.lastSlot.toNumber());
 
+      // Create mock participation entries for completion (even though merkle tree is managed internally)
+      const participation1 = createParticipationEntry(player1.player.publicKey, 1000, 0);
+      const participation2 = createParticipationEntry(player2.player.publicKey, 1000, 1);
       const allParticipations = [participation1, participation2];
       const winnerParticipation = allParticipations[winnerIndex];
       const { proofs } = buildMerkleTree(allParticipations);
       const winnerProof = proofs.get(winnerIndex)!;
 
-      // Complete game with merkle proof
+      // Complete game with merkle proof (interface remains the same)
       await program.methods
         .completeGame(
           randomHash,
@@ -524,11 +507,9 @@ describe("coinflip-merkle", () => {
         .rpc();
 
       // Add first player
-      const participation1 = createParticipationEntry(player1.player.publicKey, 1000, 0);
-      const { root: root1 } = buildMerkleTree([participation1]);
 
       await program.methods
-        .joinGame(Array.from(root1), [], participation1)
+        .joinGame()
         .accounts({
           game: gamePDA,
           player: player1.player.publicKey,
@@ -538,11 +519,9 @@ describe("coinflip-merkle", () => {
 
       // Add second player to make game completable
       const player2 = globalPlayers[2];
-      const participation2 = createParticipationEntry(player2.player.publicKey, 1000, 1);
-      const { newRoot: finalRoot, unchangedSubtrees } = addEntryToTree([participation1], participation2);
 
       await program.methods
-        .joinGame(Array.from(finalRoot), unchangedSubtrees, participation2)
+        .joinGame()
         .accounts({
           game: gamePDA,
           player: player2.player.publicKey,
