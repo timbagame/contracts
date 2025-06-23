@@ -7,10 +7,8 @@ import * as anchor from "@coral-xyz/anchor";
 
 export interface ParticipationEntry {
   player: anchor.web3.PublicKey;
-  amount: anchor.BN;
   playerIndex: number;
   joinTimestamp: anchor.BN;
-  entryCount: number;
 }
 
 export interface SubtreeProof {
@@ -32,11 +30,9 @@ export interface MerkleProof {
 export function hashParticipationEntry(entry: ParticipationEntry): number[] {
   // Borsh serialization for ParticipationEntry struct:
   // player: Pubkey (32 bytes)
-  // amount: u64 (8 bytes, little-endian)
   // player_index: u32 (4 bytes, little-endian)  
   // join_timestamp: u64 (8 bytes, little-endian)
-  // entry_count: u32 (4 bytes, little-endian)
-  const buffer = Buffer.alloc(32 + 8 + 4 + 8 + 4);
+  const buffer = Buffer.alloc(32 + 4 + 8);
   
   let offset = 0;
   
@@ -44,20 +40,12 @@ export function hashParticipationEntry(entry: ParticipationEntry): number[] {
   entry.player.toBuffer().copy(buffer, offset);
   offset += 32;
   
-  // amount: u64 (8 bytes, little-endian)
-  buffer.writeBigUInt64LE(BigInt(entry.amount.toString()), offset);
-  offset += 8;
-  
   // player_index: u32 (4 bytes, little-endian)
   buffer.writeUInt32LE(entry.playerIndex, offset);
   offset += 4;
   
   // join_timestamp: u64 (8 bytes, little-endian)
   buffer.writeBigUInt64LE(BigInt(entry.joinTimestamp.toString()), offset);
-  offset += 8;
-  
-  // entry_count: u32 (4 bytes, little-endian)
-  buffer.writeUInt32LE(entry.entryCount, offset);
   
   const hash = createHash("sha256").update(buffer).digest();
   return Array.from(hash);
@@ -217,17 +205,13 @@ function getAffectedPositions(existingCount: number, level: number): number[] {
  */
 export function createParticipationEntry(
   player: anchor.web3.PublicKey,
-  amount: number,
   playerIndex: number,
-  timestamp?: number,
-  entryCount = 1
+  timestamp?: number
 ): ParticipationEntry {
   return {
     player,
-    amount: new anchor.BN(amount),
     playerIndex,
     joinTimestamp: new anchor.BN(timestamp || Date.now() / 1000),
-    entryCount,
   };
 }
 
