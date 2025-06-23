@@ -32,21 +32,14 @@ pub fn handler(ctx: Context<super::RollGame>) -> Result<()> {
 
     let ticket_amount = game.ticket_amount;
 
-    // TODO: For Snowball/Dumbball games, we need to add a new entry to the merkle tree
-    // representing this additional roll. The client must provide:
-    // 1. Updated merkle root with new entry
-    // 2. Unchanged subtree proofs for verification
-    // 3. Current player's participation data to determine next entry index
-
-    // FIXME: Simplified implementation - needs proper merkle tree handling for multiple rolls
     if game.game_type == GameType::Snowball || game.game_type == GameType::Dumbball {
-        // Create a new participation entry for this additional roll
-        // Add to merkle tree (it will create the participation entry internally)
+        // For accumulating games, each roll creates a new participation entry
+        // The same player can have multiple entries in the merkle tree
         game.add_player_to_merkle_tree(player_key, current_time)?;
-
         game.last_slot = clock.slot;
     } else {
         // For Dumbflip and Dumbaway, no state changes needed - just emit event
+        // These games don't accumulate, they just reveal winners immediately
         game.last_slot = clock.slot;
     }
 

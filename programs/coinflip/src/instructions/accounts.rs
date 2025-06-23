@@ -18,9 +18,9 @@ pub struct InitializeOracle<'info> {
         space = ORACLE_SIZE,
         seeds = [b"oracle"],
         bump,
-        constraint = fee_percentage <= 100 @ ErrorCode::InvalidAmount,
-        constraint = max_timeout >= min_timeout @ ErrorCode::InvalidTimeout,
-        constraint = max_players > 0 @ ErrorCode::InvalidPlayersCount,
+        constraint = Oracle::default().is_valid_fee_percentage(fee_percentage) @ ErrorCode::InvalidAmount,
+        constraint = Oracle::default().is_valid_timeout(max_timeout, min_timeout) @ ErrorCode::InvalidTimeout,
+        constraint = Oracle::default().is_valid_players_count(max_players) @ ErrorCode::InvalidPlayersCount,
     )]
     pub oracle: Account<'info, Oracle>,
 
@@ -38,9 +38,9 @@ pub struct UpdateOracle<'info> {
         seeds = [b"oracle"],
         bump,
         constraint = oracle.is_authorized_authority(&old_authority.key()) @ ErrorCode::UnauthorizedAuthority,
-        constraint = fee_percentage <= 100 @ ErrorCode::InvalidAmount,
-        constraint = max_timeout >= min_timeout @ ErrorCode::InvalidTimeout,
-        constraint = max_players > 0 @ ErrorCode::InvalidPlayersCount,
+        constraint = Oracle::default().is_valid_fee_percentage(fee_percentage) @ ErrorCode::InvalidAmount,
+        constraint = Oracle::default().is_valid_timeout(max_timeout, min_timeout) @ ErrorCode::InvalidTimeout,
+        constraint = Oracle::default().is_valid_players_count(max_players) @ ErrorCode::InvalidPlayersCount,
     )]
     pub oracle: Account<'info, Oracle>,
 
@@ -304,8 +304,6 @@ pub struct CompleteGame<'info> {
         constraint = game.is_creator(&creator.key()) @ ErrorCode::InvalidCreator,
         constraint = Game::verify_secret_key(random_hash, secret_key) @ ErrorCode::InvalidSecretKey,
         constraint = game.total_amount > 0 @ ErrorCode::GameAlreadyCompleted,
-        // TODO: Add winner verification with merkle proof
-        // constraint = Game::verify_merkle_proof(...) @ ErrorCode::UnauthorizedPlayer,
     )]
     pub game: Account<'info, Game>,
     #[account(

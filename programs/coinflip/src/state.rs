@@ -149,6 +149,21 @@ impl Oracle {
     pub fn is_valid_timeout_range(&self, timeout: u32) -> bool {
         timeout >= self.min_timeout && timeout <= self.max_timeout
     }
+
+    /// Validates fee percentage is within valid range (0-100)
+    pub fn is_valid_fee_percentage(&self, fee_percentage: u8) -> bool {
+        fee_percentage <= 100
+    }
+
+    /// Validates timeout parameters are in correct order
+    pub fn is_valid_timeout(&self, max_timeout: u32, min_timeout: u32) -> bool {
+        max_timeout >= min_timeout
+    }
+
+    /// Validates player count is positive
+    pub fn is_valid_players_count(&self, max_players: u32) -> bool {
+        max_players > 0
+    }
 }
 
 // =============================================================================
