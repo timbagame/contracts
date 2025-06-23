@@ -204,7 +204,6 @@ describe("coinflip-merkle", () => {
     it("should hash participation entries correctly", async () => {
       const entry = createParticipationEntry(
         globalPlayers[0].player.publicKey,
-        1000,
         0,
         1640995200 // Fixed timestamp for reproducible tests
       );
@@ -217,7 +216,6 @@ describe("coinflip-merkle", () => {
     it("should build merkle tree for single player", async () => {
       const entry = createParticipationEntry(
         globalPlayers[0].player.publicKey,
-        1000,
         0
       );
 
@@ -235,9 +233,9 @@ describe("coinflip-merkle", () => {
 
     it("should build merkle tree for multiple players", async () => {
       const entries = [
-        createParticipationEntry(globalPlayers[0].player.publicKey, 1000, 0),
-        createParticipationEntry(globalPlayers[1].player.publicKey, 1000, 1),
-        createParticipationEntry(globalPlayers[2].player.publicKey, 1000, 2),
+        createParticipationEntry(globalPlayers[0].player.publicKey, 0),
+        createParticipationEntry(globalPlayers[1].player.publicKey, 1),
+        createParticipationEntry(globalPlayers[2].player.publicKey, 2),
       ];
 
       const { root, tree, proofs } = buildMerkleTree(entries);
@@ -254,13 +252,12 @@ describe("coinflip-merkle", () => {
 
     it("should handle adding new entry to existing tree", async () => {
       const existingEntries = [
-        createParticipationEntry(globalPlayers[0].player.publicKey, 1000, 0),
-        createParticipationEntry(globalPlayers[1].player.publicKey, 1000, 1),
+        createParticipationEntry(globalPlayers[0].player.publicKey, 0),
+        createParticipationEntry(globalPlayers[1].player.publicKey, 1),
       ];
 
       const newEntry = createParticipationEntry(
         globalPlayers[2].player.publicKey,
-        1000,
         2
       );
 
@@ -454,8 +451,8 @@ describe("coinflip-merkle", () => {
       const winnerIndex = calculateWinnerIndex(2, secretKey, gameAccount.lastSlot.toNumber());
 
       // Create mock participation entries for completion (even though merkle tree is managed internally)
-      const participation1 = createParticipationEntry(player1.player.publicKey, 1000, 0);
-      const participation2 = createParticipationEntry(player2.player.publicKey, 1000, 1);
+      const participation1 = createParticipationEntry(player1.player.publicKey, 0);
+      const participation2 = createParticipationEntry(player2.player.publicKey, 1);
       const allParticipations = [participation1, participation2];
       const winnerParticipation = allParticipations[winnerIndex];
       const { proofs } = buildMerkleTree(allParticipations);
@@ -532,7 +529,6 @@ describe("coinflip-merkle", () => {
       // Try to complete with wrong proof (fake player that's not in the game)
       const fakeParticipation = createParticipationEntry(
         globalPlayers[3].player.publicKey, // Wrong player (not in game)
-        1000,
         0 // Wrong index too
       );
       const wrongProof = [[...new Array(32).fill(0)]]; // Invalid proof
