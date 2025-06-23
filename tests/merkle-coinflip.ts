@@ -14,6 +14,7 @@ import {
   addEntryToTree,
   createParticipationEntry,
   verifyMerkleProof,
+  hashNodes,
 } from "./merkle-helpers";
 
 /**
@@ -453,12 +454,12 @@ describe("coinflip-merkle", () => {
         })
         .signers([player3.player])
         .rpc();
-      
+
       // Get the exact timestamps from the blockchain transactions
       const tx1Info = await program.provider.connection.getParsedTransaction(tx1, { commitment: "confirmed" });
       const tx2Info = await program.provider.connection.getParsedTransaction(tx2, { commitment: "confirmed" });
       const tx3Info = await program.provider.connection.getParsedTransaction(tx3, { commitment: "confirmed" });
-      
+
       const player1JoinTime = tx1Info?.blockTime || 0;
       const player2JoinTime = tx2Info?.blockTime || 0;
       const player3JoinTime = tx3Info?.blockTime || 0;
@@ -469,32 +470,55 @@ describe("coinflip-merkle", () => {
 
       // Create exact participation entries that match what the contract created
       const participation1 = createParticipationEntry(
-        player1.player.publicKey, 
-        0, 
+        player1.player.publicKey,
+        0,
         player1JoinTime
       );
       const participation2 = createParticipationEntry(
-        player2.player.publicKey, 
-        1, 
+        player2.player.publicKey,
+        1,
         player2JoinTime
       );
       const participation3 = createParticipationEntry(
-        player3.player.publicKey, 
-        2, 
+        player3.player.publicKey,
+        2,
         player3JoinTime
       );
-      
-      // For 3 players: first 2 create subtree, 3rd goes in recent buffer
-      // Contract will have: 1 subtree + 1 recent player
+
+      // For 3 players: recreate contract's exact merkle structure
+      // 1. First 2 players create a subtree
+      const leaf1 = hashParticipationEntry(participation1);
+      const leaf2 = hashParticipationEntry(participation2);
+      const subtreeRoot = hashNodes(leaf1, leaf2); // 2-player subtree
+
+      // 2. Third player goes in recent buffer
+      const leaf3 = hashParticipationEntry(participation3);
+
+      // 3. Contract computes root from [subtreeRoot, leaf3]
+      const expectedContractRoot = hashNodes(subtreeRoot, leaf3);
+
+      // Build correct proof based on winner index
       const allParticipations = [participation1, participation2, participation3];
       const winnerParticipation = allParticipations[winnerIndex];
-      const { proofs } = buildMerkleTree(allParticipations);
-      const winnerProof = proofs.get(winnerIndex)!;
-      
+
+      let winnerProof: number[][];
+      if (winnerIndex === 0) {
+        // Winner is player 1: proof is [leaf2, leaf3] to get to root
+        winnerProof = [leaf2, leaf3];
+      } else if (winnerIndex === 1) {
+        // Winner is player 2: proof is [leaf1, leaf3] to get to root
+        winnerProof = [leaf1, leaf3];
+      } else {
+        // Winner is player 3: proof is [subtreeRoot] to get to root
+        winnerProof = [subtreeRoot];
+      }
+
       // Debug: Check merkle root
       const contractRoot = Array.from(gameAccount.merkleRoot);
       console.log("Contract merkle root:", contractRoot);
+      console.log("Expected root:", expectedContractRoot);
       console.log("Winner index:", winnerIndex);
+      console.log("Roots match:", contractRoot.every((byte, i) => byte === expectedContractRoot[i]));
 
       // Complete game with merkle proof (interface remains the same)
       await program.methods
@@ -502,7 +526,7 @@ describe("coinflip-merkle", () => {
           randomHash,
           secretKey,
           winnerParticipation,
-          winnerProof.proof
+          winnerProof
         )
         .accounts({
           authority: program.provider.publicKey,
