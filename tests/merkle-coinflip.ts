@@ -405,13 +405,14 @@ describe("coinflip-merkle", () => {
       const creator = globalPlayers[0];
       const player1 = globalPlayers[1];
       const player2 = globalPlayers[2];
+      const player3 = globalPlayers[3];
 
-      // Initialize and populate game
+      // Initialize and populate game with 3 players
       const gameConfig = {
         gameType: { coinflip: {} },
         amount: new anchor.BN(1000),
-        maxPlayers: 2,
-        minPlayers: 2,
+        maxPlayers: 3,
+        minPlayers: 3,
         timeout: 60,
         isPrivate: false,
       };
@@ -425,9 +426,8 @@ describe("coinflip-merkle", () => {
         .signers([creator.player])
         .rpc();
 
-      // Add both players
-
-      await program.methods
+      // Add both players and capture exact timestamps
+      const tx1 = await program.methods
         .joinGame()
         .accounts({
           game: gamePDA,
@@ -436,8 +436,7 @@ describe("coinflip-merkle", () => {
         .signers([player1.player])
         .rpc();
 
-      // Second player joins
-      await program.methods
+      const tx2 = await program.methods
         .joinGame()
         .accounts({
           game: gamePDA,
@@ -446,17 +445,56 @@ describe("coinflip-merkle", () => {
         .signers([player2.player])
         .rpc();
 
+      const tx3 = await program.methods
+        .joinGame()
+        .accounts({
+          game: gamePDA,
+          player: player3.player.publicKey,
+        })
+        .signers([player3.player])
+        .rpc();
+      
+      // Get the exact timestamps from the blockchain transactions
+      const tx1Info = await program.provider.connection.getParsedTransaction(tx1, { commitment: "confirmed" });
+      const tx2Info = await program.provider.connection.getParsedTransaction(tx2, { commitment: "confirmed" });
+      const tx3Info = await program.provider.connection.getParsedTransaction(tx3, { commitment: "confirmed" });
+      
+      const player1JoinTime = tx1Info?.blockTime || 0;
+      const player2JoinTime = tx2Info?.blockTime || 0;
+      const player3JoinTime = tx3Info?.blockTime || 0;
+
       // Calculate winner
       const gameAccount = await program.account.game.fetch(gamePDA);
-      const winnerIndex = calculateWinnerIndex(2, secretKey, gameAccount.lastSlot.toNumber());
+      const winnerIndex = calculateWinnerIndex(3, secretKey, gameAccount.lastSlot.toNumber());
 
-      // Create mock participation entries for completion (even though merkle tree is managed internally)
-      const participation1 = createParticipationEntry(player1.player.publicKey, 0);
-      const participation2 = createParticipationEntry(player2.player.publicKey, 1);
-      const allParticipations = [participation1, participation2];
+      // Create exact participation entries that match what the contract created
+      const participation1 = createParticipationEntry(
+        player1.player.publicKey, 
+        0, 
+        player1JoinTime
+      );
+      const participation2 = createParticipationEntry(
+        player2.player.publicKey, 
+        1, 
+        player2JoinTime
+      );
+      const participation3 = createParticipationEntry(
+        player3.player.publicKey, 
+        2, 
+        player3JoinTime
+      );
+      
+      // For 3 players: first 2 create subtree, 3rd goes in recent buffer
+      // Contract will have: 1 subtree + 1 recent player
+      const allParticipations = [participation1, participation2, participation3];
       const winnerParticipation = allParticipations[winnerIndex];
       const { proofs } = buildMerkleTree(allParticipations);
       const winnerProof = proofs.get(winnerIndex)!;
+      
+      // Debug: Check merkle root
+      const contractRoot = Array.from(gameAccount.merkleRoot);
+      console.log("Contract merkle root:", contractRoot);
+      console.log("Winner index:", winnerIndex);
 
       // Complete game with merkle proof (interface remains the same)
       await program.methods

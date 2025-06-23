@@ -623,6 +623,13 @@ impl Game {
             self.subtree_count += 1;
         } else {
             // Fallback: no same-sized pairs found, merge new with smallest
+            if self.subtrees.is_empty() {
+                // If no subtrees exist, just add the new one
+                self.subtrees.push(new);
+                self.subtree_count += 1;
+                return Ok(());
+            }
+            
             let smallest_idx = self.find_smallest_subtree();
             let smallest = self.subtrees[smallest_idx];
 
