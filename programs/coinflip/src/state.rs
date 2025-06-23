@@ -10,7 +10,9 @@ pub const ORACLE_SIZE: usize = 8 + 32 + 1 + 2 + 4 + 4 + 4;
 pub const GAME_TOKEN_SIZE: usize = 8 + 32 + 1 + 8 + 8 + 1;
 pub const PLAYER_BALANCE_SIZE: usize = 8 + 8;
 // PlayerParticipation eliminated - using merkle trees!
-pub const GAME_SIZE: usize = 8
+// Dynamic game size calculation - no longer fixed constant
+// Base size without dynamic arrays
+pub const GAME_BASE_SIZE: usize = 8
     + 32  // creator
     + 1   // game_type
     + 8   // ticket_amount
@@ -24,10 +26,10 @@ pub const GAME_SIZE: usize = 8
     + 1   // is_private
     + 8   // total_amount
     + 32  // merkle_root
-    + 1   // subtree_count
-    + 640 // subtrees: 16 × 40 bytes (fixed size)
+    + 4   // subtrees length (Vec<T> serialization)
     + 1   // recent_count
-    + 512; // recent_players: 16 × 32 bytes (fixed size) = 1,367 bytes total
+    + 4   // recent_players length (Vec<T> serialization)
+    + 64; // 2 recent players: 2 × 32 bytes (optimized buffer) = 217 bytes base
 
 // =============================================================================
 // GAME TYPES
@@ -327,17 +329,38 @@ pub struct Game {
     pub total_amount: u64,
     /// Merkle root of all player participations
     pub merkle_root: [u8; 32],
-    /// Number of active subtrees (0-16)
+    /// Number of active subtrees (dynamic based on max_players)
     pub subtree_count: u8,
-    /// Fixed-size array for subtree storage
-    pub subtrees: [Subtree; 16],
-    /// Number of players in recent buffer (0-16)
+    /// Dynamic subtree storage - size calculated based on max_players
+    pub subtrees: Vec<Subtree>,
+    /// Number of players in recent buffer (0-2)
     pub recent_count: u8,
-    /// Recent player leaves (before subtree aggregation)
-    pub recent_players: [RecentLeaf; 16],
+    /// Recent player leaves (before subtree aggregation) - optimized to 2 players
+    pub recent_players: Vec<RecentLeaf>,
 }
 
 impl Game {
+    /// Calculates the required number of subtrees for a given max_players using binary decomposition
+    /// For 2-player recent buffer: ceil(max_players / 2) then count 1-bits in binary representation
+    pub fn calculate_required_subtrees(max_players: u32) -> usize {
+        if max_players <= 2 {
+            return 0; // All players fit in recent buffer
+        }
+        
+        // Calculate how many times we'll fill the 2-player buffer
+        let buffer_fills = (max_players + 1) / 2; // ceil(max_players / 2)
+        
+        // Use binary decomposition to find minimum subtrees needed
+        // Each subtree merge doubles the capacity, so we need count_ones bits
+        buffer_fills.count_ones() as usize
+    }
+    
+    /// Calculates the total dynamic storage size for a game
+    pub fn calculate_storage_size(max_players: u32) -> usize {
+        let required_subtrees = Self::calculate_required_subtrees(max_players);
+        GAME_BASE_SIZE + (required_subtrees * 40) // 40 bytes per subtree
+    }
+
     /// Checks if the game has exceeded its timeout duration
     pub fn is_expired(&self, current_time: u64) -> bool {
         current_time >= self.created_at + self.timeout as u64
@@ -508,16 +531,17 @@ impl Game {
         let participation = Self::create_participation_entry(player, self.players_count, timestamp);
         let leaf_hash = Self::hash_participation_entry(&participation);
 
-        if self.recent_count < 16 {
+        if self.recent_count < 2 {
             // Just add to buffer - no structure change
-            self.recent_players[self.recent_count as usize] = RecentLeaf { hash: leaf_hash };
+            self.recent_players.push(RecentLeaf { hash: leaf_hash });
             self.recent_count += 1;
             // NO root update needed!
         } else {
             // Structure changes - update root
             let new_subtree = self.build_subtree_from_recent()?;
             self.merge_subtree(new_subtree)?;
-            self.recent_players[0] = RecentLeaf { hash: leaf_hash };
+            self.recent_players.clear();
+            self.recent_players.push(RecentLeaf { hash: leaf_hash });
             self.recent_count = 1;
             self.update_merkle_root()?; // Only update when structure changes
         }
@@ -527,15 +551,15 @@ impl Game {
         Ok(())
     }
 
-    /// Builds 16-player subtree from recent buffer
+    /// Builds 2-player subtree from recent buffer
     fn build_subtree_from_recent(&self) -> Result<Subtree> {
         require!(
-            self.recent_count == 16,
+            self.recent_count == 2,
             crate::error::ErrorCode::InvalidAmount
         );
 
-        let start_index = self.players_count.saturating_sub(15);
-        let leaves: Vec<[u8; 32]> = self.recent_players[..16]
+        let start_index = self.players_count.saturating_sub(1);
+        let leaves: Vec<[u8; 32]> = self.recent_players
             .iter()
             .map(|leaf| leaf.hash)
             .collect();
@@ -543,15 +567,15 @@ impl Game {
         Ok(Subtree {
             root_hash: Self::compute_merkle_root(&leaves),
             start_index,
-            size: 16,
+            size: 2,
         })
     }
 
     /// Merges new subtree with existing ones using same-sized merging for optimal tree balance
     fn merge_subtree(&mut self, mut new: Subtree) -> Result<()> {
         // If we have space, just add the new subtree
-        if self.subtree_count < 16 {
-            self.subtrees[self.subtree_count as usize] = new;
+        if (self.subtrees.len() as u8) < self.subtrees.capacity() as u8 {
+            self.subtrees.push(new);
             self.subtree_count += 1;
             return Ok(());
         }
@@ -564,23 +588,16 @@ impl Game {
             // Remove both subtrees (remove higher index first to avoid shifting)
             let (first_idx, second_idx) = if idx1 > idx2 { (idx1, idx2) } else { (idx2, idx1) };
             
-            // Remove first (higher index)
-            if first_idx < self.subtree_count as usize - 1 {
-                self.subtrees[first_idx] = self.subtrees[self.subtree_count as usize - 1];
-            }
-            self.subtree_count -= 1;
-            
-            // Remove second (adjust index if it was affected by first removal)
-            let adjusted_second_idx = if second_idx == self.subtree_count as usize {
-                first_idx  // The last element moved to first_idx position
+            // Remove using Vec operations
+            self.subtrees.remove(first_idx);
+            // Adjust second index after first removal
+            let adjusted_second_idx = if second_idx > first_idx {
+                second_idx - 1
             } else {
                 second_idx
             };
-            
-            if adjusted_second_idx < self.subtree_count as usize - 1 {
-                self.subtrees[adjusted_second_idx] = self.subtrees[self.subtree_count as usize - 1];
-            }
-            self.subtree_count -= 1;
+            self.subtrees.remove(adjusted_second_idx);
+            self.subtree_count -= 2;
 
             // Create merged subtree from the two same-sized ones
             let (left, right) = if subtree1.start_index < subtree2.start_index {
@@ -592,15 +609,15 @@ impl Game {
             let merged_subtree = Subtree {
                 root_hash: hash(&[left, right].concat()).to_bytes(),
                 start_index: subtree1.start_index.min(subtree2.start_index),
-                size: subtree1.size + subtree2.size,  // Should be subtree1.size * 2 since they're same-sized
+                size: subtree1.size + subtree2.size,
             };
 
             // Add merged subtree back
-            self.subtrees[self.subtree_count as usize] = merged_subtree;
+            self.subtrees.push(merged_subtree);
             self.subtree_count += 1;
 
             // Now we have space for the new subtree
-            self.subtrees[self.subtree_count as usize] = new;
+            self.subtrees.push(new);
             self.subtree_count += 1;
         } else {
             // Fallback: no same-sized pairs found, merge new with smallest
@@ -608,9 +625,7 @@ impl Game {
             let smallest = self.subtrees[smallest_idx];
 
             // Remove smallest subtree
-            if smallest_idx < self.subtree_count as usize - 1 {
-                self.subtrees[smallest_idx] = self.subtrees[self.subtree_count as usize - 1];
-            }
+            self.subtrees.remove(smallest_idx);
             self.subtree_count -= 1;
 
             // Create merged subtree
@@ -627,7 +642,7 @@ impl Game {
             };
 
             // Add the merged subtree back
-            self.subtrees[self.subtree_count as usize] = new;
+            self.subtrees.push(new);
             self.subtree_count += 1;
         }
 
@@ -639,8 +654,8 @@ impl Game {
         let mut best_pair: Option<(usize, usize)> = None;
         let mut smallest_size = u32::MAX;
         
-        for i in 0..self.subtree_count as usize {
-            for j in (i + 1)..self.subtree_count as usize {
+        for i in 0..self.subtrees.len() {
+            for j in (i + 1)..self.subtrees.len() {
                 if self.subtrees[i].size == self.subtrees[j].size && self.subtrees[i].size < smallest_size {
                     smallest_size = self.subtrees[i].size;
                     best_pair = Some((i, j));
@@ -655,7 +670,7 @@ impl Game {
         let mut smallest_idx = 0;
         let mut smallest_size = u32::MAX;
 
-        for i in 0..self.subtree_count as usize {
+        for i in 0..self.subtrees.len() {
             if self.subtrees[i].size < smallest_size {
                 smallest_size = self.subtrees[i].size;
                 smallest_idx = i;
@@ -670,15 +685,13 @@ impl Game {
         let mut hashes = Vec::new();
 
         // Add all subtree roots (sorted by start_index)
-        let mut subtrees: Vec<&Subtree> = self.subtrees[..self.subtree_count as usize]
-            .iter()
-            .collect();
+        let mut subtrees: Vec<&Subtree> = self.subtrees.iter().collect();
         subtrees.sort_by_key(|s| s.start_index);
         hashes.extend(subtrees.iter().map(|s| s.root_hash));
 
         // Add recent player leaves
         hashes.extend(
-            self.recent_players[..self.recent_count as usize]
+            self.recent_players
                 .iter()
                 .map(|leaf| leaf.hash),
         );
@@ -714,13 +727,16 @@ impl Game {
         layer[0]
     }
 
-    /// Initialize merkle system for new game
-    pub fn initialize_merkle_system(&mut self) -> Result<()> {
-        // Initialize fixed-size arrays with default values
+    /// Initialize merkle system for new game with dynamic allocation based on max_players
+    pub fn initialize_merkle_system(&mut self, max_players: u32) -> Result<()> {
+        // Calculate required capacity
+        let required_subtrees = Self::calculate_required_subtrees(max_players);
+        
+        // Initialize dynamic vectors with exact capacity needed
         self.subtree_count = 0;
-        self.subtrees = [Subtree::default(); 16];
+        self.subtrees = Vec::with_capacity(required_subtrees);
         self.recent_count = 0;
-        self.recent_players = [RecentLeaf::default(); 16];
+        self.recent_players = Vec::with_capacity(2); // Always 2 for optimized buffer
         self.merkle_root = [0; 32];
 
         Ok(())

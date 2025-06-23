@@ -202,7 +202,7 @@ pub struct InitializeGame<'info> {
     #[account(
         init,
         payer = creator,
-        space = GAME_SIZE,
+        space = Game::calculate_storage_size(max_players),
         seeds = [b"game", random_hash.as_ref()],
         bump,
         constraint = game_token.is_enabled() @ ErrorCode::TokenNotEnabled,
