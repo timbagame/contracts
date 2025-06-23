@@ -144,26 +144,6 @@ pub struct PlayerUnjoined {
     pub timestamp: u64,
 }
 
-/// Emitted when expired player participation is cleaned up
-#[event]
-pub struct PlayerParticipationCleaned {
-    /// Game being cleaned
-    pub game_key: Pubkey,
-    /// Player whose participation was cleaned
-    pub player: Pubkey,
-    /// Remaining total amount
-    pub total_amount: u64,
-    /// Remaining players count
-    pub players_count: u32,
-    /// Player's index that was cleaned
-    pub player_index: u32,
-    /// Amount refunded to player (if any)
-    pub refund_amount: u64,
-    /// Whether the game was already completed
-    pub is_completed_game: bool,
-    /// Timestamp of the cleanup
-    pub timestamp: u64,
-}
 
 /// Emitted when a player rolls in Snowball/Dumbflip games
 #[event]
