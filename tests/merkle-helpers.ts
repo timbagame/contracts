@@ -8,7 +8,6 @@ import * as anchor from "@coral-xyz/anchor";
 export interface ParticipationEntry {
   player: anchor.web3.PublicKey;
   playerIndex: number;
-  joinTimestamp: anchor.BN;
 }
 
 export interface SubtreeProof {
@@ -30,9 +29,8 @@ export interface MerkleProof {
 export function hashParticipationEntry(entry: ParticipationEntry): number[] {
   // Borsh serialization for ParticipationEntry struct:
   // player: Pubkey (32 bytes)
-  // player_index: u32 (4 bytes, little-endian)  
-  // join_timestamp: u64 (8 bytes, little-endian)
-  const buffer = Buffer.alloc(32 + 4 + 8);
+  // player_index: u32 (4 bytes, little-endian)
+  const buffer = Buffer.alloc(32 + 4);
   
   let offset = 0;
   
@@ -42,10 +40,6 @@ export function hashParticipationEntry(entry: ParticipationEntry): number[] {
   
   // player_index: u32 (4 bytes, little-endian)
   buffer.writeUInt32LE(entry.playerIndex, offset);
-  offset += 4;
-  
-  // join_timestamp: u64 (8 bytes, little-endian)
-  buffer.writeBigUInt64LE(BigInt(entry.joinTimestamp.toString()), offset);
   
   const hash = createHash("sha256").update(buffer).digest();
   return Array.from(hash);
@@ -205,13 +199,11 @@ function getAffectedPositions(existingCount: number, level: number): number[] {
  */
 export function createParticipationEntry(
   player: anchor.web3.PublicKey,
-  playerIndex: number,
-  timestamp?: number
+  playerIndex: number
 ): ParticipationEntry {
   return {
     player,
     playerIndex,
-    joinTimestamp: new anchor.BN(timestamp || Date.now() / 1000),
   };
 }
 

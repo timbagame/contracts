@@ -83,6 +83,18 @@ pub enum ErrorCode {
     #[msg("Invalid last player index")]
     InvalidLastPlayerIndex = 1203,
 
+    /// Exclusion proof verification failed
+    #[msg("Invalid exclusion proof")]
+    InvalidExclusionProof = 1204,
+
+    /// Subtree proof structure is malformed or invalid
+    #[msg("Malformed subtree proof")]
+    MalformedSubtreeProof = 1205,
+
+    /// Cannot locate subtree containing the specified player
+    #[msg("Subtree not found")]
+    SubtreeNotFound = 1206,
+
     // =========================================================================
     // CONFIGURATION ERRORS (1300-1399)
     // =========================================================================

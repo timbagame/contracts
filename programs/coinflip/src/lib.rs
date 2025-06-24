@@ -12,7 +12,7 @@ mod instructions;
 mod state;
 
 use crate::instructions::*;
-use crate::state::{GameType, ParticipationEntry};
+use crate::state::{GameType, ParticipationEntry, ExclusionProof};
 
 // =============================================================================
 // PROGRAM ID
@@ -139,12 +139,12 @@ pub mod coinflip {
     }
 
     /// Allows a player to leave a game before completion (with refund)
-    /// Recent players can unjoin directly, subtree players need merkle proof
+    /// Recent players can unjoin directly, subtree players require exclusion proof
     pub fn unjoin_game(
         ctx: Context<UnjoinGame>,
-        merkle_proof: Option<Vec<[u8; 32]>>,
+        exclusion_proof: Option<ExclusionProof>,
     ) -> Result<()> {
-        instructions::unjoin_game::handler(ctx, merkle_proof)
+        instructions::unjoin_game::handler(ctx, exclusion_proof)
     }
 
     /// Closes a game with no active players (creator only)
