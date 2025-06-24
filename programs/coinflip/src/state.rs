@@ -70,16 +70,6 @@ pub struct ParticipationEntry {
     pub player_index: u32,
 }
 
-/// Merkle proof for verifying leaf inclusion
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct MerkleProof {
-    /// The leaf being proven
-    pub leaf: [u8; 32],
-    /// Merkle path from leaf to root
-    pub proof: Vec<[u8; 32]>,
-    /// Index of the leaf in the tree
-    pub leaf_index: u32,
-}
 
 /// Optimized subtree structure (40 bytes)
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Default)]
