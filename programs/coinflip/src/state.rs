@@ -68,8 +68,6 @@ pub struct ParticipationEntry {
     pub player: Pubkey,
     /// Player's index in the game (position in merkle tree)
     pub player_index: u32,
-    /// Timestamp when player joined
-    pub join_timestamp: u64,
 }
 
 /// Merkle proof for verifying leaf inclusion
@@ -507,12 +505,10 @@ impl Game {
     pub fn create_participation_entry(
         player: Pubkey,
         player_index: u32,
-        timestamp: u64,
     ) -> ParticipationEntry {
         ParticipationEntry {
             player,
             player_index,
-            join_timestamp: timestamp,
         }
     }
 
@@ -544,8 +540,8 @@ impl Game {
     }
 
     /// Adds a player to the merkle tree using buffer-based aggregation
-    pub fn add_player_to_merkle_tree(&mut self, player: Pubkey, timestamp: u64) -> Result<()> {
-        let participation = Self::create_participation_entry(player, self.players_count, timestamp);
+    pub fn add_player_to_merkle_tree(&mut self, player: Pubkey) -> Result<()> {
+        let participation = Self::create_participation_entry(player, self.players_count);
         let leaf_hash = Self::hash_participation_entry(&participation);
 
         if self.recent_count < 2 {
@@ -764,4 +760,5 @@ impl Game {
 
         Ok(())
     }
+
 }
