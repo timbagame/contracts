@@ -14,8 +14,7 @@ import {
   addEntryToTree,
   createParticipationEntry,
   verifyMerkleProof,
-  build3ElementTree,
-  generateWinnerProof3Element,
+  hashNodes,
   calculateWinnerIndex,
 } from "./merkle-helpers";
 
@@ -478,18 +477,36 @@ describe("coinflip-merkle", () => {
         2
       );
 
-      // Use helper function to build 3-element tree structure
-      const treeData = build3ElementTree(participation1, participation2, participation3);
-      const expectedContractRoot = treeData.root;
+      // Build tree structure to match contract's actual implementation:
+      // With 3 players: subtree contains players 0,1 and recent_players contains player 2
+      const leaf1 = hashParticipationEntry(participation1);
+      const leaf2 = hashParticipationEntry(participation2);
+      const leaf3 = hashParticipationEntry(participation3);
 
-      // Generate winner proof using helper function
-      const winnerProof = generateWinnerProof3Element(
-        winnerIndex as 0 | 1 | 2,
-        treeData.leaf1,
-        treeData.leaf2,
-        treeData.leaf3,
-        treeData.pair1
-      );
+      // Create subtree root from first 2 players (like contract does)
+      const subtreeRoot = hashNodes(leaf1, leaf2);
+
+      // Contract's merkle root is computed from [subtree_root, recent_player_leaf]
+      const expectedContractRoot = hashNodes(subtreeRoot, leaf3);
+
+      // Generate winner proof based on actual tree structure
+      let winnerProof: number[][];
+      if (winnerIndex === 0) {
+        // Winner is in subtree, position 0
+        // Path: leaf1 -> subtree_root -> root
+        // Need: [leaf2] to get subtree_root, then [leaf3] to get root
+        winnerProof = [leaf2, leaf3];
+      } else if (winnerIndex === 1) {
+        // Winner is in subtree, position 1
+        // Path: leaf2 -> subtree_root -> root
+        // Need: [leaf1] to get subtree_root, then [leaf3] to get root
+        winnerProof = [leaf1, leaf3];
+      } else {
+        // Winner is recent player, position 2
+        // Path: leaf3 -> root (direct)
+        // Need: [subtree_root] to get root
+        winnerProof = [subtreeRoot];
+      }
 
       // Debug: Check merkle root and tree structure
       const contractRoot = Array.from(gameAccount.merkleRoot);
@@ -504,39 +521,10 @@ describe("coinflip-merkle", () => {
       console.log("- Subtree count:", gameAccount.subtreeCount);
       console.log("- Players count:", gameAccount.playersCount);
 
-      // Test all possible player_index values to find what the contract actually stored
-      console.log("Testing all possible player_index values for the winner...");
+      // Create winner participation entry with the calculated winner index
       const winnerPlayer = winnerIndex === 0 ? player1.player.publicKey :
                           winnerIndex === 1 ? player2.player.publicKey : player3.player.publicKey;
-
-      let matchedIndex = -1;
-
-      for (let testIndex = 0; testIndex < 10; testIndex++) {
-        const testParticipation = createParticipationEntry(winnerPlayer, testIndex);
-        const testLeaf = hashParticipationEntry(testParticipation);
-
-        // Check if this leaf matches any of our expected leaves
-        const expectedLeaf = winnerIndex === 0 ? treeData.leaf1 : winnerIndex === 1 ? treeData.leaf2 : treeData.leaf3;
-        const matches = testLeaf.every((b, i) => b === expectedLeaf[i]);
-
-        console.log(`Testing player_index ${testIndex} for winner ${winnerIndex}: matches = ${matches}`);
-
-        if (matches) {
-          matchedIndex = testIndex;
-          break;
-        }
-      }
-
-      // Create winner participation entry with correct index
-      let winnerParticipation: any;
-      if (matchedIndex >= 0) {
-        console.log(`✅ Found matching leaf! Winner ${winnerIndex} should use player_index ${matchedIndex}`);
-        winnerParticipation = createParticipationEntry(winnerPlayer, matchedIndex);
-      } else {
-        console.log(`❌ No matching leaf found for winner ${winnerIndex}`);
-        // Fallback to original index
-        winnerParticipation = createParticipationEntry(winnerPlayer, winnerIndex);
-      }
+      const winnerParticipation = createParticipationEntry(winnerPlayer, winnerIndex);
 
       // Complete game with merkle proof (interface remains the same)
       await program.methods
