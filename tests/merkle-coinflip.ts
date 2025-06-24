@@ -487,13 +487,13 @@ describe("coinflip-merkle", () => {
       // Build correct proof based on winner index
       // The contract's tree structure is: [subtree(player1,player2), player3]
       // So the tree positions are:
-      // - player1: index 0 within subtree, needs proof [leaf2, leaf3] 
+      // - player1: index 0 within subtree, needs proof [leaf2, leaf3]
       // - player2: index 1 within subtree, needs proof [leaf1, leaf3]
       // - player3: index 1 in main tree (right side), needs proof [subtreeRoot]
-      
+
       let winnerParticipation: any;
       let winnerProof: number[][];
-      
+
       if (winnerIndex === 0) {
         // Winner is player 1: in subtree at index 0
         winnerParticipation = createParticipationEntry(player1.player.publicKey, 0);
@@ -501,9 +501,9 @@ describe("coinflip-merkle", () => {
         // Proof: [leaf2] to get subtree_root, then [leaf3] to get tree_root
         winnerProof = [leaf2, leaf3];
       } else if (winnerIndex === 1) {
-        // Winner is player 2: in subtree at index 1  
+        // Winner is player 2: in subtree at index 1
         winnerParticipation = createParticipationEntry(player2.player.publicKey, 1);
-        // To verify player2: need proof from leaf2 -> subtree_root -> tree_root  
+        // To verify player2: need proof from leaf2 -> subtree_root -> tree_root
         // Proof: [leaf1] to get subtree_root, then [leaf3] to get tree_root
         winnerProof = [leaf1, leaf3];
       } else {
@@ -660,7 +660,7 @@ describe("coinflip-merkle", () => {
       // This verifies the function signature compiles and is callable
       try {
         await program.methods
-          .unjoinGame(null) // exclusion_proof: null
+          .unjoinGame(0, null) // player_index: 0, exclusion_proof: null
           .accounts({
             game: gamePDA,
             player: creator.player.publicKey,
@@ -733,7 +733,7 @@ describe("coinflip-merkle", () => {
       try {
         // This should succeed since player3 is the last player and in recent_players
         await program.methods
-          .unjoinGame(null) // exclusion_proof: null - uses recent_players logic
+          .unjoinGame(3, null) // player_index: 3, exclusion_proof: null - uses recent_players logic
           .accounts({
             game: gamePDA,
             player: player3.player.publicKey,

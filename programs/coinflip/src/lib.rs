@@ -12,7 +12,7 @@ mod instructions;
 mod state;
 
 use crate::instructions::*;
-use crate::state::{GameType, ParticipationEntry, ExclusionProof};
+use crate::state::{ExclusionProof, GameType, ParticipationEntry};
 
 // =============================================================================
 // PROGRAM ID
@@ -142,9 +142,10 @@ pub mod coinflip {
     /// Recent players can unjoin directly, subtree players require exclusion proof
     pub fn unjoin_game(
         ctx: Context<UnjoinGame>,
+        player_index: u32,
         exclusion_proof: Option<ExclusionProof>,
     ) -> Result<()> {
-        instructions::unjoin_game::handler(ctx, exclusion_proof)
+        instructions::unjoin_game::handler(ctx, player_index, exclusion_proof)
     }
 
     /// Closes a game with no active players (creator only)
