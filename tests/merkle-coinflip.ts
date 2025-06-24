@@ -14,7 +14,9 @@ import {
   addEntryToTree,
   createParticipationEntry,
   verifyMerkleProof,
-  hashNodes,
+  build3ElementTree,
+  generateWinnerProof3Element,
+  calculateWinnerIndex,
 } from "./merkle-helpers";
 
 /**
@@ -476,56 +478,18 @@ describe("coinflip-merkle", () => {
         2
       );
 
-      // For 3 players: the contract may build a 3-element tree directly
-      // Let's try building the tree as [leaf1, leaf2, leaf3] instead of [subtree, recent]
-      const leaf1 = hashParticipationEntry(participation1);
-      const leaf2 = hashParticipationEntry(participation2);
-      const leaf3 = hashParticipationEntry(participation3);
+      // Use helper function to build 3-element tree structure
+      const treeData = build3ElementTree(participation1, participation2, participation3);
+      const expectedContractRoot = treeData.root;
 
-      // Try building as a 3-element tree: [leaf1, leaf2, leaf3]
-      // First level: pair leaves, promote odd leaf
-      const pair1 = hashNodes(leaf1, leaf2); // pair first two
-      // Second level: combine pair with third leaf
-      const expectedContractRoot = hashNodes(pair1, leaf3);
-
-      // But also keep the subtree structure for reference
-      const subtreeRoot = hashNodes(leaf1, leaf2);
-
-      // Build correct proof based on winner index
-      // The contract builds the tree from: [subtree_root, recent_player_leaf]
-      // This creates a 2-element tree where:
-      // - Position 0: subtree_root (containing players 0,1)
-      // - Position 1: player3_leaf (recent player with global index 2)
-      //
-      // For merkle verification, we need to consider:
-      // - Players 0,1: Need to prove they're in the subtree AND the subtree is in the main tree
-      // - Player 2: Need to prove they're the recent player at position 1 in main tree
-
-      let winnerParticipation: any;
-      let winnerProof: number[][];
-
-      if (winnerIndex === 0) {
-        // Winner is player 0: in subtree, needs two-level proof
-        winnerParticipation = createParticipationEntry(player1.player.publicKey, 0);
-        // Proof: [leaf2] to get subtree_root, then [leaf3] to get main tree root
-        winnerProof = [leaf2, leaf3];
-      } else if (winnerIndex === 1) {
-        // Winner is player 1: in subtree, needs two-level proof
-        winnerParticipation = createParticipationEntry(player2.player.publicKey, 1);
-        // Proof: [leaf1] to get subtree_root, then [leaf3] to get main tree root
-        winnerProof = [leaf1, leaf3];
-      } else {
-        // Winner is player 2: position 2 in 3-element tree
-        // Tree layout: [leaf1, leaf2, leaf3] becomes:
-        //       root
-        //      /    \
-        //   pair1   leaf3
-        //   /  \
-        // leaf1 leaf2
-        // Position 2 (leaf3) needs proof [pair1] to reach root
-        winnerParticipation = createParticipationEntry(player3.player.publicKey, 2);
-        winnerProof = [pair1]; // pair1 = hashNodes(leaf1, leaf2)
-      }
+      // Generate winner proof using helper function
+      const winnerProof = generateWinnerProof3Element(
+        winnerIndex as 0 | 1 | 2,
+        treeData.leaf1,
+        treeData.leaf2,
+        treeData.leaf3,
+        treeData.pair1
+      );
 
       // Debug: Check merkle root and tree structure
       const contractRoot = Array.from(gameAccount.merkleRoot);
@@ -545,7 +509,6 @@ describe("coinflip-merkle", () => {
       const winnerPlayer = winnerIndex === 0 ? player1.player.publicKey :
                           winnerIndex === 1 ? player2.player.publicKey : player3.player.publicKey;
 
-      let matchedLeaf = null;
       let matchedIndex = -1;
 
       for (let testIndex = 0; testIndex < 10; testIndex++) {
@@ -553,24 +516,26 @@ describe("coinflip-merkle", () => {
         const testLeaf = hashParticipationEntry(testParticipation);
 
         // Check if this leaf matches any of our expected leaves
-        const expectedLeaf = winnerIndex === 0 ? leaf1 : winnerIndex === 1 ? leaf2 : leaf3;
+        const expectedLeaf = winnerIndex === 0 ? treeData.leaf1 : winnerIndex === 1 ? treeData.leaf2 : treeData.leaf3;
         const matches = testLeaf.every((b, i) => b === expectedLeaf[i]);
 
         console.log(`Testing player_index ${testIndex} for winner ${winnerIndex}: matches = ${matches}`);
 
         if (matches) {
-          matchedLeaf = testLeaf;
           matchedIndex = testIndex;
           break;
         }
       }
 
+      // Create winner participation entry with correct index
+      let winnerParticipation: any;
       if (matchedIndex >= 0) {
         console.log(`✅ Found matching leaf! Winner ${winnerIndex} should use player_index ${matchedIndex}`);
-        // Update our winner participation with the correct index
         winnerParticipation = createParticipationEntry(winnerPlayer, matchedIndex);
       } else {
         console.log(`❌ No matching leaf found for winner ${winnerIndex}`);
+        // Fallback to original index
+        winnerParticipation = createParticipationEntry(winnerPlayer, winnerIndex);
       }
 
       // Complete game with merkle proof (interface remains the same)
@@ -822,8 +787,8 @@ describe("coinflip-merkle", () => {
         console.log(`After ${i + 1} players: Recent=${gameData.recentCount}, Subtrees=${gameData.subtreeCount}`);
 
         // Verify subtree count follows binary decomposition rules
-        const expectedSubtrees = calculateExpectedSubtrees(gameData.playersCount);
         // Note: This is a structural verification, actual values depend on buffer management
+        // const expectedSubtrees = calculateExpectedSubtrees(gameData.playersCount);
       }
 
       console.log("✅ Power-of-2 structure verification completed");
@@ -966,43 +931,14 @@ describe("coinflip-merkle", () => {
 });
 
 // Helper function to calculate expected subtrees for binary decomposition
-function calculateExpectedSubtrees(playerCount: number): number {
-  if (playerCount <= 2) return 0;
+// Currently unused but kept for potential future structural verification
+// function calculateExpectedSubtrees(playerCount: number): number {
+//   if (playerCount <= 2) return 0;
+//
+//   // This is a simplified calculation - actual behavior depends on buffer management
+//   // and aggregation strategy used by the contract
+//   const bufferFills = Math.ceil(playerCount / 2);
+//   return bufferFills.toString(2).split('1').length - 1; // Count of 1-bits
+// }
 
-  // This is a simplified calculation - actual behavior depends on buffer management
-  // and aggregation strategy used by the contract
-  const bufferFills = Math.ceil(playerCount / 2);
-  return bufferFills.toString(2).split('1').length - 1; // Count of 1-bits
-}
-
-// Helper function to calculate winner (matches contract logic)
-function calculateWinnerIndex(
-  playersCount: number,
-  secretKey: number[],
-  lastSlot: number
-): number {
-  if (playersCount === 1) return 0;
-
-  const nPlayers = BigInt(playersCount);
-  const combinedData = new Uint8Array(40);
-  combinedData.set(secretKey, 0);
-
-  const lastSlotBytes = new Uint8Array(8);
-  const lastSlotView = new DataView(lastSlotBytes.buffer);
-  lastSlotView.setBigUint64(0, BigInt(lastSlot), true);
-  combinedData.set(lastSlotBytes, 32);
-
-  const entropyHash = createHash("sha256").update(combinedData).digest();
-  const maxValid = BigInt("0xFFFFFFFFFFFFFFFF") - (BigInt("0xFFFFFFFFFFFFFFFF") % nPlayers);
-
-  for (let startPos = 0; startPos <= 32 - 8; startPos++) {
-    const randomBytes = entropyHash.slice(startPos, startPos + 8);
-    const randomU64 = new DataView(randomBytes.buffer).getBigUint64(0, true);
-
-    if (randomU64 < maxValid) {
-      return Number(randomU64 % nPlayers);
-    }
-  }
-
-  throw new Error("Unable to generate unbiased random number");
-}
+// Note: calculateWinnerIndex moved to merkle-helpers.ts
