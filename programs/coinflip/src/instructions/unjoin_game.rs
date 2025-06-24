@@ -85,22 +85,17 @@ pub fn handler(
             crate::error::ErrorCode::UnauthorizedPlayer
         );
 
-        if game.recent_count > 0 {
-            // Case 2a: Have recent players - swap departing player with last recent player
-            let exclusion_proof = exclusion_proof.ok_or(crate::error::ErrorCode::InvalidAmount)?;
+        // Case 2: Subtree player unjoin - always use swap-with-last approach
+        let exclusion_proof = exclusion_proof.ok_or(crate::error::ErrorCode::InvalidAmount)?;
 
-            // Verify the exclusion proof with swap operation
-            require!(
-                game.verify_exclusion_proof(&exclusion_proof, player_key, player_index)?,
-                crate::error::ErrorCode::InvalidExclusionProof
-            );
+        // Verify the exclusion proof with swap-with-last operation
+        require!(
+            game.verify_exclusion_proof(&exclusion_proof, player_key, player_index)?,
+            crate::error::ErrorCode::InvalidExclusionProof
+        );
 
-            // Apply the verified swap operation
-            game.modify_subtree_after_verified_exclusion(&exclusion_proof, player_index)?;
-        } else {
-            // Case 2b: No recent players available for swap - deny unjoin
-            return Err(crate::error::ErrorCode::InvalidAmount.into());
-        }
+        // Apply the verified swap-with-last operation
+        game.modify_subtree_after_verified_exclusion(&exclusion_proof, player_index)?;
     }
 
     // ===============================

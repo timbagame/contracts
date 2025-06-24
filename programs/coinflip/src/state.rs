@@ -88,32 +88,24 @@ pub struct RecentLeaf {
     pub hash: [u8; 32],
 }
 
-/// Exclusion proof for verifying subtree modifications during unjoin
+/// Swap-with-last proof for maintaining power-of-2 subtrees during unjoin
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct ExclusionProof {
-    /// New claimed subtree root after excluding the player
-    pub new_subtree_root: [u8; 32],
-    /// Original subtree root for verification (must match stored subtree)
-    pub original_subtree_root: [u8; 32],
-    /// Merkle path from excluded player to subtree root
-    pub excluded_player_path: Vec<[u8; 32]>,
-    /// Position of excluded player within the subtree (relative to subtree.start_index)
-    pub excluded_player_index: u32,
-    /// Sibling hashes needed to reconstruct subtree without excluded player
-    pub reconstruction_siblings: Vec<[u8; 32]>,
-    /// Swap operation: replace departing player with last recent player to maintain power-of-2
-    pub swap_operation: Option<SwapOperation>,
-}
-
-/// Swap operation data for maintaining power-of-2 subtrees
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct SwapOperation {
-    /// The last recent player who will replace the departing player
-    pub replacement_player: ParticipationEntry,
-    /// Merkle proof showing where the replacement player will go in the subtree
-    pub replacement_path: Vec<[u8; 32]>,
-    /// New subtree root after swap (maintains original size)
-    pub swapped_subtree_root: [u8; 32],
+    /// Departing player's exclusion proof from their subtree
+    pub departing_player_proof: Vec<[u8; 32]>,
+    pub departing_subtree_original_root: [u8; 32],
+    
+    /// Last player's exclusion proof from smallest subtree
+    pub last_player_proof: Vec<[u8; 32]>,
+    pub last_subtree_original_root: [u8; 32],
+    
+    /// Reconstruction plan for smallest subtree after last player removal
+    pub remaining_players_in_smallest: Vec<ParticipationEntry>,
+    pub new_power_of_2_root: Option<[u8; 32]>,  // None if subtree becomes empty
+    pub players_to_recent: Vec<ParticipationEntry>,
+    
+    /// New root of departing player's subtree after swap
+    pub departing_subtree_new_root: [u8; 32],
 }
 
 // =============================================================================
@@ -717,6 +709,7 @@ impl Game {
         smallest_idx
     }
 
+
     /// Updates global Merkle root from all components
     fn update_merkle_root(&mut self) -> Result<()> {
         let mut hashes = Vec::new();
@@ -816,164 +809,165 @@ impl Game {
         current_hash == target_root
     }
 
-    /// Main exclusion proof verification function
+    /// Verify swap-with-last proof for maintaining power-of-2 subtrees
     pub fn verify_exclusion_proof(
         &self,
         proof: &ExclusionProof,
         departing_player_key: Pubkey,
         departing_player_index: u32,
     ) -> Result<bool> {
-        // 1. Validate proof structure
-        require!(
-            !proof.excluded_player_path.is_empty(),
-            crate::error::ErrorCode::MalformedSubtreeProof
-        );
-
-        // 2. Find which subtree contains the departing player
-        let subtree_idx = self
+        // 1. Find departing player's subtree
+        let departing_subtree_idx = self
             .find_subtree_containing_player(departing_player_index)
             .ok_or(crate::error::ErrorCode::SubtreeNotFound)?;
+        let departing_subtree = &self.subtrees[departing_subtree_idx];
 
-        let subtree = &self.subtrees[subtree_idx];
+        // 2. Find smallest subtree (should contain last player)
+        let smallest_subtree_idx = self.find_smallest_subtree();
+        let smallest_subtree = &self.subtrees[smallest_subtree_idx];
 
-        // 3. Verify original subtree root matches what we have stored
+        // 3. Verify departing player exists in their claimed subtree
         require!(
-            proof.original_subtree_root == subtree.root_hash,
+            proof.departing_subtree_original_root == departing_subtree.root_hash,
             crate::error::ErrorCode::InvalidExclusionProof
         );
 
-        // 4. Verify the excluded player was actually in the original subtree
-        let excluded_player_entry =
+        let departing_player_entry =
             Game::create_participation_entry(departing_player_key, departing_player_index);
-        let excluded_leaf = Game::hash_participation_entry(&excluded_player_entry);
-
-        // Calculate relative index within the subtree for proof verification
-        let relative_index = departing_player_index - subtree.start_index;
+        let departing_leaf = Game::hash_participation_entry(&departing_player_entry);
+        let departing_relative_index = departing_player_index - departing_subtree.start_index;
 
         require!(
             Self::verify_merkle_proof_against_root(
-                excluded_leaf,
-                &proof.excluded_player_path,
-                relative_index,
-                proof.original_subtree_root
+                departing_leaf,
+                &proof.departing_player_proof,
+                departing_relative_index,
+                proof.departing_subtree_original_root
             ),
             crate::error::ErrorCode::InvalidExclusionProof
         );
 
-        // 5. Check if we have a swap operation (Case 1: swap with recent player)
-        if let Some(swap_op) = &proof.swap_operation {
-            self.verify_swap_operation(proof, swap_op, relative_index)?;
-        } else {
-            // 6. Traditional exclusion: verify reconstruction siblings count matches expected (subtree.size - 1)
-            require!(
-                !proof.reconstruction_siblings.is_empty(),
-                crate::error::ErrorCode::MalformedSubtreeProof
-            );
+        // 4. Verify last player exists in smallest subtree
+        require!(
+            proof.last_subtree_original_root == smallest_subtree.root_hash,
+            crate::error::ErrorCode::InvalidExclusionProof
+        );
 
-            require!(
-                proof.reconstruction_siblings.len() == (subtree.size - 1) as usize,
-                crate::error::ErrorCode::MalformedSubtreeProof
-            );
+        // 5. Verify smallest subtree reconstruction plan
+        let remaining_count = proof.remaining_players_in_smallest.len();
+        require!(
+            remaining_count == (smallest_subtree.size - 1) as usize,
+            crate::error::ErrorCode::MalformedSubtreeProof
+        );
 
-            // 7. Reconstruct the new subtree root from remaining players
-            let computed_new_root = Self::compute_merkle_root(&proof.reconstruction_siblings);
-
-            // 8. Verify computed root matches claimed new root
+        // 6. Verify power-of-2 reconstruction logic
+        if remaining_count == 0 {
+            // Subtree becomes empty
             require!(
-                computed_new_root == proof.new_subtree_root,
+                proof.new_power_of_2_root.is_none(),
                 crate::error::ErrorCode::InvalidExclusionProof
             );
+            require!(
+                proof.players_to_recent.is_empty(),
+                crate::error::ErrorCode::InvalidExclusionProof
+            );
+        } else if remaining_count.is_power_of_two() {
+            // Perfect power-of-2, all players stay in subtree
+            require!(
+                proof.new_power_of_2_root.is_some(),
+                crate::error::ErrorCode::InvalidExclusionProof
+            );
+            require!(
+                proof.players_to_recent.is_empty(),
+                crate::error::ErrorCode::InvalidExclusionProof
+            );
+        } else {
+            // Split: some to subtree, some to recent_players
+            let largest_power_of_2_le = if remaining_count > 0 {
+                1 << (31 - (remaining_count as u32).leading_zeros() - 1)
+            } else {
+                0
+            };
+            let subtree_players = largest_power_of_2_le;
+            let recent_players = remaining_count - subtree_players;
+
+            require!(
+                proof.players_to_recent.len() == recent_players,
+                crate::error::ErrorCode::MalformedSubtreeProof
+            );
+
+            if subtree_players > 0 {
+                require!(
+                    proof.new_power_of_2_root.is_some(),
+                    crate::error::ErrorCode::InvalidExclusionProof
+                );
+            } else {
+                require!(
+                    proof.new_power_of_2_root.is_none(),
+                    crate::error::ErrorCode::InvalidExclusionProof
+                );
+            }
         }
 
         Ok(true)
     }
 
-    /// Verify swap operation: replacing departing player with last recent player
-    fn verify_swap_operation(
-        &self,
-        proof: &ExclusionProof,
-        swap_op: &SwapOperation,
-        departing_relative_index: u32,
-    ) -> Result<()> {
-        // 1. Verify we have recent players to swap with
-        require!(
-            self.recent_count > 0,
-            crate::error::ErrorCode::InvalidAmount
-        );
 
-        // 2. Verify the replacement player matches the last recent player
-        let last_recent_index = (self.recent_count - 1) as usize;
-        let last_recent_player_hash = self.recent_players[last_recent_index].hash;
-        let replacement_leaf = Game::hash_participation_entry(&swap_op.replacement_player);
-
-        require!(
-            last_recent_player_hash == replacement_leaf,
-            crate::error::ErrorCode::InvalidExclusionProof
-        );
-
-        // 3. Verify the replacement proof shows the new player goes in the same position as departing player
-        require!(
-            Self::verify_merkle_proof_against_root(
-                replacement_leaf,
-                &swap_op.replacement_path,
-                departing_relative_index,
-                swap_op.swapped_subtree_root
-            ),
-            crate::error::ErrorCode::InvalidExclusionProof
-        );
-
-        // 4. Verify the swapped subtree maintains original size (power-of-2 preserved)
-        // The final subtree root should match the swap operation's claimed root
-        require!(
-            proof.new_subtree_root == swap_op.swapped_subtree_root,
-            crate::error::ErrorCode::InvalidExclusionProof
-        );
-
-        Ok(())
-    }
-
-    /// Modify specific subtree after verified exclusion
+    /// Execute swap-with-last operation to maintain power-of-2 subtrees
     pub fn modify_subtree_after_verified_exclusion(
         &mut self,
         proof: &ExclusionProof,
         departing_player_index: u32,
     ) -> Result<()> {
-        // Find the subtree containing the departing player
-        let subtree_idx = self
+        // 1. Find subtrees
+        let departing_subtree_idx = self
             .find_subtree_containing_player(departing_player_index)
             .ok_or(crate::error::ErrorCode::SubtreeNotFound)?;
+        let smallest_subtree_idx = self.find_smallest_subtree();
 
-        let current_subtree = &mut self.subtrees[subtree_idx];
+        // 2. Update departing player's subtree with swapped-in last player
+        self.subtrees[departing_subtree_idx].root_hash = proof.departing_subtree_new_root;
+        // Size remains unchanged (swap, not removal)
 
-        // Check if this is a swap operation (Case 1)
-        if proof.swap_operation.is_some() {
-            // Swap case: subtree maintains size and power-of-2 structure
-            current_subtree.root_hash = proof.new_subtree_root;
-            // Size remains the same - we swapped, didn't remove
+        // 3. Handle smallest subtree reconstruction
+        let remaining_count = proof.remaining_players_in_smallest.len();
 
-            // Remove the last recent player who was moved to the subtree
-            if self.recent_count > 0 {
-                let last_recent_index = (self.recent_count - 1) as usize;
-                self.recent_players.remove(last_recent_index);
-                self.recent_count -= 1;
-            }
+        if remaining_count == 0 {
+            // Smallest subtree becomes empty - remove it
+            self.subtrees.remove(smallest_subtree_idx);
+            self.subtree_count -= 1;
+        } else if remaining_count.is_power_of_two() {
+            // Perfect power-of-2, update subtree
+            self.subtrees[smallest_subtree_idx].root_hash = proof.new_power_of_2_root.unwrap();
+            self.subtrees[smallest_subtree_idx].size = remaining_count as u32;
         } else {
-            // Traditional exclusion case: subtree shrinks
-            match current_subtree.size {
-                1 => {
-                    // Subtree becomes empty - remove it entirely
-                    self.subtrees.remove(subtree_idx);
-                    self.subtree_count -= 1;
-                }
-                _ => {
-                    // Subtree shrinks but remains - update its root and size
-                    current_subtree.root_hash = proof.new_subtree_root;
-                    current_subtree.size -= 1;
-                }
+            // Split: some to subtree, some to recent_players
+            let largest_power_of_2_le = if remaining_count > 0 {
+                1 << (31 - (remaining_count as u32).leading_zeros() - 1)
+            } else {
+                0
+            };
+            let subtree_players = largest_power_of_2_le;
+
+            if subtree_players > 0 {
+                // Update subtree with power-of-2 portion
+                self.subtrees[smallest_subtree_idx].root_hash = proof.new_power_of_2_root.unwrap();
+                self.subtrees[smallest_subtree_idx].size = subtree_players as u32;
+            } else {
+                // Remove subtree entirely
+                self.subtrees.remove(smallest_subtree_idx);
+                self.subtree_count -= 1;
+            }
+
+            // Move excess players to recent_players
+            for player_entry in &proof.players_to_recent {
+                let leaf_hash = Game::hash_participation_entry(player_entry);
+                self.recent_players.push(RecentLeaf { hash: leaf_hash });
+                self.recent_count += 1;
             }
         }
 
-        // Update global merkle root to reflect changes
+        // 4. Update global merkle root
         self.update_merkle_root()?;
 
         Ok(())
