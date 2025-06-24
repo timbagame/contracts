@@ -101,6 +101,19 @@ pub struct ExclusionProof {
     pub excluded_player_index: u32,
     /// Sibling hashes needed to reconstruct subtree without excluded player
     pub reconstruction_siblings: Vec<[u8; 32]>,
+    /// Swap operation: replace departing player with last recent player to maintain power-of-2
+    pub swap_operation: Option<SwapOperation>,
+}
+
+/// Swap operation data for maintaining power-of-2 subtrees
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct SwapOperation {
+    /// The last recent player who will replace the departing player
+    pub replacement_player: ParticipationEntry,
+    /// Merkle proof showing where the replacement player will go in the subtree
+    pub replacement_path: Vec<[u8; 32]>,
+    /// New subtree root after swap (maintains original size)
+    pub swapped_subtree_root: [u8; 32],
 }
 
 // =============================================================================
@@ -779,10 +792,10 @@ impl Game {
 
     /// Verify a merkle proof against a specific root hash
     pub fn verify_merkle_proof_against_root(
-        leaf: [u8; 32], 
-        proof: &[[u8; 32]], 
+        leaf: [u8; 32],
+        proof: &[[u8; 32]],
         leaf_index: u32,
-        target_root: [u8; 32]
+        target_root: [u8; 32],
     ) -> bool {
         let mut current_hash = leaf;
         let mut current_index = leaf_index;
@@ -808,7 +821,7 @@ impl Game {
         &self,
         proof: &ExclusionProof,
         departing_player_key: Pubkey,
-        departing_player_index: u32
+        departing_player_index: u32,
     ) -> Result<bool> {
         // 1. Validate proof structure
         require!(
@@ -816,13 +829,9 @@ impl Game {
             crate::error::ErrorCode::MalformedSubtreeProof
         );
 
-        require!(
-            !proof.reconstruction_siblings.is_empty(),
-            crate::error::ErrorCode::MalformedSubtreeProof
-        );
-
         // 2. Find which subtree contains the departing player
-        let subtree_idx = self.find_subtree_containing_player(departing_player_index)
+        let subtree_idx = self
+            .find_subtree_containing_player(departing_player_index)
             .ok_or(crate::error::ErrorCode::SubtreeNotFound)?;
 
         let subtree = &self.subtrees[subtree_idx];
@@ -834,10 +843,8 @@ impl Game {
         );
 
         // 4. Verify the excluded player was actually in the original subtree
-        let excluded_player_entry = Game::create_participation_entry(
-            departing_player_key,
-            departing_player_index
-        );
+        let excluded_player_entry =
+            Game::create_participation_entry(departing_player_key, departing_player_index);
         let excluded_leaf = Game::hash_participation_entry(&excluded_player_entry);
 
         // Calculate relative index within the subtree for proof verification
@@ -853,47 +860,116 @@ impl Game {
             crate::error::ErrorCode::InvalidExclusionProof
         );
 
-        // 5. Verify reconstruction siblings count matches expected (subtree.size - 1)
+        // 5. Check if we have a swap operation (Case 1: swap with recent player)
+        if let Some(swap_op) = &proof.swap_operation {
+            self.verify_swap_operation(proof, swap_op, relative_index)?;
+        } else {
+            // 6. Traditional exclusion: verify reconstruction siblings count matches expected (subtree.size - 1)
+            require!(
+                !proof.reconstruction_siblings.is_empty(),
+                crate::error::ErrorCode::MalformedSubtreeProof
+            );
+
+            require!(
+                proof.reconstruction_siblings.len() == (subtree.size - 1) as usize,
+                crate::error::ErrorCode::MalformedSubtreeProof
+            );
+
+            // 7. Reconstruct the new subtree root from remaining players
+            let computed_new_root = Self::compute_merkle_root(&proof.reconstruction_siblings);
+
+            // 8. Verify computed root matches claimed new root
+            require!(
+                computed_new_root == proof.new_subtree_root,
+                crate::error::ErrorCode::InvalidExclusionProof
+            );
+        }
+
+        Ok(true)
+    }
+
+    /// Verify swap operation: replacing departing player with last recent player
+    fn verify_swap_operation(
+        &self,
+        proof: &ExclusionProof,
+        swap_op: &SwapOperation,
+        departing_relative_index: u32,
+    ) -> Result<()> {
+        // 1. Verify we have recent players to swap with
         require!(
-            proof.reconstruction_siblings.len() == (subtree.size - 1) as usize,
-            crate::error::ErrorCode::MalformedSubtreeProof
+            self.recent_count > 0,
+            crate::error::ErrorCode::InvalidAmount
         );
 
-        // 6. Reconstruct the new subtree root from remaining players
-        let computed_new_root = Self::compute_merkle_root(&proof.reconstruction_siblings);
+        // 2. Verify the replacement player matches the last recent player
+        let last_recent_index = (self.recent_count - 1) as usize;
+        let last_recent_player_hash = self.recent_players[last_recent_index].hash;
+        let replacement_leaf = Game::hash_participation_entry(&swap_op.replacement_player);
 
-        // 7. Verify computed root matches claimed new root
         require!(
-            computed_new_root == proof.new_subtree_root,
+            last_recent_player_hash == replacement_leaf,
             crate::error::ErrorCode::InvalidExclusionProof
         );
 
-        Ok(true)
+        // 3. Verify the replacement proof shows the new player goes in the same position as departing player
+        require!(
+            Self::verify_merkle_proof_against_root(
+                replacement_leaf,
+                &swap_op.replacement_path,
+                departing_relative_index,
+                swap_op.swapped_subtree_root
+            ),
+            crate::error::ErrorCode::InvalidExclusionProof
+        );
+
+        // 4. Verify the swapped subtree maintains original size (power-of-2 preserved)
+        // The final subtree root should match the swap operation's claimed root
+        require!(
+            proof.new_subtree_root == swap_op.swapped_subtree_root,
+            crate::error::ErrorCode::InvalidExclusionProof
+        );
+
+        Ok(())
     }
 
     /// Modify specific subtree after verified exclusion
     pub fn modify_subtree_after_verified_exclusion(
         &mut self,
         proof: &ExclusionProof,
-        departing_player_index: u32
+        departing_player_index: u32,
     ) -> Result<()> {
         // Find the subtree containing the departing player
-        let subtree_idx = self.find_subtree_containing_player(departing_player_index)
+        let subtree_idx = self
+            .find_subtree_containing_player(departing_player_index)
             .ok_or(crate::error::ErrorCode::SubtreeNotFound)?;
 
         let current_subtree = &mut self.subtrees[subtree_idx];
 
-        // Handle different cases based on subtree size after removal
-        match current_subtree.size {
-            1 => {
-                // Subtree becomes empty - remove it entirely
-                self.subtrees.remove(subtree_idx);
-                self.subtree_count -= 1;
+        // Check if this is a swap operation (Case 1)
+        if proof.swap_operation.is_some() {
+            // Swap case: subtree maintains size and power-of-2 structure
+            current_subtree.root_hash = proof.new_subtree_root;
+            // Size remains the same - we swapped, didn't remove
+
+            // Remove the last recent player who was moved to the subtree
+            if self.recent_count > 0 {
+                let last_recent_index = (self.recent_count - 1) as usize;
+                self.recent_players.remove(last_recent_index);
+                self.recent_count -= 1;
             }
-            _ => {
-                // Subtree shrinks but remains - update its root and size
-                current_subtree.root_hash = proof.new_subtree_root;
-                current_subtree.size -= 1;
+        } else {
+            // Traditional exclusion case: subtree shrinks
+            match current_subtree.size {
+                1 => {
+                    // Subtree becomes empty - remove it entirely
+                    self.subtrees.remove(subtree_idx);
+                    self.subtree_count -= 1;
+                }
+                _ => {
+                    // Subtree shrinks but remains - update its root and size
+                    current_subtree.root_hash = proof.new_subtree_root;
+                    current_subtree.size -= 1;
+                }
             }
         }
 
