@@ -70,7 +70,6 @@ pub struct ParticipationEntry {
     pub player_index: u32,
 }
 
-
 /// Optimized subtree structure (40 bytes)
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Default)]
 pub struct Subtree {
