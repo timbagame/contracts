@@ -25,12 +25,12 @@ pub fn handler(
 
     require!(
         game.players_count > 0,
-        crate::error::ErrorCode::InvalidLastPlayerIndex
+        crate::error::ErrorCode::InvalidPlayersCount
     );
 
     require!(
         player_index < game.players_count,
-        crate::error::ErrorCode::InvalidLastPlayerIndex
+        crate::error::ErrorCode::UnauthorizedPlayer
     );
 
     // ===============================
