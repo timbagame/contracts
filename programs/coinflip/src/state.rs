@@ -502,10 +502,7 @@ impl Game {
     // =============================================================================
 
     /// Creates a participation entry for a new player
-    pub fn create_participation_entry(
-        player: Pubkey,
-        player_index: u32,
-    ) -> ParticipationEntry {
+    pub fn create_participation_entry(player: Pubkey, player_index: u32) -> ParticipationEntry {
         ParticipationEntry {
             player,
             player_index,
@@ -541,8 +538,8 @@ impl Game {
 
     /// Adds a player to the merkle tree using buffer-based aggregation
     pub fn add_player_to_merkle_tree(&mut self, player: Pubkey) -> Result<()> {
-        let participation = Self::create_participation_entry(player, self.players_count);
-        let leaf_hash = Self::hash_participation_entry(&participation);
+        let participation = Game::create_participation_entry(player, self.players_count);
+        let leaf_hash = Game::hash_participation_entry(&participation);
 
         if self.recent_count < 2 {
             // Just add to buffer - no structure change
@@ -760,5 +757,4 @@ impl Game {
 
         Ok(())
     }
-
 }

@@ -336,6 +336,7 @@ pub struct CompleteGame<'info> {
 }
 
 #[derive(Accounts)]
+#[instruction(merkle_proof: Option<Vec<[u8; 32]>>)]
 pub struct UnjoinGame<'info> {
     #[account(
         mut,
