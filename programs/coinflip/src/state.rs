@@ -94,16 +94,16 @@ pub struct ExclusionProof {
     /// Departing player's exclusion proof from their subtree
     pub departing_player_proof: Vec<[u8; 32]>,
     pub departing_subtree_original_root: [u8; 32],
-    
+
     /// Last player's exclusion proof from smallest subtree
     pub last_player_proof: Vec<[u8; 32]>,
     pub last_subtree_original_root: [u8; 32],
-    
+
     /// Reconstruction plan for smallest subtree after last player removal
     pub remaining_players_in_smallest: Vec<ParticipationEntry>,
-    pub new_power_of_2_root: Option<[u8; 32]>,  // None if subtree becomes empty
+    pub new_power_of_2_root: Option<[u8; 32]>, // None if subtree becomes empty
     pub players_to_recent: Vec<ParticipationEntry>,
-    
+
     /// New root of departing player's subtree after swap
     pub departing_subtree_new_root: [u8; 32],
 }
@@ -709,7 +709,6 @@ impl Game {
         smallest_idx
     }
 
-
     /// Updates global Merkle root from all components
     fn update_merkle_root(&mut self) -> Result<()> {
         let mut hashes = Vec::new();
@@ -911,7 +910,6 @@ impl Game {
 
         Ok(true)
     }
-
 
     /// Execute swap-with-last operation to maintain power-of-2 subtrees
     pub fn modify_subtree_after_verified_exclusion(
