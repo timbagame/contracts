@@ -24,7 +24,7 @@ pub fn handler(
     // ===============================
 
     // Add player to merkle tree
-    game.add_player_to_merkle_tree(player_key, current_time)?;
+    game.add_player_to_merkle_tree(player_key)?;
 
     // Update game state
     game.last_slot = clock.slot;

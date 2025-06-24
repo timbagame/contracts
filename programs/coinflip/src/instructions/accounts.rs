@@ -336,10 +336,6 @@ pub struct CompleteGame<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(
-    player_merkle_proof: Vec<[u8; 32]>,
-    updated_merkle_root: [u8; 32],
-)]
 pub struct UnjoinGame<'info> {
     #[account(
         mut,

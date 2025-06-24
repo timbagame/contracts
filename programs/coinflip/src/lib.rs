@@ -139,12 +139,9 @@ pub mod coinflip {
     }
 
     /// Allows a player to leave a game before completion (with refund)
-    pub fn unjoin_game(
-        ctx: Context<UnjoinGame>,
-        player_merkle_proof: Vec<[u8; 32]>,
-        updated_merkle_root: [u8; 32],
-    ) -> Result<()> {
-        instructions::unjoin_game::handler(ctx, player_merkle_proof, updated_merkle_root)
+    /// Only the last player who joined can unjoin (if they are in recent_players buffer)
+    pub fn unjoin_game(ctx: Context<UnjoinGame>) -> Result<()> {
+        instructions::unjoin_game::handler(ctx)
     }
 
     /// Closes a game with no active players (creator only)
