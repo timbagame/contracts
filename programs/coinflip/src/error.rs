@@ -79,21 +79,17 @@ pub enum ErrorCode {
     #[msg("Cannot unjoin Snowball games")]
     SnowballUnjoinNotAllowed = 1202,
 
-    /// The provided last player index is invalid
-    #[msg("Invalid last player index")]
-    InvalidLastPlayerIndex = 1203,
-
     /// Exclusion proof verification failed
     #[msg("Invalid exclusion proof")]
-    InvalidExclusionProof = 1204,
+    InvalidExclusionProof = 1203,
 
     /// Subtree proof structure is malformed or invalid
     #[msg("Malformed subtree proof")]
-    MalformedSubtreeProof = 1205,
+    MalformedSubtreeProof = 1204,
 
     /// Cannot locate subtree containing the specified player
     #[msg("Subtree not found")]
-    SubtreeNotFound = 1206,
+    SubtreeNotFound = 1205,
 
     // =========================================================================
     // CONFIGURATION ERRORS (1300-1399)
