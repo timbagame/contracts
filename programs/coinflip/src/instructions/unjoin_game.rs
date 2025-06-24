@@ -1,8 +1,11 @@
 use crate::events::PlayerUnjoined;
-use crate::state::Game;
+use crate::state::{Game, ExclusionProof};
 use anchor_lang::prelude::*;
 
-pub fn handler(ctx: Context<super::UnjoinGame>, merkle_proof: Option<Vec<[u8; 32]>>) -> Result<()> {
+pub fn handler(
+    ctx: Context<super::UnjoinGame>, 
+    exclusion_proof: Option<ExclusionProof>
+) -> Result<()> {
     let game = &mut ctx.accounts.game;
     let player_balance = &mut ctx.accounts.player_balance;
     let oracle = &ctx.accounts.oracle;
@@ -59,19 +62,17 @@ pub fn handler(ctx: Context<super::UnjoinGame>, merkle_proof: Option<Vec<[u8; 32
         // PHASE 2: SUBTREE PLAYER UNJOIN
         // ===============================
 
-        // Merkle proof is required for subtree players
-        let proof = merkle_proof.ok_or(crate::error::ErrorCode::InvalidAmount)?;
+        // Exclusion proof is required for subtree players
+        let exclusion_proof = exclusion_proof.ok_or(crate::error::ErrorCode::InvalidAmount)?;
 
-        require!(!proof.is_empty(), crate::error::ErrorCode::InvalidAmount);
-
-        // Verify the player is in the merkle tree with the expected index
+        // Verify the exclusion proof cryptographically
         require!(
-            game.verify_merkle_proof(player_leaf_hash, &proof, expected_player_index),
-            crate::error::ErrorCode::UnauthorizedPlayer
+            game.verify_exclusion_proof(&exclusion_proof, player_key, expected_player_index)?,
+            crate::error::ErrorCode::InvalidExclusionProof
         );
 
-        // No need to update merkle root - we just verify the player was legitimately in the game
-        // The security comes from only allowing the current last player (players_count - 1) to unjoin
+        // Apply the verified exclusion to update the subtree
+        game.modify_subtree_after_verified_exclusion(&exclusion_proof, expected_player_index)?;
     }
 
     // ===============================

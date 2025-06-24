@@ -88,6 +88,21 @@ pub struct RecentLeaf {
     pub hash: [u8; 32],
 }
 
+/// Exclusion proof for verifying subtree modifications during unjoin
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct ExclusionProof {
+    /// New claimed subtree root after excluding the player
+    pub new_subtree_root: [u8; 32],
+    /// Original subtree root for verification (must match stored subtree)
+    pub original_subtree_root: [u8; 32],
+    /// Merkle path from excluded player to subtree root
+    pub excluded_player_path: Vec<[u8; 32]>,
+    /// Position of excluded player within the subtree (relative to subtree.start_index)
+    pub excluded_player_index: u32,
+    /// Sibling hashes needed to reconstruct subtree without excluded player
+    pub reconstruction_siblings: Vec<[u8; 32]>,
+}
+
 // =============================================================================
 // ORACLE ACCOUNT
 // =============================================================================
@@ -743,6 +758,147 @@ impl Game {
         self.recent_count = 0;
         self.recent_players = Vec::with_capacity(2); // Always 2 for optimized buffer
         self.merkle_root = [0; 32];
+
+        Ok(())
+    }
+
+    // =============================================================================
+    // EXCLUSION PROOF VERIFICATION FUNCTIONS
+    // =============================================================================
+
+    /// Find which subtree contains the specified player index
+    pub fn find_subtree_containing_player(&self, player_index: u32) -> Option<usize> {
+        for (i, subtree) in self.subtrees.iter().enumerate() {
+            let end_index = subtree.start_index + subtree.size - 1;
+            if player_index >= subtree.start_index && player_index <= end_index {
+                return Some(i);
+            }
+        }
+        None // Player is in recent_players
+    }
+
+    /// Verify a merkle proof against a specific root hash
+    pub fn verify_merkle_proof_against_root(
+        leaf: [u8; 32], 
+        proof: &[[u8; 32]], 
+        leaf_index: u32,
+        target_root: [u8; 32]
+    ) -> bool {
+        let mut current_hash = leaf;
+        let mut current_index = leaf_index;
+
+        for proof_element in proof {
+            if current_index % 2 == 0 {
+                // Current node is left child
+                let combined = [current_hash, *proof_element].concat();
+                current_hash = hash(&combined).to_bytes();
+            } else {
+                // Current node is right child
+                let combined = [*proof_element, current_hash].concat();
+                current_hash = hash(&combined).to_bytes();
+            }
+            current_index /= 2;
+        }
+
+        current_hash == target_root
+    }
+
+    /// Main exclusion proof verification function
+    pub fn verify_exclusion_proof(
+        &self,
+        proof: &ExclusionProof,
+        departing_player_key: Pubkey,
+        departing_player_index: u32
+    ) -> Result<bool> {
+        // 1. Validate proof structure
+        require!(
+            !proof.excluded_player_path.is_empty(),
+            crate::error::ErrorCode::MalformedSubtreeProof
+        );
+
+        require!(
+            !proof.reconstruction_siblings.is_empty(),
+            crate::error::ErrorCode::MalformedSubtreeProof
+        );
+
+        // 2. Find which subtree contains the departing player
+        let subtree_idx = self.find_subtree_containing_player(departing_player_index)
+            .ok_or(crate::error::ErrorCode::SubtreeNotFound)?;
+
+        let subtree = &self.subtrees[subtree_idx];
+
+        // 3. Verify original subtree root matches what we have stored
+        require!(
+            proof.original_subtree_root == subtree.root_hash,
+            crate::error::ErrorCode::InvalidExclusionProof
+        );
+
+        // 4. Verify the excluded player was actually in the original subtree
+        let excluded_player_entry = Game::create_participation_entry(
+            departing_player_key,
+            departing_player_index
+        );
+        let excluded_leaf = Game::hash_participation_entry(&excluded_player_entry);
+
+        // Calculate relative index within the subtree for proof verification
+        let relative_index = departing_player_index - subtree.start_index;
+
+        require!(
+            Self::verify_merkle_proof_against_root(
+                excluded_leaf,
+                &proof.excluded_player_path,
+                relative_index,
+                proof.original_subtree_root
+            ),
+            crate::error::ErrorCode::InvalidExclusionProof
+        );
+
+        // 5. Verify reconstruction siblings count matches expected (subtree.size - 1)
+        require!(
+            proof.reconstruction_siblings.len() == (subtree.size - 1) as usize,
+            crate::error::ErrorCode::MalformedSubtreeProof
+        );
+
+        // 6. Reconstruct the new subtree root from remaining players
+        let computed_new_root = Self::compute_merkle_root(&proof.reconstruction_siblings);
+
+        // 7. Verify computed root matches claimed new root
+        require!(
+            computed_new_root == proof.new_subtree_root,
+            crate::error::ErrorCode::InvalidExclusionProof
+        );
+
+        Ok(true)
+    }
+
+    /// Modify specific subtree after verified exclusion
+    pub fn modify_subtree_after_verified_exclusion(
+        &mut self,
+        proof: &ExclusionProof,
+        departing_player_index: u32
+    ) -> Result<()> {
+        // Find the subtree containing the departing player
+        let subtree_idx = self.find_subtree_containing_player(departing_player_index)
+            .ok_or(crate::error::ErrorCode::SubtreeNotFound)?;
+
+        let current_subtree = &mut self.subtrees[subtree_idx];
+
+        // Handle different cases based on subtree size after removal
+        match current_subtree.size {
+            1 => {
+                // Subtree becomes empty - remove it entirely
+                self.subtrees.remove(subtree_idx);
+                self.subtree_count -= 1;
+            }
+            _ => {
+                // Subtree shrinks but remains - update its root and size
+                current_subtree.root_hash = proof.new_subtree_root;
+                current_subtree.size -= 1;
+            }
+        }
+
+        // Update global merkle root to reflect changes
+        self.update_merkle_root()?;
 
         Ok(())
     }
