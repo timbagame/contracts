@@ -99,7 +99,10 @@ export function buildMerkleTree(entries: ParticipationEntry[]): {
 
     for (let i = 0; i < currentLevel.length; i += 2) {
       const left = currentLevel[i];
-      const right = i + 1 < currentLevel.length ? currentLevel[i + 1] : new Array(32).fill(0);
+      const right =
+        i + 1 < currentLevel.length
+          ? currentLevel[i + 1]
+          : new Array(32).fill(0);
       nextLevel.push(hashNodes(left, right));
     }
 
@@ -107,7 +110,8 @@ export function buildMerkleTree(entries: ParticipationEntry[]): {
     currentLevel = nextLevel;
   }
 
-  const root = currentLevel.length > 0 ? currentLevel[0] : new Array(32).fill(0);
+  const root =
+    currentLevel.length > 0 ? currentLevel[0] : new Array(32).fill(0);
 
   // Generate proofs for each leaf
   const proofs = new Map<number, MerkleProof>();
@@ -164,7 +168,10 @@ export function addEntryToTree(
     for (let level = 0; level < Math.min(oldTree.tree.length, 3); level++) {
       for (let pos = 0; pos < oldTree.tree[level].length; pos++) {
         // Only include positions that won't be affected by the new insertion
-        const affectedPositions = getAffectedPositions(existingEntries.length, level);
+        const affectedPositions = getAffectedPositions(
+          existingEntries.length,
+          level
+        );
         if (!affectedPositions.includes(pos)) {
           unchangedSubtrees.push({
             subtreeRoot: oldTree.tree[level][pos],
@@ -321,7 +328,8 @@ export function calculateWinnerIndex(
   combinedData.set(lastSlotBytes, 32);
 
   const entropyHash = createHash("sha256").update(combinedData).digest();
-  const maxValid = BigInt("0xFFFFFFFFFFFFFFFF") - (BigInt("0xFFFFFFFFFFFFFFFF") % nPlayers);
+  const maxValid =
+    BigInt("0xFFFFFFFFFFFFFFFF") - (BigInt("0xFFFFFFFFFFFFFFFF") % nPlayers);
 
   for (let startPos = 0; startPos <= 32 - 8; startPos++) {
     const randomBytes = entropyHash.subarray(startPos, startPos + 8);

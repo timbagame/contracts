@@ -521,7 +521,7 @@ describe("coinflip", () => {
   });
 
   it("Initialize Game with Invalid Parameters", async () => {
-    const { } = await createOracleAccount();
+    const {} = await createOracleAccount();
 
     const { mint, mintAuthority } = await createSplTokenMint();
 
@@ -568,7 +568,7 @@ describe("coinflip", () => {
   });
 
   it("Initialize Game and Join Successfully", async () => {
-    const { } = await createOracleAccount();
+    const {} = await createOracleAccount();
 
     const { mint, mintAuthority } = await createSplTokenMint();
 
@@ -638,7 +638,7 @@ describe("coinflip", () => {
   });
 
   it("Join Private Game Successfully", async () => {
-    const { } = await createOracleAccount();
+    const {} = await createOracleAccount();
 
     const { mint, mintAuthority } = await createSplTokenMint();
 
@@ -704,7 +704,7 @@ describe("coinflip", () => {
   });
 
   it("Fail to Join Full Game", async () => {
-    const { } = await createOracleAccount();
+    const {} = await createOracleAccount();
 
     const { mint, mintAuthority } = await createSplTokenMint();
 
@@ -788,7 +788,7 @@ describe("coinflip", () => {
   });
 
   it("Fail to Join Game Twice", async () => {
-    const { } = await createOracleAccount();
+    const {} = await createOracleAccount();
 
     const { mint, mintAuthority } = await createSplTokenMint();
 
@@ -872,7 +872,7 @@ describe("coinflip", () => {
   });
 
   it("Fail to Join Private Game with Wrong Authority", async () => {
-    const { } = await createOracleAccount();
+    const {} = await createOracleAccount();
 
     const { mint, mintAuthority } = await createSplTokenMint();
 
@@ -934,7 +934,7 @@ describe("coinflip", () => {
   });
 
   it("Complete Game Successfully", async () => {
-    const { } = await createOracleAccount();
+    const {} = await createOracleAccount();
 
     // Create SPL token setup
     const { mint, mintAuthority } = await createSplTokenMint();
@@ -1018,7 +1018,7 @@ describe("coinflip", () => {
   });
 
   it("Fail to Set Oracle Random Number Without Oracle Authority", async () => {
-    const { } = await createOracleAccount();
+    const {} = await createOracleAccount();
 
     // Create SPL token setup
     const { mint, mintAuthority } = await createSplTokenMint();
@@ -1106,7 +1106,7 @@ describe("coinflip", () => {
   });
 
   it("Fail to Set Oracle Random Number Before Game is Full", async () => {
-    const { } = await createOracleAccount();
+    const {} = await createOracleAccount();
 
     const { mint, mintAuthority } = await createSplTokenMint();
 
@@ -1160,7 +1160,7 @@ describe("coinflip", () => {
   });
 
   it("Fail to Set Oracle Random Number Twice", async () => {
-    const { } = await createOracleAccount();
+    const {} = await createOracleAccount();
 
     const { mint, mintAuthority } = await createSplTokenMint();
 
@@ -1259,7 +1259,7 @@ describe("coinflip", () => {
   });
 
   it("Claim Winnings Successfully", async () => {
-    const { } = await createOracleAccount();
+    const {} = await createOracleAccount();
 
     const { mint, mintAuthority } = await createSplTokenMint();
 
@@ -1364,12 +1364,12 @@ describe("coinflip", () => {
 
     expect(
       finalWinnerBalance.amount.toNumber() -
-      initialWinnerBalance.amount.toNumber()
+        initialWinnerBalance.amount.toNumber()
     ).to.equal(expectedWinnings);
   });
 
   it("Initialize and Join Giveaway Game Successfully", async () => {
-    const { } = await createOracleAccount();
+    const {} = await createOracleAccount();
 
     const { mint, mintAuthority } = await createSplTokenMint();
 
@@ -1441,7 +1441,7 @@ describe("coinflip", () => {
   });
 
   it("Cannot Join Game With Insufficient Funds", async () => {
-    const { } = await createOracleAccount();
+    const {} = await createOracleAccount();
 
     const { mint, mintAuthority } = await createSplTokenMint();
 
@@ -1508,7 +1508,7 @@ describe("coinflip", () => {
   // ========================================
 
   it("Test Player Count Inconsistency After Failed Join", async () => {
-    const { } = await createOracleAccount();
+    const {} = await createOracleAccount();
 
     const { mint, mintAuthority } = await createSplTokenMint();
 
@@ -1715,7 +1715,7 @@ describe("coinflip", () => {
   });
 
   it("Test Orphaned Player Participation Account Prevention", async () => {
-    const { } = await createOracleAccount();
+    const {} = await createOracleAccount();
 
     const { mint, mintAuthority } = await createSplTokenMint();
 
@@ -1826,7 +1826,7 @@ describe("coinflip", () => {
   });
 
   it("Test Player Index Consistency After Multiple Operations", async () => {
-    const { } = await createOracleAccount();
+    const {} = await createOracleAccount();
 
     const { mint, mintAuthority } = await createSplTokenMint();
 
@@ -1936,7 +1936,7 @@ describe("coinflip", () => {
   });
 
   it("Test State Consistency During Snowball Game Unjoin Restrictions", async () => {
-    const { } = await createOracleAccount();
+    const {} = await createOracleAccount();
 
     const { mint, mintAuthority } = await createSplTokenMint();
 
@@ -2054,7 +2054,7 @@ describe("coinflip", () => {
   });
 
   it("Test Game State Consistency After Player Balance Insufficient During Join", async () => {
-    const { } = await createOracleAccount();
+    const {} = await createOracleAccount();
 
     const { mint, mintAuthority } = await createSplTokenMint();
 
@@ -2158,7 +2158,7 @@ describe("coinflip", () => {
   // ========================================
 
   it("Test Join Game Replay Attack Prevention", async () => {
-    const { } = await createOracleAccount();
+    const {} = await createOracleAccount();
 
     const { mint, mintAuthority } = await createSplTokenMint();
 
@@ -2254,7 +2254,7 @@ describe("coinflip", () => {
   });
 
   it("Test Complete Game Replay Attack Prevention", async () => {
-    const { } = await createOracleAccount();
+    const {} = await createOracleAccount();
 
     const { mint, mintAuthority } = await createSplTokenMint();
 
@@ -2348,7 +2348,7 @@ describe("coinflip", () => {
   });
 
   it("Test Roll Game Multiple Times (Snowball) - Not Replay but Legitimate", async () => {
-    const { } = await createOracleAccount();
+    const {} = await createOracleAccount();
 
     const { mint, mintAuthority } = await createSplTokenMint();
 
@@ -2455,7 +2455,7 @@ describe("coinflip", () => {
   // ========================================
 
   it("Test Arithmetic Overflow Protection in calculate_amounts", async () => {
-    const { } = await createOracleAccount();
+    const {} = await createOracleAccount();
 
     const { mint, mintAuthority } = await createSplTokenMint();
 
@@ -2559,7 +2559,7 @@ describe("coinflip", () => {
   });
 
   it("Test Underflow Protection in Player Balance Operations", async () => {
-    const { } = await createOracleAccount();
+    const {} = await createOracleAccount();
 
     const { mint, mintAuthority } = await createSplTokenMint();
 
@@ -2607,7 +2607,7 @@ describe("coinflip", () => {
   // ========================================
 
   it("Test Secret Key Validation and Manipulation Prevention", async () => {
-    const { } = await createOracleAccount();
+    const {} = await createOracleAccount();
 
     const { mint, mintAuthority } = await createSplTokenMint();
 
@@ -2714,7 +2714,7 @@ describe("coinflip", () => {
   // ========================================
 
   it("Test Cross-Game Winner Manipulation Prevention", async () => {
-    const { } = await createOracleAccount();
+    const {} = await createOracleAccount();
 
     const { mint, mintAuthority } = await createSplTokenMint();
 
