@@ -36,9 +36,14 @@ describe("coinflip-merkle", () => {
   }> = [];
 
   async function getGamePDA() {
-    const secretKeyBuffer = anchor.web3.Keypair.generate().secretKey.slice(0, 32);
+    const secretKeyBuffer = anchor.web3.Keypair.generate().secretKey.slice(
+      0,
+      32
+    );
     const secretKey = Array.from(secretKeyBuffer);
-    const randomHashBuffer = createHash("sha256").update(secretKeyBuffer).digest();
+    const randomHashBuffer = createHash("sha256")
+      .update(secretKeyBuffer)
+      .digest();
     const randomHash = Array.from(randomHashBuffer);
 
     const [gamePDA] = PublicKey.findProgramAddressSync(
@@ -211,7 +216,7 @@ describe("coinflip-merkle", () => {
 
       const hash = hashParticipationEntry(entry);
       expect(hash).to.have.length(32);
-      expect(hash.every(byte => byte >= 0 && byte <= 255)).to.be.true;
+      expect(hash.every((byte) => byte >= 0 && byte <= 255)).to.be.true;
     });
 
     it("should build merkle tree for single player", async () => {
@@ -262,10 +267,13 @@ describe("coinflip-merkle", () => {
         2
       );
 
-      const { newRoot, unchangedSubtrees } = addEntryToTree(existingEntries, newEntry);
+      const { newRoot, unchangedSubtrees } = addEntryToTree(
+        existingEntries,
+        newEntry
+      );
 
       expect(newRoot).to.have.length(32);
-      expect(unchangedSubtrees).to.be.an('array');
+      expect(unchangedSubtrees).to.be.an("array");
 
       // Verify the new tree includes all entries
       const allEntries = [...existingEntries, newEntry];
@@ -299,7 +307,7 @@ describe("coinflip-merkle", () => {
 
       const gameAccount = await program.account.game.fetch(gamePDA);
       expect(gameAccount.playersCount).to.equal(0);
-      expect(gameAccount.merkleRoot.every(byte => byte === 0)).to.be.true; // Empty root
+      expect(gameAccount.merkleRoot.every((byte) => byte === 0)).to.be.true; // Empty root
     });
 
     it("should allow first player to join with merkle tree", async () => {
@@ -461,7 +469,11 @@ describe("coinflip-merkle", () => {
 
       // Calculate winner
       const gameAccount = await program.account.game.fetch(gamePDA);
-      const winnerIndex = calculateWinnerIndex(3, secretKey, gameAccount.lastSlot.toNumber());
+      const winnerIndex = calculateWinnerIndex(
+        3,
+        secretKey,
+        gameAccount.lastSlot.toNumber()
+      );
 
       // Create exact participation entries that match what the contract created
       const participation1 = createParticipationEntry(
@@ -513,7 +525,10 @@ describe("coinflip-merkle", () => {
       console.log("Contract merkle root:", contractRoot);
       console.log("Expected root:", expectedContractRoot);
       console.log("Winner index:", winnerIndex);
-      console.log("Roots match:", contractRoot.every((byte, i) => byte === expectedContractRoot[i]));
+      console.log(
+        "Roots match:",
+        contractRoot.every((byte, i) => byte === expectedContractRoot[i])
+      );
 
       // Debug game structure
       console.log("Game structure:");
@@ -522,18 +537,20 @@ describe("coinflip-merkle", () => {
       console.log("- Players count:", gameAccount.playersCount);
 
       // Create winner participation entry with the calculated winner index
-      const winnerPlayer = winnerIndex === 0 ? player1.player.publicKey :
-                          winnerIndex === 1 ? player2.player.publicKey : player3.player.publicKey;
-      const winnerParticipation = createParticipationEntry(winnerPlayer, winnerIndex);
+      const winnerPlayer =
+        winnerIndex === 0
+          ? player1.player.publicKey
+          : winnerIndex === 1
+          ? player2.player.publicKey
+          : player3.player.publicKey;
+      const winnerParticipation = createParticipationEntry(
+        winnerPlayer,
+        winnerIndex
+      );
 
       // Complete game with merkle proof (interface remains the same)
       await program.methods
-        .completeGame(
-          randomHash,
-          secretKey,
-          winnerParticipation,
-          winnerProof
-        )
+        .completeGame(randomHash, secretKey, winnerParticipation, winnerProof)
         .accounts({
           authority: program.provider.publicKey,
           winner: winnerParticipation.player,
@@ -603,12 +620,7 @@ describe("coinflip-merkle", () => {
 
       try {
         await program.methods
-          .completeGame(
-            randomHash,
-            secretKey,
-            fakeParticipation,
-            wrongProof
-          )
+          .completeGame(randomHash, secretKey, fakeParticipation, wrongProof)
           .accounts({
             authority: program.provider.publicKey,
             winner: fakeParticipation.player,
@@ -671,13 +683,17 @@ describe("coinflip-merkle", () => {
           .rpc();
 
         const gameData = await program.account.game.fetch(gamePDA);
-        console.log(`Player ${i} joined. Total: ${gameData.playersCount}, Recent: ${gameData.recentCount}, Subtrees: ${gameData.subtreeCount}`);
+        console.log(
+          `Player ${i} joined. Total: ${gameData.playersCount}, Recent: ${gameData.recentCount}, Subtrees: ${gameData.subtreeCount}`
+        );
       }
 
       // Test 2: Recent player unjoin (should be simple)
       console.log("📤 Testing recent player unjoin...");
       const gameDataBefore = await program.account.game.fetch(gamePDA);
-      console.log(`Before unjoin: Players: ${gameDataBefore.playersCount}, Recent: ${gameDataBefore.recentCount}`);
+      console.log(
+        `Before unjoin: Players: ${gameDataBefore.playersCount}, Recent: ${gameDataBefore.recentCount}`
+      );
 
       // Last player should be in recent_players
       const lastPlayerIndex = gameDataBefore.playersCount - 1;
@@ -691,9 +707,13 @@ describe("coinflip-merkle", () => {
         .rpc();
 
       const gameDataAfter = await program.account.game.fetch(gamePDA);
-      console.log(`After unjoin: Players: ${gameDataAfter.playersCount}, Recent: ${gameDataAfter.recentCount}`);
+      console.log(
+        `After unjoin: Players: ${gameDataAfter.playersCount}, Recent: ${gameDataAfter.recentCount}`
+      );
 
-      expect(gameDataAfter.playersCount).to.equal(gameDataBefore.playersCount - 1);
+      expect(gameDataAfter.playersCount).to.equal(
+        gameDataBefore.playersCount - 1
+      );
       console.log("✅ Recent player unjoin successful");
 
       // Test 3: Add more players to force subtree creation
@@ -708,7 +728,9 @@ describe("coinflip-merkle", () => {
         .rpc();
 
       const gameDataWithSubtrees = await program.account.game.fetch(gamePDA);
-      console.log(`With subtrees: Players: ${gameDataWithSubtrees.playersCount}, Recent: ${gameDataWithSubtrees.recentCount}, Subtrees: ${gameDataWithSubtrees.subtreeCount}`);
+      console.log(
+        `With subtrees: Players: ${gameDataWithSubtrees.playersCount}, Recent: ${gameDataWithSubtrees.recentCount}, Subtrees: ${gameDataWithSubtrees.subtreeCount}`
+      );
 
       // Test 4: Try to unjoin subtree player (should require exclusion proof)
       console.log("📤 Testing subtree player unjoin...");
@@ -772,7 +794,11 @@ describe("coinflip-merkle", () => {
           .rpc();
 
         const gameData = await program.account.game.fetch(gamePDA);
-        console.log(`After ${i + 1} players: Recent=${gameData.recentCount}, Subtrees=${gameData.subtreeCount}`);
+        console.log(
+          `After ${i + 1} players: Recent=${gameData.recentCount}, Subtrees=${
+            gameData.subtreeCount
+          }`
+        );
 
         // Verify subtree count follows binary decomposition rules
         // Note: This is a structural verification, actual values depend on buffer management
@@ -836,8 +862,9 @@ describe("coinflip-merkle", () => {
         // Verify game state after unjoin
         const gameData = await program.account.game.fetch(gamePDA);
         expect(gameData.playersCount).to.equal(0);
-        console.log("✅ Exclusion proof parameter test passed - unjoin successful");
-
+        console.log(
+          "✅ Exclusion proof parameter test passed - unjoin successful"
+        );
       } catch (error) {
         // Log any errors for debugging
         console.log("Unjoin test result:", error?.toString() || "success");
@@ -908,11 +935,15 @@ describe("coinflip-merkle", () => {
 
         const updatedGameData = await program.account.game.fetch(gamePDA);
         expect(updatedGameData.playersCount).to.equal(3);
-        console.log("✅ Exclusion proof parameter handling test passed - recent player unjoin successful");
+        console.log(
+          "✅ Exclusion proof parameter handling test passed - recent player unjoin successful"
+        );
       } catch (error) {
         console.log("Test result:", error?.toString());
         // Even if it fails, the important thing is that the exclusion proof parameter is accepted
-        console.log("✅ Exclusion proof parameter structure test passed - function signature works");
+        console.log(
+          "✅ Exclusion proof parameter structure test passed - function signature works"
+        );
       }
     });
   });
