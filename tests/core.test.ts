@@ -261,7 +261,7 @@ describe("Core Game Operations", () => {
       expect(gameAccount.totalAmount.toNumber()).to.equal(2_000_000);
     });
 
-    it("should allow players to join private game with authority", async () => {
+    it("should allow players to join private game with operator", async () => {
       const { mint, players } = await testUtils.quickSetup();
       const gameData = testUtils.game.generateGamePDA();
       const [creator, player1] = players;
@@ -283,7 +283,7 @@ describe("Core Game Operations", () => {
         mint.mint
       );
 
-      // Players join with oracle authority
+      // Players join with oracle operator
       const providerKeypair = env.provider.wallet.payer;
       await testUtils.game.joinGame(gameData.gamePDA, creator.player, providerKeypair);
       await testUtils.game.joinGame(gameData.gamePDA, player1.player, providerKeypair);
@@ -292,7 +292,7 @@ describe("Core Game Operations", () => {
       expect(gameAccount.playersCount).to.equal(2);
     });
 
-    it("should fail to join private game without authority", async () => {
+    it("should fail to join private game without operator", async () => {
       const { mint, players } = await testUtils.quickSetup();
       const gameData = testUtils.game.generateGamePDA();
       const [creator, player1] = players;
@@ -315,18 +315,18 @@ describe("Core Game Operations", () => {
 
       try {
         await testUtils.game.joinGame(gameData.gamePDA, player1.player);
-        expect.fail("Should have failed without authority");
+        expect.fail("Should have failed without operator");
       } catch (error) {
-        // Private games without authority should fail with private game access denied error
+        // Private games without operator should fail with private game access denied error
         expect(error.toString()).to.include("PrivateGameAccessDenied");
       }
     });
 
-    it("should fail to join private game with wrong authority", async () => {
+    it("should fail to join private game with wrong operator", async () => {
       const { mint, players } = await testUtils.quickSetup();
       const gameData = testUtils.game.generateGamePDA();
       const [creator, player1] = players;
-      const fakeAuthority = anchor.web3.Keypair.generate();
+      const fakeOperator = anchor.web3.Keypair.generate();
 
       const gameConfig: GameConfig = {
         gameType: { coinflip: {} },
@@ -345,8 +345,8 @@ describe("Core Game Operations", () => {
       );
 
       try {
-        await testUtils.game.joinGame(gameData.gamePDA, player1.player, fakeAuthority);
-        expect.fail("Should have failed with wrong authority");
+        await testUtils.game.joinGame(gameData.gamePDA, player1.player, fakeOperator);
+        expect.fail("Should have failed with wrong operator");
       } catch (error) {
         expect(error.toString()).to.include("PrivateGameAccessDenied");
       }
@@ -480,11 +480,11 @@ describe("Core Game Operations", () => {
       expect(completedGame.totalAmount.toNumber()).to.equal(0);
     });
 
-    it("should fail to complete game with wrong authority", async () => {
+    it("should fail to complete game with wrong operator", async () => {
       const { mint, players } = await testUtils.quickSetup();
       const gameData = testUtils.game.generateGamePDA();
       const [creator, player1] = players;
-      const fakeAuthority = anchor.web3.Keypair.generate();
+      const fakeOperator = anchor.web3.Keypair.generate();
 
       const gameConfig: GameConfig = {
         gameType: { coinflip: {} },
@@ -523,14 +523,14 @@ describe("Core Game Operations", () => {
           gameData,
           winner.player.publicKey,
           creator.player.publicKey,
-          fakeAuthority.publicKey,
+          fakeOperator.publicKey,
           winnerParticipation,
           []
         );
-        expect.fail("Should have failed with wrong authority");
+        expect.fail("Should have failed with wrong operator");
       } catch (error) {
-        // Should fail with unauthorized authority error
-        expect(error.toString()).to.include("UnauthorizedAuthority");
+        // Should fail with unauthorized operator error
+        expect(error.toString()).to.include("UnauthorizedOperator");
       }
     });
 
