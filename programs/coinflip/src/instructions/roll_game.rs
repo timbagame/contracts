@@ -1,3 +1,4 @@
+use crate::error::ErrorCode;
 use crate::events::PlayerRolled;
 use crate::state::GameType;
 use anchor_lang::prelude::*;
@@ -13,17 +14,14 @@ pub fn handler(ctx: Context<super::RollGame>) -> Result<()> {
     // VALIDATION
     // ===============================
 
-    require!(
-        !game.is_expired(current_time),
-        crate::error::ErrorCode::GameExpired
-    );
+    require!(!game.is_expired(current_time), ErrorCode::GameExpired);
 
     require!(
         game.game_type == GameType::Snowball
             || game.game_type == GameType::Dumbflip
             || game.game_type == GameType::Dumbball
             || game.game_type == GameType::Dumbaway,
-        crate::error::ErrorCode::InvalidGameType
+        ErrorCode::InvalidGameType
     );
 
     // ===============================

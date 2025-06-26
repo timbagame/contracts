@@ -1,3 +1,4 @@
+use crate::error::ErrorCode;
 use crate::events::PlayerUnjoined;
 use crate::state::{ExclusionProof, Game};
 use anchor_lang::prelude::*;
@@ -20,17 +21,14 @@ pub fn handler(
 
     require!(
         !game.waiting_for_oracle(oracle.oracle_buffer_time as u64, current_time),
-        crate::error::ErrorCode::GameWaitingForOracle
+        ErrorCode::GameWaitingForOracle
     );
 
-    require!(
-        game.players_count > 0,
-        crate::error::ErrorCode::InvalidPlayersCount
-    );
+    require!(game.players_count > 0, ErrorCode::InvalidPlayersCount);
 
     require!(
         player_index < game.players_count,
-        crate::error::ErrorCode::UnauthorizedPlayer
+        ErrorCode::UnauthorizedPlayer
     );
 
     // ===============================
@@ -82,16 +80,16 @@ pub fn handler(
         // Verify the player is actually in a subtree
         require!(
             game.find_subtree_containing_player(player_index).is_some(),
-            crate::error::ErrorCode::UnauthorizedPlayer
+            ErrorCode::UnauthorizedPlayer
         );
 
         // Case 2: Subtree player unjoin - always use swap-with-last approach
-        let exclusion_proof = exclusion_proof.ok_or(crate::error::ErrorCode::InvalidAmount)?;
+        let exclusion_proof = exclusion_proof.ok_or(ErrorCode::InvalidAmount)?;
 
         // Verify the exclusion proof with swap-with-last operation
         require!(
             game.verify_exclusion_proof(&exclusion_proof, player_key, player_index)?,
-            crate::error::ErrorCode::InvalidExclusionProof
+            ErrorCode::InvalidExclusionProof
         );
 
         // Apply the verified swap-with-last operation

@@ -1,4 +1,5 @@
 use crate::events::GameCompleted;
+use crate::error::ErrorCode;
 use crate::state::{Game, ParticipationEntry};
 use anchor_lang::prelude::*;
 
@@ -19,7 +20,7 @@ pub fn handler(
 
     require!(
         game.waiting_for_oracle(oracle.oracle_buffer_time as u64, current_time),
-        crate::error::ErrorCode::GameNotReadyForOracle
+        ErrorCode::GameNotReadyForOracle
     );
 
     // ===============================
@@ -34,20 +35,20 @@ pub fn handler(
             &winner_merkle_proof,
             winner_participation.player_index,
         ),
-        crate::error::ErrorCode::UnauthorizedPlayer
+        ErrorCode::InvalidMerkleProof
     );
 
     // 2. Verify the winner index is correctly calculated from secret key
     let calculated_winner_index = game.calculate_winner_index(secret_key);
     require!(
         winner_participation.player_index == calculated_winner_index,
-        crate::error::ErrorCode::UnauthorizedPlayer
+        ErrorCode::InvalidWinnerIndex
     );
 
     // 3. Verify the winner's pubkey matches the account provided
     require!(
         winner_participation.player == ctx.accounts.winner.key(),
-        crate::error::ErrorCode::UnauthorizedPlayer
+        ErrorCode::WinnerPubkeyMismatch
     );
 
     // ===============================

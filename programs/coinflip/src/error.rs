@@ -95,6 +95,22 @@ pub enum ErrorCode {
     #[msg("Merkle tree structure error")]
     MerkleTreeStructureError = 1206,
 
+    /// Invalid merkle proof provided for player verification
+    #[msg("Invalid merkle proof")]
+    InvalidMerkleProof = 1207,
+
+    /// Winner index does not match calculated winner from secret key
+    #[msg("Invalid winner index")]
+    InvalidWinnerIndex = 1208,
+
+    /// Winner pubkey does not match participation entry
+    #[msg("Winner pubkey mismatch")]
+    WinnerPubkeyMismatch = 1209,
+
+    /// Player not authorized for private game
+    #[msg("Private game access denied")]
+    PrivateGameAccessDenied = 1210,
+
     // =========================================================================
     // CONFIGURATION ERRORS (1300-1399)
     // =========================================================================
@@ -113,6 +129,10 @@ pub enum ErrorCode {
     /// The provided secret key does not match the random hash
     #[msg("Invalid secret key")]
     InvalidSecretKey = 1303,
+
+    /// Oracle configuration parameters are invalid
+    #[msg("Invalid configuration")]
+    InvalidConfiguration = 1304,
 
     // =========================================================================
     // TOKEN ERRORS (1400-1499)
