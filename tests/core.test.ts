@@ -42,7 +42,7 @@ describe("Core Game Operations", () => {
       const oracle = await testUtils.oracle.createOracle();
 
       expect(oracle.oraclePDA).to.not.be.undefined;
-      expect(oracle.authority.equals(env.provider.publicKey)).to.be.true;
+      expect(oracle.operator.equals(env.provider.publicKey)).to.be.true;
       expect(oracle.config.feePercentage).to.equal(1);
       expect(oracle.config.maxPlayers).to.equal(100);
     });
@@ -65,7 +65,7 @@ describe("Core Game Operations", () => {
       const oracle = await testUtils.oracle.getOracle();
 
       expect(oracle.oraclePDA).to.not.be.undefined;
-      expect(oracle.authority).to.not.be.undefined;
+      expect(oracle.operator).to.not.be.undefined;
       expect(oracle.config).to.not.be.undefined;
     });
   });
@@ -470,7 +470,7 @@ describe("Core Game Operations", () => {
         gameData,
         winner.player.publicKey,
         creator.player.publicKey,
-        oracle.authority,
+        oracle.operator,
         winnerParticipation,
         winnerMerkleProof
       );
@@ -586,7 +586,7 @@ describe("Core Game Operations", () => {
           fakeGameData, // This has the wrong secret key
           winner.player.publicKey,
           creator.player.publicKey,
-          oracle.authority,
+          oracle.operator,
           winnerParticipation,
           []
         );

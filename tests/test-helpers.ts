@@ -33,7 +33,7 @@ export interface TestGame {
 
 export interface TestOracle {
   oraclePDA: PublicKey;
-  authority: PublicKey;
+  operator: PublicKey;
   config: OracleConfig;
 }
 
@@ -163,7 +163,7 @@ export class OracleManager {
       await this.program.methods
         .initializeOracle(defaultConfig)
         .accounts({
-          authority: this.provider.publicKey,
+          oracleOperator: this.provider.publicKey,
         })
         .rpc();
 
@@ -174,7 +174,7 @@ export class OracleManager {
 
     return {
       oraclePDA,
-      authority: this.provider.publicKey,
+      operator: this.provider.publicKey,
       config: defaultConfig,
     };
   }
@@ -189,7 +189,7 @@ export class OracleManager {
 
     return {
       oraclePDA,
-      authority: oracleAccount.authority,
+      operator: oracleAccount.operator,
       config: {
         feePercentage: oracleAccount.feePercentage,
         oracleBufferTime: oracleAccount.oracleBufferTime,
@@ -264,7 +264,7 @@ export class MintManager {
     await this.program.methods
       .initializeToken(tokenConfig)
       .accounts({
-        authority: this.provider.publicKey,
+        oracleOperator: this.provider.publicKey,
         tokenMint: mint,
       })
       .rpc();
@@ -452,7 +452,7 @@ export class GameManager {
   async joinGame(
     gamePDA: PublicKey,
     player: anchor.web3.Keypair,
-    authority?: anchor.web3.Keypair
+    oracleOperator?: anchor.web3.Keypair
   ): Promise<void> {
     const accounts: any = {
       game: gamePDA,
@@ -461,9 +461,9 @@ export class GameManager {
 
     const signers = [player];
 
-    if (authority) {
-      accounts.authority = authority.publicKey;
-      signers.push(authority);
+    if (oracleOperator) {
+      accounts.oracleOperator = oracleOperator.publicKey;
+      signers.push(oracleOperator);
     }
 
     await this.program.methods
@@ -477,7 +477,7 @@ export class GameManager {
     gameData: TestGame,
     winner: PublicKey,
     creator: PublicKey,
-    authority: PublicKey,
+    oracleOperator: PublicKey,
     winnerParticipation?: { player: PublicKey; playerIndex: number },
     winnerMerkleProof?: number[][]
   ): Promise<void> {
@@ -493,7 +493,7 @@ export class GameManager {
     await this.program.methods
       .completeGame(gameData.randomHash, gameData.secretKey, participation, proof)
       .accounts({
-        authority,
+        oracleOperator,
         winner,
         creator,
       })
