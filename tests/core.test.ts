@@ -316,12 +316,8 @@ describe("Core Game Operations", () => {
         await testUtils.game.joinGame(gameData.gamePDA, player1.player);
         expect.fail("Should have failed without authority");
       } catch (error) {
-        // Private games without authority might fail with different error messages
-        const errorStr = error.toString();
-        const hasAuthError = errorStr.includes("UnauthorizedPlayer") || 
-                           errorStr.includes("missing required account") ||
-                           errorStr.includes("authority");
-        expect(hasAuthError).to.be.true;
+        // Private games without authority should fail with unauthorized player error
+        expect(error.toString()).to.include("UnauthorizedPlayer");
       }
     });
 
@@ -502,12 +498,8 @@ describe("Core Game Operations", () => {
         );
         expect.fail("Should have failed with wrong authority");
       } catch (error) {
-        // May fail with signature verification or unauthorized authority
-        const errorStr = error.toString();
-        const hasAuthError = errorStr.includes("UnauthorizedAuthority") || 
-                           errorStr.includes("Signature verification") ||
-                           errorStr.includes("authority");
-        expect(hasAuthError).to.be.true;
+        // Should fail with unauthorized authority error
+        expect(error.toString()).to.include("UnauthorizedAuthority");
       }
     });
 
