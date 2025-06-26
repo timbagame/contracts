@@ -42,7 +42,7 @@ describe("Core Game Operations", () => {
       const oracle = await testUtils.oracle.createOracle();
 
       expect(oracle.oraclePDA).to.not.be.undefined;
-      expect(oracle.operator.equals(env.provider.publicKey)).to.be.true;
+      expect(oracle.operator.equals(oracle.operatorKeypair.publicKey)).to.be.true;
       expect(oracle.config.feePercentage).to.equal(1);
       expect(oracle.config.maxPlayers).to.equal(100);
     });
@@ -262,7 +262,7 @@ describe("Core Game Operations", () => {
     });
 
     it("should allow players to join private game with operator", async () => {
-      const { mint, players } = await testUtils.quickSetup();
+      const { oracle, mint, players } = await testUtils.quickSetup();
       const gameData = testUtils.game.generateGamePDA();
       const [creator, player1] = players;
 
@@ -284,16 +284,15 @@ describe("Core Game Operations", () => {
       );
 
       // Players join with oracle operator
-      const providerKeypair = env.provider.wallet.payer;
-      await testUtils.game.joinGame(gameData.gamePDA, creator.player, providerKeypair);
-      await testUtils.game.joinGame(gameData.gamePDA, player1.player, providerKeypair);
+      await testUtils.game.joinGame(gameData.gamePDA, creator.player, oracle.operatorKeypair);
+      await testUtils.game.joinGame(gameData.gamePDA, player1.player, oracle.operatorKeypair);
 
       const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
       expect(gameAccount.playersCount).to.equal(2);
     });
 
     it("should fail to join private game without operator", async () => {
-      const { mint, players } = await testUtils.quickSetup();
+      const { oracle, mint, players } = await testUtils.quickSetup();
       const gameData = testUtils.game.generateGamePDA();
       const [creator, player1] = players;
 
@@ -323,7 +322,7 @@ describe("Core Game Operations", () => {
     });
 
     it("should fail to join private game with wrong operator", async () => {
-      const { mint, players } = await testUtils.quickSetup();
+      const { oracle, mint, players } = await testUtils.quickSetup();
       const gameData = testUtils.game.generateGamePDA();
       const [creator, player1] = players;
       const fakeOperator = anchor.web3.Keypair.generate();
