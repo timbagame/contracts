@@ -1,14 +1,14 @@
 use crate::events::PlayerJoined;
 use anchor_lang::prelude::*;
 
-pub fn handler(
-    ctx: Context<super::JoinGame>,
-) -> Result<()> {
+pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
     let game = &mut ctx.accounts.game;
+    let player_balance = &mut ctx.accounts.player_balance;
+    let oracle = &ctx.accounts.oracle;
     let clock = Clock::get()?;
     let current_time = clock.unix_timestamp as u64;
-    let player_balance = &mut ctx.accounts.player_balance;
     let player_key = ctx.accounts.player.key();
+    let game_key = game.key();
 
     // ===============================
     // VALIDATION
@@ -19,8 +19,14 @@ pub fn handler(
         crate::error::ErrorCode::GameExpired
     );
 
+    // Check for double join using bloom filter
+    require!(
+        player_balance.can_join_game(&game_key, game.created_at),
+        crate::error::ErrorCode::AlreadyJoined
+    );
+
     // ===============================
-    // MERKLE TREE UPDATE
+    // STATE UPDATES
     // ===============================
 
     // Add player to merkle tree
@@ -28,6 +34,10 @@ pub fn handler(
 
     // Update game state
     game.last_slot = clock.slot;
+
+    // Mark game as joined in player's bloom filter
+    let game_expiry = game.calculate_expiry_timestamp(oracle.oracle_buffer_time);
+    player_balance.mark_game_joined(&game_key, game_expiry, current_time);
 
     // ===============================
     // TOKEN TRANSFER

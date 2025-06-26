@@ -8,7 +8,7 @@ use anchor_spl::token::{transfer, Transfer};
 
 pub const ORACLE_SIZE: usize = 8 + 32 + 1 + 2 + 4 + 4 + 4;
 pub const GAME_TOKEN_SIZE: usize = 8 + 32 + 1 + 8 + 8 + 1;
-pub const PLAYER_BALANCE_SIZE: usize = 8 + 8;
+pub const PLAYER_BALANCE_SIZE: usize = 8 + 8 + 64 + 8 + 8; // amount + game_filter + filter_last_updated + longest_game_expiry
 // PlayerParticipation eliminated - using merkle trees!
 // Dynamic game size calculation - no longer fixed constant
 // Base size without dynamic arrays
@@ -260,12 +260,106 @@ impl GameToken {
 pub struct PlayerBalance {
     /// Current balance amount
     pub amount: u64,
+    /// 512-bit bloom filter for game participation tracking
+    pub game_filter: [u64; 8],
+    /// Timestamp when filter was last updated
+    pub filter_last_updated: u64,
+    /// Longest expiration time of games in filter
+    pub longest_game_expiry: u64,
 }
 
 impl PlayerBalance {
     /// Adds refund amount to player balance
     pub fn refund(&mut self, amount: u64) {
         self.amount += amount;
+    }
+
+    /// Generate hash values for bloom filter
+    fn hash_game_key(game_key: &Pubkey) -> (usize, usize, usize) {
+        // Generate 3 independent hash values for bloom filter
+        let hash1 = hash(&game_key.to_bytes());
+        let hash2 = hash(&[game_key.to_bytes().as_slice(), b"salt1"].concat());
+        let hash3 = hash(&[game_key.to_bytes().as_slice(), b"salt2"].concat());
+
+        // Convert to bit positions (0-511 for 512-bit filter)
+        let pos1 = (u64::from_le_bytes(hash1.to_bytes()[0..8].try_into().unwrap()) % 512) as usize;
+        let pos2 = (u64::from_le_bytes(hash2.to_bytes()[0..8].try_into().unwrap()) % 512) as usize;
+        let pos3 = (u64::from_le_bytes(hash3.to_bytes()[0..8].try_into().unwrap()) % 512) as usize;
+
+        (pos1, pos2, pos3)
+    }
+
+    /// Set bits in bloom filter for a game key
+    fn set_bloom_bits(&mut self, game_key: &Pubkey) {
+        let (pos1, pos2, pos3) = Self::hash_game_key(game_key);
+
+        // Set bits in the 512-bit filter (8 x 64-bit words)
+        self.game_filter[pos1 / 64] |= 1u64 << (pos1 % 64);
+        self.game_filter[pos2 / 64] |= 1u64 << (pos2 % 64);
+        self.game_filter[pos3 / 64] |= 1u64 << (pos3 % 64);
+    }
+
+    /// Check if bits are set in bloom filter for a game key
+    fn check_bloom_bits(&self, game_key: &Pubkey) -> bool {
+        let (pos1, pos2, pos3) = Self::hash_game_key(game_key);
+
+        // Check if all bits are set
+        let bit1_set = (self.game_filter[pos1 / 64] & (1u64 << (pos1 % 64))) != 0;
+        let bit2_set = (self.game_filter[pos2 / 64] & (1u64 << (pos2 % 64))) != 0;
+        let bit3_set = (self.game_filter[pos3 / 64] & (1u64 << (pos3 % 64))) != 0;
+
+        bit1_set && bit2_set && bit3_set
+    }
+
+    /// Check if player likely joined this game (bloom filter check)
+    fn likely_joined_game(&self, game_key: &Pubkey) -> bool {
+        self.check_bloom_bits(game_key)
+    }
+
+    /// Main entry point: Check if player can join game (considers timestamps + bloom filter)
+    pub fn can_join_game(&self, game_key: &Pubkey, game_created_time: u64) -> bool {
+        // If game was created AFTER our filter was last updated,
+        // it can't possibly be in our filter (even if bits match)
+        if game_created_time > self.filter_last_updated {
+            return true; // Definitely can join
+        }
+
+        // Game is older than our filter, check bloom filter
+        !self.likely_joined_game(game_key)
+    }
+
+    /// Reset filter if all games have expired
+    pub fn maybe_reset_filter(&mut self, current_time: u64) {
+        // Only reset when ALL games have expired (current > longest expiry)
+        if current_time > self.longest_game_expiry {
+            self.game_filter = [0; 8];
+            self.filter_last_updated = current_time;
+            self.longest_game_expiry = 0; // No games tracked
+        }
+    }
+
+    /// Mark game as joined in bloom filter with timestamp tracking
+    pub fn mark_game_joined(
+        &mut self,
+        game_key: &Pubkey,
+        game_expiry_time: u64,
+        current_time: u64,
+    ) {
+        // Maybe reset filter if all old games expired
+        self.maybe_reset_filter(current_time);
+
+        // Add to bloom filter
+        self.set_bloom_bits(game_key);
+
+        // Update timestamps
+        self.filter_last_updated = current_time;
+
+        // Keep the LONGEST expiration time
+        if self.longest_game_expiry == 0 {
+            self.longest_game_expiry = game_expiry_time;
+        } else {
+            self.longest_game_expiry = self.longest_game_expiry.max(game_expiry_time);
+        }
     }
 
     /// Checks if player has sufficient balance for withdrawal
@@ -415,6 +509,11 @@ impl Game {
 
         self.is_ready_for_completion(current_time)
             && !self.is_buffer_expired(oracle_buffer_time, current_time)
+    }
+
+    /// Calculate when this game will expire (for bloom filter tracking)
+    pub fn calculate_expiry_timestamp(&self, oracle_buffer_time: u16) -> u64 {
+        self.created_at + self.timeout as u64 + oracle_buffer_time as u64
     }
 
     /// Marks the game as completed by setting total_amount to zero
