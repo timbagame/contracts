@@ -3,8 +3,8 @@ use anchor_lang::prelude::*;
 
 pub fn handler(ctx: Context<super::UpdateOracle>, config: OracleConfig) -> Result<()> {
     let oracle = &mut ctx.accounts.oracle;
-    let old_authority_key = ctx.accounts.old_authority.key();
-    let new_authority_key = ctx.accounts.new_authority.key();
+    let old_operator_key = ctx.accounts.old_oracle_operator.key();
+    let new_operator_key = ctx.accounts.new_oracle_operator.key();
 
     // ===============================
     // STATE UPDATES
@@ -16,7 +16,7 @@ pub fn handler(ctx: Context<super::UpdateOracle>, config: OracleConfig) -> Resul
         config.max_players,
         config.max_timeout,
         config.min_timeout,
-        new_authority_key,
+        new_operator_key,
     );
 
     // ===============================
@@ -24,8 +24,8 @@ pub fn handler(ctx: Context<super::UpdateOracle>, config: OracleConfig) -> Resul
     // ===============================
 
     emit!(OracleUpdated {
-        old_authority: old_authority_key,
-        new_authority: new_authority_key,
+        old_operator: old_operator_key,
+        new_operator: new_operator_key,
         fee_percentage: config.fee_percentage,
         oracle_buffer_time: config.oracle_buffer_time,
         max_players: config.max_players,

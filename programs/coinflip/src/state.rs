@@ -112,8 +112,8 @@ pub struct ExclusionProof {
 #[account]
 #[derive(Default)]
 pub struct Oracle {
-    /// Authority that can update oracle settings and claim fees
-    pub authority: Pubkey,
+    /// Operator that can update oracle settings and claim fees
+    pub operator: Pubkey,
     /// Percentage of game amount taken as fee (0-100)
     pub fee_percentage: u8,
     /// Buffer time in seconds after game timeout before cancellation is allowed
@@ -135,19 +135,19 @@ impl Oracle {
         max_players: u32,
         max_timeout: u32,
         min_timeout: u32,
-        new_authority: Pubkey,
+        new_operator: Pubkey,
     ) {
         self.fee_percentage = fee_percentage;
         self.oracle_buffer_time = oracle_buffer_time;
         self.max_players = max_players;
         self.max_timeout = max_timeout;
         self.min_timeout = min_timeout;
-        self.authority = new_authority;
+        self.operator = new_operator;
     }
 
-    /// Checks if given authority matches oracle authority
-    pub fn is_authorized_authority(&self, authority: &Pubkey) -> bool {
-        self.authority == *authority
+    /// Checks if given operator matches oracle operator
+    pub fn is_authorized_operator(&self, operator: &Pubkey) -> bool {
+        self.operator == *operator
     }
 
     /// Validates timeout is within oracle's allowed range
@@ -588,8 +588,12 @@ impl Game {
         }
     }
 
-    pub fn can_join_private(&self, authority: Option<&Signer>, oracle_authority: &Pubkey) -> bool {
-        !self.is_private || authority.map_or(false, |signer| signer.key() == *oracle_authority)
+    pub fn can_join_private(
+        &self,
+        passed_operator: Option<&Signer>,
+        oracle_operator: &Pubkey,
+    ) -> bool {
+        !self.is_private || passed_operator.map_or(false, |signer| signer.key() == *oracle_operator)
     }
 
     pub fn has_sufficient_balance_for_join(&self, token_balance: u64, player_balance: u64) -> bool {

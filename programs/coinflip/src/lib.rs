@@ -61,7 +61,7 @@ pub struct GameConfig {
     pub min_players: u32,
     /// Timeout duration in seconds
     pub timeout: u32,
-    /// Whether game requires oracle authority to join
+    /// Whether game requires oracle operator to join
     pub is_private: bool,
 }
 
@@ -82,7 +82,7 @@ pub mod coinflip {
         instructions::initialize_oracle::handler(ctx, config)
     }
 
-    /// Updates oracle configuration including authority transfer
+    /// Updates oracle configuration including operator transfer
     pub fn update_oracle(ctx: Context<UpdateOracle>, config: OracleConfig) -> Result<()> {
         instructions::update_oracle::handler(ctx, config)
     }
@@ -174,7 +174,7 @@ pub mod coinflip {
     // FEE MANAGEMENT
     // =========================================================================
 
-    /// Allows oracle authority to withdraw accumulated fees for a token
+    /// Allows oracle operator to withdraw accumulated fees for a token
     pub fn withdraw_token_fee(ctx: Context<WithdrawTokenFee>) -> Result<()> {
         instructions::withdraw_token_fee::handler(ctx)
     }

@@ -3,7 +3,7 @@ use anchor_lang::prelude::*;
 
 pub fn handler(ctx: Context<super::WithdrawTokenFee>) -> Result<()> {
     let game_token = &mut ctx.accounts.game_token;
-    let authority_key = ctx.accounts.authority.key();
+    let operator_key = ctx.accounts.oracle_operator.key();
     let token_mint_key = ctx.accounts.token_mint.key();
     let withdrawal_amount = game_token.fee_amount;
 
@@ -19,7 +19,7 @@ pub fn handler(ctx: Context<super::WithdrawTokenFee>) -> Result<()> {
 
     game_token.handle_pda_token_transfer(
         ctx.accounts.game_token_account.to_account_info(),
-        ctx.accounts.authority_token_account.to_account_info(),
+        ctx.accounts.oracle_operator_token_account.to_account_info(),
         ctx.accounts.game_vault.to_account_info(),
         ctx.accounts.token_program.to_account_info(),
         withdrawal_amount,
@@ -30,7 +30,7 @@ pub fn handler(ctx: Context<super::WithdrawTokenFee>) -> Result<()> {
     // ===============================
 
     emit!(TokenFeeWithdrawn {
-        authority: authority_key,
+        operator: operator_key,
         token_mint: token_mint_key,
         amount: withdrawal_amount,
     });
