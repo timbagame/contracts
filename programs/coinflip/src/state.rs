@@ -10,9 +10,6 @@ use anchor_spl::token::{transfer, Transfer};
 pub const ORACLE_SIZE: usize = 8 + 32 + 1 + 2 + 4 + 4 + 4;
 pub const GAME_TOKEN_SIZE: usize = 8 + 32 + 1 + 8 + 8 + 1;
 pub const PLAYER_BALANCE_SIZE: usize = 8 + 8 + 64 + 8 + 8; // amount + game_filter + filter_last_updated + longest_game_expiry
-                                                           // PlayerParticipation eliminated - using merkle trees!
-                                                           // Dynamic game size calculation - no longer fixed constant
-                                                           // Base size without dynamic arrays
 pub const GAME_BASE_SIZE: usize = 8
     + 32  // creator
     + 1   // game_type
@@ -408,11 +405,6 @@ impl PlayerBalance {
         Ok(())
     }
 }
-
-// =============================================================================
-// NO MORE PLAYER PARTICIPATION ACCOUNTS!
-// All participation data is now stored in merkle tree + events
-// =============================================================================
 
 // =============================================================================
 // GAME ACCOUNT
