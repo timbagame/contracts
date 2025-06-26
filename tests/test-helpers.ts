@@ -526,7 +526,8 @@ export class GameManager {
     creator: PublicKey,
     oracleOperator: PublicKey,
     winnerParticipation?: { player: PublicKey; playerIndex: number },
-    winnerMerkleProof?: number[][]
+    winnerMerkleProof?: number[][],
+    oracleOperatorKeypair?: anchor.web3.Keypair
   ): Promise<void> {
     // Default participation entry if not provided
     const participation = winnerParticipation || {
@@ -537,6 +538,9 @@ export class GameManager {
     // Default empty proof if not provided
     const proof = winnerMerkleProof || [];
 
+    // Use provided oracle operator keypair or default to deterministic one
+    const operatorKeypair = oracleOperatorKeypair || anchor.web3.Keypair.fromSeed(new Uint8Array(32).fill(42));
+
     await this.program.methods
       .completeGame(gameData.randomHash, gameData.secretKey, participation, proof)
       .accounts({
@@ -544,6 +548,7 @@ export class GameManager {
         winner,
         creator,
       })
+      .signers([operatorKeypair])
       .rpc();
   }
 }
