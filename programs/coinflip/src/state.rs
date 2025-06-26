@@ -640,37 +640,9 @@ impl Game {
             self.subtrees.push(new);
             self.subtree_count += 1;
         } else {
-            // Fallback: no same-sized pairs found, merge new with smallest
-            if self.subtrees.is_empty() {
-                // If no subtrees exist, just add the new one
-                self.subtrees.push(new);
-                self.subtree_count += 1;
-                return Ok(());
-            }
-
-            let smallest_idx = self.find_smallest_subtree();
-            let smallest = self.subtrees[smallest_idx];
-
-            // Remove smallest subtree
-            self.subtrees.remove(smallest_idx);
-            self.subtree_count -= 1;
-
-            // Create merged subtree
-            let (left, right) = if smallest.start_index < new.start_index {
-                (smallest.root_hash, new.root_hash)
-            } else {
-                (new.root_hash, smallest.root_hash)
-            };
-
-            new = Subtree {
-                root_hash: hash(&[left, right].concat()).to_bytes(),
-                start_index: smallest.start_index.min(new.start_index),
-                size: smallest.size + new.size,
-            };
-
-            // Add the merged subtree back
-            self.subtrees.push(new);
-            self.subtree_count += 1;
+            // No same-sized pairs found - this should not happen with proper binary tree management
+            // If we reach here, it means the subtree storage is misconfigured
+            return Err(crate::error::ErrorCode::MerkleTreeStructureError.into());
         }
 
         Ok(())
