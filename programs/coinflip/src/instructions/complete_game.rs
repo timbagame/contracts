@@ -26,10 +26,10 @@ pub fn handler(
     // WINNER VERIFICATION
     // ===============================
 
-    // 1. Verify the winner participation entry is in the merkle tree
+    // 1. Verify the winner participation entry (subtree or recent player)
     let winner_leaf = Game::hash_participation_entry(&winner_participation);
     require!(
-        game.verify_merkle_proof(
+        game.verify_player_participation(
             winner_leaf,
             &winner_merkle_proof,
             winner_participation.player_index,
