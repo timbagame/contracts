@@ -321,6 +321,36 @@ describe("Core Game Operations", () => {
       }
     });
 
+    it("should fail to join private game with wrong authority", async () => {
+      const { mint, players } = await testUtils.quickSetup();
+      const gameData = testUtils.game.generateGamePDA();
+      const [creator, player1] = players;
+      const fakeAuthority = anchor.web3.Keypair.generate();
+
+      const gameConfig: GameConfig = {
+        gameType: { coinflip: {} },
+        amount: new anchor.BN(1_000_000),
+        maxPlayers: 2,
+        minPlayers: 2,
+        timeout: 3600,
+        isPrivate: true,
+      };
+
+      await testUtils.game.initializeGame(
+        gameData,
+        gameConfig,
+        creator.player,
+        mint.mint
+      );
+
+      try {
+        await testUtils.game.joinGame(gameData.gamePDA, player1.player, fakeAuthority);
+        expect.fail("Should have failed with wrong authority");
+      } catch (error) {
+        expect(error.toString()).to.include("PrivateGameAccessDenied");
+      }
+    });
+
     it("should fail to join full game", async () => {
       const { mint, players } = await testUtils.quickSetup();
       const gameData = testUtils.game.generateGamePDA();

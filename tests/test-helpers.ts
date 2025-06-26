@@ -452,21 +452,24 @@ export class GameManager {
   async joinGame(
     gamePDA: PublicKey,
     player: anchor.web3.Keypair,
-    authority?: PublicKey
+    authority?: anchor.web3.Keypair
   ): Promise<void> {
     const accounts: any = {
       game: gamePDA,
       player: player.publicKey,
     };
 
+    const signers = [player];
+
     if (authority) {
-      accounts.authority = authority;
+      accounts.authority = authority.publicKey;
+      signers.push(authority);
     }
 
     await this.program.methods
       .joinGame()
       .accounts(accounts)
-      .signers([player])
+      .signers(signers)
       .rpc();
   }
 
