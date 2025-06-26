@@ -34,6 +34,7 @@ export interface TestGame {
 export interface TestOracle {
   oraclePDA: PublicKey;
   operator: PublicKey;
+  operatorKeypair: anchor.web3.Keypair;
   config: OracleConfig;
 }
 
@@ -152,29 +153,61 @@ export class OracleManager {
       this.program.programId
     );
 
+    // Use a deterministic keypair for tests so we can reuse it
+    const operatorKeypair = anchor.web3.Keypair.fromSeed(new Uint8Array(32).fill(42));
+
     try {
-      // Airdrop SOL for rent
-      const signature = await this.provider.connection.requestAirdrop(
+      // Check if oracle already exists and is properly initialized
+      try {
+        const existingOracle = await this.program.account.oracle.fetch(oraclePDA);
+        console.log("✅ Oracle already initialized");
+        return {
+          oraclePDA,
+          operator: existingOracle.operator,
+          operatorKeypair,
+          config: {
+            feePercentage: existingOracle.feePercentage,
+            oracleBufferTime: existingOracle.oracleBufferTime,
+            maxPlayers: existingOracle.maxPlayers,
+            maxTimeout: existingOracle.maxTimeout,
+            minTimeout: existingOracle.minTimeout,
+          },
+        };
+      } catch (fetchError) {
+        // Oracle doesn't exist, proceed with initialization
+      }
+
+      // Airdrop SOL for rent to both provider and oracle operator
+      const providerAirdrop = await this.provider.connection.requestAirdrop(
         this.provider.publicKey,
         5 * anchor.web3.LAMPORTS_PER_SOL
       );
-      await this.provider.connection.confirmTransaction(signature);
+      const operatorAirdrop = await this.provider.connection.requestAirdrop(
+        operatorKeypair.publicKey,
+        5 * anchor.web3.LAMPORTS_PER_SOL
+      );
+      
+      await this.provider.connection.confirmTransaction(providerAirdrop);
+      await this.provider.connection.confirmTransaction(operatorAirdrop);
 
       await this.program.methods
         .initializeOracle(defaultConfig)
         .accounts({
-          oracleOperator: this.provider.publicKey,
+          oracleOperator: operatorKeypair.publicKey,
         })
+        .signers([operatorKeypair])
         .rpc();
 
       console.log("✅ Oracle initialized");
     } catch (e) {
-      console.log("Oracle already exists, continuing...");
+      console.error("Failed to initialize oracle:", e);
+      throw e;
     }
 
     return {
       oraclePDA,
-      operator: this.provider.publicKey,
+      operator: operatorKeypair.publicKey,
+      operatorKeypair,
       config: defaultConfig,
     };
   }
@@ -187,9 +220,13 @@ export class OracleManager {
 
     const oracleAccount = await this.program.account.oracle.fetch(oraclePDA);
 
+    // Use the same deterministic keypair as in createOracle
+    const operatorKeypair = anchor.web3.Keypair.fromSeed(new Uint8Array(32).fill(42));
+
     return {
       oraclePDA,
       operator: oracleAccount.operator,
+      operatorKeypair,
       config: {
         feePercentage: oracleAccount.feePercentage,
         oracleBufferTime: oracleAccount.oracleBufferTime,
@@ -261,12 +298,22 @@ export class MintManager {
 
     // Initialize token config
     const tokenConfig = { minAmount: new anchor.BN(1000), enabled: true };
+    
+    // Get the oracle operator from the oracle account
+    const [oraclePDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("oracle")],
+      this.program.programId
+    );
+    const oracleAccount = await this.program.account.oracle.fetch(oraclePDA);
+    const oracleOperatorKeypair = anchor.web3.Keypair.fromSeed(new Uint8Array(32).fill(42));
+    
     await this.program.methods
       .initializeToken(tokenConfig)
       .accounts({
-        oracleOperator: this.provider.publicKey,
+        oracleOperator: oracleAccount.operator,
         tokenMint: mint,
       })
+      .signers([oracleOperatorKeypair])
       .rpc();
 
     return {
