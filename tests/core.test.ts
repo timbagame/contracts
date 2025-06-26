@@ -262,7 +262,7 @@ describe("Core Game Operations", () => {
     });
 
     it("should allow players to join private game with authority", async () => {
-      const { oracle, mint, players } = await testUtils.quickSetup();
+      const { mint, players } = await testUtils.quickSetup();
       const gameData = testUtils.game.generateGamePDA();
       const [creator, player1] = players;
 
@@ -284,8 +284,9 @@ describe("Core Game Operations", () => {
       );
 
       // Players join with oracle authority
-      await testUtils.game.joinGame(gameData.gamePDA, creator.player, oracle.authority);
-      await testUtils.game.joinGame(gameData.gamePDA, player1.player, oracle.authority);
+      const providerKeypair = env.provider.wallet.payer;
+      await testUtils.game.joinGame(gameData.gamePDA, creator.player, providerKeypair);
+      await testUtils.game.joinGame(gameData.gamePDA, player1.player, providerKeypair);
 
       const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
       expect(gameAccount.playersCount).to.equal(2);
