@@ -224,11 +224,7 @@ describe("Security & Edge Cases", () => {
         );
         expect.fail("Should have rejected fake authority");
       } catch (error) {
-        const errorStr = error.toString();
-        const hasAuthError = errorStr.includes("UnauthorizedAuthority") ||
-                           errorStr.includes("Signature verification") ||
-                           errorStr.includes("authority");
-        expect(hasAuthError).to.be.true;
+        expect(error.toString()).to.include("UnauthorizedAuthority");
       }
     });
 
@@ -540,10 +536,7 @@ describe("Security & Edge Cases", () => {
         expect(gameAccount.maxPlayers).to.equal(255);
       } catch (error) {
         // Might fail due to oracle constraints
-        const errorStr = error.toString();
-        const hasValidError = errorStr.includes("InvalidPlayersCount") ||
-                            errorStr.includes("InvalidConfiguration");
-        expect(hasValidError).to.be.true;
+        expect(error.toString()).to.include("InvalidPlayersCount");
       }
     });
   });
@@ -664,7 +657,7 @@ describe("Security & Edge Cases", () => {
       const gameConfig: GameConfig = {
         gameType: { giveaway: {} },
         amount: new anchor.BN(1_000_000),
-        maxPlayers: 5,
+        maxPlayers: 1, // Set max to 1 so game is immediately ready
         minPlayers: 1, // Allow single player
         timeout: 3600,
         isPrivate: false,
@@ -787,11 +780,7 @@ describe("Security & Edge Cases", () => {
 
         expect.fail("Should have prevented unauthorized oracle update");
       } catch (error) {
-        const errorStr = error.toString();
-        const hasAuthError = errorStr.includes("UnauthorizedAuthority") ||
-                           errorStr.includes("Signature verification") ||
-                           errorStr.includes("authority");
-        expect(hasAuthError).to.be.true;
+        expect(error.toString()).to.include("UnauthorizedAuthority");
       }
     });
 
@@ -819,11 +808,7 @@ describe("Security & Edge Cases", () => {
         expect.fail("Should have rejected invalid oracle config");
       } catch (error) {
         // Should fail due to validation
-        const errorStr = error.toString();
-        const hasValidationError = errorStr.includes("InvalidConfiguration") ||
-                                  errorStr.includes("InvalidAmount") ||
-                                  errorStr.includes("InvalidPlayersCount");
-        expect(hasValidationError).to.be.true;
+        expect(error.toString()).to.include("InvalidConfiguration");
       }
     });
   });
