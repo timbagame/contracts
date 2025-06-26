@@ -12,8 +12,8 @@ use anchor_lang::prelude::*;
 /// Emitted when the global oracle account is initialized
 #[event]
 pub struct OracleInitialized {
-    /// Authority that controls the oracle
-    pub authority: Pubkey,
+    /// Operator that controls the oracle
+    pub operator: Pubkey,
     /// Fee percentage taken from game winnings (0-100)
     pub fee_percentage: u8,
     /// Buffer time in seconds after game timeout
@@ -29,10 +29,10 @@ pub struct OracleInitialized {
 /// Emitted when oracle configuration is updated
 #[event]
 pub struct OracleUpdated {
-    /// Previous authority
-    pub old_authority: Pubkey,
-    /// New authority
-    pub new_authority: Pubkey,
+    /// Previous operator
+    pub old_operator: Pubkey,
+    /// New operator
+    pub new_operator: Pubkey,
     /// Updated fee percentage
     pub fee_percentage: u8,
     /// Updated buffer time
@@ -71,11 +71,11 @@ pub struct TokenUpdated {
     pub enabled: bool,
 }
 
-/// Emitted when accumulated fees are withdrawn by authority
+/// Emitted when accumulated fees are withdrawn by operator
 #[event]
 pub struct TokenFeeWithdrawn {
-    /// Authority that withdrew the fees
-    pub authority: Pubkey,
+    /// Operator that withdrew the fees
+    pub operator: Pubkey,
     /// Token mint of the withdrawn fees
     pub token_mint: Pubkey,
     /// Amount of fees withdrawn
@@ -143,7 +143,6 @@ pub struct PlayerUnjoined {
     /// Timestamp of the unjoin
     pub timestamp: u64,
 }
-
 
 /// Emitted when a player rolls in Snowball/Dumbflip games
 #[event]

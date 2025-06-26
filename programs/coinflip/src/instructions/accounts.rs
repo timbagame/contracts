@@ -14,7 +14,7 @@ use crate::state::*;
 pub struct InitializeOracle<'info> {
     #[account(
         init,
-        payer = authority,
+        payer = oracle_operator,
         space = ORACLE_SIZE,
         seeds = [b"oracle"],
         bump,
@@ -25,7 +25,7 @@ pub struct InitializeOracle<'info> {
     pub oracle: Account<'info, Oracle>,
 
     #[account(mut)]
-    pub authority: Signer<'info>,
+    pub oracle_operator: Signer<'info>,
 
     pub system_program: Program<'info, System>,
 }
@@ -37,15 +37,15 @@ pub struct UpdateOracle<'info> {
         mut,
         seeds = [b"oracle"],
         bump,
-        constraint = oracle.is_authorized_authority(&old_authority.key()) @ ErrorCode::UnauthorizedAuthority,
+        constraint = oracle.is_authorized_operator(&old_oracle_operator.key()) @ ErrorCode::UnauthorizedOperator,
         constraint = Oracle::default().is_valid_fee_percentage(fee_percentage) @ ErrorCode::InvalidAmount,
         constraint = Oracle::default().is_valid_timeout(max_timeout, min_timeout) @ ErrorCode::InvalidTimeout,
         constraint = Oracle::default().is_valid_players_count(max_players) @ ErrorCode::InvalidPlayersCount,
     )]
     pub oracle: Account<'info, Oracle>,
 
-    pub old_authority: Signer<'info>,
-    pub new_authority: Signer<'info>,
+    pub old_oracle_operator: Signer<'info>,
+    pub new_oracle_operator: Signer<'info>,
 }
 
 // =============================================================================
@@ -57,7 +57,7 @@ pub struct UpdateOracle<'info> {
 pub struct InitializeToken<'info> {
     #[account(
         init,
-        payer = authority,
+        payer = oracle_operator,
         space = GAME_TOKEN_SIZE,
         seeds = [b"game_token", token_mint.key().as_ref()],
         bump,
@@ -79,12 +79,12 @@ pub struct InitializeToken<'info> {
     #[account(
         seeds = [b"oracle"],
         bump,
-        constraint = oracle.is_authorized_authority(&authority.key()) @ ErrorCode::UnauthorizedAuthority,
+        constraint = oracle.is_authorized_operator(&oracle_operator.key()) @ ErrorCode::UnauthorizedOperator,
     )]
     pub oracle: Account<'info, Oracle>,
 
     #[account(mut)]
-    pub authority: Signer<'info>,
+    pub oracle_operator: Signer<'info>,
 
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
@@ -106,11 +106,11 @@ pub struct UpdateToken<'info> {
     #[account(
         seeds = [b"oracle"],
         bump,
-        constraint = oracle.is_authorized_authority(&authority.key()) @ ErrorCode::UnauthorizedAuthority,
+        constraint = oracle.is_authorized_operator(&oracle_operator.key()) @ ErrorCode::UnauthorizedOperator,
     )]
     pub oracle: Account<'info, Oracle>,
 
-    pub authority: Signer<'info>,
+    pub oracle_operator: Signer<'info>,
 }
 
 // =============================================================================
@@ -250,7 +250,7 @@ pub struct JoinGame<'info> {
     #[account(
         mut,
         constraint = game.is_not_full() @ ErrorCode::GameFull,
-        constraint = game.can_join_private(authority.as_ref(), &oracle.authority) @ ErrorCode::PrivateGameAccessDenied,
+        constraint = game.can_join_private(oracle_operator.as_ref(), &oracle.operator) @ ErrorCode::PrivateGameAccessDenied,
         constraint = game.has_sufficient_balance_for_join(player_token_account.amount, player_balance.amount) @ ErrorCode::InsufficientBalance,
         constraint = game_token.is_enabled() @ ErrorCode::TokenNotEnabled,
     )]
@@ -264,7 +264,7 @@ pub struct JoinGame<'info> {
         bump,
     )]
     pub player_balance: Account<'info, PlayerBalance>,
-    pub authority: Option<Signer<'info>>,
+    pub oracle_operator: Option<Signer<'info>>,
     #[account(seeds = [b"game_token", game.token_mint.as_ref()], bump)]
     pub game_token: Account<'info, GameToken>,
     /// CHECK: PDA authority for game's token accounts
@@ -309,10 +309,10 @@ pub struct CompleteGame<'info> {
     #[account(
         seeds = [b"oracle"],
         bump,
-        constraint = oracle.is_authorized_authority(&authority.key()) @ ErrorCode::UnauthorizedAuthority,
+        constraint = oracle.is_authorized_operator(&oracle_operator.key()) @ ErrorCode::UnauthorizedOperator,
     )]
     pub oracle: Account<'info, Oracle>,
-    pub authority: Signer<'info>,
+    pub oracle_operator: Signer<'info>,
     // No more winner_participation account - winner verified via merkle proof
     /// CHECK: Validated by merkle proof verification
     #[account(mut)]
@@ -385,7 +385,7 @@ pub struct RollGame<'info> {
     #[account(
         mut,
         constraint = game.is_not_full() @ ErrorCode::GameFull,
-        constraint = game.can_join_private(authority.as_ref(), &oracle.authority) @ ErrorCode::PrivateGameAccessDenied,
+        constraint = game.can_join_private(oracle_operator.as_ref(), &oracle.operator) @ ErrorCode::PrivateGameAccessDenied,
         constraint = game.has_sufficient_balance_for_join(player_token_account.amount, player_balance.amount) @ ErrorCode::InsufficientBalance,
         constraint = game_token.is_enabled() @ ErrorCode::TokenNotEnabled,
         constraint = game.game_type == GameType::Snowball || game.game_type == GameType::Dumbflip || game.game_type == GameType::Dumbball || game.game_type == GameType::Dumbaway @ ErrorCode::InvalidGameType,
@@ -400,7 +400,7 @@ pub struct RollGame<'info> {
         bump,
     )]
     pub player_balance: Account<'info, PlayerBalance>,
-    pub authority: Option<Signer<'info>>,
+    pub oracle_operator: Option<Signer<'info>>,
     #[account(seeds = [b"game_token", game.token_mint.as_ref()], bump)]
     pub game_token: Account<'info, GameToken>,
     /// CHECK: PDA authority for game's token accounts
@@ -445,16 +445,16 @@ pub struct WithdrawTokenFee<'info> {
         mut,
         seeds = [b"oracle"],
         bump,
-        constraint = oracle.is_authorized_authority(&authority.key()) @ ErrorCode::UnauthorizedAuthority,
+        constraint = oracle.is_authorized_operator(&oracle_operator.key()) @ ErrorCode::UnauthorizedOperator,
     )]
     pub oracle: Account<'info, Oracle>,
-    pub authority: Signer<'info>,
+    pub oracle_operator: Signer<'info>,
     #[account(
         mut,
         associated_token::mint = token_mint,
-        associated_token::authority = authority,
+        associated_token::authority = oracle_operator,
     )]
-    pub authority_token_account: Account<'info, TokenAccount>,
+    pub oracle_operator_token_account: Account<'info, TokenAccount>,
     #[account(
         mut,
         associated_token::mint = token_mint,
