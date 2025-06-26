@@ -91,6 +91,10 @@ pub enum ErrorCode {
     #[msg("Subtree not found")]
     SubtreeNotFound = 1205,
 
+    /// Merkle tree structure error - unable to maintain proper binary tree
+    #[msg("Merkle tree structure error")]
+    MerkleTreeStructureError = 1206,
+
     // =========================================================================
     // CONFIGURATION ERRORS (1300-1399)
     // =========================================================================
