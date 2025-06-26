@@ -1,3 +1,4 @@
+use crate::error::ErrorCode;
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::hash::hash;
 use anchor_spl::token::{transfer, Transfer};
@@ -9,9 +10,9 @@ use anchor_spl::token::{transfer, Transfer};
 pub const ORACLE_SIZE: usize = 8 + 32 + 1 + 2 + 4 + 4 + 4;
 pub const GAME_TOKEN_SIZE: usize = 8 + 32 + 1 + 8 + 8 + 1;
 pub const PLAYER_BALANCE_SIZE: usize = 8 + 8 + 64 + 8 + 8; // amount + game_filter + filter_last_updated + longest_game_expiry
-// PlayerParticipation eliminated - using merkle trees!
-// Dynamic game size calculation - no longer fixed constant
-// Base size without dynamic arrays
+                                                           // PlayerParticipation eliminated - using merkle trees!
+                                                           // Dynamic game size calculation - no longer fixed constant
+                                                           // Base size without dynamic arrays
 pub const GAME_BASE_SIZE: usize = 8
     + 32  // creator
     + 1   // game_type
@@ -700,10 +701,7 @@ impl Game {
 
     /// Builds 2-player subtree from recent buffer
     fn build_subtree_from_recent(&self) -> Result<Subtree> {
-        require!(
-            self.recent_count == 2,
-            crate::error::ErrorCode::InvalidAmount
-        );
+        require!(self.recent_count == 2, ErrorCode::InvalidAmount);
 
         let start_index = self.players_count.saturating_sub(1);
         let leaves: Vec<[u8; 32]> = self.recent_players.iter().map(|leaf| leaf.hash).collect();
@@ -770,7 +768,7 @@ impl Game {
         } else {
             // No same-sized pairs found - this should not happen with proper binary tree management
             // If we reach here, it means the subtree storage is misconfigured
-            return Err(crate::error::ErrorCode::MerkleTreeStructureError.into());
+            return Err(ErrorCode::MerkleTreeStructureError.into());
         }
 
         Ok(())
@@ -917,7 +915,7 @@ impl Game {
         // 1. Find departing player's subtree
         let departing_subtree_idx = self
             .find_subtree_containing_player(departing_player_index)
-            .ok_or(crate::error::ErrorCode::SubtreeNotFound)?;
+            .ok_or(ErrorCode::SubtreeNotFound)?;
         let departing_subtree = &self.subtrees[departing_subtree_idx];
 
         // 2. Find smallest subtree (should contain last player)
@@ -927,7 +925,7 @@ impl Game {
         // 3. Verify departing player exists in their claimed subtree
         require!(
             proof.departing_subtree_original_root == departing_subtree.root_hash,
-            crate::error::ErrorCode::InvalidExclusionProof
+            ErrorCode::InvalidExclusionProof
         );
 
         let departing_player_entry =
@@ -942,20 +940,20 @@ impl Game {
                 departing_relative_index,
                 proof.departing_subtree_original_root
             ),
-            crate::error::ErrorCode::InvalidExclusionProof
+            ErrorCode::InvalidExclusionProof
         );
 
         // 4. Verify last player exists in smallest subtree
         require!(
             proof.last_subtree_original_root == smallest_subtree.root_hash,
-            crate::error::ErrorCode::InvalidExclusionProof
+            ErrorCode::InvalidExclusionProof
         );
 
         // 5. Verify smallest subtree reconstruction plan
         let remaining_count = proof.remaining_players_in_smallest.len();
         require!(
             remaining_count == (smallest_subtree.size - 1) as usize,
-            crate::error::ErrorCode::MalformedSubtreeProof
+            ErrorCode::MalformedSubtreeProof
         );
 
         // 6. Verify power-of-2 reconstruction logic
@@ -963,21 +961,21 @@ impl Game {
             // Subtree becomes empty
             require!(
                 proof.new_power_of_2_root.is_none(),
-                crate::error::ErrorCode::InvalidExclusionProof
+                ErrorCode::InvalidExclusionProof
             );
             require!(
                 proof.players_to_recent.is_empty(),
-                crate::error::ErrorCode::InvalidExclusionProof
+                ErrorCode::InvalidExclusionProof
             );
         } else if remaining_count.is_power_of_two() {
             // Perfect power-of-2, all players stay in subtree
             require!(
                 proof.new_power_of_2_root.is_some(),
-                crate::error::ErrorCode::InvalidExclusionProof
+                ErrorCode::InvalidExclusionProof
             );
             require!(
                 proof.players_to_recent.is_empty(),
-                crate::error::ErrorCode::InvalidExclusionProof
+                ErrorCode::InvalidExclusionProof
             );
         } else {
             // Split: some to subtree, some to recent_players
@@ -991,18 +989,18 @@ impl Game {
 
             require!(
                 proof.players_to_recent.len() == recent_players,
-                crate::error::ErrorCode::MalformedSubtreeProof
+                ErrorCode::MalformedSubtreeProof
             );
 
             if subtree_players > 0 {
                 require!(
                     proof.new_power_of_2_root.is_some(),
-                    crate::error::ErrorCode::InvalidExclusionProof
+                    ErrorCode::InvalidExclusionProof
                 );
             } else {
                 require!(
                     proof.new_power_of_2_root.is_none(),
-                    crate::error::ErrorCode::InvalidExclusionProof
+                    ErrorCode::InvalidExclusionProof
                 );
             }
         }
@@ -1019,7 +1017,7 @@ impl Game {
         // 1. Find subtrees
         let departing_subtree_idx = self
             .find_subtree_containing_player(departing_player_index)
-            .ok_or(crate::error::ErrorCode::SubtreeNotFound)?;
+            .ok_or(ErrorCode::SubtreeNotFound)?;
         let smallest_subtree_idx = self.find_smallest_subtree();
 
         // 2. Update departing player's subtree with swapped-in last player

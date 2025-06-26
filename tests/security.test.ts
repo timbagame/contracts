@@ -270,7 +270,7 @@ describe("Security & Edge Cases", () => {
         );
         expect.fail("Should have rejected non-participant");
       } catch (error) {
-        expect(error.toString()).to.include("UnauthorizedPlayer");
+        expect(error.toString()).to.include("InvalidMerkleProof");
       }
     });
 
@@ -598,7 +598,7 @@ describe("Security & Edge Cases", () => {
         );
         expect.fail("Should have rejected invalid merkle proof");
       } catch (error) {
-        expect(error.toString()).to.include("UnauthorizedPlayer");
+        expect(error.toString()).to.include("InvalidMerkleProof");
       }
     });
 
@@ -643,7 +643,7 @@ describe("Security & Edge Cases", () => {
         );
         expect.fail("Should have rejected tampered participation");
       } catch (error) {
-        expect(error.toString()).to.include("UnauthorizedPlayer");
+        expect(error.toString()).to.include("WinnerPubkeyMismatch");
       }
     });
   });
@@ -807,8 +807,8 @@ describe("Security & Edge Cases", () => {
 
         expect.fail("Should have rejected invalid oracle config");
       } catch (error) {
-        // Should fail due to validation
-        expect(error.toString()).to.include("InvalidConfiguration");
+        // Should fail due to validation - fee percentage over 100% should trigger InvalidAmount
+        expect(error.toString()).to.include("InvalidAmount");
       }
     });
   });

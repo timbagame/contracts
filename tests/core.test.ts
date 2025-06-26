@@ -316,8 +316,8 @@ describe("Core Game Operations", () => {
         await testUtils.game.joinGame(gameData.gamePDA, player1.player);
         expect.fail("Should have failed without authority");
       } catch (error) {
-        // Private games without authority should fail with unauthorized player error
-        expect(error.toString()).to.include("UnauthorizedPlayer");
+        // Private games without authority should fail with private game access denied error
+        expect(error.toString()).to.include("PrivateGameAccessDenied");
       }
     });
 

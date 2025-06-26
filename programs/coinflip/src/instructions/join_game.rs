@@ -1,3 +1,4 @@
+use crate::error::ErrorCode;
 use crate::events::PlayerJoined;
 use anchor_lang::prelude::*;
 
@@ -14,15 +15,12 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
     // VALIDATION
     // ===============================
 
-    require!(
-        !game.is_expired(current_time),
-        crate::error::ErrorCode::GameExpired
-    );
+    require!(!game.is_expired(current_time), ErrorCode::GameExpired);
 
     // Check for double join using bloom filter
     require!(
         player_balance.can_join_game(&game_key, game.created_at),
-        crate::error::ErrorCode::AlreadyJoined
+        ErrorCode::AlreadyJoined
     );
 
     // ===============================
