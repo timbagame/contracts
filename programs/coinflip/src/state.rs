@@ -545,6 +545,35 @@ impl Game {
         current_hash == self.merkle_root
     }
 
+    /// Verifies player participation - checks both subtrees and recent players
+    pub fn verify_player_participation(
+        &self,
+        leaf: [u8; 32],
+        proof: &[[u8; 32]],
+        player_index: u32,
+    ) -> bool {
+        // Calculate how many players are in committed subtrees
+        let committed_players = self.players_count - self.recent_count as u32;
+
+        if player_index >= committed_players {
+            // Player is in recent_players buffer - verify directly
+            self.verify_recent_player(leaf, player_index - committed_players)
+        } else {
+            // Player is in committed subtrees - use standard merkle proof
+            self.verify_merkle_proof(leaf, proof, player_index)
+        }
+    }
+
+    /// Verifies a recent player by direct comparison
+    fn verify_recent_player(&self, leaf: [u8; 32], recent_index: u32) -> bool {
+        if recent_index >= self.recent_count as u32 {
+            return false; // Index out of bounds
+        }
+
+        // Direct comparison with stored recent player hash
+        self.recent_players[recent_index as usize].hash == leaf
+    }
+
     /// Adds a player to the merkle tree using buffer-based aggregation
     pub fn add_player_to_merkle_tree(&mut self, player: Pubkey) -> Result<()> {
         let participation = Game::create_participation_entry(player, self.players_count);
@@ -588,7 +617,7 @@ impl Game {
     }
 
     /// Merges new subtree with existing ones using same-sized merging for optimal tree balance
-    fn merge_subtree(&mut self, mut new: Subtree) -> Result<()> {
+    fn merge_subtree(&mut self, new: Subtree) -> Result<()> {
         // If we have space, just add the new subtree
         if (self.subtrees.len() as u8) < self.subtrees.capacity() as u8 {
             self.subtrees.push(new);
@@ -681,7 +710,7 @@ impl Game {
         smallest_idx
     }
 
-    /// Updates global Merkle root from all components
+    /// Updates global Merkle root from subtrees only, excluding recent players
     fn update_merkle_root(&mut self) -> Result<()> {
         let mut hashes = Vec::new();
 
@@ -690,11 +719,10 @@ impl Game {
         subtrees.sort_by_key(|s| s.start_index);
         hashes.extend(subtrees.iter().map(|s| s.root_hash));
 
-        // Add recent player leaves
-        hashes.extend(self.recent_players.iter().map(|leaf| leaf.hash));
+        // Recent players are excluded from merkle root - they are verified separately
 
         self.merkle_root = if hashes.is_empty() {
-            [0; 32] // Empty tree
+            [0; 32] // Empty tree when no subtrees exist
         } else {
             Self::compute_merkle_root(&hashes)
         };
