@@ -180,6 +180,13 @@ describe("Security & Edge Cases", () => {
       const [creator, player1] = players;
       const fakeOperator = anchor.web3.Keypair.generate();
 
+      // Fund fake operator with SOL for transaction fees
+      const airdropSignature = await env.provider.connection.requestAirdrop(
+        fakeOperator.publicKey,
+        anchor.web3.LAMPORTS_PER_SOL
+      );
+      await env.provider.connection.confirmTransaction(airdropSignature);
+
       const gameConfig: GameConfig = {
         gameType: { coinflip: {} },
         amount: new anchor.BN(1_000_000),
@@ -220,7 +227,8 @@ describe("Security & Edge Cases", () => {
           creator.player.publicKey,
           fakeOperator.publicKey, // Wrong operator
           winnerParticipation,
-          []
+          [],
+          fakeOperator // Pass the keypair for signing
         );
         expect.fail("Should have rejected fake operator");
       } catch (error) {
@@ -545,27 +553,28 @@ describe("Security & Edge Cases", () => {
     it("should reject invalid merkle proofs", async () => {
       const { oracle, mint, players } = await testUtils.quickSetup();
       const gameData = testUtils.game.generateGamePDA();
-      const [creator, player1, player2] = players;
 
       const gameConfig: GameConfig = {
         gameType: { coinflip: {} },
         amount: new anchor.BN(1_000_000),
-        maxPlayers: 3,
-        minPlayers: 3,
+        maxPlayers: 5, // Use all available players to trigger merkle tree structure
+        minPlayers: 5,
         timeout: 3600,
         isPrivate: false,
       };
 
-      // Create game with 3 players
+      // Create game with all 5 players to trigger merkle tree usage
       await testUtils.game.initializeGame(
         gameData,
         gameConfig,
-        creator.player,
+        players[0].player,
         mint.mint
       );
-      await testUtils.game.joinGame(gameData.gamePDA, creator.player);
-      await testUtils.game.joinGame(gameData.gamePDA, player1.player);
-      await testUtils.game.joinGame(gameData.gamePDA, player2.player);
+      
+      // Join all players
+      for (let i = 0; i < 5; i++) {
+        await testUtils.game.joinGame(gameData.gamePDA, players[i].player);
+      }
 
       // Calculate correct winner
       const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
@@ -574,7 +583,7 @@ describe("Security & Edge Cases", () => {
         gameData.secretKey,
         Number(gameAccount.lastSlot)
       );
-      const winner = getWinnerFromPlayers([creator, player1, player2], winnerIndex);
+      const winner = getWinnerFromPlayers(players.slice(0, 5), winnerIndex);
 
       const winnerParticipation = {
         player: winner.player.publicKey,
@@ -591,7 +600,7 @@ describe("Security & Edge Cases", () => {
         await testUtils.game.completeGame(
           gameData,
           winner.player.publicKey,
-          creator.player.publicKey,
+          players[0].player.publicKey,
           oracle.operator,
           winnerParticipation,
           invalidProof
@@ -628,14 +637,14 @@ describe("Security & Edge Cases", () => {
 
       // Create tampered participation entry (wrong player for index)
       const tamperedParticipation = {
-        player: creator.player.publicKey, // Wrong player
-        playerIndex: 1, // Should be player1's index
+        player: player1.player.publicKey, // This player is at index 1
+        playerIndex: 1, // Correct index
       };
 
       try {
         await testUtils.game.completeGame(
           gameData,
-          creator.player.publicKey,
+          creator.player.publicKey, // Wrong winner account - should be player1
           creator.player.publicKey,
           oracle.operator,
           tamperedParticipation,
@@ -760,6 +769,13 @@ describe("Security & Edge Cases", () => {
     it("should prevent unauthorized oracle updates", async () => {
       const fakeOperator = anchor.web3.Keypair.generate();
 
+      // Fund fake operator with SOL for transaction fees
+      const airdropSignature = await env.provider.connection.requestAirdrop(
+        fakeOperator.publicKey,
+        anchor.web3.LAMPORTS_PER_SOL
+      );
+      await env.provider.connection.confirmTransaction(airdropSignature);
+
       const newConfig = {
         feePercentage: 10, // High fee
         oracleBufferTime: 1,
@@ -803,6 +819,7 @@ describe("Security & Edge Cases", () => {
             oldOracleOperator: oracle.operator,
             newOracleOperator: oracle.operator,
           })
+          .signers([oracle.operatorKeypair])
           .rpc();
 
         expect.fail("Should have rejected invalid oracle config");
