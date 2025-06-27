@@ -105,7 +105,7 @@ export class TestEnvironment {
       );
     }
 
-    console.log("✅ Test environment initialized");
+    // Test environment initialized
   }
 
   /**
@@ -160,7 +160,7 @@ export class OracleManager {
       // Check if oracle already exists and is properly initialized
       try {
         const existingOracle = await this.program.account.oracle.fetch(oraclePDA);
-        console.log("✅ Oracle already initialized");
+        // Oracle already initialized
         return {
           oraclePDA,
           operator: existingOracle.operator,
@@ -198,7 +198,7 @@ export class OracleManager {
         .signers([operatorKeypair])
         .rpc();
 
-      console.log("✅ Oracle initialized");
+      // Oracle initialized
     } catch (e) {
       console.error("Failed to initialize oracle:", e);
       throw e;
