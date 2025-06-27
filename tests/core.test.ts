@@ -294,7 +294,7 @@ describe("Core Game Operations", () => {
     });
 
     it("should fail to join private game without operator", async () => {
-      const { oracle, mint, players } = await testUtils.quickSetup();
+      const { mint, players } = await testUtils.quickSetup();
       const gameData = testUtils.game.generateGamePDA();
       const [creator, player1] = players;
 
@@ -324,7 +324,7 @@ describe("Core Game Operations", () => {
     });
 
     it("should fail to join private game with wrong operator", async () => {
-      const { oracle, mint, players } = await testUtils.quickSetup();
+      const { mint, players } = await testUtils.quickSetup();
       const gameData = testUtils.game.generateGamePDA();
       const [creator, player1] = players;
       const fakeOperator = anchor.web3.Keypair.generate();
