@@ -570,7 +570,7 @@ describe("Security & Edge Cases", () => {
         players[0].player,
         mint.mint
       );
-      
+
       // Join all players
       for (let i = 0; i < 5; i++) {
         await testUtils.game.joinGame(gameData.gamePDA, players[i].player);
