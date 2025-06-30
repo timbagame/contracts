@@ -74,12 +74,20 @@ The codebase implements several security patterns that must be preserved:
 - **State Management**: Account states are designed for minimal rent and optimal serialization
 
 ### Testing Architecture
-Tests in `tests/coinflip.ts` include comprehensive scenarios for:
-- Game lifecycle with multiple players
+The test suite has been completely revamped with modular organization:
+
+- **`tests/core.test.ts`** - Basic game operations and lifecycle testing
+- **`tests/security.test.ts`** - Security validation, edge cases, and exploit prevention  
+- **`tests/game-types.test.ts`** - Different game variants (Coinflip, Giveaway, Snowball)
+- **`tests/advanced.test.ts`** - Complex functionality, merkle trees, and performance tests
+- **`tests/test-helpers.ts`** - Shared utilities (TestUtils, TestEnvironment, winner calculation)
+
+Key features:
+- All tests use `anchor test` command - individual test file execution is not supported
+- Comprehensive scenarios for game lifecycle with multiple players
 - Security measures (replay attack prevention, overflow handling)
-- Player participation edge cases
 - Winner calculation using the same algorithm as the contract
-- The JavaScript winner calculation mirrors the Rust implementation exactly for validation
+- The JavaScript winner calculation in test-helpers.ts mirrors the Rust implementation exactly
 
 ### Development Environment
 The project uses devcontainer configuration for consistent development setup with pre-installed Solana tools, Anchor, and dependencies. Manual setup requires Rust, Solana CLI, Anchor, Node.js, and Yarn.
