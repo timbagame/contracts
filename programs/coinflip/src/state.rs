@@ -853,15 +853,15 @@ impl Game {
 
     /// Initialize merkle system for new game with dynamic allocation based on max_players
     pub fn initialize_merkle_system(&mut self, max_players: u32) -> Result<()> {
-        // Calculate required capacity
+        // Calculate required subtrees and cache the value
         let required_subtrees = Self::calculate_required_subtrees(max_players);
 
-        // Initialize dynamic vectors with exact capacity needed
+        // Initialize dynamic vectors and cached values
         self.subtree_count = 0;
         self.max_subtrees = required_subtrees as u8;
-        self.subtrees = Vec::with_capacity(required_subtrees);
+        self.subtrees = Vec::new();
         self.recent_count = 0;
-        self.recent_players = Vec::with_capacity(2); // Always 2 for optimized buffer
+        self.recent_players = Vec::new();
         self.merkle_root = [0; 32];
 
         Ok(())

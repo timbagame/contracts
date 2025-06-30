@@ -635,19 +635,33 @@ describe("Security & Edge Cases", () => {
       await testUtils.game.joinGame(gameData.gamePDA, creator.player);
       await testUtils.game.joinGame(gameData.gamePDA, player1.player);
 
-      // Create tampered participation entry (wrong player for index)
-      const tamperedParticipation = {
-        player: player1.player.publicKey, // This player is at index 1
-        playerIndex: 1, // Correct index
+      // Calculate actual winner to make test deterministic
+      const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+      const winnerIndex = calculateWinnerIndex(
+        gameAccount.playersCount,
+        gameData.secretKey,
+        Number(gameAccount.lastSlot)
+      );
+      const actualWinner = getWinnerFromPlayers([creator, player1], winnerIndex);
+
+      // Create correct participation entry but wrong winner account
+      const correctParticipation = {
+        player: actualWinner.player.publicKey, // Correct player
+        playerIndex: winnerIndex, // Correct index
       };
+
+      // Use the OTHER player's account as winner to trigger WinnerPubkeyMismatch
+      const wrongWinnerAccount = actualWinner.player.publicKey.equals(creator.player.publicKey) 
+        ? player1.player.publicKey 
+        : creator.player.publicKey;
 
       try {
         await testUtils.game.completeGame(
           gameData,
-          creator.player.publicKey, // Wrong winner account - should be player1
+          wrongWinnerAccount, // Wrong winner account
           creator.player.publicKey,
           oracle.operator,
-          tamperedParticipation,
+          correctParticipation,
           []
         );
         expect.fail("Should have rejected tampered participation");
