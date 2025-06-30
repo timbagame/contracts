@@ -174,9 +174,9 @@ anchor test tests/advanced.test.ts                     # Advanced features
 
 ### From `merkle-helpers.ts`:
 
-- Integrate useful functions into `test-helpers.ts`
-- Remove merkle-specific code if not needed
-- Keep winner calculation and core utilities
+- ✅ Removed unused merkle-helpers.ts file
+- ✅ Winner calculation and core utilities already in test-helpers.ts
+- ✅ Merkle-specific code not needed for current test suite
 
 ## Success Criteria
 
