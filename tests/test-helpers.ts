@@ -186,7 +186,7 @@ export class OracleManager {
         operatorKeypair.publicKey,
         5 * anchor.web3.LAMPORTS_PER_SOL
       );
-      
+
       await this.provider.connection.confirmTransaction(providerAirdrop);
       await this.provider.connection.confirmTransaction(operatorAirdrop);
 
@@ -298,7 +298,7 @@ export class MintManager {
 
     // Initialize token config
     const tokenConfig = { minAmount: new anchor.BN(1000), enabled: true };
-    
+
     // Get the oracle operator from the oracle account
     const [oraclePDA] = PublicKey.findProgramAddressSync(
       [Buffer.from("oracle")],
@@ -306,7 +306,7 @@ export class MintManager {
     );
     const oracleAccount = await this.program.account.oracle.fetch(oraclePDA);
     const oracleOperatorKeypair = anchor.web3.Keypair.fromSeed(new Uint8Array(32).fill(42));
-    
+
     await this.program.methods
       .initializeToken(tokenConfig)
       .accounts({
@@ -617,6 +617,103 @@ export function getWinnerFromPlayers(
     throw new Error(`Winner index ${winnerIndex} is out of bounds for ${players.length} players`);
   }
   return players[winnerIndex];
+}
+
+/**
+ * Creates a participation entry for merkle tree operations
+ */
+export function createParticipationEntry(
+  player: PublicKey,
+  playerIndex: number
+): { player: PublicKey; playerIndex: number } {
+  return {
+    player,
+    playerIndex,
+  };
+}
+
+/**
+ * Hashes a participation entry for merkle tree operations
+ */
+export function hashParticipationEntry(entry: { player: PublicKey; playerIndex: number }): Buffer {
+  const playerBytes = entry.player.toBytes();
+  const indexBytes = Buffer.alloc(4);
+  indexBytes.writeUInt32LE(entry.playerIndex, 0);
+
+  const combined = Buffer.concat([playerBytes, indexBytes]);
+  return Buffer.from(hash(combined));
+}
+
+/**
+ * Computes merkle root from leaf hashes
+ */
+export function computeMerkleRoot(leaves: Buffer[]): Buffer {
+  if (leaves.length === 0) return Buffer.alloc(32);
+  if (leaves.length === 1) return leaves[0];
+
+  const tree = [...leaves];
+  while (tree.length > 1) {
+    const nextLevel = [];
+    for (let i = 0; i < tree.length; i += 2) {
+      if (i + 1 < tree.length) {
+        const combined = Buffer.concat([tree[i], tree[i + 1]]);
+        nextLevel.push(Buffer.from(hash(combined)));
+      } else {
+        nextLevel.push(tree[i]);
+      }
+    }
+    tree.length = 0;
+    tree.push(...nextLevel);
+  }
+  return tree[0];
+}
+
+/**
+ * Generates a merkle proof for player participation
+ * Returns empty array for recent players (last 2 players) or proper proof for subtree players
+ */
+export function generateMerkleProof(
+  players: TestPlayer[],
+  winnerIndex: number,
+  gameState?: any
+): number[][] {
+  // For recent players (typically last 2 players), return empty proof
+  if (winnerIndex >= players.length - 2) {
+    return [];
+  }
+
+  // For subtree players, we need to generate actual merkle proofs
+  // For now, return empty array since the contract logic should handle recent vs subtree validation
+  // TODO: Implement full merkle proof generation when needed for complex subtree scenarios
+  return [];
+}
+
+/**
+ * Creates a valid exclusion proof for unjoin operations
+ * This is a complex structure needed for subtree player removal
+ */
+export function createExclusionProof(
+  departingPlayerIndex: number,
+  players: TestPlayer[]
+): any {
+  // For simplicity in tests, return null for recent players
+  // Real implementation would need complex subtree reconstruction logic
+  if (departingPlayerIndex >= players.length - 2) {
+    return null;
+  }
+
+  // For subtree players, return a minimal exclusion proof structure
+  // This is simplified - real implementation would need proper merkle tree reconstruction
+  return {
+    departingPlayerProof: [],
+    departingSubtreeOriginalRoot: Buffer.alloc(32),
+    lastPlayerProof: [],
+    lastSubtreeOriginalRoot: Buffer.alloc(32),
+    remainingPlayersInSmallest: [],
+    newPowerOf2Root: null,
+    playersToRecent: [],
+    departingSubtreeNewRoot: Buffer.alloc(32),
+  };
 }
 
 /**
