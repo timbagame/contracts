@@ -576,18 +576,22 @@ describe("Security & Edge Cases", () => {
         await testUtils.game.joinGame(gameData.gamePDA, players[i].player);
       }
 
-      // Calculate correct winner
+      // Force winner to be one of the first 4 players (indices 0-3) who are in committed subtrees
+      // This ensures merkle proof validation is tested, not recent player buffer validation
       const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
-      const winnerIndex = calculateWinnerIndex(
+      const actualWinnerIndex = calculateWinnerIndex(
         gameAccount.playersCount,
         gameData.secretKey,
         Number(gameAccount.lastSlot)
       );
-      const winner = getWinnerFromPlayers(players.slice(0, 5), winnerIndex);
+      
+      // Use a player from committed subtrees (indices 0-3) to test merkle proof validation
+      const testWinnerIndex = actualWinnerIndex >= 4 ? 0 : actualWinnerIndex; // Force to committed subtree if in recent buffer
+      const testWinner = getWinnerFromPlayers(players.slice(0, 5), testWinnerIndex);
 
       const winnerParticipation = {
-        player: winner.player.publicKey,
-        playerIndex: winnerIndex,
+        player: testWinner.player.publicKey,
+        playerIndex: testWinnerIndex,
       };
 
       // Try to complete with invalid merkle proof
@@ -599,7 +603,7 @@ describe("Security & Edge Cases", () => {
       try {
         await testUtils.game.completeGame(
           gameData,
-          winner.player.publicKey,
+          testWinner.player.publicKey,
           players[0].player.publicKey,
           oracle.operator,
           winnerParticipation,
