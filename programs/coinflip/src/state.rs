@@ -25,9 +25,10 @@ pub const GAME_BASE_SIZE: usize = 8
     + 8   // total_amount
     + 32  // merkle_root
     + 1   // subtree_count
+    + 1   // max_subtrees
     + 4   // subtrees length (Vec<T> serialization)
     + 1   // recent_count
-    + 4; // recent_players length (Vec<T> serialization) = 154 bytes base
+    + 4; // recent_players length (Vec<T> serialization) = 155 bytes base
 
 // =============================================================================
 // GAME TYPES
@@ -440,6 +441,8 @@ pub struct Game {
     pub merkle_root: [u8; 32],
     /// Number of active subtrees (dynamic based on max_players)
     pub subtree_count: u8,
+    /// Maximum allowed subtrees (cached from calculate_required_subtrees)
+    pub max_subtrees: u8,
     /// Dynamic subtree storage - size calculated based on max_players
     pub subtrees: Vec<Subtree>,
     /// Number of players in recent buffer (0-2)
@@ -699,7 +702,10 @@ impl Game {
     fn build_subtree_from_recent(&self) -> Result<Subtree> {
         require!(self.recent_count == 2, ErrorCode::InvalidAmount);
 
-        let start_index = self.players_count.saturating_sub(1);
+        // Start index is where the first player in recent buffer is located
+        // Since recent buffer contains the last recent_count players that joined, 
+        // and players_count hasn't been incremented for the current player yet:
+        let start_index = self.players_count - self.recent_count as u32;
         let leaves: Vec<[u8; 32]> = self.recent_players.iter().map(|leaf| leaf.hash).collect();
 
         Ok(Subtree {
@@ -712,7 +718,7 @@ impl Game {
     /// Merges new subtree with existing ones using same-sized merging for optimal tree balance
     fn merge_subtree(&mut self, new: Subtree) -> Result<()> {
         // If we have space, just add the new subtree
-        if (self.subtrees.len() as u8) < self.subtrees.capacity() as u8 {
+        if self.subtrees.len() < self.max_subtrees as usize {
             self.subtrees.push(new);
             self.subtree_count += 1;
             return Ok(());
@@ -852,6 +858,7 @@ impl Game {
 
         // Initialize dynamic vectors with exact capacity needed
         self.subtree_count = 0;
+        self.max_subtrees = required_subtrees as u8;
         self.subtrees = Vec::with_capacity(required_subtrees);
         self.recent_count = 0;
         self.recent_players = Vec::with_capacity(2); // Always 2 for optimized buffer
