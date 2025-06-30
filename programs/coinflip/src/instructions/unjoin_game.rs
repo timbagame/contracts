@@ -10,7 +10,6 @@ pub fn handler(
 ) -> Result<()> {
     let game = &mut ctx.accounts.game;
     let player_balance = &mut ctx.accounts.player_balance;
-    let oracle = &ctx.accounts.oracle;
     let clock = Clock::get()?;
     let current_time = clock.unix_timestamp as u64;
     let player_key = ctx.accounts.player.key();
@@ -18,11 +17,6 @@ pub fn handler(
     // ===============================
     // VALIDATION
     // ===============================
-
-    require!(
-        !game.waiting_for_oracle(oracle.oracle_buffer_time as u64, current_time),
-        ErrorCode::GameWaitingForOracle
-    );
 
     require!(game.players_count > 0, ErrorCode::InvalidPlayersCount);
 

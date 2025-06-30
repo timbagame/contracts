@@ -350,10 +350,12 @@ describe("Game Types", () => {
         mint.mint
       );
 
-      // Players can join multiple times (roll functionality)
+      // Players join first (one entry each)
       await testUtils.game.joinGame(gameData.gamePDA, creator.player);
       await testUtils.game.joinGame(gameData.gamePDA, player1.player);
-      await testUtils.game.joinGame(gameData.gamePDA, creator.player); // Roll again
+
+      // Then creator rolls for additional entry
+      await testUtils.game.rollGame(gameData.gamePDA, creator.player);
 
       // Verify accumulating pot
       const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
@@ -391,46 +393,66 @@ describe("Game Types", () => {
       expect(completedGame.totalAmount.toNumber()).to.equal(0);
     });
 
-    it("should prevent unjoin in snowball games", async () => {
-      const { mint, players } = await testUtils.quickSetup();
+    it("should handle multi-player snowball games", async () => {
+      const { oracle, mint, players } = await testUtils.quickSetup();
       const gameData = testUtils.game.generateGamePDA();
-      const creator = players[0];
 
       const gameConfig: GameConfig = {
         gameType: { snowball: {} },
         amount: new anchor.BN(1_000_000),
-        maxPlayers: 5,
-        minPlayers: 2, // Use consistent minimum for snowball games
+        maxPlayers: 3,
+        minPlayers: 2,
         timeout: 3600,
         isPrivate: false,
       };
 
-      // Initialize and join snowball game
+      // Initialize snowball game
       await testUtils.game.initializeGame(
         gameData,
         gameConfig,
-        creator.player,
+        players[0].player,
         mint.mint
       );
 
-      await testUtils.game.joinGame(gameData.gamePDA, creator.player);
+      // Multiple players join
+      await testUtils.game.joinGame(gameData.gamePDA, players[0].player);
+      await testUtils.game.joinGame(gameData.gamePDA, players[1].player);
+      await testUtils.game.joinGame(gameData.gamePDA, players[2].player);
 
-      // Try to unjoin (should fail for snowball games)
-      try {
-        await env.program.methods
-          .unjoinGame(0, null) // playerIndex: 0, exclusionProof: null
-          .accounts({
-            game: gameData.gamePDA,
-            player: creator.player.publicKey,
-          })
-          .signers([creator.player])
-          .rpc();
+      // Verify snowball accumulation
+      const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+      expect(gameAccount.playersCount).to.equal(3);
+      expect(gameAccount.totalAmount.toNumber()).to.equal(3_000_000);
 
-        expect.fail("Should have prevented unjoin in snowball game");
-      } catch (error) {
-        // Snowball games should prevent unjoin with specific error code
-        expect(error.toString()).to.include("SnowballUnjoinNotAllowed");
-      }
+      // Complete the snowball game
+      const winnerIndex = calculateWinnerIndex(
+        gameAccount.playersCount,
+        gameData.secretKey,
+        Number(gameAccount.lastSlot),
+        { snowball: {} },
+        gameAccount.totalAmount.toNumber(),
+        gameAccount.ticketAmount.toNumber()
+      );
+
+      const winner = getWinnerFromPlayers(players.slice(0, 3), winnerIndex);
+
+      const winnerParticipation = {
+        player: winner.player.publicKey,
+        playerIndex: winnerIndex,
+      };
+
+      await testUtils.game.completeGame(
+        gameData,
+        winner.player.publicKey,
+        players[0].player.publicKey,
+        oracle.operator,
+        winnerParticipation,
+        []
+      );
+
+      // Verify completion
+      const completedGame = await env.program.account.game.fetch(gameData.gamePDA);
+      expect(completedGame.totalAmount.toNumber()).to.equal(0);
     });
   });
 
@@ -540,8 +562,12 @@ describe("Game Types", () => {
         mint.mint
       );
 
-      // Creator joins normally
-      await testUtils.game.joinGame(gameData.gamePDA, creator.player);
+      // Creator also needs oracle operator approval for private games
+      await testUtils.game.joinGame(
+        gameData.gamePDA,
+        creator.player,
+        oracle.operatorKeypair
+      );
 
       // Other players need oracle operator approval
       await testUtils.game.joinGame(
@@ -557,7 +583,7 @@ describe("Game Types", () => {
     });
 
     it("should reject joining private games without operator approval", async () => {
-      const { mint, players } = await testUtils.quickSetup();
+      const { oracle, mint, players } = await testUtils.quickSetup();
       const gameData = testUtils.game.generateGamePDA();
       const [creator, player1] = players;
 
@@ -578,14 +604,19 @@ describe("Game Types", () => {
         mint.mint
       );
 
-      await testUtils.game.joinGame(gameData.gamePDA, creator.player);
+      // Creator joins with oracle operator approval (private games require it for everyone)
+      await testUtils.game.joinGame(
+        gameData.gamePDA,
+        creator.player,
+        oracle.operatorKeypair
+      );
 
       // Try to join without oracle operator approval
       try {
         await testUtils.game.joinGame(gameData.gamePDA, player1.player);
         expect.fail("Should have required oracle operator for private game");
       } catch (error) {
-        expect(error.toString()).to.include("MissingOracleOperator");
+        expect(error.toString()).to.include("PrivateGameAccessDenied");
       }
     });
   });

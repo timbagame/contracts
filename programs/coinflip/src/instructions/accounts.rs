@@ -255,7 +255,6 @@ pub struct JoinGame<'info> {
         constraint = game_token.is_enabled() @ ErrorCode::TokenNotEnabled,
     )]
     pub game: Account<'info, Game>,
-    // No more player_participation account - using merkle trees!
     #[account(mut)]
     pub player: Signer<'info>,
     #[account(
@@ -340,10 +339,9 @@ pub struct CompleteGame<'info> {
 pub struct UnjoinGame<'info> {
     #[account(
         mut,
-        constraint = game.game_type != GameType::Snowball && game.game_type != GameType::Dumbball @ ErrorCode::SnowballUnjoinNotAllowed,
+        constraint = game.is_buffer_expired(oracle.oracle_buffer_time as u64, Clock::get()?.unix_timestamp as u64) @ ErrorCode::OracleBufferNotExpired,
     )]
     pub game: Account<'info, Game>,
-    // No more PlayerParticipation accounts - using merkle trees!
     #[account(mut)]
     pub player: Signer<'info>,
     #[account(
@@ -352,7 +350,6 @@ pub struct UnjoinGame<'info> {
         bump,
     )]
     pub player_balance: Account<'info, PlayerBalance>,
-    // Last player management handled via merkle tree reconstruction
     #[account(seeds = [b"oracle"], bump)]
     pub oracle: Account<'info, Oracle>,
     pub system_program: Program<'info, System>,
@@ -391,7 +388,6 @@ pub struct RollGame<'info> {
         constraint = game.game_type == GameType::Snowball || game.game_type == GameType::Dumbflip || game.game_type == GameType::Dumbball || game.game_type == GameType::Dumbaway @ ErrorCode::InvalidGameType,
     )]
     pub game: Account<'info, Game>,
-    // No more PlayerParticipation accounts - using merkle trees!
     #[account(mut)]
     pub player: Signer<'info>,
     #[account(
