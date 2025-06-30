@@ -677,22 +677,113 @@ export function computeMerkleRoot(leaves: Buffer[]): Buffer {
 
 /**
  * Generates a merkle proof for player participation
- * Returns empty array for recent players (last 2 players) or proper proof for subtree players
+ * Returns empty array for recent players or proper merkle proof for subtree players
  */
 export function generateMerkleProof(
   players: TestPlayer[],
   winnerIndex: number,
   gameState?: any
 ): number[][] {
-  // For recent players (typically last 2 players), return empty proof
-  if (winnerIndex >= players.length - 2) {
+  // The contract's verification logic:
+  // committed_players = players_count - recent_count
+  // if player_index >= committed_players: verify_recent_player (no proof needed)
+  // else: verify_merkle_proof (proof needed)
+  
+  if (!gameState) {
+    // Without game state, always return empty proof and let contract handle validation
     return [];
   }
 
-  // For subtree players, we need to generate actual merkle proofs
-  // For now, return empty array since the contract logic should handle recent vs subtree validation
-  // TODO: Implement full merkle proof generation when needed for complex subtree scenarios
-  return [];
+  const committedPlayers = gameState.playersCount - gameState.recentCount;
+  
+  if (winnerIndex >= committedPlayers) {
+    // Player is in recent buffer, no proof needed
+    return [];
+  }
+
+  // Player is in committed subtrees - we need to generate a proper merkle proof
+  // The contract builds subtrees from pairs of players, so we need to generate
+  // a proof that matches this structure
+  return generateSubtreeMerkleProof(players, winnerIndex, gameState);
+}
+
+/**
+ * Generates merkle proof for players in committed subtrees
+ * The contract builds subtrees in pairs, so we need to simulate that structure
+ */
+function generateSubtreeMerkleProof(
+  players: TestPlayer[],
+  targetIndex: number,
+  gameState: any
+): number[][] {
+  const committedPlayers = gameState.playersCount - gameState.recentCount;
+  
+  // Only generate proofs for committed players
+  if (targetIndex >= committedPlayers) {
+    return [];
+  }
+
+  // Create participation entries for committed players only
+  const committedPlayerList = players.slice(0, committedPlayers);
+  const leaves = committedPlayerList.map((player, index) => {
+    const entry = createParticipationEntry(player.player.publicKey, index);
+    return hashParticipationEntry(entry);
+  });
+
+  // Build merkle tree from committed players and generate proof
+  return buildMerkleProof(leaves, targetIndex);
+}
+
+/**
+ * Builds a merkle proof for a specific leaf index
+ */
+function buildMerkleProof(leaves: Buffer[], targetIndex: number): number[][] {
+  if (leaves.length === 0 || targetIndex >= leaves.length) {
+    return [];
+  }
+
+  if (leaves.length === 1) {
+    return []; // Single leaf needs no proof
+  }
+
+  const proof: number[][] = [];
+  let currentIndex = targetIndex;
+  let currentLevel = [...leaves];
+
+  while (currentLevel.length > 1) {
+    const nextLevel: Buffer[] = [];
+    const levelProof: number[] = [];
+
+    for (let i = 0; i < currentLevel.length; i += 2) {
+      if (i + 1 < currentLevel.length) {
+        // Pair exists
+        const left = currentLevel[i];
+        const right = currentLevel[i + 1];
+        const combined = Buffer.concat([left, right]);
+        nextLevel.push(hash(combined));
+
+        // If current index is in this pair, add sibling to proof
+        if (currentIndex === i) {
+          levelProof.push(...Array.from(right));
+        } else if (currentIndex === i + 1) {
+          levelProof.push(...Array.from(left));
+        }
+      } else {
+        // Odd element, promote to next level
+        nextLevel.push(currentLevel[i]);
+      }
+    }
+
+    if (levelProof.length > 0) {
+      proof.push(levelProof);
+    }
+
+    // Update index for next level
+    currentIndex = Math.floor(currentIndex / 2);
+    currentLevel = nextLevel;
+  }
+
+  return proof;
 }
 
 /**

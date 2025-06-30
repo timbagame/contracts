@@ -6,6 +6,7 @@ import {
   calculateWinnerIndex,
   getWinnerFromPlayers,
   GameConfig,
+  generateMerkleProof,
 } from "./test-helpers";
 
 /**
@@ -70,23 +71,23 @@ describe("Advanced Features", () => {
         Number(gameAccount.lastSlot)
       );
 
-      // Force winner to be from recent players buffer (last 2 players for 3-player game)
-      const testWinnerIndex = actualWinnerIndex >= 2 ? 1 : actualWinnerIndex;
-      const winner = getWinnerFromPlayers(players.slice(0, 3), testWinnerIndex);
+      // Use actual winner index and generate proper merkle proof
+      const winner = getWinnerFromPlayers(players.slice(0, 3), actualWinnerIndex);
+      const merkleProof = generateMerkleProof(players.slice(0, 3), actualWinnerIndex, gameAccount);
 
       const winnerParticipation = {
         player: winner.player.publicKey,
-        playerIndex: testWinnerIndex,
+        playerIndex: actualWinnerIndex,
       };
 
-      // Complete game (use empty proof for recent players validation)
+      // Complete game with proper merkle proof
       await testUtils.game.completeGame(
         gameData,
         winner.player.publicKey,
         players[0].player.publicKey,
         oracle.operator,
         winnerParticipation,
-        [] // Empty proof for recent players
+        merkleProof
       );
 
       // Verify completion
@@ -132,13 +133,13 @@ describe("Advanced Features", () => {
         Number(gameAccount.lastSlot)
       );
 
-      // Force winner to be from recent players buffer (last 2 players for 8-player game)
-      const testWinnerIndex = actualWinnerIndex >= 6 ? 7 : actualWinnerIndex;
-      const winner = getWinnerFromPlayers(players.slice(0, 8), testWinnerIndex);
+      // Use actual winner index and generate proper merkle proof
+      const winner = getWinnerFromPlayers(players.slice(0, 8), actualWinnerIndex);
+      const merkleProof = generateMerkleProof(players.slice(0, 8), actualWinnerIndex, gameAccount);
 
       const winnerParticipation = {
         player: winner.player.publicKey,
-        playerIndex: testWinnerIndex,
+        playerIndex: actualWinnerIndex,
       };
 
       await testUtils.game.completeGame(
@@ -147,7 +148,7 @@ describe("Advanced Features", () => {
         players[0].player.publicKey,
         oracle.operator,
         winnerParticipation,
-        [] // Use empty proof for recent players buffer validation
+        merkleProof
       );
 
       // Verify completion

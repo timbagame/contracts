@@ -6,6 +6,7 @@ import {
   calculateWinnerIndex,
   getWinnerFromPlayers,
   GameConfig,
+  generateMerkleProof,
 } from "./test-helpers";
 
 /**
@@ -132,13 +133,13 @@ describe("Game Types", () => {
         Number(gameAccount.lastSlot)
       );
 
-      // Force winner to be from recent players buffer (last 2 players for 4-player game)
-      const testWinnerIndex = actualWinnerIndex >= 2 ? 3 : actualWinnerIndex;
-      const winner = getWinnerFromPlayers(players.slice(0, 4), testWinnerIndex);
+      // Use actual winner index and generate proper merkle proof
+      const winner = getWinnerFromPlayers(players.slice(0, 4), actualWinnerIndex);
+      const merkleProof = generateMerkleProof(players.slice(0, 4), actualWinnerIndex, gameAccount);
 
       const winnerParticipation = {
         player: winner.player.publicKey,
-        playerIndex: testWinnerIndex,
+        playerIndex: actualWinnerIndex,
       };
 
       await testUtils.game.completeGame(
@@ -147,7 +148,7 @@ describe("Game Types", () => {
         players[0].player.publicKey,
         oracle.operator,
         winnerParticipation,
-        []
+        merkleProof
       );
 
       // Verify completion
