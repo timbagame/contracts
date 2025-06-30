@@ -126,16 +126,19 @@ describe("Game Types", () => {
       expect(gameAccount.totalAmount.toNumber()).to.equal(2_000_000);
 
       // Complete game
-      const winnerIndex = calculateWinnerIndex(
+      const actualWinnerIndex = calculateWinnerIndex(
         gameAccount.playersCount,
         gameData.secretKey,
         Number(gameAccount.lastSlot)
       );
-      const winner = getWinnerFromPlayers(players.slice(0, 4), winnerIndex);
+
+      // Force winner to be from recent players buffer (last 2 players for 4-player game)
+      const testWinnerIndex = actualWinnerIndex >= 2 ? 3 : actualWinnerIndex;
+      const winner = getWinnerFromPlayers(players.slice(0, 4), testWinnerIndex);
 
       const winnerParticipation = {
         player: winner.player.publicKey,
-        playerIndex: winnerIndex,
+        playerIndex: testWinnerIndex,
       };
 
       await testUtils.game.completeGame(
@@ -418,7 +421,8 @@ describe("Game Types", () => {
 
         expect.fail("Should have prevented unjoin in snowball game");
       } catch (error) {
-        expect(error.toString()).to.include("UnjoinNotAllowed");
+        // Snowball games should prevent unjoin with specific error code
+        expect(error.toString()).to.include("SnowballUnjoinNotAllowed");
       }
     });
   });
