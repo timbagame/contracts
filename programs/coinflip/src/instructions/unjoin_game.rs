@@ -85,7 +85,7 @@ pub fn handler(
         );
 
         // Case 2: Subtree player unjoin - always use swap-with-last approach
-        let exclusion_proof = exclusion_proof.ok_or(ErrorCode::InvalidAmount)?;
+        let exclusion_proof = exclusion_proof.ok_or(ErrorCode::InvalidExclusionProof)?;
 
         // Verify the exclusion proof with swap-with-last operation
         require!(
