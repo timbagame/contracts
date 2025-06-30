@@ -191,8 +191,8 @@ describe("Advanced Features", () => {
     });
   });
 
-  describe("Complex Join/Unjoin Scenarios", () => {
-    it("should handle join and unjoin with player swapping", async () => {
+  describe("Complex Game Scenarios", () => {
+    it("should handle multiple players joining sequentially", async () => {
       const { mint, players } = await testUtils.quickSetup();
       const gameData = testUtils.game.generateGamePDA();
 
@@ -213,81 +213,52 @@ describe("Advanced Features", () => {
         mint.mint
       );
 
-      // Join 3 players
-      await testUtils.game.joinGame(gameData.gamePDA, players[0].player);
-      await testUtils.game.joinGame(gameData.gamePDA, players[1].player);
-      await testUtils.game.joinGame(gameData.gamePDA, players[2].player);
+      // Join players one by one
+      for (let i = 0; i < 4; i++) {
+        await testUtils.game.joinGame(gameData.gamePDA, players[i].player);
+        
+        const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+        expect(gameAccount.playersCount).to.equal(i + 1);
+        expect(gameAccount.totalAmount.toNumber()).to.equal((i + 1) * 1_000_000);
+      }
 
-      // Verify initial state
-      let gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
-      expect(gameAccount.playersCount).to.equal(3);
-
-      // Player 2 unjoins (recent player - last to join, no exclusion proof needed)
-      await env.program.methods
-        .unjoinGame(2, null) // Player at index 2, no exclusion proof for recent player
-        .accounts({
-          game: gameData.gamePDA,
-          player: players[2].player.publicKey,
-        })
-        .signers([players[2].player])
-        .rpc();
-
-      // Verify player removed and count updated
-      gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
-      expect(gameAccount.playersCount).to.equal(2);
-
-      // Player can rejoin
-      await testUtils.game.joinGame(gameData.gamePDA, players[3].player);
-
-      // Verify new player joined
-      gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
-      expect(gameAccount.playersCount).to.equal(3);
+      // Verify final state
+      const finalGameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+      expect(finalGameAccount.playersCount).to.equal(4);
+      expect(finalGameAccount.totalAmount.toNumber()).to.equal(4_000_000);
     });
 
-    it("should handle rapid join/unjoin cycles", async () => {
+    it("should handle rapid game creation and joining", async () => {
       const { mint, players } = await testUtils.quickSetup();
-      const gameData = testUtils.game.generateGamePDA();
 
       const gameConfig: GameConfig = {
         gameType: { coinflip: {} },
         amount: new anchor.BN(1_000_000),
-        maxPlayers: 6,
+        maxPlayers: 2,
         minPlayers: 2,
         timeout: 3600,
         isPrivate: false,
       };
 
-      // Initialize game
-      await testUtils.game.initializeGame(
-        gameData,
-        gameConfig,
-        players[0].player,
-        mint.mint
-      );
-
-      // Join creator
-      await testUtils.game.joinGame(gameData.gamePDA, players[0].player);
-
-      // Rapid join/unjoin cycles
+      // Create and fill multiple games rapidly
       for (let cycle = 0; cycle < 3; cycle++) {
-        // Join player
+        const gameData = testUtils.game.generateGamePDA();
+
+        // Initialize game
+        await testUtils.game.initializeGame(
+          gameData,
+          gameConfig,
+          players[0].player,
+          mint.mint
+        );
+
+        // Fill game to completion
+        await testUtils.game.joinGame(gameData.gamePDA, players[0].player);
         await testUtils.game.joinGame(gameData.gamePDA, players[1].player);
 
-        let gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+        const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
         expect(gameAccount.playersCount).to.equal(2);
-
-        // Unjoin player
-        await env.program.methods
-          .unjoinGame(1, null)
-          .accounts({
-            game: gameData.gamePDA,
-            player: players[1].player.publicKey,
-          })
-          .signers([players[1].player])
-          .rpc();
-
-        gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
-        expect(gameAccount.playersCount).to.equal(1);
+        expect(gameAccount.totalAmount.toNumber()).to.equal(2_000_000);
       }
     });
 
@@ -390,7 +361,7 @@ describe("Advanced Features", () => {
       expect(completedGame.totalAmount.toNumber()).to.equal(0);
     });
 
-    it("should handle oracle buffer time expiry", async () => {
+    it("should handle oracle buffer time expiry with emergency fund recovery", async () => {
       const { oracle, mint, players } = await testUtils.quickSetup();
       const gameData = testUtils.game.generateGamePDA();
 
@@ -418,7 +389,30 @@ describe("Advanced Features", () => {
       const totalWaitTime = (gameConfig.timeout + oracle.config.oracleBufferTime + 1) * 1000;
       await new Promise(resolve => setTimeout(resolve, totalWaitTime));
 
-      // Game should be closeable after buffer expiry
+      // Players can now recover their funds via emergency unjoin
+      await env.program.methods
+        .unjoinGame(0, null) // Player 0 (recent player)
+        .accounts({
+          game: gameData.gamePDA,
+          player: players[0].player.publicKey,
+        })
+        .signers([players[0].player])
+        .rpc();
+
+      await env.program.methods
+        .unjoinGame(0, null) // Player 1 is now at index 0
+        .accounts({
+          game: gameData.gamePDA,
+          player: players[1].player.publicKey,
+        })
+        .signers([players[1].player])
+        .rpc();
+
+      // Verify game is now empty
+      const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+      expect(gameAccount.playersCount).to.equal(0);
+
+      // Now empty game can be closed
       await env.program.methods
         .closeGame()
         .accounts({

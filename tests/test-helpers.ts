@@ -520,6 +520,30 @@ export class GameManager {
       .rpc();
   }
 
+  async rollGame(
+    gamePDA: PublicKey,
+    player: anchor.web3.Keypair,
+    oracleOperator?: anchor.web3.Keypair
+  ): Promise<void> {
+    const accounts: any = {
+      game: gamePDA,
+      player: player.publicKey,
+    };
+
+    const signers = [player];
+
+    if (oracleOperator) {
+      accounts.oracleOperator = oracleOperator.publicKey;
+      signers.push(oracleOperator);
+    }
+
+    await this.program.methods
+      .rollGame()
+      .accounts(accounts)
+      .signers(signers)
+      .rpc();
+  }
+
   async completeGame(
     gameData: TestGame,
     winner: PublicKey,

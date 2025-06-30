@@ -64,6 +64,10 @@ pub enum ErrorCode {
     #[msg("Game already completed")]
     GameAlreadyCompleted = 1107,
 
+    /// Oracle buffer time has not expired yet - emergency operations not allowed
+    #[msg("Oracle buffer time not expired")]
+    OracleBufferNotExpired = 1108,
+
     // =========================================================================
     // PLAYER ACTION ERRORS (1200-1299)
     // =========================================================================
@@ -75,41 +79,37 @@ pub enum ErrorCode {
     #[msg("Insufficient balance")]
     InsufficientBalance = 1201,
 
-    /// Cannot unjoin Snowball games at all
-    #[msg("Cannot unjoin Snowball games")]
-    SnowballUnjoinNotAllowed = 1202,
-
     /// Exclusion proof verification failed
     #[msg("Invalid exclusion proof")]
-    InvalidExclusionProof = 1203,
+    InvalidExclusionProof = 1202,
 
     /// Subtree proof structure is malformed or invalid
     #[msg("Malformed subtree proof")]
-    MalformedSubtreeProof = 1204,
+    MalformedSubtreeProof = 1203,
 
     /// Cannot locate subtree containing the specified player
     #[msg("Subtree not found")]
-    SubtreeNotFound = 1205,
+    SubtreeNotFound = 1204,
 
     /// Merkle tree structure error - unable to maintain proper binary tree
     #[msg("Merkle tree structure error")]
-    MerkleTreeStructureError = 1206,
+    MerkleTreeStructureError = 1205,
 
     /// Invalid merkle proof provided for player verification
     #[msg("Invalid merkle proof")]
-    InvalidMerkleProof = 1207,
+    InvalidMerkleProof = 1206,
 
     /// Winner index does not match calculated winner from secret key
     #[msg("Invalid winner index")]
-    InvalidWinnerIndex = 1208,
+    InvalidWinnerIndex = 1207,
 
     /// Winner pubkey does not match participation entry
     #[msg("Winner pubkey mismatch")]
-    WinnerPubkeyMismatch = 1209,
+    WinnerPubkeyMismatch = 1208,
 
     /// Player not authorized for private game
     #[msg("Private game access denied")]
-    PrivateGameAccessDenied = 1210,
+    PrivateGameAccessDenied = 1209,
 
     // =========================================================================
     // CONFIGURATION ERRORS (1300-1399)
