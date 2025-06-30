@@ -337,10 +337,7 @@ pub struct CompleteGame<'info> {
 #[derive(Accounts)]
 #[instruction(player_index: u32, exclusion_proof: Option<ExclusionProof>)]
 pub struct UnjoinGame<'info> {
-    #[account(
-        mut,
-        constraint = game.is_buffer_expired(oracle.oracle_buffer_time as u64, Clock::get()?.unix_timestamp as u64) @ ErrorCode::OracleBufferNotExpired,
-    )]
+    #[account(mut)]
     pub game: Account<'info, Game>,
     #[account(mut)]
     pub player: Signer<'info>,
