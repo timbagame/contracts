@@ -216,7 +216,7 @@ describe("Advanced Features", () => {
       // Join players one by one
       for (let i = 0; i < 4; i++) {
         await testUtils.game.joinGame(gameData.gamePDA, players[i].player);
-        
+
         const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
         expect(gameAccount.playersCount).to.equal(i + 1);
         expect(gameAccount.totalAmount.toNumber()).to.equal((i + 1) * 1_000_000);
@@ -370,7 +370,7 @@ describe("Advanced Features", () => {
         amount: new anchor.BN(1_000_000),
         maxPlayers: 2,
         minPlayers: 2,
-        timeout: 1, // Short timeout
+        timeout: 2, // Short timeout
         isPrivate: false,
       };
 
