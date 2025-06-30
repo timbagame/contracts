@@ -360,7 +360,7 @@ describe("Game Types", () => {
       // Verify accumulating pot
       const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
       expect(gameAccount.totalAmount.toNumber()).to.equal(3_000_000); // 3 entries
-      expect(gameAccount.playersCount).to.equal(2); // Still only 2 unique players
+      expect(gameAccount.playersCount).to.equal(3); // 3 total entries (players_count tracks entries in snowball)
 
       // Complete game with entry-based winner calculation
       const winnerIndex = calculateWinnerIndex(
