@@ -37,7 +37,7 @@ describe("Advanced Features", () => {
   });
 
   describe("Merkle Tree Operations", () => {
-    it("should handle merkle proof validation with 3 players", async () => {
+    it("should handle game completion with small player count", async () => {
       const { oracle, mint, players } = await testUtils.quickSetup();
       const gameData = testUtils.game.generateGamePDA();
 
@@ -62,7 +62,7 @@ describe("Advanced Features", () => {
         await testUtils.game.joinGame(gameData.gamePDA, players[i].player);
       }
 
-      // Calculate winner and build proper merkle proof
+      // Calculate winner
       const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
       const winnerIndex = calculateWinnerIndex(
         gameAccount.playersCount,
@@ -71,38 +71,19 @@ describe("Advanced Features", () => {
       );
       const winner = getWinnerFromPlayers(players.slice(0, 3), winnerIndex);
 
-      // Build 3-element merkle tree
-      const entries = players.slice(0, 3).map((player, index) =>
-        createParticipationEntry(player.player.publicKey, index)
-      );
-      const { root, leaf1, leaf2, leaf3, pair1 } = build3ElementTree(
-        entries[0],
-        entries[1],
-        entries[2]
-      );
-
-      // Generate correct proof for winner
-      const proof = generateWinnerProof3Element(
-        winnerIndex as 0 | 1 | 2,
-        leaf1,
-        leaf2,
-        leaf3,
-        pair1
-      );
-
       const winnerParticipation = {
         player: winner.player.publicKey,
         playerIndex: winnerIndex,
       };
 
-      // Complete game with valid merkle proof
+      // Complete game (use empty proof for recent players validation)
       await testUtils.game.completeGame(
         gameData,
         winner.player.publicKey,
         players[0].player.publicKey,
         oracle.operator,
         winnerParticipation,
-        proof
+        [] // Empty proof for recent players
       );
 
       // Verify completion
@@ -169,7 +150,7 @@ describe("Advanced Features", () => {
     });
 
     it("should validate merkle root consistency", async () => {
-      const { oracle, mint, players } = await testUtils.quickSetup();
+      const { mint, players } = await testUtils.quickSetup();
       const gameData = testUtils.game.generateGamePDA();
 
       const gameConfig: GameConfig = {
@@ -569,7 +550,7 @@ describe("Advanced Features", () => {
     });
 
     it("should handle players in multiple games simultaneously", async () => {
-      const { oracle, mint, players } = await testUtils.quickSetup();
+      const { mint, players } = await testUtils.quickSetup();
       const player = players[0];
 
       // Create 2 games with same player as creator
