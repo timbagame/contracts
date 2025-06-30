@@ -469,7 +469,7 @@ export class GameManager {
   generateGamePDA(): TestGame {
     const secretKeyBuffer = anchor.web3.Keypair.generate().secretKey.slice(0, 32);
     const secretKey = Array.from(secretKeyBuffer);
-    const randomHashBuffer = createHash("sha256").update(secretKeyBuffer).digest();
+    const randomHashBuffer = hash(Buffer.from(secretKeyBuffer));
     const randomHash = Array.from(randomHashBuffer);
 
     const [gamePDA] = PublicKey.findProgramAddressSync(
@@ -588,7 +588,7 @@ export function calculateWinnerIndex(
   lastSlotView.setBigUint64(0, BigInt(lastSlot), true);
   combinedData.set(lastSlotBytes, 32);
 
-  const entropyHash = createHash("sha256").update(combinedData).digest();
+  const entropyHash = hash(Buffer.from(combinedData));
 
   // Try sliding 8-byte windows through the hashed entropy
   const maxValid =
@@ -633,6 +633,13 @@ export function createParticipationEntry(
 }
 
 /**
+ * Hashes a buffer using SHA-256 and returns the digest as a Buffer
+ */
+function hash(data: Buffer): Buffer {
+  return createHash("sha256").update(data).digest();
+}
+
+/**
  * Hashes a participation entry for merkle tree operations
  */
 export function hashParticipationEntry(entry: { player: PublicKey; playerIndex: number }): Buffer {
@@ -641,7 +648,7 @@ export function hashParticipationEntry(entry: { player: PublicKey; playerIndex: 
   indexBytes.writeUInt32LE(entry.playerIndex, 0);
 
   const combined = Buffer.concat([playerBytes, indexBytes]);
-  return Buffer.from(hash(combined));
+  return hash(combined);
 }
 
 /**
@@ -657,7 +664,7 @@ export function computeMerkleRoot(leaves: Buffer[]): Buffer {
     for (let i = 0; i < tree.length; i += 2) {
       if (i + 1 < tree.length) {
         const combined = Buffer.concat([tree[i], tree[i + 1]]);
-        nextLevel.push(Buffer.from(hash(combined)));
+        nextLevel.push(hash(combined));
       } else {
         nextLevel.push(tree[i]);
       }
