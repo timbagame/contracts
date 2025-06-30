@@ -1,0 +1,581 @@
+import { expect } from "chai";
+import * as anchor from "@coral-xyz/anchor";
+import {
+  TestUtils,
+  TestEnvironment,
+  calculateWinnerIndex,
+  getWinnerFromPlayers,
+  GameConfig,
+} from "./test-helpers";
+
+/**
+ * Game Types test suite for the Coinflip program
+ *
+ * Tests different game variants and their specific rules:
+ * - Coinflip: Standard competitive games
+ * - Giveaway: Creator-funded free participation games
+ * - Snowball: Progressive accumulating pot games
+ * - Dumbflip: Immediate completion games (if supported)
+ * - Game-specific restrictions and validations
+ */
+
+describe("Game Types", () => {
+  let testUtils: TestUtils;
+  let env: TestEnvironment;
+
+  before(async () => {
+    console.log("🎮 Setting up game types test environment...");
+
+    env = TestEnvironment.getInstance();
+    testUtils = new TestUtils();
+
+    // Initialize global test environment
+    await env.initialize();
+
+    console.log("✅ Game types test environment ready");
+  });
+
+  describe("Coinflip Games", () => {
+    it("should create and complete a 2-player coinflip game", async () => {
+      const { oracle, mint, players } = await testUtils.quickSetup();
+      const gameData = testUtils.game.generateGamePDA();
+      const [creator, player1] = players;
+
+      const gameConfig: GameConfig = {
+        gameType: { coinflip: {} },
+        amount: new anchor.BN(1_000_000),
+        maxPlayers: 2,
+        minPlayers: 2,
+        timeout: 3600,
+        isPrivate: false,
+      };
+
+      // Initialize game
+      await testUtils.game.initializeGame(
+        gameData,
+        gameConfig,
+        creator.player,
+        mint.mint
+      );
+
+      // Both players join
+      await testUtils.game.joinGame(gameData.gamePDA, creator.player);
+      await testUtils.game.joinGame(gameData.gamePDA, player1.player);
+
+      // Verify game state before completion
+      const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+      expect(gameAccount.playersCount).to.equal(2);
+      expect(gameAccount.totalAmount.toNumber()).to.equal(2_000_000);
+
+      // Complete game
+      const winnerIndex = calculateWinnerIndex(
+        gameAccount.playersCount,
+        gameData.secretKey,
+        Number(gameAccount.lastSlot)
+      );
+      const winner = getWinnerFromPlayers([creator, player1], winnerIndex);
+
+      const winnerParticipation = {
+        player: winner.player.publicKey,
+        playerIndex: winnerIndex,
+      };
+
+      await testUtils.game.completeGame(
+        gameData,
+        winner.player.publicKey,
+        creator.player.publicKey,
+        oracle.operator,
+        winnerParticipation,
+        []
+      );
+
+      // Verify completion
+      const completedGame = await env.program.account.game.fetch(gameData.gamePDA);
+      expect(completedGame.totalAmount.toNumber()).to.equal(0);
+    });
+
+    it("should support multi-player coinflip games", async () => {
+      const { oracle, mint, players } = await testUtils.quickSetup();
+      const gameData = testUtils.game.generateGamePDA();
+
+      const gameConfig: GameConfig = {
+        gameType: { coinflip: {} },
+        amount: new anchor.BN(500_000),
+        maxPlayers: 4,
+        minPlayers: 3,
+        timeout: 3600,
+        isPrivate: false,
+      };
+
+      // Initialize game
+      await testUtils.game.initializeGame(
+        gameData,
+        gameConfig,
+        players[0].player,
+        mint.mint
+      );
+
+      // Join 4 players
+      for (let i = 0; i < 4; i++) {
+        await testUtils.game.joinGame(gameData.gamePDA, players[i].player);
+      }
+
+      // Verify game state
+      const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+      expect(gameAccount.playersCount).to.equal(4);
+      expect(gameAccount.totalAmount.toNumber()).to.equal(2_000_000);
+
+      // Complete game
+      const winnerIndex = calculateWinnerIndex(
+        gameAccount.playersCount,
+        gameData.secretKey,
+        Number(gameAccount.lastSlot)
+      );
+      const winner = getWinnerFromPlayers(players.slice(0, 4), winnerIndex);
+
+      const winnerParticipation = {
+        player: winner.player.publicKey,
+        playerIndex: winnerIndex,
+      };
+
+      await testUtils.game.completeGame(
+        gameData,
+        winner.player.publicKey,
+        players[0].player.publicKey,
+        oracle.operator,
+        winnerParticipation,
+        []
+      );
+
+      // Verify completion
+      const completedGame = await env.program.account.game.fetch(gameData.gamePDA);
+      expect(completedGame.totalAmount.toNumber()).to.equal(0);
+    });
+
+    it("should enforce minimum amount for coinflip games", async () => {
+      const { mint, players } = await testUtils.quickSetup();
+      const gameData = testUtils.game.generateGamePDA();
+
+      const gameConfig: GameConfig = {
+        gameType: { coinflip: {} },
+        amount: new anchor.BN(0), // Invalid amount
+        maxPlayers: 2,
+        minPlayers: 2,
+        timeout: 3600,
+        isPrivate: false,
+      };
+
+      try {
+        await testUtils.game.initializeGame(
+          gameData,
+          gameConfig,
+          players[0].player,
+          mint.mint
+        );
+        expect.fail("Should have rejected zero amount for coinflip");
+      } catch (error) {
+        expect(error.toString()).to.include("InvalidAmount");
+      }
+    });
+  });
+
+  describe("Giveaway Games", () => {
+    it("should create and complete a giveaway game", async () => {
+      const { oracle, mint, players } = await testUtils.quickSetup();
+      const gameData = testUtils.game.generateGamePDA();
+      const [creator, player1, player2] = players;
+
+      const gameConfig: GameConfig = {
+        gameType: { giveaway: {} },
+        amount: new anchor.BN(1_000_000), // Creator funds this
+        maxPlayers: 3,
+        minPlayers: 2,
+        timeout: 3600,
+        isPrivate: false,
+      };
+
+      // Initialize giveaway
+      await testUtils.game.initializeGame(
+        gameData,
+        gameConfig,
+        creator.player,
+        mint.mint
+      );
+
+      // Players join for free (no ticket amount required)
+      await testUtils.game.joinGame(gameData.gamePDA, player1.player);
+      await testUtils.game.joinGame(gameData.gamePDA, player2.player);
+
+      // Verify game state
+      const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+      expect(gameAccount.playersCount).to.equal(2);
+      expect(gameAccount.totalAmount.toNumber()).to.equal(1_000_000); // Only creator's contribution
+
+      // Complete game
+      const winnerIndex = calculateWinnerIndex(
+        gameAccount.playersCount,
+        gameData.secretKey,
+        Number(gameAccount.lastSlot)
+      );
+      const winner = getWinnerFromPlayers([player1, player2], winnerIndex);
+
+      const winnerParticipation = {
+        player: winner.player.publicKey,
+        playerIndex: winnerIndex,
+      };
+
+      await testUtils.game.completeGame(
+        gameData,
+        winner.player.publicKey,
+        creator.player.publicKey,
+        oracle.operator,
+        winnerParticipation,
+        []
+      );
+
+      // Verify completion
+      const completedGame = await env.program.account.game.fetch(gameData.gamePDA);
+      expect(completedGame.totalAmount.toNumber()).to.equal(0);
+    });
+
+    it("should allow single player giveaways", async () => {
+      const { oracle, mint, players } = await testUtils.quickSetup();
+      const gameData = testUtils.game.generateGamePDA();
+      const creator = players[0];
+
+      const gameConfig: GameConfig = {
+        gameType: { giveaway: {} },
+        amount: new anchor.BN(1_000_000),
+        maxPlayers: 1,
+        minPlayers: 1,
+        timeout: 3600,
+        isPrivate: false,
+      };
+
+      // Initialize and join single-player giveaway
+      await testUtils.game.initializeGame(
+        gameData,
+        gameConfig,
+        creator.player,
+        mint.mint
+      );
+
+      await testUtils.game.joinGame(gameData.gamePDA, creator.player);
+
+      // Complete game (creator is the only participant)
+      const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+      const winnerIndex = calculateWinnerIndex(
+        gameAccount.playersCount,
+        gameData.secretKey,
+        Number(gameAccount.lastSlot)
+      );
+
+      expect(winnerIndex).to.equal(0); // Only one participant
+
+      const winnerParticipation = {
+        player: creator.player.publicKey,
+        playerIndex: winnerIndex,
+      };
+
+      await testUtils.game.completeGame(
+        gameData,
+        creator.player.publicKey,
+        creator.player.publicKey,
+        oracle.operator,
+        winnerParticipation,
+        []
+      );
+
+      // Verify completion
+      const completedGame = await env.program.account.game.fetch(gameData.gamePDA);
+      expect(completedGame.totalAmount.toNumber()).to.equal(0);
+    });
+
+    it("should allow zero amount for giveaway games", async () => {
+      const { mint, players } = await testUtils.quickSetup();
+      const gameData = testUtils.game.generateGamePDA();
+
+      const gameConfig: GameConfig = {
+        gameType: { giveaway: {} },
+        amount: new anchor.BN(0), // Zero amount should be allowed for giveaways
+        maxPlayers: 2,
+        minPlayers: 1,
+        timeout: 3600,
+        isPrivate: false,
+      };
+
+      // Should succeed for giveaway games
+      await testUtils.game.initializeGame(
+        gameData,
+        gameConfig,
+        players[0].player,
+        mint.mint
+      );
+
+      const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+      expect(gameAccount.ticketAmount.toNumber()).to.equal(0);
+    });
+  });
+
+  describe("Snowball Games", () => {
+    it("should create a snowball game with roll functionality", async () => {
+      const { oracle, mint, players } = await testUtils.quickSetup();
+      const gameData = testUtils.game.generateGamePDA();
+      const [creator, player1] = players;
+
+      const gameConfig: GameConfig = {
+        gameType: { snowball: {} },
+        amount: new anchor.BN(1_000_000),
+        maxPlayers: 10, // Higher max for snowball
+        minPlayers: 1,
+        timeout: 3600,
+        isPrivate: false,
+      };
+
+      // Initialize snowball game
+      await testUtils.game.initializeGame(
+        gameData,
+        gameConfig,
+        creator.player,
+        mint.mint
+      );
+
+      // Players can join multiple times (roll functionality)
+      await testUtils.game.joinGame(gameData.gamePDA, creator.player);
+      await testUtils.game.joinGame(gameData.gamePDA, player1.player);
+      await testUtils.game.joinGame(gameData.gamePDA, creator.player); // Roll again
+
+      // Verify accumulating pot
+      const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+      expect(gameAccount.totalAmount.toNumber()).to.equal(3_000_000); // 3 entries
+      expect(gameAccount.playersCount).to.equal(2); // Still only 2 unique players
+
+      // Complete game with entry-based winner calculation
+      const winnerIndex = calculateWinnerIndex(
+        gameAccount.playersCount,
+        gameData.secretKey,
+        Number(gameAccount.lastSlot),
+        { snowball: {} },
+        gameAccount.totalAmount.toNumber(),
+        gameAccount.ticketAmount.toNumber()
+      );
+
+      const actualWinner = winnerIndex === 0 ? creator : player1;
+
+      const winnerParticipation = {
+        player: actualWinner.player.publicKey,
+        playerIndex: winnerIndex,
+      };
+
+      await testUtils.game.completeGame(
+        gameData,
+        actualWinner.player.publicKey,
+        creator.player.publicKey,
+        oracle.operator,
+        winnerParticipation,
+        []
+      );
+
+      // Verify completion
+      const completedGame = await env.program.account.game.fetch(gameData.gamePDA);
+      expect(completedGame.totalAmount.toNumber()).to.equal(0);
+    });
+
+    it("should prevent unjoin in snowball games", async () => {
+      const { mint, players } = await testUtils.quickSetup();
+      const gameData = testUtils.game.generateGamePDA();
+      const creator = players[0];
+
+      const gameConfig: GameConfig = {
+        gameType: { snowball: {} },
+        amount: new anchor.BN(1_000_000),
+        maxPlayers: 5,
+        minPlayers: 1,
+        timeout: 3600,
+        isPrivate: false,
+      };
+
+      // Initialize and join snowball game
+      await testUtils.game.initializeGame(
+        gameData,
+        gameConfig,
+        creator.player,
+        mint.mint
+      );
+
+      await testUtils.game.joinGame(gameData.gamePDA, creator.player);
+
+      // Try to unjoin (should fail for snowball games)
+      try {
+        await env.program.methods
+          .unjoinGame(0, null) // playerIndex: 0, exclusionProof: null
+          .accounts({
+            game: gameData.gamePDA,
+            player: creator.player.publicKey,
+          })
+          .signers([creator.player])
+          .rpc();
+
+        expect.fail("Should have prevented unjoin in snowball game");
+      } catch (error) {
+        expect(error.toString()).to.include("UnjoinNotAllowed");
+      }
+    });
+  });
+
+  describe("Game Type Validation", () => {
+    it("should enforce minimum player requirements per game type", async () => {
+      const { mint, players } = await testUtils.quickSetup();
+
+      // Coinflip should require at least 2 players
+      const coinflipData = testUtils.game.generateGamePDA();
+      const coinflipConfig: GameConfig = {
+        gameType: { coinflip: {} },
+        amount: new anchor.BN(1_000_000),
+        maxPlayers: 4,
+        minPlayers: 1, // Too low for coinflip
+        timeout: 3600,
+        isPrivate: false,
+      };
+
+      try {
+        await testUtils.game.initializeGame(
+          coinflipData,
+          coinflipConfig,
+          players[0].player,
+          mint.mint
+        );
+        expect.fail("Should have enforced minimum players for coinflip");
+      } catch (error) {
+        expect(error.toString()).to.include("InvalidPlayersCount");
+      }
+    });
+
+    it("should validate game type specific configurations", async () => {
+      const { mint, players } = await testUtils.quickSetup();
+      const gameData = testUtils.game.generateGamePDA();
+
+      // Test maximum players validation
+      const invalidConfig: GameConfig = {
+        gameType: { coinflip: {} },
+        amount: new anchor.BN(1_000_000),
+        maxPlayers: 1000, // Exceeds oracle limits
+        minPlayers: 2,
+        timeout: 3600,
+        isPrivate: false,
+      };
+
+      try {
+        await testUtils.game.initializeGame(
+          gameData,
+          invalidConfig,
+          players[0].player,
+          mint.mint
+        );
+        expect.fail("Should have validated max players limit");
+      } catch (error) {
+        expect(error.toString()).to.include("InvalidPlayersCount");
+      }
+    });
+
+    it("should validate timeout ranges per game type", async () => {
+      const { mint, players } = await testUtils.quickSetup();
+      const gameData = testUtils.game.generateGamePDA();
+
+      // Test timeout validation
+      const invalidConfig: GameConfig = {
+        gameType: { coinflip: {} },
+        amount: new anchor.BN(1_000_000),
+        maxPlayers: 4,
+        minPlayers: 2,
+        timeout: 0, // Invalid timeout
+        isPrivate: false,
+      };
+
+      try {
+        await testUtils.game.initializeGame(
+          gameData,
+          invalidConfig,
+          players[0].player,
+          mint.mint
+        );
+        expect.fail("Should have validated timeout");
+      } catch (error) {
+        expect(error.toString()).to.include("InvalidTimeout");
+      }
+    });
+  });
+
+  describe("Private Games", () => {
+    it("should require oracle operator approval for private games", async () => {
+      const { oracle, mint, players } = await testUtils.quickSetup();
+      const gameData = testUtils.game.generateGamePDA();
+      const [creator, player1] = players;
+
+      const gameConfig: GameConfig = {
+        gameType: { coinflip: {} },
+        amount: new anchor.BN(1_000_000),
+        maxPlayers: 2,
+        minPlayers: 2,
+        timeout: 3600,
+        isPrivate: true, // Private game
+      };
+
+      // Initialize private game
+      await testUtils.game.initializeGame(
+        gameData,
+        gameConfig,
+        creator.player,
+        mint.mint
+      );
+
+      // Creator joins normally
+      await testUtils.game.joinGame(gameData.gamePDA, creator.player);
+
+      // Other players need oracle operator approval
+      await testUtils.game.joinGame(
+        gameData.gamePDA,
+        player1.player,
+        oracle.operatorKeypair
+      );
+
+      // Verify both players joined
+      const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+      expect(gameAccount.playersCount).to.equal(2);
+      expect(gameAccount.isPrivate).to.be.true;
+    });
+
+    it("should reject joining private games without operator approval", async () => {
+      const { mint, players } = await testUtils.quickSetup();
+      const gameData = testUtils.game.generateGamePDA();
+      const [creator, player1] = players;
+
+      const gameConfig: GameConfig = {
+        gameType: { giveaway: {} },
+        amount: new anchor.BN(1_000_000),
+        maxPlayers: 3,
+        minPlayers: 2,
+        timeout: 3600,
+        isPrivate: true,
+      };
+
+      // Initialize private game
+      await testUtils.game.initializeGame(
+        gameData,
+        gameConfig,
+        creator.player,
+        mint.mint
+      );
+
+      await testUtils.game.joinGame(gameData.gamePDA, creator.player);
+
+      // Try to join without oracle operator approval
+      try {
+        await testUtils.game.joinGame(gameData.gamePDA, player1.player);
+        expect.fail("Should have required oracle operator for private game");
+      } catch (error) {
+        expect(error.toString()).to.include("MissingOracleOperator");
+      }
+    });
+  });
+});
