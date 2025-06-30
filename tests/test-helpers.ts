@@ -544,6 +544,22 @@ export class GameManager {
       .rpc();
   }
 
+  async unjoinGame(
+    gamePDA: PublicKey,
+    player: anchor.web3.Keypair,
+    playerIndex: number,
+    exclusionProof?: any
+  ): Promise<void> {
+    await this.program.methods
+      .unjoinGame(playerIndex, exclusionProof)
+      .accounts({
+        game: gamePDA,
+        player: player.publicKey,
+      })
+      .signers([player])
+      .rpc();
+  }
+
   async completeGame(
     gameData: TestGame,
     winner: PublicKey,
@@ -866,7 +882,7 @@ export class TestUtils {
   }> {
     const oracle = await this.oracle.createOracle();
     const mint = await this.mint.createMint();
-    const players = await this.player.createPlayerPool(5, mint.mint);
+    const players = await this.player.createPlayerPool(8, mint.mint);
 
     // Fund all players with tokens
     for (const player of players) {

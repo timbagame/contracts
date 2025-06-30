@@ -336,8 +336,8 @@ describe("Game Types", () => {
       const gameConfig: GameConfig = {
         gameType: { snowball: {} },
         amount: new anchor.BN(1_000_000),
-        maxPlayers: 10, // Higher max for snowball
-        minPlayers: 2, // Try higher minimum for snowball games
+        maxPlayers: 3, // Set to match actual entries for immediate completion
+        minPlayers: 2,
         timeout: 3600,
         isPrivate: false,
       };
@@ -372,7 +372,19 @@ describe("Game Types", () => {
         gameAccount.ticketAmount.toNumber()
       );
 
-      const actualWinner = winnerIndex === 0 ? creator : player1;
+      // For snowball games, map entry index to actual player
+      // Entry 0: creator, Entry 1: player1, Entry 2: creator (roll)
+      let actualWinner;
+      if (winnerIndex === 0 || winnerIndex === 2) {
+        actualWinner = creator; // creator won (either first join or roll)
+      } else {
+        actualWinner = player1; // player1 won
+      }
+
+      // Generate merkle proof for snowball game
+      // Create a player list that represents the entries: [creator, player1, creator]
+      const entryPlayers = [creator, player1, creator];
+      const merkleProof = generateMerkleProof(entryPlayers, winnerIndex, gameAccount);
 
       const winnerParticipation = {
         player: actualWinner.player.publicKey,
@@ -385,7 +397,7 @@ describe("Game Types", () => {
         creator.player.publicKey,
         oracle.operator,
         winnerParticipation,
-        []
+        merkleProof
       );
 
       // Verify completion
@@ -435,6 +447,7 @@ describe("Game Types", () => {
       );
 
       const winner = getWinnerFromPlayers(players.slice(0, 3), winnerIndex);
+      const merkleProof = generateMerkleProof(players.slice(0, 3), winnerIndex, gameAccount);
 
       const winnerParticipation = {
         player: winner.player.publicKey,
@@ -447,7 +460,7 @@ describe("Game Types", () => {
         players[0].player.publicKey,
         oracle.operator,
         winnerParticipation,
-        []
+        merkleProof
       );
 
       // Verify completion
