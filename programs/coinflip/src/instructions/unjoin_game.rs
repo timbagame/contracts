@@ -99,11 +99,11 @@ pub fn handler(
     // Process refund if there's a ticket amount
     if refund_amount > 0 {
         player_balance.refund(refund_amount);
-        game.total_amount = game.total_amount.saturating_sub(refund_amount);
+        game.total_amount -= refund_amount;
     }
 
     // Update game state - decrement players_count to allow next player to unjoin
-    game.players_count = game.players_count.saturating_sub(1);
+    game.players_count -= 1;
     game.last_slot = clock.slot;
 
     // ===============================
