@@ -7,7 +7,7 @@ A comprehensive Solana smart contract implementation of various gambling games u
 - **Coinflip** - Traditional competitive games where players compete for the pot
 - **Giveaway** - Creator-funded games with free participation for players
 - **Snowball** - Progressive games with accumulating pot and multiple entry support
-- **Dumbflip/Dumbaway/Dumbball** - Immediate completion variants for real-time play
+- **Dumbflip/Dumbaway/Dumbball** - Real-time variants that reveal the winner immediately
 
 ## Architecture
 
