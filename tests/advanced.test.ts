@@ -391,23 +391,8 @@ describe("Advanced Features", () => {
 
       // Players can now recover their funds via emergency unjoin
       // For 2 players, both are in recent buffer (indices 0 and 1)
-      await env.program.methods
-        .unjoinGame(1, null) // Remove last player first (index 1)
-        .accounts({
-          game: gameData.gamePDA,
-          player: players[1].player.publicKey,
-        })
-        .signers([players[1].player])
-        .rpc();
-
-      await env.program.methods
-        .unjoinGame(0, null) // Now remove remaining player (index 0)
-        .accounts({
-          game: gameData.gamePDA,
-          player: players[0].player.publicKey,
-        })
-        .signers([players[0].player])
-        .rpc();
+      await testUtils.game.unjoinGame(gameData.gamePDA, players[1].player, 1, null);
+      await testUtils.game.unjoinGame(gameData.gamePDA, players[0].player, 0, null);
 
       // Verify game is now empty
       const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);

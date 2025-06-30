@@ -683,7 +683,7 @@ describe("Core Game Operations", () => {
 
       expect(oracle.oraclePDA).to.not.be.undefined;
       expect(mint.mint).to.not.be.undefined;
-      expect(players).to.have.length(5);
+      expect(players).to.have.length(8);
 
       // Verify all players are funded
       for (const player of players) {
