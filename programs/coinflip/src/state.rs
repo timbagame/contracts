@@ -452,8 +452,11 @@ pub struct Game {
 }
 
 impl Game {
-    /// Calculates the required number of subtrees for a given max_players using binary decomposition
-    /// For 2-player recent buffer: ceil(max_players / 2) then count 1-bits in binary representation
+    // =============================================================================
+    // STORAGE CALCULATION & INITIALIZATION
+    // =============================================================================
+
+    /// Calculates required subtrees using binary decomposition of max_players
     pub fn calculate_required_subtrees(max_players: u32) -> usize {
         if max_players <= 2 {
             return 0; // All players fit in recent buffer
@@ -474,6 +477,10 @@ impl Game {
             + (required_subtrees * 40)  // Subtree data: 40 bytes per Subtree
             + (2 * 32) // RecentLeaf data: 32 bytes per RecentLeaf, max 2
     }
+
+    // =============================================================================
+    // CORE GAME LIFECYCLE METHODS
+    // =============================================================================
 
     /// Checks if the game has exceeded its timeout duration
     pub fn is_expired(&self, current_time: u64) -> bool {
@@ -575,6 +582,10 @@ impl Game {
         self.players_count < self.max_players
     }
 
+    // =============================================================================
+    // VALIDATION HELPERS
+    // =============================================================================
+
     pub fn is_valid_players_count(max_players: u32, min_players: u32, oracle_max: u32) -> bool {
         max_players <= oracle_max && min_players <= max_players
     }
@@ -591,6 +602,10 @@ impl Game {
         }
     }
 
+    // =============================================================================
+    // PLAYER PARTICIPATION METHODS
+    // =============================================================================
+
     pub fn can_join_private(
         &self,
         passed_operator: Option<&Signer>,
@@ -606,7 +621,7 @@ impl Game {
     }
 
     // =============================================================================
-    // MERKLE TREE FUNCTIONS
+    // MERKLE TREE OPERATIONS
     // =============================================================================
 
     /// Creates a participation entry for a new player
@@ -698,13 +713,42 @@ impl Game {
         Ok(())
     }
 
+    // =============================================================================
+    // COMMON VALIDATION HELPERS
+    // =============================================================================
+
+    /// Finds largest power-of-2 ≤ n for player splitting during exclusion
+    fn largest_power_of_2_le(n: usize) -> usize {
+        if n > 0 {
+            1 << (31 - (n as u32).leading_zeros() - 1)
+        } else {
+            0
+        }
+    }
+
+    /// Validates merkle proof, returns InvalidExclusionProof on failure
+    fn require_valid_merkle_proof(
+        leaf: [u8; 32],
+        proof: &[[u8; 32]],
+        leaf_index: u32,
+        target_root: [u8; 32],
+    ) -> Result<()> {
+        require!(
+            Self::verify_merkle_proof_against_root(leaf, proof, leaf_index, target_root),
+            ErrorCode::InvalidExclusionProof
+        );
+        Ok(())
+    }
+
+    // =============================================================================
+    // MERKLE TREE INTERNAL HELPERS (PRIVATE)
+    // =============================================================================
+
     /// Builds 2-player subtree from recent buffer
     fn build_subtree_from_recent(&self) -> Result<Subtree> {
         require!(self.recent_count == 2, ErrorCode::InvalidAmount);
 
-        // Start index is where the first player in recent buffer is located
-        // Since recent buffer contains the last recent_count players that joined, 
-        // and players_count hasn't been incremented for the current player yet:
+        // Start index for recent buffer players
         let start_index = self.players_count - self.recent_count as u32;
         let leaves: Vec<[u8; 32]> = self.recent_players.iter().map(|leaf| leaf.hash).collect();
 
@@ -715,68 +759,87 @@ impl Game {
         })
     }
 
-    /// Merges new subtree with existing ones using same-sized merging for optimal tree balance
+    /// Merges new subtree into storage, combining same-sized subtrees if needed
     fn merge_subtree(&mut self, new: Subtree) -> Result<()> {
         // If we have space, just add the new subtree
         if self.subtrees.len() < self.max_subtrees as usize {
-            self.subtrees.push(new);
-            self.subtree_count += 1;
+            self.add_subtree_directly(new);
             return Ok(());
         }
 
-        // Storage is full - try to find two same-sized subtrees to merge first
-        if let Some((idx1, idx2)) = self.find_same_sized_pair() {
-            let subtree1 = self.subtrees[idx1];
-            let subtree2 = self.subtrees[idx2];
+        // Storage is full - need to merge existing subtrees to make space
+        self.merge_existing_subtrees_for_space()?;
 
-            // Remove both subtrees (remove higher index first to avoid shifting)
-            let (first_idx, second_idx) = if idx1 > idx2 {
-                (idx1, idx2)
-            } else {
-                (idx2, idx1)
-            };
-
-            // Remove using Vec operations
-            self.subtrees.remove(first_idx);
-            // Adjust second index after first removal
-            let adjusted_second_idx = if second_idx > first_idx {
-                second_idx - 1
-            } else {
-                second_idx
-            };
-            self.subtrees.remove(adjusted_second_idx);
-            self.subtree_count -= 2;
-
-            // Create merged subtree from the two same-sized ones
-            let (left, right) = if subtree1.start_index < subtree2.start_index {
-                (subtree1.root_hash, subtree2.root_hash)
-            } else {
-                (subtree2.root_hash, subtree1.root_hash)
-            };
-
-            let merged_subtree = Subtree {
-                root_hash: hash(&[left, right].concat()).to_bytes(),
-                start_index: subtree1.start_index.min(subtree2.start_index),
-                size: subtree1.size + subtree2.size,
-            };
-
-            // Add merged subtree back
-            self.subtrees.push(merged_subtree);
-            self.subtree_count += 1;
-
-            // Now we have space for the new subtree
-            self.subtrees.push(new);
-            self.subtree_count += 1;
-        } else {
-            // No same-sized pairs found - this should not happen with proper binary tree management
-            // If we reach here, it means the subtree storage is misconfigured
-            return Err(ErrorCode::MerkleTreeStructureError.into());
-        }
+        // Now we have space for the new subtree
+        self.add_subtree_directly(new);
 
         Ok(())
     }
 
-    /// Helper to find the smallest pair of same-sized subtrees
+    /// Adds a subtree directly to storage when space is available
+    fn add_subtree_directly(&mut self, subtree: Subtree) {
+        self.subtrees.push(subtree);
+        self.subtree_count += 1;
+    }
+
+    /// Merges two existing same-sized subtrees to make space for a new subtree
+    fn merge_existing_subtrees_for_space(&mut self) -> Result<()> {
+        // Find two same-sized subtrees to merge
+        let (idx1, idx2) = self
+            .find_same_sized_pair()
+            .ok_or(ErrorCode::MerkleTreeStructureError)?;
+
+        let subtree1 = self.subtrees[idx1];
+        let subtree2 = self.subtrees[idx2];
+
+        // Remove both subtrees and create merged version
+        self.remove_subtree_pair(idx1, idx2);
+        let merged_subtree = self.create_merged_subtree(subtree1, subtree2);
+
+        // Add the merged subtree back
+        self.add_subtree_directly(merged_subtree);
+
+        Ok(())
+    }
+
+    /// Removes subtree pair (higher index first to avoid shifting)
+    fn remove_subtree_pair(&mut self, idx1: usize, idx2: usize) {
+        let (first_idx, second_idx) = if idx1 > idx2 {
+            (idx1, idx2)
+        } else {
+            (idx2, idx1)
+        };
+
+        // Remove higher index first
+        self.subtrees.remove(first_idx);
+
+        // Adjust second index after first removal
+        let adjusted_second_idx = if second_idx > first_idx {
+            second_idx - 1
+        } else {
+            second_idx
+        };
+        self.subtrees.remove(adjusted_second_idx);
+
+        self.subtree_count -= 2;
+    }
+
+    fn create_merged_subtree(&self, subtree1: Subtree, subtree2: Subtree) -> Subtree {
+        // Order hashes by start index for consistent structure
+        let (left, right) = if subtree1.start_index < subtree2.start_index {
+            (subtree1.root_hash, subtree2.root_hash)
+        } else {
+            (subtree2.root_hash, subtree1.root_hash)
+        };
+
+        Subtree {
+            root_hash: hash(&[left, right].concat()).to_bytes(),
+            start_index: subtree1.start_index.min(subtree2.start_index),
+            size: subtree1.size + subtree2.size,
+        }
+    }
+
+    /// Finds smallest pair of same-sized subtrees for optimal merging
     fn find_same_sized_pair(&self) -> Option<(usize, usize)> {
         let mut best_pair: Option<(usize, usize)> = None;
         let mut smallest_size = u32::MAX;
@@ -794,7 +857,6 @@ impl Game {
         best_pair
     }
 
-    /// Helper to find the smallest subtree by size
     fn find_smallest_subtree(&self) -> usize {
         let mut smallest_idx = 0;
         let mut smallest_size = u32::MAX;
@@ -809,7 +871,7 @@ impl Game {
         smallest_idx
     }
 
-    /// Updates global Merkle root from subtrees only, excluding recent players
+    /// Updates global merkle root from subtrees only (excludes recent players)
     fn update_merkle_root(&mut self) -> Result<()> {
         let mut hashes = Vec::new();
 
@@ -818,7 +880,7 @@ impl Game {
         subtrees.sort_by_key(|s| s.start_index);
         hashes.extend(subtrees.iter().map(|s| s.root_hash));
 
-        // Recent players are excluded from merkle root - they are verified separately
+        // Recent players excluded - verified separately
 
         self.merkle_root = if hashes.is_empty() {
             [0; 32] // Empty tree when no subtrees exist
@@ -829,7 +891,7 @@ impl Game {
         Ok(())
     }
 
-    /// Computes Merkle root for any leaf set
+    /// Computes merkle root using bottom-up binary tree construction
     fn compute_merkle_root(leaves: &[[u8; 32]]) -> [u8; 32] {
         if leaves.is_empty() {
             return [0; 32];
@@ -871,7 +933,7 @@ impl Game {
     // EXCLUSION PROOF VERIFICATION FUNCTIONS
     // =============================================================================
 
-    /// Find which subtree contains the specified player index
+    /// Finds which subtree contains player index (None if in recent buffer)
     pub fn find_subtree_containing_player(&self, player_index: u32) -> Option<usize> {
         for (i, subtree) in self.subtrees.iter().enumerate() {
             let end_index = subtree.start_index + subtree.size - 1;
@@ -908,166 +970,277 @@ impl Game {
         current_hash == target_root
     }
 
-    /// Verify swap-with-last proof for maintaining power-of-2 subtrees
+    /// Verifies exclusion proof for removing a player via swap-with-last
     pub fn verify_exclusion_proof(
         &self,
         proof: &ExclusionProof,
         departing_player_key: Pubkey,
         departing_player_index: u32,
     ) -> Result<bool> {
-        // 1. Find departing player's subtree
+        // Find subtrees involved in the swap operation
+        let (departing_subtree_idx, smallest_subtree_idx) =
+            self.find_exclusion_subtrees(departing_player_index)?;
+
+        // Verify the departing player is actually in their claimed subtree
+        self.verify_departing_player_in_subtree(
+            proof,
+            departing_player_key,
+            departing_player_index,
+            departing_subtree_idx,
+        )?;
+
+        // Verify the smallest subtree state matches the proof
+        self.verify_smallest_subtree_state(proof, smallest_subtree_idx)?;
+
+        // Verify the reconstruction plan maintains merkle tree integrity
+        self.verify_reconstruction_plan(proof)?;
+
+        Ok(true)
+    }
+
+    /// Finds the subtrees involved in exclusion: departing player's subtree and smallest subtree
+    fn find_exclusion_subtrees(&self, departing_player_index: u32) -> Result<(usize, usize)> {
         let departing_subtree_idx = self
             .find_subtree_containing_player(departing_player_index)
             .ok_or(ErrorCode::SubtreeNotFound)?;
+
+        let smallest_subtree_idx = self.find_smallest_subtree();
+
+        Ok((departing_subtree_idx, smallest_subtree_idx))
+    }
+
+    /// Verifies that the departing player exists in their claimed subtree
+    fn verify_departing_player_in_subtree(
+        &self,
+        proof: &ExclusionProof,
+        departing_player_key: Pubkey,
+        departing_player_index: u32,
+        departing_subtree_idx: usize,
+    ) -> Result<()> {
         let departing_subtree = &self.subtrees[departing_subtree_idx];
 
-        // 2. Find smallest subtree (should contain last player)
-        let smallest_subtree_idx = self.find_smallest_subtree();
-        let smallest_subtree = &self.subtrees[smallest_subtree_idx];
-
-        // 3. Verify departing player exists in their claimed subtree
+        // Verify the proof claims the correct subtree root
         require!(
             proof.departing_subtree_original_root == departing_subtree.root_hash,
             ErrorCode::InvalidExclusionProof
         );
 
+        // Create and hash the participation entry
         let departing_player_entry =
             Game::create_participation_entry(departing_player_key, departing_player_index);
         let departing_leaf = Game::hash_participation_entry(&departing_player_entry);
         let departing_relative_index = departing_player_index - departing_subtree.start_index;
 
-        require!(
-            Self::verify_merkle_proof_against_root(
-                departing_leaf,
-                &proof.departing_player_proof,
-                departing_relative_index,
-                proof.departing_subtree_original_root
-            ),
-            ErrorCode::InvalidExclusionProof
-        );
+        // Verify merkle proof that player exists in the subtree
+        Self::require_valid_merkle_proof(
+            departing_leaf,
+            &proof.departing_player_proof,
+            departing_relative_index,
+            proof.departing_subtree_original_root,
+        )?;
 
-        // 4. Verify last player exists in smallest subtree
+        Ok(())
+    }
+
+    /// Verifies the smallest subtree state matches what the proof claims
+    fn verify_smallest_subtree_state(
+        &self,
+        proof: &ExclusionProof,
+        smallest_subtree_idx: usize,
+    ) -> Result<()> {
+        let smallest_subtree = &self.subtrees[smallest_subtree_idx];
+
+        // Verify the proof claims the correct smallest subtree root
         require!(
             proof.last_subtree_original_root == smallest_subtree.root_hash,
             ErrorCode::InvalidExclusionProof
         );
 
-        // 5. Verify smallest subtree reconstruction plan
+        // Verify the remaining players count is correct (subtree size - 1)
         let remaining_count = proof.remaining_players_in_smallest.len();
         require!(
             remaining_count == (smallest_subtree.size - 1) as usize,
             ErrorCode::MalformedSubtreeProof
         );
 
-        // 6. Verify power-of-2 reconstruction logic
+        Ok(())
+    }
+
+    /// Verifies the reconstruction plan maintains power-of-2 subtree requirements
+    fn verify_reconstruction_plan(&self, proof: &ExclusionProof) -> Result<()> {
+        let remaining_count = proof.remaining_players_in_smallest.len();
+
         if remaining_count == 0 {
-            // Subtree becomes empty
-            require!(
-                proof.new_power_of_2_root.is_none(),
-                ErrorCode::InvalidExclusionProof
-            );
-            require!(
-                proof.players_to_recent.is_empty(),
-                ErrorCode::InvalidExclusionProof
-            );
+            // Case 1: Subtree becomes empty after removing last player
+            self.verify_empty_subtree_plan(proof)?;
         } else if remaining_count.is_power_of_two() {
-            // Perfect power-of-2, all players stay in subtree
+            // Case 2: Perfect power-of-2, all players stay in subtree
+            self.verify_perfect_power_of_2_plan(proof)?;
+        } else {
+            // Case 3: Split players between subtree and recent buffer
+            self.verify_split_reconstruction_plan(proof, remaining_count)?;
+        }
+
+        Ok(())
+    }
+
+    /// Verifies reconstruction plan when subtree becomes empty
+    fn verify_empty_subtree_plan(&self, proof: &ExclusionProof) -> Result<()> {
+        require!(
+            proof.new_power_of_2_root.is_none(),
+            ErrorCode::InvalidExclusionProof
+        );
+        require!(
+            proof.players_to_recent.is_empty(),
+            ErrorCode::InvalidExclusionProof
+        );
+        Ok(())
+    }
+
+    /// Verifies reconstruction plan when remaining count is a perfect power-of-2
+    fn verify_perfect_power_of_2_plan(&self, proof: &ExclusionProof) -> Result<()> {
+        require!(
+            proof.new_power_of_2_root.is_some(),
+            ErrorCode::InvalidExclusionProof
+        );
+        require!(
+            proof.players_to_recent.is_empty(),
+            ErrorCode::InvalidExclusionProof
+        );
+        Ok(())
+    }
+
+    /// Verifies reconstruction plan when players must be split between subtree and recent buffer
+    fn verify_split_reconstruction_plan(
+        &self,
+        proof: &ExclusionProof,
+        remaining_count: usize,
+    ) -> Result<()> {
+        // Calculate power-of-2 split threshold
+        let largest_power_of_2_le = Self::largest_power_of_2_le(remaining_count);
+
+        let subtree_players = largest_power_of_2_le;
+        let recent_players = remaining_count - subtree_players;
+
+        // Verify the correct number of players are moved to recent buffer
+        require!(
+            proof.players_to_recent.len() == recent_players,
+            ErrorCode::MalformedSubtreeProof
+        );
+
+        // Verify new root existence based on whether subtree will have players
+        if subtree_players > 0 {
             require!(
                 proof.new_power_of_2_root.is_some(),
                 ErrorCode::InvalidExclusionProof
             );
+        } else {
             require!(
-                proof.players_to_recent.is_empty(),
+                proof.new_power_of_2_root.is_none(),
                 ErrorCode::InvalidExclusionProof
             );
-        } else {
-            // Split: some to subtree, some to recent_players
-            let largest_power_of_2_le = if remaining_count > 0 {
-                1 << (31 - (remaining_count as u32).leading_zeros() - 1)
-            } else {
-                0
-            };
-            let subtree_players = largest_power_of_2_le;
-            let recent_players = remaining_count - subtree_players;
-
-            require!(
-                proof.players_to_recent.len() == recent_players,
-                ErrorCode::MalformedSubtreeProof
-            );
-
-            if subtree_players > 0 {
-                require!(
-                    proof.new_power_of_2_root.is_some(),
-                    ErrorCode::InvalidExclusionProof
-                );
-            } else {
-                require!(
-                    proof.new_power_of_2_root.is_none(),
-                    ErrorCode::InvalidExclusionProof
-                );
-            }
         }
 
-        Ok(true)
+        Ok(())
     }
 
-    /// Execute swap-with-last operation to maintain power-of-2 subtrees
+    /// Executes verified exclusion by updating subtrees and global root
     pub fn modify_subtree_after_verified_exclusion(
         &mut self,
         proof: &ExclusionProof,
         departing_player_index: u32,
     ) -> Result<()> {
-        // 1. Find subtrees
-        let departing_subtree_idx = self
-            .find_subtree_containing_player(departing_player_index)
-            .ok_or(ErrorCode::SubtreeNotFound)?;
-        let smallest_subtree_idx = self.find_smallest_subtree();
+        let (departing_subtree_idx, smallest_subtree_idx) =
+            self.find_exclusion_subtrees(departing_player_index)?;
 
-        // 2. Update departing player's subtree with swapped-in last player
+        // Update departing player's subtree with swapped-in last player
+        self.update_departing_subtree(proof, departing_subtree_idx);
+
+        // Handle smallest subtree reconstruction based on remaining players
+        self.reconstruct_smallest_subtree(proof, smallest_subtree_idx)?;
+
+        // Update global merkle root to reflect all changes
+        self.update_merkle_root()?;
+
+        Ok(())
+    }
+
+    /// Updates the departing player's subtree with the new root after swap
+    fn update_departing_subtree(&mut self, proof: &ExclusionProof, departing_subtree_idx: usize) {
+        // Replace departing player with last player (swap operation)
         self.subtrees[departing_subtree_idx].root_hash = proof.departing_subtree_new_root;
-        // Size remains unchanged (swap, not removal)
+        // Size unchanged (swap, not removal)
+    }
 
-        // 3. Handle smallest subtree reconstruction
+    fn reconstruct_smallest_subtree(
+        &mut self,
+        proof: &ExclusionProof,
+        smallest_subtree_idx: usize,
+    ) -> Result<()> {
         let remaining_count = proof.remaining_players_in_smallest.len();
 
         if remaining_count == 0 {
-            // Smallest subtree becomes empty - remove it
-            self.subtrees.remove(smallest_subtree_idx);
-            self.subtree_count -= 1;
+            // Case 1: Subtree becomes empty - remove it entirely
+            self.remove_empty_subtree(smallest_subtree_idx);
         } else if remaining_count.is_power_of_two() {
-            // Perfect power-of-2, update subtree
-            self.subtrees[smallest_subtree_idx].root_hash = proof.new_power_of_2_root.unwrap();
-            self.subtrees[smallest_subtree_idx].size = remaining_count as u32;
+            // Case 2: Perfect power-of-2 - update subtree in place
+            self.update_perfect_power_of_2_subtree(proof, smallest_subtree_idx, remaining_count);
         } else {
-            // Split: some to subtree, some to recent_players
-            let largest_power_of_2_le = if remaining_count > 0 {
-                1 << (31 - (remaining_count as u32).leading_zeros() - 1)
-            } else {
-                0
-            };
-            let subtree_players = largest_power_of_2_le;
-
-            if subtree_players > 0 {
-                // Update subtree with power-of-2 portion
-                self.subtrees[smallest_subtree_idx].root_hash = proof.new_power_of_2_root.unwrap();
-                self.subtrees[smallest_subtree_idx].size = subtree_players as u32;
-            } else {
-                // Remove subtree entirely
-                self.subtrees.remove(smallest_subtree_idx);
-                self.subtree_count -= 1;
-            }
-
-            // Move excess players to recent_players
-            for player_entry in &proof.players_to_recent {
-                let leaf_hash = Game::hash_participation_entry(player_entry);
-                self.recent_players.push(RecentLeaf { hash: leaf_hash });
-                self.recent_count += 1;
-            }
+            // Case 3: Split between subtree and recent buffer
+            self.split_subtree_reconstruction(proof, smallest_subtree_idx, remaining_count)?;
         }
 
-        // 4. Update global merkle root
-        self.update_merkle_root()?;
+        Ok(())
+    }
 
+    fn remove_empty_subtree(&mut self, subtree_idx: usize) {
+        self.subtrees.remove(subtree_idx);
+        self.subtree_count -= 1;
+    }
+
+    fn update_perfect_power_of_2_subtree(
+        &mut self,
+        proof: &ExclusionProof,
+        subtree_idx: usize,
+        remaining_count: usize,
+    ) {
+        self.subtrees[subtree_idx].root_hash = proof.new_power_of_2_root.unwrap();
+        self.subtrees[subtree_idx].size = remaining_count as u32;
+    }
+
+    /// Handles split reconstruction: some players to subtree, some to recent buffer
+    fn split_subtree_reconstruction(
+        &mut self,
+        proof: &ExclusionProof,
+        smallest_subtree_idx: usize,
+        remaining_count: usize,
+    ) -> Result<()> {
+        // Split calculation: subtree vs recent buffer
+        let largest_power_of_2_le = Self::largest_power_of_2_le(remaining_count);
+        let subtree_players = largest_power_of_2_le;
+
+        if subtree_players > 0 {
+            // Update subtree with power-of-2 portion
+            self.subtrees[smallest_subtree_idx].root_hash = proof.new_power_of_2_root.unwrap();
+            self.subtrees[smallest_subtree_idx].size = subtree_players as u32;
+        } else {
+            // Remove subtree entirely if no players remain
+            self.remove_empty_subtree(smallest_subtree_idx);
+        }
+
+        // Move excess players to recent_players buffer
+        self.move_players_to_recent_buffer(proof)?;
+
+        Ok(())
+    }
+
+    /// Moves excess players from subtree to recent_players buffer
+    fn move_players_to_recent_buffer(&mut self, proof: &ExclusionProof) -> Result<()> {
+        for player_entry in &proof.players_to_recent {
+            let leaf_hash = Game::hash_participation_entry(player_entry);
+            self.recent_players.push(RecentLeaf { hash: leaf_hash });
+            self.recent_count += 1;
+        }
         Ok(())
     }
 }
