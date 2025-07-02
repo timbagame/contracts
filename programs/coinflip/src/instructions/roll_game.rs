@@ -31,15 +31,14 @@ pub fn handler(ctx: Context<super::RollGame>) -> Result<()> {
     let ticket_amount = game.ticket_amount;
 
     if game.game_type == GameType::Snowball || game.game_type == GameType::Dumbball {
-        // For accumulating games, each roll creates a new participation entry
+        // For accumulating games, each roll creates an additional participation entry
         // The same player can have multiple entries in the merkle tree
         game.add_player_to_merkle_tree(player_key)?;
-        game.last_slot = clock.slot;
-    } else {
-        // For Dumbflip and Dumbaway, no state changes needed - just emit event
-        // These games don't accumulate, they just reveal winners immediately
-        game.last_slot = clock.slot;
     }
+    // For Dumbflip and Dumbaway, we only update last_slot and emit event
+    // These games don't accumulate additional entries
+
+    game.last_slot = clock.slot;
 
     // ===============================
     // TOKEN TRANSFER
