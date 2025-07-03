@@ -28,7 +28,7 @@ pub fn handler(
     require!(game.players_count > 0, ErrorCode::InvalidPlayersCount);
 
     require!(
-        player_index < game.players_count,
+        player_index < game.entries_count,
         ErrorCode::UnauthorizedPlayer
     );
 
@@ -109,8 +109,9 @@ pub fn handler(
         game.total_amount -= refund_amount;
     }
 
-    // Update game state - decrement players_count to allow next player to unjoin
+    // Update game state - decrement both counters
     game.players_count -= 1;
+    game.entries_count -= 1;
     game.last_slot = clock.slot;
 
     // ===============================
@@ -122,7 +123,8 @@ pub fn handler(
         player: player_key,
         total_amount: game.total_amount,
         players_count: game.players_count,
-        player_index: player_index,
+        entries_count: game.entries_count,
+        entry_index: player_index,
         last_slot: game.last_slot,
         timestamp: current_time,
     });

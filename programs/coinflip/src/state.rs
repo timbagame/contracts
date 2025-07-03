@@ -16,6 +16,7 @@ pub const GAME_BASE_SIZE: usize = 8
     + 8   // ticket_amount
     + 4   // max_players
     + 4   // min_players
+    + 4   // entries_count
     + 4   // players_count
     + 32  // token_mint
     + 8   // created_at
@@ -28,7 +29,7 @@ pub const GAME_BASE_SIZE: usize = 8
     + 1   // max_subtrees
     + 4   // subtrees length (Vec<T> serialization)
     + 1   // recent_count
-    + 4; // recent_players length (Vec<T> serialization) = 155 bytes base
+    + 4; // recent_players length (Vec<T> serialization) = 159 bytes base
 
 // =============================================================================
 // GAME TYPES
@@ -423,7 +424,9 @@ pub struct Game {
     pub max_players: u32,
     /// Minimum number of players required
     pub min_players: u32,
-    /// Current number of players who have joined
+    /// Current number of entries (total participations)
+    pub entries_count: u32,
+    /// Current number of unique players who have joined
     pub players_count: u32,
     /// Token mint used for this game
     pub token_mint: Pubkey,
@@ -532,14 +535,8 @@ impl Game {
 
     /// Calculates the winner index using secret key with unbiased random selection
     pub fn calculate_winner_index(&self, secret_key: [u8; 32]) -> u32 {
-        // For Snowball and Dumbball games, use total entries (total_amount / ticket_amount)
-        // For other games, use unique players count
-        let n_entries =
-            if self.game_type == GameType::Snowball || self.game_type == GameType::Dumbball {
-                self.total_amount / self.ticket_amount
-            } else {
-                self.players_count as u64
-            };
+        // Use total entries count for all game types
+        let n_entries = self.entries_count as u64;
 
         if n_entries == 1 {
             return 0;
@@ -667,7 +664,7 @@ impl Game {
         player_index: u32,
     ) -> bool {
         // Calculate how many players are in committed subtrees
-        let committed_players = self.players_count - self.recent_count as u32;
+        let committed_players = self.entries_count - self.recent_count as u32;
 
         if player_index >= committed_players {
             // Player is in recent_players buffer - verify directly
@@ -690,7 +687,7 @@ impl Game {
 
     /// Adds a player to the merkle tree using buffer-based aggregation
     pub fn add_player_to_merkle_tree(&mut self, player: Pubkey) -> Result<()> {
-        let participation = Game::create_participation_entry(player, self.players_count);
+        let participation = Game::create_participation_entry(player, self.entries_count);
         let leaf_hash = Game::hash_participation_entry(&participation);
 
         if self.recent_count < 2 {
@@ -708,7 +705,7 @@ impl Game {
             self.update_merkle_root()?; // Only update when structure changes
         }
 
-        self.players_count += 1;
+        self.entries_count += 1;
         self.total_amount += self.ticket_amount;
         Ok(())
     }
@@ -749,7 +746,7 @@ impl Game {
         require!(self.recent_count == 2, ErrorCode::InvalidAmount);
 
         // Start index for recent buffer players
-        let start_index = self.players_count - self.recent_count as u32;
+        let start_index = self.entries_count - self.recent_count as u32;
         let leaves: Vec<[u8; 32]> = self.recent_players.iter().map(|leaf| leaf.hash).collect();
 
         Ok(Subtree {

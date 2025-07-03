@@ -115,10 +115,12 @@ pub struct PlayerJoined {
     pub player: Pubkey,
     /// Total prize amount after join
     pub total_amount: u64,
-    /// Number of players after join
+    /// Number of unique players after join
     pub players_count: u32,
-    /// Player's index in the game
-    pub player_index: u32,
+    /// Total number of entries after join
+    pub entries_count: u32,
+    /// Entry index for this join
+    pub entry_index: u32,
     /// Last slot for entropy
     pub last_slot: u64,
     /// Timestamp of the join
@@ -134,10 +136,12 @@ pub struct PlayerUnjoined {
     pub player: Pubkey,
     /// Remaining total amount after unjoin
     pub total_amount: u64,
-    /// Remaining players count
+    /// Remaining unique players count
     pub players_count: u32,
-    /// Player's index that was removed
-    pub player_index: u32,
+    /// Remaining total entries count
+    pub entries_count: u32,
+    /// Entry index that was removed
+    pub entry_index: u32,
     /// Last slot for entropy
     pub last_slot: u64,
     /// Timestamp of the unjoin
@@ -153,8 +157,12 @@ pub struct PlayerRolled {
     pub player: Pubkey,
     /// Total amount after roll
     pub total_amount: u64,
-    /// Player's index in the game
-    pub player_index: u32,
+    /// Number of unique players after roll
+    pub players_count: u32,
+    /// Total number of entries after roll
+    pub entries_count: u32,
+    /// Entry index for this roll
+    pub entry_index: u32,
     /// Last slot for entropy
     pub last_slot: u64,
     /// Timestamp of the roll

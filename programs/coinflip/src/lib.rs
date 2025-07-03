@@ -134,8 +134,12 @@ pub mod coinflip {
     }
 
     /// Allows a player to roll in Snowball/Dumbflip games (multiple participation)
-    pub fn roll_game(ctx: Context<RollGame>) -> Result<()> {
-        instructions::roll_game::handler(ctx)
+    pub fn roll_game(
+        ctx: Context<RollGame>,
+        player_participation: ParticipationEntry,
+        player_merkle_proof: Vec<[u8; 32]>,
+    ) -> Result<()> {
+        instructions::roll_game::handler(ctx, player_participation, player_merkle_proof)
     }
 
     /// Allows a player to leave a game before completion (with refund)
