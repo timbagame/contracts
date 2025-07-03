@@ -375,12 +375,11 @@ pub struct CloseGame<'info> {
 }
 
 #[derive(Accounts)]
+#[instruction(player_participation: ParticipationEntry, player_merkle_proof: Vec<[u8; 32]>)]
 pub struct RollGame<'info> {
     #[account(
         mut,
-        constraint = game.is_not_full() @ ErrorCode::GameFull,
         constraint = game.can_join_private(oracle_operator.as_ref(), &oracle.operator) @ ErrorCode::PrivateGameAccessDenied,
-        constraint = game.has_sufficient_balance_for_join(player_token_account.amount, player_balance.amount) @ ErrorCode::InsufficientBalance,
         constraint = game_token.is_enabled() @ ErrorCode::TokenNotEnabled,
         constraint = game.game_type == GameType::Snowball || game.game_type == GameType::Dumbflip || game.game_type == GameType::Dumbball || game.game_type == GameType::Dumbaway @ ErrorCode::InvalidGameType,
     )]

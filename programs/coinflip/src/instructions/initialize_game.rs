@@ -16,6 +16,7 @@ pub fn handler(ctx: Context<super::InitializeGame>, config: GameConfig) -> Resul
     game.game_type = config.game_type;
     game.max_players = config.max_players;
     game.min_players = config.min_players;
+    game.entries_count = 0;
     game.players_count = 0;
     game.token_mint = token_mint_key;
     game.created_at = clock.unix_timestamp as u64;

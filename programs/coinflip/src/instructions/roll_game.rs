@@ -1,9 +1,13 @@
 use crate::error::ErrorCode;
 use crate::events::PlayerRolled;
-use crate::state::GameType;
+use crate::state::{GameType, Game, ParticipationEntry};
 use anchor_lang::prelude::*;
 
-pub fn handler(ctx: Context<super::RollGame>) -> Result<()> {
+pub fn handler(
+    ctx: Context<super::RollGame>,
+    player_participation: ParticipationEntry,
+    player_merkle_proof: Vec<[u8; 32]>,
+) -> Result<()> {
     let game = &mut ctx.accounts.game;
     let clock = Clock::get()?;
     let current_time = clock.unix_timestamp as u64;
@@ -24,19 +28,49 @@ pub fn handler(ctx: Context<super::RollGame>) -> Result<()> {
         ErrorCode::InvalidGameType
     );
 
+    // Verify player participation proof
+    let player_leaf = Game::hash_participation_entry(&player_participation);
+    require!(
+        game.verify_player_participation(
+            player_leaf,
+            &player_merkle_proof,
+            player_participation.player_index,
+        ),
+        ErrorCode::InvalidMerkleProof
+    );
+
+    // Verify the player matches the account
+    require!(
+        player_participation.player == player_key,
+        ErrorCode::UnauthorizedPlayer
+    );
+
+    // For games that add entries, check balance requirement
+    if game.game_type == GameType::Snowball || game.game_type == GameType::Dumbball {
+        require!(
+            game.has_sufficient_balance_for_join(
+                ctx.accounts.player_token_account.amount,
+                player_balance.amount
+            ),
+            ErrorCode::InsufficientBalance
+        );
+    }
+
     // ===============================
     // MERKLE TREE UPDATE FOR ADDITIONAL ROLL
     // ===============================
 
     let ticket_amount = game.ticket_amount;
-
-    if game.game_type == GameType::Snowball || game.game_type == GameType::Dumbball {
+    let entry_index = if game.game_type == GameType::Snowball || game.game_type == GameType::Dumbball {
         // For accumulating games, each roll creates an additional participation entry
         // The same player can have multiple entries in the merkle tree
         game.add_player_to_merkle_tree(player_key)?;
-    }
-    // For Dumbflip and Dumbaway, we only update last_slot and emit event
-    // These games don't accumulate additional entries
+        game.entries_count - 1 // New entry just added
+    } else {
+        // For Dumbflip and Dumbaway, return the player's original entry index
+        // These games don't accumulate additional entries
+        player_participation.player_index
+    };
 
     game.last_slot = clock.slot;
 
@@ -62,7 +96,9 @@ pub fn handler(ctx: Context<super::RollGame>) -> Result<()> {
         game_key: game.key(),
         player: ctx.accounts.player.key(),
         total_amount: game.total_amount,
-        player_index: (game.total_amount / game.ticket_amount) as u32 - 1, // Entry index for this roll
+        players_count: game.players_count,
+        entries_count: game.entries_count,
+        entry_index, // Correct entry index based on game type
         last_slot: game.last_slot,
         timestamp: current_time,
     });
