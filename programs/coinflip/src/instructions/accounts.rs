@@ -10,7 +10,7 @@ use crate::state::*;
 // =============================================================================
 
 #[derive(Accounts)]
-#[instruction(fee_percentage: u8, oracle_buffer_time: u16, max_players: u32, max_timeout: u32, min_timeout: u32)]
+#[instruction(fee_percentage: u8, oracle_buffer_time: u16, max_tickets: u32, max_timeout: u32, min_timeout: u32)]
 pub struct InitializeOracle<'info> {
     #[account(
         init,
@@ -20,7 +20,7 @@ pub struct InitializeOracle<'info> {
         bump,
         constraint = Oracle::default().is_valid_fee_percentage(fee_percentage) @ ErrorCode::InvalidAmount,
         constraint = Oracle::default().is_valid_timeout(max_timeout, min_timeout) @ ErrorCode::InvalidTimeout,
-        constraint = Oracle::default().is_valid_players_count(max_players) @ ErrorCode::InvalidPlayersCount,
+        constraint = Oracle::default().is_valid_tickets_count(max_tickets) @ ErrorCode::InvalidTicketsCount,
     )]
     pub oracle: Account<'info, Oracle>,
 
@@ -31,7 +31,7 @@ pub struct InitializeOracle<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(fee_percentage: u8, oracle_buffer_time: u16, max_players: u32, max_timeout: u32, min_timeout: u32)]
+#[instruction(fee_percentage: u8, oracle_buffer_time: u16, max_tickets: u32, max_timeout: u32, min_timeout: u32)]
 pub struct UpdateOracle<'info> {
     #[account(
         mut,
@@ -40,7 +40,7 @@ pub struct UpdateOracle<'info> {
         constraint = oracle.is_authorized_operator(&old_oracle_operator.key()) @ ErrorCode::UnauthorizedOperator,
         constraint = Oracle::default().is_valid_fee_percentage(fee_percentage) @ ErrorCode::InvalidAmount,
         constraint = Oracle::default().is_valid_timeout(max_timeout, min_timeout) @ ErrorCode::InvalidTimeout,
-        constraint = Oracle::default().is_valid_players_count(max_players) @ ErrorCode::InvalidPlayersCount,
+        constraint = Oracle::default().is_valid_tickets_count(max_tickets) @ ErrorCode::InvalidTicketsCount,
     )]
     pub oracle: Account<'info, Oracle>,
 
@@ -197,19 +197,19 @@ pub struct WithdrawPlayerBalance<'info> {
 // =============================================================================
 
 #[derive(Accounts)]
-#[instruction(game_type: GameType, amount: u64, max_players: u32, min_players: u32, timeout: u32, is_private: bool, random_hash: [u8; 32])]
+#[instruction(game_type: GameType, amount: u64, max_tickets: u32, min_tickets: u32, timeout: u32, is_private: bool, random_hash: [u8; 32])]
 pub struct InitializeGame<'info> {
     #[account(
         init,
         payer = creator,
-        space = Game::calculate_storage_size(max_players),
+        space = Game::calculate_storage_size(max_tickets),
         seeds = [b"game", random_hash.as_ref()],
         bump,
         constraint = game_token.is_enabled() @ ErrorCode::TokenNotEnabled,
         constraint = game_token.meets_min_amount(amount) @ ErrorCode::InvalidAmount,
         constraint = oracle.is_valid_timeout_range(timeout) @ ErrorCode::InvalidTimeout,
-        constraint = Game::is_valid_players_count(max_players, min_players, oracle.max_players) @ ErrorCode::InvalidPlayersCount,
-        constraint = Game::is_valid_game_type_players(game_type, max_players, min_players) @ ErrorCode::InvalidPlayersCount,
+        constraint = Game::is_valid_tickets_count(max_tickets, min_tickets, oracle.max_tickets) @ ErrorCode::InvalidTicketsCount,
+        constraint = Game::is_valid_game_type_tickets(game_type, max_tickets, min_tickets) @ ErrorCode::InvalidTicketsCount,
     )]
     pub game: Account<'info, Game>,
     #[account(mut)]
@@ -335,7 +335,7 @@ pub struct CompleteGame<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(player_index: u32, exclusion_proof: Option<ExclusionProof>)]
+#[instruction(ticket_index: u32, exclusion_proof: Option<ExclusionProof>)]
 pub struct UnjoinGame<'info> {
     #[account(mut)]
     pub game: Account<'info, Game>,
@@ -358,7 +358,7 @@ pub struct CloseGame<'info> {
         mut,
         close = creator,
         constraint = game.is_creator(&creator.key()) @ ErrorCode::InvalidCreator,
-        constraint = game.players_count == 0 @ ErrorCode::GameHasActivePlayers,
+        constraint = game.tickets_count == 0 @ ErrorCode::GameHasActivePlayers,
     )]
     pub game: Account<'info, Game>,
     #[account(mut)]

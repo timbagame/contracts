@@ -33,7 +33,7 @@ pub fn handler(
         game.verify_player_participation(
             winner_leaf,
             &winner_merkle_proof,
-            winner_participation.player_index,
+            winner_participation.ticket_index,
         ),
         ErrorCode::InvalidMerkleProof
     );
@@ -41,7 +41,7 @@ pub fn handler(
     // 2. Verify the winner index is correctly calculated from secret key
     let calculated_winner_index = game.calculate_winner_index(secret_key);
     require!(
-        winner_participation.player_index == calculated_winner_index,
+        winner_participation.ticket_index == calculated_winner_index,
         ErrorCode::InvalidWinnerIndex
     );
 
@@ -72,7 +72,7 @@ pub fn handler(
     emit!(GameCompleted {
         game_key: game.key(),
         winner: ctx.accounts.winner.key(),
-        players_count: game.players_count,
+        tickets_count: game.tickets_count,
         winner_amount,
         fee_amount,
         timestamp: current_time,

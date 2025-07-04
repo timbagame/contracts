@@ -18,8 +18,8 @@ pub struct OracleInitialized {
     pub fee_percentage: u8,
     /// Buffer time in seconds after game timeout
     pub oracle_buffer_time: u16,
-    /// Maximum players allowed in any game
-    pub max_players: u32,
+    /// Maximum tickets allowed in any game
+    pub max_tickets: u32,
     /// Maximum timeout duration for games
     pub max_timeout: u32,
     /// Minimum timeout duration for games
@@ -37,8 +37,8 @@ pub struct OracleUpdated {
     pub fee_percentage: u8,
     /// Updated buffer time
     pub oracle_buffer_time: u16,
-    /// Updated maximum players
-    pub max_players: u32,
+    /// Updated maximum tickets
+    pub max_tickets: u32,
     /// Updated maximum timeout
     pub max_timeout: u32,
     /// Updated minimum timeout
@@ -115,12 +115,10 @@ pub struct PlayerJoined {
     pub player: Pubkey,
     /// Total prize amount after join
     pub total_amount: u64,
-    /// Number of unique players after join
-    pub players_count: u32,
-    /// Total number of entries after join
-    pub entries_count: u32,
-    /// Entry index for this join
-    pub entry_index: u32,
+    /// Total number of tickets after join
+    pub tickets_count: u32,
+    /// Ticket index for this join
+    pub ticket_index: u32,
     /// Last slot for entropy
     pub last_slot: u64,
     /// Timestamp of the join
@@ -136,12 +134,10 @@ pub struct PlayerUnjoined {
     pub player: Pubkey,
     /// Remaining total amount after unjoin
     pub total_amount: u64,
-    /// Remaining unique players count
-    pub players_count: u32,
-    /// Remaining total entries count
-    pub entries_count: u32,
-    /// Entry index that was removed
-    pub entry_index: u32,
+    /// Remaining total tickets count
+    pub tickets_count: u32,
+    /// Ticket index that was removed
+    pub ticket_index: u32,
     /// Last slot for entropy
     pub last_slot: u64,
     /// Timestamp of the unjoin
@@ -157,12 +153,10 @@ pub struct PlayerRolled {
     pub player: Pubkey,
     /// Total amount after roll
     pub total_amount: u64,
-    /// Number of unique players after roll
-    pub players_count: u32,
-    /// Total number of entries after roll
-    pub entries_count: u32,
-    /// Entry index for this roll
-    pub entry_index: u32,
+    /// Total number of tickets after roll
+    pub tickets_count: u32,
+    /// Ticket index for this roll
+    pub ticket_index: u32,
     /// Last slot for entropy
     pub last_slot: u64,
     /// Timestamp of the roll
@@ -186,10 +180,10 @@ pub struct GameInitialized {
     pub ticket_amount: u64,
     /// Initial total amount in the game
     pub total_amount: u64,
-    /// Maximum players allowed
-    pub max_players: u32,
-    /// Minimum players required
-    pub min_players: u32,
+    /// Maximum tickets allowed
+    pub max_tickets: u32,
+    /// Minimum tickets required
+    pub min_tickets: u32,
     /// Token mint used for the game
     pub token_mint: Pubkey,
     /// Whether game is private
@@ -207,8 +201,8 @@ pub struct GameCompleted {
     pub game_key: Pubkey,
     /// Winner of the game
     pub winner: Pubkey,
-    /// Total number of players who participated
-    pub players_count: u32,
+    /// Total number of tickets that participated
+    pub tickets_count: u32,
     /// Amount awarded to the winner
     pub winner_amount: u64,
     /// Fee amount collected
