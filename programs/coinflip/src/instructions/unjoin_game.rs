@@ -43,34 +43,34 @@ pub fn handler(
     // DETERMINE UNJOIN STRATEGY BASED ON PLAYER LOCATION
     // ===============================
 
-    // Check if player is in recent_players
+    // Check if player is in recent_tickets
     let mut found_in_recent = false;
-    let mut recent_player_index = 0;
+    let mut recent_ticket_index = 0;
 
-    for (i, recent_leaf) in game.recent_players.iter().enumerate() {
+    for (i, recent_leaf) in game.recent_tickets.iter().enumerate() {
         if recent_leaf.hash == player_leaf_hash {
             found_in_recent = true;
-            recent_player_index = i;
+            recent_ticket_index = i;
             break;
         }
     }
 
     if found_in_recent {
         // ===============================
-        // CASE 1: PLAYER IN RECENT_PLAYERS
+        // CASE 1: PLAYER IN RECENT_TICKETS
         // ===============================
 
         let last_recent_index = (game.recent_count - 1) as usize;
 
-        if recent_player_index == last_recent_index {
-            // Case 1a: Player is last in recent_players - simple removal
-            game.recent_players.remove(recent_player_index);
+        if recent_ticket_index == last_recent_index {
+            // Case 1a: Player is last in recent_tickets - simple removal
+            game.recent_tickets.remove(recent_ticket_index);
             game.recent_count -= 1;
         } else {
-            // Case 1b: Player is not last in recent_players - swap with last
-            game.recent_players
-                .swap(recent_player_index, last_recent_index);
-            game.recent_players.remove(last_recent_index);
+            // Case 1b: Player is not last in recent_tickets - swap with last
+            game.recent_tickets
+                .swap(recent_ticket_index, last_recent_index);
+            game.recent_tickets.remove(last_recent_index);
             game.recent_count -= 1;
         }
     } else {
