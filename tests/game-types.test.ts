@@ -336,7 +336,7 @@ describe("Game Types", () => {
       const gameConfig: GameConfig = {
         gameType: { snowball: {} },
         amount: new anchor.BN(1_000_000),
-        maxTickets: 3, // Set to match actual entries for immediate completion
+        maxTickets: 4, // Will be reached with 3 joins + 1 roll
         minTickets: 2,
         timeout: 3600,
         isPrivate: false,
@@ -363,8 +363,7 @@ describe("Game Types", () => {
       // Verify accumulating pot
       const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
       expect(gameAccount.totalAmount.toNumber()).to.equal(4_000_000); // 4 entries
-      expect(gameAccount.ticketsCount).to.equal(3); // 3 unique players 
-      expect(gameAccount.ticketsCount).to.equal(4); // 4 total entries (3 joins + 1 roll)
+      expect(gameAccount.ticketsCount).to.equal(4); // 4 total tickets (3 joins + 1 roll)
 
       // Complete game with entry-based winner calculation
       const winnerIndex = calculateWinnerIndex(
@@ -439,8 +438,7 @@ describe("Game Types", () => {
 
       // Verify snowball accumulation
       const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
-      expect(gameAccount.ticketsCount).to.equal(3); // 3 unique players
-      expect(gameAccount.ticketsCount).to.equal(3); // 3 entries
+      expect(gameAccount.ticketsCount).to.equal(3); // 3 tickets total
       expect(gameAccount.totalAmount.toNumber()).to.equal(3_000_000);
 
       // Complete the snowball game
@@ -485,7 +483,7 @@ describe("Game Types", () => {
       const gameConfig: GameConfig = {
         gameType: { snowball: {} },
         amount: new anchor.BN(1_000_000), // 1 TIMBA per entry
-        maxTickets: 3,
+        maxTickets: 13, // Will be reached with 3 joins + 10 rolls
         minTickets: 2,
         timeout: 3600,
         isPrivate: false,
@@ -524,11 +522,10 @@ describe("Game Types", () => {
       console.log("Verifying final state...");
       // Verify final state
       const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
-      expect(gameAccount.ticketsCount).to.equal(3); // 3 unique players
-      expect(gameAccount.ticketsCount).to.equal(13); // 3 joins + 10 rolls
-      expect(gameAccount.totalAmount.toNumber()).to.equal(13_000_000); // 13 entries * 1M
+      expect(gameAccount.ticketsCount).to.equal(13); // 3 joins + 10 rolls = 13 total tickets
+      expect(gameAccount.totalAmount.toNumber()).to.equal(13_000_000); // 13 tickets * 1M
 
-      console.log(`Final state: ${gameAccount.ticketsCount} players, ${gameAccount.ticketsCount} entries, ${gameAccount.totalAmount.toNumber()} total amount`);
+      console.log(`Final state: ${gameAccount.ticketsCount} tickets, ${gameAccount.totalAmount.toNumber()} total amount`);
 
       // Complete game with entry-based winner calculation
       const winnerIndex = calculateWinnerIndex(
