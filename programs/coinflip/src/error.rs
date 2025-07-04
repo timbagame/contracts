@@ -114,9 +114,9 @@ pub enum ErrorCode {
     // =========================================================================
     // CONFIGURATION ERRORS (1300-1399)
     // =========================================================================
-    /// Player count configuration is invalid
-    #[msg("Invalid players count")]
-    InvalidPlayersCount = 1300,
+    /// Ticket count configuration is invalid
+    #[msg("Invalid tickets count")]
+    InvalidTicketsCount = 1300,
 
     /// Timeout configuration is invalid
     #[msg("Invalid timeout")]

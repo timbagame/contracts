@@ -45,8 +45,8 @@ describe("Game Types", () => {
       const gameConfig: GameConfig = {
         gameType: { coinflip: {} },
         amount: new anchor.BN(1_000_000),
-        maxPlayers: 2,
-        minPlayers: 2,
+        maxTickets: 2,
+        minTickets: 2,
         timeout: 3600,
         isPrivate: false,
       };
@@ -65,12 +65,12 @@ describe("Game Types", () => {
 
       // Verify game state before completion
       const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
-      expect(gameAccount.playersCount).to.equal(2);
+      expect(gameAccount.ticketsCount).to.equal(2);
       expect(gameAccount.totalAmount.toNumber()).to.equal(2_000_000);
 
       // Complete game
       const winnerIndex = calculateWinnerIndex(
-        gameAccount.playersCount,
+        gameAccount.ticketsCount,
         gameData.secretKey,
         Number(gameAccount.lastSlot)
       );
@@ -78,7 +78,7 @@ describe("Game Types", () => {
 
       const winnerParticipation = {
         player: winner.player.publicKey,
-        playerIndex: winnerIndex,
+        ticketIndex: winnerIndex,
       };
 
       await testUtils.game.completeGame(
@@ -102,8 +102,8 @@ describe("Game Types", () => {
       const gameConfig: GameConfig = {
         gameType: { coinflip: {} },
         amount: new anchor.BN(500_000),
-        maxPlayers: 4,
-        minPlayers: 3,
+        maxTickets: 4,
+        minTickets: 3,
         timeout: 3600,
         isPrivate: false,
       };
@@ -123,12 +123,12 @@ describe("Game Types", () => {
 
       // Verify game state
       const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
-      expect(gameAccount.playersCount).to.equal(4);
+      expect(gameAccount.ticketsCount).to.equal(4);
       expect(gameAccount.totalAmount.toNumber()).to.equal(2_000_000);
 
       // Complete game
       const actualWinnerIndex = calculateWinnerIndex(
-        gameAccount.playersCount,
+        gameAccount.ticketsCount,
         gameData.secretKey,
         Number(gameAccount.lastSlot)
       );
@@ -139,7 +139,7 @@ describe("Game Types", () => {
 
       const winnerParticipation = {
         player: winner.player.publicKey,
-        playerIndex: actualWinnerIndex,
+        ticketIndex: actualWinnerIndex,
       };
 
       await testUtils.game.completeGame(
@@ -163,8 +163,8 @@ describe("Game Types", () => {
       const gameConfig: GameConfig = {
         gameType: { coinflip: {} },
         amount: new anchor.BN(0), // Invalid amount
-        maxPlayers: 2,
-        minPlayers: 2,
+        maxTickets: 2,
+        minTickets: 2,
         timeout: 3600,
         isPrivate: false,
       };
@@ -192,8 +192,8 @@ describe("Game Types", () => {
       const gameConfig: GameConfig = {
         gameType: { giveaway: {} },
         amount: new anchor.BN(1_000_000), // Creator funds this
-        maxPlayers: 2, // Match actual player count for immediate completion
-        minPlayers: 2,
+        maxTickets: 2, // Match actual player count for immediate completion
+        minTickets: 2,
         timeout: 3600,
         isPrivate: false,
       };
@@ -212,12 +212,12 @@ describe("Game Types", () => {
 
       // Verify game state
       const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
-      expect(gameAccount.playersCount).to.equal(2);
+      expect(gameAccount.ticketsCount).to.equal(2);
       expect(gameAccount.totalAmount.toNumber()).to.equal(1_000_000); // Only creator's contribution
 
       // Complete game
       const winnerIndex = calculateWinnerIndex(
-        gameAccount.playersCount,
+        gameAccount.ticketsCount,
         gameData.secretKey,
         Number(gameAccount.lastSlot)
       );
@@ -225,7 +225,7 @@ describe("Game Types", () => {
 
       const winnerParticipation = {
         player: winner.player.publicKey,
-        playerIndex: winnerIndex,
+        ticketIndex: winnerIndex,
       };
 
       await testUtils.game.completeGame(
@@ -250,8 +250,8 @@ describe("Game Types", () => {
       const gameConfig: GameConfig = {
         gameType: { giveaway: {} },
         amount: new anchor.BN(1_000_000),
-        maxPlayers: 1,
-        minPlayers: 1,
+        maxTickets: 1,
+        minTickets: 1,
         timeout: 3600,
         isPrivate: false,
       };
@@ -269,7 +269,7 @@ describe("Game Types", () => {
       // Complete game (creator is the only participant)
       const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
       const winnerIndex = calculateWinnerIndex(
-        gameAccount.playersCount,
+        gameAccount.ticketsCount,
         gameData.secretKey,
         Number(gameAccount.lastSlot)
       );
@@ -278,7 +278,7 @@ describe("Game Types", () => {
 
       const winnerParticipation = {
         player: creator.player.publicKey,
-        playerIndex: winnerIndex,
+        ticketIndex: winnerIndex,
       };
 
       await testUtils.game.completeGame(
@@ -302,8 +302,8 @@ describe("Game Types", () => {
       const gameConfig: GameConfig = {
         gameType: { giveaway: {} },
         amount: new anchor.BN(0), // Zero amount - test if this is actually allowed
-        maxPlayers: 2,
-        minPlayers: 1,
+        maxTickets: 2,
+        minTickets: 1,
         timeout: 3600,
         isPrivate: false,
       };
@@ -336,8 +336,8 @@ describe("Game Types", () => {
       const gameConfig: GameConfig = {
         gameType: { snowball: {} },
         amount: new anchor.BN(1_000_000),
-        maxPlayers: 3, // Set to match actual entries for immediate completion
-        minPlayers: 2,
+        maxTickets: 3, // Set to match actual entries for immediate completion
+        minTickets: 2,
         timeout: 3600,
         isPrivate: false,
       };
@@ -353,18 +353,22 @@ describe("Game Types", () => {
       // Players join first (one entry each)
       await testUtils.game.joinGame(gameData.gamePDA, creator.player);
       await testUtils.game.joinGame(gameData.gamePDA, player1.player);
+      await testUtils.game.joinGame(gameData.gamePDA, players[2].player); // Third player to reach max
 
-      // Then creator rolls for additional entry
-      await testUtils.game.rollGame(gameData.gamePDA, creator.player);
+      // Then creator rolls for additional entry (creator's original entry index is 0)
+      let gameStateForProof = await env.program.account.game.fetch(gameData.gamePDA);
+      const creatorMerkleProof = generateMerkleProof([creator, player1, players[2]], 0, gameStateForProof);
+      await testUtils.game.rollGame(gameData.gamePDA, creator.player, 0, creatorMerkleProof);
 
       // Verify accumulating pot
       const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
-      expect(gameAccount.totalAmount.toNumber()).to.equal(3_000_000); // 3 entries
-      expect(gameAccount.playersCount).to.equal(3); // 3 total entries (players_count tracks entries in snowball)
+      expect(gameAccount.totalAmount.toNumber()).to.equal(4_000_000); // 4 entries
+      expect(gameAccount.ticketsCount).to.equal(3); // 3 unique players 
+      expect(gameAccount.ticketsCount).to.equal(4); // 4 total entries (3 joins + 1 roll)
 
       // Complete game with entry-based winner calculation
       const winnerIndex = calculateWinnerIndex(
-        gameAccount.playersCount,
+        gameAccount.ticketsCount,
         gameData.secretKey,
         Number(gameAccount.lastSlot),
         { snowball: {} },
@@ -373,22 +377,24 @@ describe("Game Types", () => {
       );
 
       // For snowball games, map entry index to actual player
-      // Entry 0: creator, Entry 1: player1, Entry 2: creator (roll)
-      let actualWinner;
-      if (winnerIndex === 0 || winnerIndex === 2) {
+      // Entry 0: creator, Entry 1: player1, Entry 2: players[2], Entry 3: creator (roll)
+      let actualWinner: any;
+      if (winnerIndex === 0 || winnerIndex === 3) {
         actualWinner = creator; // creator won (either first join or roll)
-      } else {
+      } else if (winnerIndex === 1) {
         actualWinner = player1; // player1 won
+      } else {
+        actualWinner = players[2]; // players[2] won
       }
 
       // Generate merkle proof for snowball game
-      // Create a player list that represents the entries: [creator, player1, creator]
-      const entryPlayers = [creator, player1, creator];
+      // Create a player list that represents the entries: [creator, player1, players[2], creator]
+      const entryPlayers = [creator, player1, players[2], creator];
       const merkleProof = generateMerkleProof(entryPlayers, winnerIndex, gameAccount);
 
       const winnerParticipation = {
         player: actualWinner.player.publicKey,
-        playerIndex: winnerIndex,
+        ticketIndex: winnerIndex,
       };
 
       await testUtils.game.completeGame(
@@ -412,8 +418,8 @@ describe("Game Types", () => {
       const gameConfig: GameConfig = {
         gameType: { snowball: {} },
         amount: new anchor.BN(1_000_000),
-        maxPlayers: 3,
-        minPlayers: 2,
+        maxTickets: 3,
+        minTickets: 2,
         timeout: 3600,
         isPrivate: false,
       };
@@ -433,12 +439,13 @@ describe("Game Types", () => {
 
       // Verify snowball accumulation
       const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
-      expect(gameAccount.playersCount).to.equal(3);
+      expect(gameAccount.ticketsCount).to.equal(3); // 3 unique players
+      expect(gameAccount.ticketsCount).to.equal(3); // 3 entries
       expect(gameAccount.totalAmount.toNumber()).to.equal(3_000_000);
 
       // Complete the snowball game
       const winnerIndex = calculateWinnerIndex(
-        gameAccount.playersCount,
+        gameAccount.ticketsCount,
         gameData.secretKey,
         Number(gameAccount.lastSlot),
         { snowball: {} },
@@ -451,7 +458,7 @@ describe("Game Types", () => {
 
       const winnerParticipation = {
         player: winner.player.publicKey,
-        playerIndex: winnerIndex,
+        ticketIndex: winnerIndex,
       };
 
       await testUtils.game.completeGame(
@@ -467,6 +474,106 @@ describe("Game Types", () => {
       const completedGame = await env.program.account.game.fetch(gameData.gamePDA);
       expect(completedGame.totalAmount.toNumber()).to.equal(0);
     });
+
+    it("should handle snowball game with 10 rolls", async () => {
+      const { oracle, mint, players } = await testUtils.quickSetup();
+      const gameData = testUtils.game.generateGamePDA();
+      const creator = players[0];
+      const player1 = players[1];
+      const player2 = players[2];
+
+      const gameConfig: GameConfig = {
+        gameType: { snowball: {} },
+        amount: new anchor.BN(1_000_000), // 1 TIMBA per entry
+        maxTickets: 3,
+        minTickets: 2,
+        timeout: 3600,
+        isPrivate: false,
+      };
+
+      console.log("Initializing snowball game...");
+      await testUtils.game.initializeGame(
+        gameData,
+        gameConfig,
+        creator.player,
+        mint.mint
+      );
+
+      console.log("Players joining...");
+      // 3 players join to reach max capacity (3 entries)
+      await testUtils.game.joinGame(gameData.gamePDA, creator.player);
+      await testUtils.game.joinGame(gameData.gamePDA, player1.player);
+      await testUtils.game.joinGame(gameData.gamePDA, player2.player);
+
+      console.log("Starting 10 rolls...");
+      // Creator rolls 10 times (10 additional entries)
+      
+      for (let i = 0; i < 10; i++) {
+        console.log(`Roll ${i}/10`);
+        
+        // Generate fresh proof for each roll since tree structure changes
+        let currentGameState = await env.program.account.game.fetch(gameData.gamePDA);
+        console.log(`  Current state: ticketsCount=${currentGameState.ticketsCount}, recentCount=${currentGameState.recentCount}`);
+        
+        const currentProof = generateMerkleProof([creator, player1, player2], 0, currentGameState);
+        console.log(`  Generated proof length: ${currentProof.length}`);
+        
+        await testUtils.game.rollGame(gameData.gamePDA, creator.player, 0, currentProof); // Creator's original entry index is 0
+      }
+
+      console.log("Verifying final state...");
+      // Verify final state
+      const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+      expect(gameAccount.ticketsCount).to.equal(3); // 3 unique players
+      expect(gameAccount.ticketsCount).to.equal(13); // 3 joins + 10 rolls
+      expect(gameAccount.totalAmount.toNumber()).to.equal(13_000_000); // 13 entries * 1M
+
+      console.log(`Final state: ${gameAccount.ticketsCount} players, ${gameAccount.ticketsCount} entries, ${gameAccount.totalAmount.toNumber()} total amount`);
+
+      // Complete game with entry-based winner calculation
+      const winnerIndex = calculateWinnerIndex(
+        gameAccount.ticketsCount,
+        gameData.secretKey,
+        Number(gameAccount.lastSlot),
+        { snowball: {} },
+        gameAccount.totalAmount.toNumber(),
+        gameAccount.ticketAmount.toNumber()
+      );
+
+      console.log(`Winner index: ${winnerIndex}`);
+
+      // Determine which player won based on entry index
+      // Entry 0: creator, Entry 1: player1, Entry 2: player2, Entries 3-12: creator (10 rolls)
+      let winner: any;
+      if (winnerIndex === 0 || winnerIndex >= 3) {
+        winner = creator; // Creator's first entry or any roll
+      } else if (winnerIndex === 1) {
+        winner = player1; // Player1's entry
+      } else if (winnerIndex === 2) {
+        winner = player2; // Player2's entry
+      }
+
+      const winnerParticipation = {
+        player: winner.player.publicKey,
+        ticketIndex: winnerIndex,
+      };
+
+      console.log("Completing game...");
+      await testUtils.game.completeGame(
+        gameData,
+        winner.player.publicKey,
+        creator.player.publicKey,
+        oracle.operator,
+        winnerParticipation,
+        [] // Empty proof for testing
+      );
+
+      // Verify completion
+      const completedGame = await env.program.account.game.fetch(gameData.gamePDA);
+      expect(completedGame.totalAmount.toNumber()).to.equal(0);
+
+      console.log("Test completed successfully!");
+    }).timeout(60000); // 60 second timeout for this intensive test
   });
 
   describe("Game Type Validation", () => {
@@ -478,8 +585,8 @@ describe("Game Types", () => {
       const coinflipConfig: GameConfig = {
         gameType: { coinflip: {} },
         amount: new anchor.BN(1_000_000),
-        maxPlayers: 4,
-        minPlayers: 1, // Too low for coinflip
+        maxTickets: 4,
+        minTickets: 1, // Too low for coinflip
         timeout: 3600,
         isPrivate: false,
       };
@@ -505,8 +612,8 @@ describe("Game Types", () => {
       const invalidConfig: GameConfig = {
         gameType: { coinflip: {} },
         amount: new anchor.BN(1_000_000),
-        maxPlayers: 1000, // Exceeds oracle limits
-        minPlayers: 2,
+        maxTickets: 1000, // Exceeds oracle limits
+        minTickets: 2,
         timeout: 3600,
         isPrivate: false,
       };
@@ -532,8 +639,8 @@ describe("Game Types", () => {
       const invalidConfig: GameConfig = {
         gameType: { coinflip: {} },
         amount: new anchor.BN(1_000_000),
-        maxPlayers: 4,
-        minPlayers: 2,
+        maxTickets: 4,
+        minTickets: 2,
         timeout: 0, // Invalid timeout
         isPrivate: false,
       };
@@ -561,8 +668,8 @@ describe("Game Types", () => {
       const gameConfig: GameConfig = {
         gameType: { coinflip: {} },
         amount: new anchor.BN(1_000_000),
-        maxPlayers: 2,
-        minPlayers: 2,
+        maxTickets: 2,
+        minTickets: 2,
         timeout: 3600,
         isPrivate: true, // Private game
       };
@@ -591,7 +698,7 @@ describe("Game Types", () => {
 
       // Verify both players joined
       const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
-      expect(gameAccount.playersCount).to.equal(2);
+      expect(gameAccount.ticketsCount).to.equal(2);
       expect(gameAccount.isPrivate).to.be.true;
     });
 
@@ -603,8 +710,8 @@ describe("Game Types", () => {
       const gameConfig: GameConfig = {
         gameType: { giveaway: {} },
         amount: new anchor.BN(1_000_000),
-        maxPlayers: 3,
-        minPlayers: 2,
+        maxTickets: 3,
+        minTickets: 2,
         timeout: 3600,
         isPrivate: true,
       };

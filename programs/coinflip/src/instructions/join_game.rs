@@ -27,11 +27,8 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
     // STATE UPDATES
     // ===============================
 
-    // Add player to merkle tree
-    game.add_player_to_merkle_tree(player_key)?;
-
-    // Update game state
-    game.players_count += 1;
+    // Add ticket to merkle tree
+    game.add_ticket_to_merkle_tree(player_key)?;
     game.last_slot = clock.slot;
 
     // Mark game as joined in player's bloom filter
@@ -60,9 +57,8 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
         game_key: game.key(),
         player: player_key,
         total_amount: game.total_amount,
-        players_count: game.players_count,
-        entries_count: game.entries_count,
-        entry_index: game.entries_count - 1, // Just joined, so index is entries_count - 1
+        tickets_count: game.tickets_count,
+        ticket_index: game.tickets_count - 1, // Just joined, so index is tickets_count - 1
         last_slot: game.last_slot,
         timestamp: current_time,
     });

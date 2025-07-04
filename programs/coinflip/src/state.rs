@@ -14,10 +14,9 @@ pub const GAME_BASE_SIZE: usize = 8
     + 32  // creator
     + 1   // game_type
     + 8   // ticket_amount
-    + 4   // max_players
-    + 4   // min_players
-    + 4   // entries_count
-    + 4   // players_count
+    + 4   // max_tickets
+    + 4   // min_tickets
+    + 4   // tickets_count
     + 32  // token_mint
     + 8   // created_at
     + 4   // timeout
@@ -66,8 +65,8 @@ impl Default for GameType {
 pub struct ParticipationEntry {
     /// Player public key
     pub player: Pubkey,
-    /// Player's index in the game (position in merkle tree)
-    pub player_index: u32,
+    /// Ticket index in the game (position in merkle tree)
+    pub ticket_index: u32,
 }
 
 /// Optimized subtree structure (40 bytes)
@@ -120,8 +119,8 @@ pub struct Oracle {
     pub fee_percentage: u8,
     /// Buffer time in seconds after game timeout before cancellation is allowed
     pub oracle_buffer_time: u16,
-    /// Maximum number of players allowed in a game
-    pub max_players: u32,
+    /// Maximum number of tickets allowed in a game
+    pub max_tickets: u32,
     /// Maximum timeout duration in seconds for a game
     pub max_timeout: u32,
     /// Minimum timeout duration in seconds for a game
@@ -134,14 +133,14 @@ impl Oracle {
         &mut self,
         fee_percentage: u8,
         oracle_buffer_time: u16,
-        max_players: u32,
+        max_tickets: u32,
         max_timeout: u32,
         min_timeout: u32,
         new_operator: Pubkey,
     ) {
         self.fee_percentage = fee_percentage;
         self.oracle_buffer_time = oracle_buffer_time;
-        self.max_players = max_players;
+        self.max_tickets = max_tickets;
         self.max_timeout = max_timeout;
         self.min_timeout = min_timeout;
         self.operator = new_operator;
@@ -168,8 +167,8 @@ impl Oracle {
     }
 
     /// Validates player count is positive
-    pub fn is_valid_players_count(&self, max_players: u32) -> bool {
-        max_players > 0
+    pub fn is_valid_tickets_count(&self, max_tickets: u32) -> bool {
+        max_tickets > 0
     }
 }
 
@@ -420,14 +419,12 @@ pub struct Game {
     pub game_type: GameType,
     /// Amount each player must contribute
     pub ticket_amount: u64,
-    /// Maximum number of players allowed
-    pub max_players: u32,
-    /// Minimum number of players required
-    pub min_players: u32,
-    /// Current number of entries (total participations)
-    pub entries_count: u32,
-    /// Current number of unique players who have joined
-    pub players_count: u32,
+    /// Maximum number of tickets allowed
+    pub max_tickets: u32,
+    /// Minimum number of tickets required
+    pub min_tickets: u32,
+    /// Current number of tickets (total participations)
+    pub tickets_count: u32,
     /// Token mint used for this game
     pub token_mint: Pubkey,
     /// Timestamp when game was created
@@ -460,13 +457,13 @@ impl Game {
     // =============================================================================
 
     /// Calculates required subtrees using binary decomposition of max_players
-    pub fn calculate_required_subtrees(max_players: u32) -> usize {
-        if max_players <= 2 {
-            return 0; // All players fit in recent buffer
+    pub fn calculate_required_subtrees(max_tickets: u32) -> usize {
+        if max_tickets <= 2 {
+            return 0; // All tickets fit in recent buffer
         }
 
-        // Calculate how many times we'll fill the 2-player buffer
-        let buffer_fills = (max_players + 1) / 2; // ceil(max_players / 2)
+        // Calculate how many times we'll fill the 2-ticket buffer
+        let buffer_fills = (max_tickets + 1) / 2; // ceil(max_tickets / 2)
 
         // Use binary decomposition to find minimum subtrees needed
         // Each subtree merge doubles the capacity, so we need count_ones bits
@@ -474,8 +471,8 @@ impl Game {
     }
 
     /// Calculates the total dynamic storage size for a game
-    pub fn calculate_storage_size(max_players: u32) -> usize {
-        let required_subtrees = Self::calculate_required_subtrees(max_players);
+    pub fn calculate_storage_size(max_tickets: u32) -> usize {
+        let required_subtrees = Self::calculate_required_subtrees(max_tickets);
         GAME_BASE_SIZE
             + (required_subtrees * 40)  // Subtree data: 40 bytes per Subtree
             + (2 * 32) // RecentLeaf data: 32 bytes per RecentLeaf, max 2
@@ -492,12 +489,12 @@ impl Game {
 
     /// Checks if the game meets requirements to be completed by oracle
     pub fn is_ready_for_completion(&self, current_time: u64) -> bool {
-        let has_min_players = self.players_count >= self.min_players;
-        let has_max_players = self.players_count == self.max_players;
+        let has_min_tickets = self.tickets_count >= self.min_tickets;
+        let has_max_tickets = self.tickets_count == self.max_tickets;
         let timeout_reached = self.is_expired(current_time);
 
-        // Game is ready if it has max players OR (min players AND timeout reached)
-        has_max_players || (has_min_players && timeout_reached)
+        // Game is ready if it has max tickets OR (min tickets AND timeout reached)
+        has_max_tickets || (has_min_tickets && timeout_reached)
     }
 
     /// Checks if oracle buffer time has expired (game is no longer completable)
@@ -535,8 +532,8 @@ impl Game {
 
     /// Calculates the winner index using secret key with unbiased random selection
     pub fn calculate_winner_index(&self, secret_key: [u8; 32]) -> u32 {
-        // Use total entries count for all game types
-        let n_entries = self.entries_count as u64;
+        // Use total tickets count for all game types
+        let n_entries = self.tickets_count as u64;
 
         if n_entries == 1 {
             return 0;
@@ -576,26 +573,26 @@ impl Game {
     }
 
     pub fn is_not_full(&self) -> bool {
-        self.players_count < self.max_players
+        self.tickets_count < self.max_tickets
     }
 
     // =============================================================================
     // VALIDATION HELPERS
     // =============================================================================
 
-    pub fn is_valid_players_count(max_players: u32, min_players: u32, oracle_max: u32) -> bool {
-        max_players <= oracle_max && min_players <= max_players
+    pub fn is_valid_tickets_count(max_tickets: u32, min_tickets: u32, oracle_max: u32) -> bool {
+        max_tickets <= oracle_max && min_tickets <= max_tickets
     }
 
-    pub fn is_valid_game_type_players(
+    pub fn is_valid_game_type_tickets(
         game_type: GameType,
-        max_players: u32,
-        min_players: u32,
+        max_tickets: u32,
+        min_tickets: u32,
     ) -> bool {
         if game_type == GameType::Giveaway || game_type == GameType::Dumbaway {
-            max_players >= 1 && min_players >= 1
+            max_tickets >= 1 && min_tickets >= 1
         } else {
-            max_players >= 2 && min_players >= 2
+            max_tickets >= 2 && min_tickets >= 2
         }
     }
 
@@ -621,11 +618,11 @@ impl Game {
     // MERKLE TREE OPERATIONS
     // =============================================================================
 
-    /// Creates a participation entry for a new player
-    pub fn create_participation_entry(player: Pubkey, player_index: u32) -> ParticipationEntry {
+    /// Creates a participation entry for a new ticket
+    pub fn create_participation_entry(player: Pubkey, ticket_index: u32) -> ParticipationEntry {
         ParticipationEntry {
             player,
-            player_index,
+            ticket_index,
         }
     }
 
@@ -661,17 +658,17 @@ impl Game {
         &self,
         leaf: [u8; 32],
         proof: &[[u8; 32]],
-        player_index: u32,
+        ticket_index: u32,
     ) -> bool {
-        // Calculate how many players are in committed subtrees
-        let committed_players = self.entries_count - self.recent_count as u32;
+        // Calculate how many tickets are in committed subtrees
+        let committed_tickets = self.tickets_count - self.recent_count as u32;
 
-        if player_index >= committed_players {
-            // Player is in recent_players buffer - verify directly
-            self.verify_recent_player(leaf, player_index - committed_players)
+        if ticket_index >= committed_tickets {
+            // Ticket is in recent_players buffer - verify directly
+            self.verify_recent_player(leaf, ticket_index - committed_tickets)
         } else {
-            // Player is in committed subtrees - use standard merkle proof
-            self.verify_merkle_proof(leaf, proof, player_index)
+            // Ticket is in committed subtrees - use standard merkle proof
+            self.verify_merkle_proof(leaf, proof, ticket_index)
         }
     }
 
@@ -685,9 +682,9 @@ impl Game {
         self.recent_players[recent_index as usize].hash == leaf
     }
 
-    /// Adds a player to the merkle tree using buffer-based aggregation
-    pub fn add_player_to_merkle_tree(&mut self, player: Pubkey) -> Result<()> {
-        let participation = Game::create_participation_entry(player, self.entries_count);
+    /// Adds a ticket to the merkle tree using buffer-based aggregation
+    pub fn add_ticket_to_merkle_tree(&mut self, player: Pubkey) -> Result<()> {
+        let participation = Game::create_participation_entry(player, self.tickets_count);
         let leaf_hash = Game::hash_participation_entry(&participation);
 
         if self.recent_count < 2 {
@@ -705,7 +702,7 @@ impl Game {
             self.update_merkle_root()?; // Only update when structure changes
         }
 
-        self.entries_count += 1;
+        self.tickets_count += 1;
         self.total_amount += self.ticket_amount;
         Ok(())
     }
@@ -745,8 +742,8 @@ impl Game {
     fn build_subtree_from_recent(&self) -> Result<Subtree> {
         require!(self.recent_count == 2, ErrorCode::InvalidAmount);
 
-        // Start index for recent buffer players
-        let start_index = self.entries_count - self.recent_count as u32;
+        // Start index for recent buffer tickets
+        let start_index = self.tickets_count - self.recent_count as u32;
         let leaves: Vec<[u8; 32]> = self.recent_players.iter().map(|leaf| leaf.hash).collect();
 
         Ok(Subtree {
@@ -910,10 +907,10 @@ impl Game {
         layer[0]
     }
 
-    /// Initialize merkle system for new game with dynamic allocation based on max_players
-    pub fn initialize_merkle_system(&mut self, max_players: u32) -> Result<()> {
+    /// Initialize merkle system for new game with dynamic allocation based on max_tickets
+    pub fn initialize_merkle_system(&mut self, max_tickets: u32) -> Result<()> {
         // Calculate required subtrees and cache the value
-        let required_subtrees = Self::calculate_required_subtrees(max_players);
+        let required_subtrees = Self::calculate_required_subtrees(max_tickets);
 
         // Initialize dynamic vectors and cached values
         self.subtree_count = 0;
@@ -930,15 +927,15 @@ impl Game {
     // EXCLUSION PROOF VERIFICATION FUNCTIONS
     // =============================================================================
 
-    /// Finds which subtree contains player index (None if in recent buffer)
-    pub fn find_subtree_containing_player(&self, player_index: u32) -> Option<usize> {
+    /// Finds which subtree contains ticket index (None if in recent buffer)
+    pub fn find_subtree_containing_ticket(&self, ticket_index: u32) -> Option<usize> {
         for (i, subtree) in self.subtrees.iter().enumerate() {
             let end_index = subtree.start_index + subtree.size - 1;
-            if player_index >= subtree.start_index && player_index <= end_index {
+            if ticket_index >= subtree.start_index && ticket_index <= end_index {
                 return Some(i);
             }
         }
-        None // Player is in recent_players
+        None // Ticket is in recent_players
     }
 
     /// Verify a merkle proof against a specific root hash
@@ -972,17 +969,17 @@ impl Game {
         &self,
         proof: &ExclusionProof,
         departing_player_key: Pubkey,
-        departing_player_index: u32,
+        departing_ticket_index: u32,
     ) -> Result<bool> {
         // Find subtrees involved in the swap operation
         let (departing_subtree_idx, smallest_subtree_idx) =
-            self.find_exclusion_subtrees(departing_player_index)?;
+            self.find_exclusion_subtrees(departing_ticket_index)?;
 
         // Verify the departing player is actually in their claimed subtree
         self.verify_departing_player_in_subtree(
             proof,
             departing_player_key,
-            departing_player_index,
+            departing_ticket_index,
             departing_subtree_idx,
         )?;
 
@@ -996,9 +993,9 @@ impl Game {
     }
 
     /// Finds the subtrees involved in exclusion: departing player's subtree and smallest subtree
-    fn find_exclusion_subtrees(&self, departing_player_index: u32) -> Result<(usize, usize)> {
+    fn find_exclusion_subtrees(&self, departing_ticket_index: u32) -> Result<(usize, usize)> {
         let departing_subtree_idx = self
-            .find_subtree_containing_player(departing_player_index)
+            .find_subtree_containing_ticket(departing_ticket_index)
             .ok_or(ErrorCode::SubtreeNotFound)?;
 
         let smallest_subtree_idx = self.find_smallest_subtree();
@@ -1011,7 +1008,7 @@ impl Game {
         &self,
         proof: &ExclusionProof,
         departing_player_key: Pubkey,
-        departing_player_index: u32,
+        departing_ticket_index: u32,
         departing_subtree_idx: usize,
     ) -> Result<()> {
         let departing_subtree = &self.subtrees[departing_subtree_idx];
@@ -1024,9 +1021,9 @@ impl Game {
 
         // Create and hash the participation entry
         let departing_player_entry =
-            Game::create_participation_entry(departing_player_key, departing_player_index);
+            Game::create_participation_entry(departing_player_key, departing_ticket_index);
         let departing_leaf = Game::hash_participation_entry(&departing_player_entry);
-        let departing_relative_index = departing_player_index - departing_subtree.start_index;
+        let departing_relative_index = departing_ticket_index - departing_subtree.start_index;
 
         // Verify merkle proof that player exists in the subtree
         Self::require_valid_merkle_proof(
@@ -1145,10 +1142,10 @@ impl Game {
     pub fn modify_subtree_after_verified_exclusion(
         &mut self,
         proof: &ExclusionProof,
-        departing_player_index: u32,
+        departing_ticket_index: u32,
     ) -> Result<()> {
         let (departing_subtree_idx, smallest_subtree_idx) =
-            self.find_exclusion_subtrees(departing_player_index)?;
+            self.find_exclusion_subtrees(departing_ticket_index)?;
 
         // Update departing player's subtree with swapped-in last player
         self.update_departing_subtree(proof, departing_subtree_idx);

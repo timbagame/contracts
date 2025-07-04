@@ -31,8 +31,8 @@ pub struct OracleConfig {
     pub fee_percentage: u8,
     /// Buffer time in seconds after game timeout before cancellation
     pub oracle_buffer_time: u16,
-    /// Maximum number of players allowed in any game
-    pub max_players: u32,
+    /// Maximum number of tickets allowed in any game
+    pub max_tickets: u32,
     /// Maximum timeout duration in seconds for games
     pub max_timeout: u32,
     /// Minimum timeout duration in seconds for games
@@ -55,10 +55,10 @@ pub struct GameConfig {
     pub game_type: GameType,
     /// Amount per player (ticket amount for regular games, total prize for giveaways)
     pub amount: u64,
-    /// Maximum number of players allowed
-    pub max_players: u32,
-    /// Minimum number of players required to complete
-    pub min_players: u32,
+    /// Maximum number of tickets allowed
+    pub max_tickets: u32,
+    /// Minimum number of tickets required to complete
+    pub min_tickets: u32,
     /// Timeout duration in seconds
     pub timeout: u32,
     /// Whether game requires oracle operator to join
@@ -146,10 +146,10 @@ pub mod coinflip {
     /// Recent players can unjoin directly, subtree players require exclusion proof
     pub fn unjoin_game(
         ctx: Context<UnjoinGame>,
-        player_index: u32,
+        ticket_index: u32,
         exclusion_proof: Option<ExclusionProof>,
     ) -> Result<()> {
-        instructions::unjoin_game::handler(ctx, player_index, exclusion_proof)
+        instructions::unjoin_game::handler(ctx, ticket_index, exclusion_proof)
     }
 
     /// Closes a game with no active players (creator only)

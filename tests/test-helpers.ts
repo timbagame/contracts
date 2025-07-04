@@ -41,7 +41,7 @@ export interface TestOracle {
 export interface OracleConfig {
   feePercentage: number;
   oracleBufferTime: number;
-  maxPlayers: number;
+  maxTickets: number;
   maxTimeout: number;
   minTimeout: number;
 }
@@ -49,8 +49,8 @@ export interface OracleConfig {
 export interface GameConfig {
   gameType: any;
   amount: anchor.BN;
-  maxPlayers: number;
-  minPlayers: number;
+  maxTickets: number;
+  minTickets: number;
   timeout: number;
   isPrivate: boolean;
 }
@@ -142,7 +142,7 @@ export class OracleManager {
     const defaultConfig: OracleConfig = {
       feePercentage: 1,
       oracleBufferTime: 2,
-      maxPlayers: 100,
+      maxTickets: 100,
       maxTimeout: 86400,
       minTimeout: 1,
       ...config
@@ -168,7 +168,7 @@ export class OracleManager {
           config: {
             feePercentage: existingOracle.feePercentage,
             oracleBufferTime: existingOracle.oracleBufferTime,
-            maxPlayers: existingOracle.maxPlayers,
+            maxTickets: existingOracle.maxTickets,
             maxTimeout: existingOracle.maxTimeout,
             minTimeout: existingOracle.minTimeout,
           },
@@ -230,7 +230,7 @@ export class OracleManager {
       config: {
         feePercentage: oracleAccount.feePercentage,
         oracleBufferTime: oracleAccount.oracleBufferTime,
-        maxPlayers: oracleAccount.maxPlayers,
+        maxTickets: oracleAccount.maxTickets,
         maxTimeout: oracleAccount.maxTimeout,
         minTimeout: oracleAccount.minTimeout,
       },
@@ -523,6 +523,8 @@ export class GameManager {
   async rollGame(
     gamePDA: PublicKey,
     player: anchor.web3.Keypair,
+    ticketIndex: number,
+    merkleProof?: number[][],
     oracleOperator?: anchor.web3.Keypair
   ): Promise<void> {
     const accounts: any = {
@@ -537,8 +539,17 @@ export class GameManager {
       signers.push(oracleOperator);
     }
 
+    // Create participation entry for the player
+    const playerParticipation = {
+      player: player.publicKey,
+      ticketIndex,
+    };
+
+    // Use provided proof or empty array for testing
+    const playerMerkleProof: number[][] = merkleProof || [];
+
     await this.program.methods
-      .rollGame()
+      .rollGame(playerParticipation, playerMerkleProof)
       .accounts(accounts)
       .signers(signers)
       .rpc();
@@ -547,11 +558,11 @@ export class GameManager {
   async unjoinGame(
     gamePDA: PublicKey,
     player: anchor.web3.Keypair,
-    playerIndex: number,
+    ticketIndex: number,
     exclusionProof?: any
   ): Promise<void> {
     await this.program.methods
-      .unjoinGame(playerIndex, exclusionProof)
+      .unjoinGame(ticketIndex, exclusionProof)
       .accounts({
         game: gamePDA,
         player: player.publicKey,
@@ -565,14 +576,14 @@ export class GameManager {
     winner: PublicKey,
     creator: PublicKey,
     oracleOperator: PublicKey,
-    winnerParticipation?: { player: PublicKey; playerIndex: number },
+    winnerParticipation?: { player: PublicKey; ticketIndex: number },
     winnerMerkleProof?: number[][],
     oracleOperatorKeypair?: anchor.web3.Keypair
   ): Promise<void> {
     // Default participation entry if not provided
     const participation = winnerParticipation || {
       player: winner,
-      playerIndex: 0,
+      ticketIndex: 0,
     };
 
     // Default empty proof if not provided
@@ -664,11 +675,11 @@ export function getWinnerFromPlayers(
  */
 export function createParticipationEntry(
   player: PublicKey,
-  playerIndex: number
-): { player: PublicKey; playerIndex: number } {
+  ticketIndex: number
+): { player: PublicKey; ticketIndex: number } {
   return {
     player,
-    playerIndex,
+    ticketIndex,
   };
 }
 
@@ -682,10 +693,10 @@ function hash(data: Buffer): Buffer {
 /**
  * Hashes a participation entry for merkle tree operations
  */
-export function hashParticipationEntry(entry: { player: PublicKey; playerIndex: number }): Buffer {
+export function hashParticipationEntry(entry: { player: PublicKey; ticketIndex: number }): Buffer {
   const playerBytes = entry.player.toBytes();
   const indexBytes = Buffer.alloc(4);
-  indexBytes.writeUInt32LE(entry.playerIndex, 0);
+  indexBytes.writeUInt32LE(entry.ticketIndex, 0);
 
   const combined = Buffer.concat([playerBytes, indexBytes]);
   return hash(combined);
@@ -725,18 +736,18 @@ export function generateMerkleProof(
   gameState?: any
 ): number[][] {
   // The contract's verification logic:
-  // committed_players = players_count - recent_count
-  // if player_index >= committed_players: verify_recent_player (no proof needed)
+  // committed_tickets = tickets_count - recent_count
+  // if ticket_index >= committed_tickets: verify_recent_player (no proof needed)
   // else: verify_merkle_proof (proof needed)
-  
+
   if (!gameState) {
     // Without game state, always return empty proof and let contract handle validation
     return [];
   }
 
-  const committedPlayers = gameState.playersCount - gameState.recentCount;
-  
-  if (winnerIndex >= committedPlayers) {
+  const committedTickets = gameState.ticketsCount - gameState.recentCount;
+
+  if (winnerIndex >= committedTickets) {
     // Player is in recent buffer, no proof needed
     return [];
   }
@@ -756,15 +767,15 @@ function generateSubtreeMerkleProof(
   targetIndex: number,
   gameState: any
 ): number[][] {
-  const committedPlayers = gameState.playersCount - gameState.recentCount;
-  
+  const committedTickets = gameState.ticketsCount - gameState.recentCount;
+
   // Only generate proofs for committed players
-  if (targetIndex >= committedPlayers) {
+  if (targetIndex >= committedTickets) {
     return [];
   }
 
   // Create participation entries for committed players only
-  const committedPlayerList = players.slice(0, committedPlayers);
+  const committedPlayerList = players.slice(0, committedTickets);
   const leaves = committedPlayerList.map((player, index) => {
     const entry = createParticipationEntry(player.player.publicKey, index);
     return hashParticipationEntry(entry);

@@ -34,7 +34,7 @@ pub fn handler(
         game.verify_player_participation(
             player_leaf,
             &player_merkle_proof,
-            player_participation.player_index,
+            player_participation.ticket_index,
         ),
         ErrorCode::InvalidMerkleProof
     );
@@ -63,13 +63,13 @@ pub fn handler(
     let ticket_amount = game.ticket_amount;
     let entry_index = if game.game_type == GameType::Snowball || game.game_type == GameType::Dumbball {
         // For accumulating games, each roll creates an additional participation entry
-        // The same player can have multiple entries in the merkle tree
-        game.add_player_to_merkle_tree(player_key)?;
-        game.entries_count - 1 // New entry just added
+        // The same player can have multiple tickets in the merkle tree
+        game.add_ticket_to_merkle_tree(player_key)?;
+        game.tickets_count - 1 // New ticket just added
     } else {
-        // For Dumbflip and Dumbaway, return the player's original entry index
-        // These games don't accumulate additional entries
-        player_participation.player_index
+        // For Dumbflip and Dumbaway, return the player's original ticket index
+        // These games don't accumulate additional tickets
+        player_participation.ticket_index
     };
 
     game.last_slot = clock.slot;
@@ -96,9 +96,8 @@ pub fn handler(
         game_key: game.key(),
         player: ctx.accounts.player.key(),
         total_amount: game.total_amount,
-        players_count: game.players_count,
-        entries_count: game.entries_count,
-        entry_index, // Correct entry index based on game type
+        tickets_count: game.tickets_count,
+        ticket_index: entry_index, // Correct ticket index based on game type
         last_slot: game.last_slot,
         timestamp: current_time,
     });

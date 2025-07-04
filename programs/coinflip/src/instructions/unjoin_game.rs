@@ -5,7 +5,7 @@ use anchor_lang::prelude::*;
 
 pub fn handler(
     ctx: Context<super::UnjoinGame>,
-    player_index: u32,
+    ticket_index: u32,
     exclusion_proof: Option<ExclusionProof>,
 ) -> Result<()> {
     let game = &mut ctx.accounts.game;
@@ -25,10 +25,10 @@ pub fn handler(
         ErrorCode::OracleBufferNotExpired
     );
 
-    require!(game.players_count > 0, ErrorCode::InvalidPlayersCount);
+    require!(game.tickets_count > 0, ErrorCode::InvalidTicketsCount);
 
     require!(
-        player_index < game.entries_count,
+        ticket_index < game.tickets_count,
         ErrorCode::UnauthorizedPlayer
     );
 
@@ -36,7 +36,7 @@ pub fn handler(
     // VERIFY PLAYER IDENTITY
     // ===============================
 
-    let participation_entry = Game::create_participation_entry(player_key, player_index);
+    let participation_entry = Game::create_participation_entry(player_key, ticket_index);
     let player_leaf_hash = Game::hash_participation_entry(&participation_entry);
 
     // ===============================
@@ -80,7 +80,7 @@ pub fn handler(
 
         // Verify the player is actually in a subtree
         require!(
-            game.find_subtree_containing_player(player_index).is_some(),
+            game.find_subtree_containing_ticket(ticket_index).is_some(),
             ErrorCode::UnauthorizedPlayer
         );
 
@@ -89,12 +89,12 @@ pub fn handler(
 
         // Verify the exclusion proof with swap-with-last operation
         require!(
-            game.verify_exclusion_proof(&exclusion_proof, player_key, player_index)?,
+            game.verify_exclusion_proof(&exclusion_proof, player_key, ticket_index)?,
             ErrorCode::InvalidExclusionProof
         );
 
         // Apply the verified swap-with-last operation
-        game.modify_subtree_after_verified_exclusion(&exclusion_proof, player_index)?;
+        game.modify_subtree_after_verified_exclusion(&exclusion_proof, ticket_index)?;
     }
 
     // ===============================
@@ -109,9 +109,8 @@ pub fn handler(
         game.total_amount -= refund_amount;
     }
 
-    // Update game state - decrement both counters
-    game.players_count -= 1;
-    game.entries_count -= 1;
+    // Update game state - decrement ticket counter
+    game.tickets_count -= 1;
     game.last_slot = clock.slot;
 
     // ===============================
@@ -122,9 +121,8 @@ pub fn handler(
         game_key: game.key(),
         player: player_key,
         total_amount: game.total_amount,
-        players_count: game.players_count,
-        entries_count: game.entries_count,
-        entry_index: player_index,
+        tickets_count: game.tickets_count,
+        ticket_index,
         last_slot: game.last_slot,
         timestamp: current_time,
     });
