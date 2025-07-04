@@ -737,7 +737,7 @@ export function generateMerkleProof(
 ): number[][] {
   // The contract's verification logic:
   // committed_tickets = tickets_count - recent_count
-  // if ticket_index >= committed_tickets: verify_recent_player (no proof needed)
+  // if ticket_index >= committed_tickets: verify_recent_ticket (no proof needed)
   // else: verify_merkle_proof (proof needed)
 
   if (!gameState) {
@@ -748,11 +748,11 @@ export function generateMerkleProof(
   const committedTickets = gameState.ticketsCount - gameState.recentCount;
 
   if (winnerIndex >= committedTickets) {
-    // Player is in recent buffer, no proof needed
+    // Ticket is in recent buffer, no proof needed
     return [];
   }
 
-  // Player is in committed subtrees - we need to generate a proper merkle proof
+  // Ticket is in committed subtrees - we need to generate a proper merkle proof
   // The contract builds subtrees from pairs of players, so we need to generate
   // a proof that matches this structure
   return generateSubtreeMerkleProof(players, winnerIndex, gameState);
@@ -769,12 +769,12 @@ function generateSubtreeMerkleProof(
 ): number[][] {
   const committedTickets = gameState.ticketsCount - gameState.recentCount;
 
-  // Only generate proofs for committed players
+  // Only generate proofs for committed tickets
   if (targetIndex >= committedTickets) {
     return [];
   }
 
-  // Create participation entries for committed players only
+  // Create participation entries for committed tickets only
   const committedPlayerList = players.slice(0, committedTickets);
   const leaves = committedPlayerList.map((player, index) => {
     const entry = createParticipationEntry(player.player.publicKey, index);

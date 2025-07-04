@@ -28,7 +28,7 @@ pub const GAME_BASE_SIZE: usize = 8
     + 1   // max_subtrees
     + 4   // subtrees length (Vec<T> serialization)
     + 1   // recent_count
-    + 4; // recent_players length (Vec<T> serialization) = 159 bytes base
+    + 4; // recent_tickets length (Vec<T> serialization)
 
 // =============================================================================
 // GAME TYPES
@@ -74,16 +74,16 @@ pub struct ParticipationEntry {
 pub struct Subtree {
     /// Hash of the subtree root
     pub root_hash: [u8; 32],
-    /// First player index in this subtree
+    /// First ticket index in this subtree
     pub start_index: u32,
     /// Size of this subtree (power of 2)
     pub size: u32,
 }
 
-/// Recent player leaf hash (32 bytes)
+/// Recent ticket leaf hash (32 bytes)
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Default)]
 pub struct RecentLeaf {
-    /// Player's leaf hash
+    /// Ticket's leaf hash
     pub hash: [u8; 32],
 }
 
@@ -166,7 +166,7 @@ impl Oracle {
         max_timeout >= min_timeout
     }
 
-    /// Validates player count is positive
+    /// Validates ticket count is positive
     pub fn is_valid_tickets_count(&self, max_tickets: u32) -> bool {
         max_tickets > 0
     }
@@ -439,16 +439,16 @@ pub struct Game {
     pub total_amount: u64,
     /// Merkle root of all player participations
     pub merkle_root: [u8; 32],
-    /// Number of active subtrees (dynamic based on max_players)
+    /// Number of active subtrees (dynamic based on max_tickets)
     pub subtree_count: u8,
     /// Maximum allowed subtrees (cached from calculate_required_subtrees)
     pub max_subtrees: u8,
-    /// Dynamic subtree storage - size calculated based on max_players
+    /// Dynamic subtree storage - size calculated based on max_tickets
     pub subtrees: Vec<Subtree>,
-    /// Number of players in recent buffer (0-2)
+    /// Number of tickets in recent buffer (0-2)
     pub recent_count: u8,
-    /// Recent player leaves (before subtree aggregation) - optimized to 2 players
-    pub recent_players: Vec<RecentLeaf>,
+    /// Recent ticket leaves (before subtree aggregation) - optimized to 2 tickets
+    pub recent_tickets: Vec<RecentLeaf>,
 }
 
 impl Game {
@@ -456,7 +456,7 @@ impl Game {
     // STORAGE CALCULATION & INITIALIZATION
     // =============================================================================
 
-    /// Calculates required subtrees using binary decomposition of max_players
+    /// Calculates required subtrees using binary decomposition of max_tickets
     pub fn calculate_required_subtrees(max_tickets: u32) -> usize {
         if max_tickets <= 2 {
             return 0; // All tickets fit in recent buffer
@@ -664,22 +664,22 @@ impl Game {
         let committed_tickets = self.tickets_count - self.recent_count as u32;
 
         if ticket_index >= committed_tickets {
-            // Ticket is in recent_players buffer - verify directly
-            self.verify_recent_player(leaf, ticket_index - committed_tickets)
+            // Ticket is in recent_tickets buffer - verify directly
+            self.verify_recent_ticket(leaf, ticket_index - committed_tickets)
         } else {
             // Ticket is in committed subtrees - use standard merkle proof
             self.verify_merkle_proof(leaf, proof, ticket_index)
         }
     }
 
-    /// Verifies a recent player by direct comparison
-    fn verify_recent_player(&self, leaf: [u8; 32], recent_index: u32) -> bool {
+    /// Verifies a recent ticket by direct comparison
+    fn verify_recent_ticket(&self, leaf: [u8; 32], recent_index: u32) -> bool {
         if recent_index >= self.recent_count as u32 {
             return false; // Index out of bounds
         }
 
         // Direct comparison with stored recent player hash
-        self.recent_players[recent_index as usize].hash == leaf
+        self.recent_tickets[recent_index as usize].hash == leaf
     }
 
     /// Adds a ticket to the merkle tree using buffer-based aggregation
@@ -689,15 +689,15 @@ impl Game {
 
         if self.recent_count < 2 {
             // Just add to buffer - no structure change
-            self.recent_players.push(RecentLeaf { hash: leaf_hash });
+            self.recent_tickets.push(RecentLeaf { hash: leaf_hash });
             self.recent_count += 1;
             // NO root update needed!
         } else {
             // Structure changes - update root
             let new_subtree = self.build_subtree_from_recent()?;
             self.merge_subtree(new_subtree)?;
-            self.recent_players.clear();
-            self.recent_players.push(RecentLeaf { hash: leaf_hash });
+            self.recent_tickets.clear();
+            self.recent_tickets.push(RecentLeaf { hash: leaf_hash });
             self.recent_count = 1;
             self.update_merkle_root()?; // Only update when structure changes
         }
@@ -744,7 +744,7 @@ impl Game {
 
         // Start index for recent buffer tickets
         let start_index = self.tickets_count - self.recent_count as u32;
-        let leaves: Vec<[u8; 32]> = self.recent_players.iter().map(|leaf| leaf.hash).collect();
+        let leaves: Vec<[u8; 32]> = self.recent_tickets.iter().map(|leaf| leaf.hash).collect();
 
         Ok(Subtree {
             root_hash: Self::compute_merkle_root(&leaves),
@@ -917,7 +917,7 @@ impl Game {
         self.max_subtrees = required_subtrees as u8;
         self.subtrees = Vec::new();
         self.recent_count = 0;
-        self.recent_players = Vec::new();
+        self.recent_tickets = Vec::new();
         self.merkle_root = [0; 32];
 
         Ok(())
@@ -935,7 +935,7 @@ impl Game {
                 return Some(i);
             }
         }
-        None // Ticket is in recent_players
+        None // Ticket is in recent_tickets
     }
 
     /// Verify a merkle proof against a specific root hash
@@ -1114,11 +1114,11 @@ impl Game {
         let largest_power_of_2_le = Self::largest_power_of_2_le(remaining_count);
 
         let subtree_players = largest_power_of_2_le;
-        let recent_players = remaining_count - subtree_players;
+        let recent_tickets = remaining_count - subtree_players;
 
         // Verify the correct number of players are moved to recent buffer
         require!(
-            proof.players_to_recent.len() == recent_players,
+            proof.players_to_recent.len() == recent_tickets,
             ErrorCode::MalformedSubtreeProof
         );
 
@@ -1222,17 +1222,17 @@ impl Game {
             self.remove_empty_subtree(smallest_subtree_idx);
         }
 
-        // Move excess players to recent_players buffer
+        // Move excess players to recent_tickets buffer
         self.move_players_to_recent_buffer(proof)?;
 
         Ok(())
     }
 
-    /// Moves excess players from subtree to recent_players buffer
+    /// Moves excess players from subtree to recent_tickets buffer
     fn move_players_to_recent_buffer(&mut self, proof: &ExclusionProof) -> Result<()> {
         for player_entry in &proof.players_to_recent {
             let leaf_hash = Game::hash_participation_entry(player_entry);
-            self.recent_players.push(RecentLeaf { hash: leaf_hash });
+            self.recent_tickets.push(RecentLeaf { hash: leaf_hash });
             self.recent_count += 1;
         }
         Ok(())
