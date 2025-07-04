@@ -46,8 +46,8 @@ describe("Security & Edge Cases", () => {
       const gameConfig: GameConfig = {
         gameType: { coinflip: {} },
         amount: new anchor.BN(1_000_000),
-        maxPlayers: 4,
-        minPlayers: 2,
+        maxTickets: 4,
+        minTickets: 2,
         timeout: 3600,
         isPrivate: false,
       };
@@ -80,8 +80,8 @@ describe("Security & Edge Cases", () => {
       const gameConfig: GameConfig = {
         gameType: { coinflip: {} },
         amount: new anchor.BN(1_000_000),
-        maxPlayers: 2,
-        minPlayers: 2,
+        maxTickets: 2,
+        minTickets: 2,
         timeout: 3600,
         isPrivate: false,
       };
@@ -117,8 +117,8 @@ describe("Security & Edge Cases", () => {
       const gameConfig: GameConfig = {
         gameType: { coinflip: {} },
         amount: new anchor.BN(1_000_000),
-        maxPlayers: 2,
-        minPlayers: 2,
+        maxTickets: 2,
+        minTickets: 2,
         timeout: 3600,
         isPrivate: false,
       };
@@ -144,7 +144,7 @@ describe("Security & Edge Cases", () => {
 
       const winnerParticipation = {
         player: winner.player.publicKey,
-        playerIndex: winnerIndex,
+        ticketIndex: winnerIndex,
       };
 
       await testUtils.game.completeGame(
@@ -190,8 +190,8 @@ describe("Security & Edge Cases", () => {
       const gameConfig: GameConfig = {
         gameType: { coinflip: {} },
         amount: new anchor.BN(1_000_000),
-        maxPlayers: 2,
-        minPlayers: 2,
+        maxTickets: 2,
+        minTickets: 2,
         timeout: 3600,
         isPrivate: false,
       };
@@ -217,7 +217,7 @@ describe("Security & Edge Cases", () => {
 
       const winnerParticipation = {
         player: winner.player.publicKey,
-        playerIndex: winnerIndex,
+        ticketIndex: winnerIndex,
       };
 
       try {
@@ -245,8 +245,8 @@ describe("Security & Edge Cases", () => {
       const gameConfig: GameConfig = {
         gameType: { coinflip: {} },
         amount: new anchor.BN(1_000_000),
-        maxPlayers: 2,
-        minPlayers: 2,
+        maxTickets: 2,
+        minTickets: 2,
         timeout: 3600,
         isPrivate: false,
       };
@@ -264,7 +264,7 @@ describe("Security & Edge Cases", () => {
       // Try to complete with non-participant as winner
       const fakeParticipation = {
         player: nonParticipant.player.publicKey, // Not in game
-        playerIndex: 0,
+        ticketIndex: 0,
       };
 
       try {
@@ -291,8 +291,8 @@ describe("Security & Edge Cases", () => {
       const gameConfig: GameConfig = {
         gameType: { coinflip: {} },
         amount: new anchor.BN(1_000_000),
-        maxPlayers: 2,
-        minPlayers: 2,
+        maxTickets: 2,
+        minTickets: 2,
         timeout: 3600,
         isPrivate: false,
       };
@@ -318,7 +318,7 @@ describe("Security & Edge Cases", () => {
 
       const winnerParticipation = {
         player: winner.player.publicKey,
-        playerIndex: winnerIndex,
+        ticketIndex: winnerIndex,
       };
 
       try {
@@ -347,8 +347,8 @@ describe("Security & Edge Cases", () => {
       const gameConfig: GameConfig = {
         gameType: { coinflip: {} },
         amount: new anchor.BN(1_000_000),
-        maxPlayers: 4,
-        minPlayers: 2,
+        maxTickets: 4,
+        minTickets: 2,
         timeout: 1, // Very short timeout - 1 second
         isPrivate: false,
       };
@@ -381,8 +381,8 @@ describe("Security & Edge Cases", () => {
       const gameConfig: GameConfig = {
         gameType: { coinflip: {} },
         amount: new anchor.BN(1_000_000),
-        maxPlayers: 2, // Max 2 players
-        minPlayers: 2,
+        maxTickets: 2, // Max 2 players
+        minTickets: 2,
         timeout: 3600,
         isPrivate: false,
       };
@@ -414,8 +414,8 @@ describe("Security & Edge Cases", () => {
       const gameConfig: GameConfig = {
         gameType: { coinflip: {} },
         amount: new anchor.BN(1_000_000),
-        maxPlayers: 4,
-        minPlayers: 3, // Requires 3 players
+        maxTickets: 4,
+        minTickets: 3, // Requires 3 players
         timeout: 3600,
         isPrivate: false,
       };
@@ -432,7 +432,7 @@ describe("Security & Edge Cases", () => {
       // Try to complete with insufficient players
       const winnerParticipation = {
         player: creator.player.publicKey,
-        playerIndex: 0,
+        ticketIndex: 0,
       };
 
       try {
@@ -463,8 +463,8 @@ describe("Security & Edge Cases", () => {
       const gameConfig: GameConfig = {
         gameType: { coinflip: {} },
         amount: maxAmount,
-        maxPlayers: 2,
-        minPlayers: 2,
+        maxTickets: 2,
+        minTickets: 2,
         timeout: 3600,
         isPrivate: false,
       };
@@ -498,8 +498,8 @@ describe("Security & Edge Cases", () => {
       const gameConfig: GameConfig = {
         gameType: { coinflip: {} },
         amount: new anchor.BN(0), // Zero amount
-        maxPlayers: 2,
-        minPlayers: 2,
+        maxTickets: 2,
+        minTickets: 2,
         timeout: 3600,
         isPrivate: false,
       };
@@ -525,8 +525,8 @@ describe("Security & Edge Cases", () => {
       const gameConfig: GameConfig = {
         gameType: { coinflip: {} },
         amount: new anchor.BN(1_000_000),
-        maxPlayers: 255, // Max u8
-        minPlayers: 2,
+        maxTickets: 255, // Max u8
+        minTickets: 2,
         timeout: 3600,
         isPrivate: false,
       };
@@ -541,7 +541,7 @@ describe("Security & Edge Cases", () => {
 
         // Should handle large player count configuration
         const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
-        expect(gameAccount.maxPlayers).to.equal(255);
+        expect(gameAccount.maxTickets).to.equal(255);
       } catch (error) {
         // Might fail due to oracle constraints
         expect(error.toString()).to.include("InvalidTicketsCount");
@@ -557,8 +557,8 @@ describe("Security & Edge Cases", () => {
       const gameConfig: GameConfig = {
         gameType: { coinflip: {} },
         amount: new anchor.BN(1_000_000),
-        maxPlayers: 5, // Use all available players to trigger merkle tree structure
-        minPlayers: 5,
+        maxTickets: 5, // Use all available players to trigger merkle tree structure
+        minTickets: 5,
         timeout: 3600,
         isPrivate: false,
       };
@@ -591,7 +591,7 @@ describe("Security & Edge Cases", () => {
 
       const winnerParticipation = {
         player: testWinner.player.publicKey,
-        playerIndex: testWinnerIndex,
+        ticketIndex: testWinnerIndex,
       };
 
       // Try to complete with invalid merkle proof
@@ -623,8 +623,8 @@ describe("Security & Edge Cases", () => {
       const gameConfig: GameConfig = {
         gameType: { coinflip: {} },
         amount: new anchor.BN(1_000_000),
-        maxPlayers: 2,
-        minPlayers: 2,
+        maxTickets: 2,
+        minTickets: 2,
         timeout: 3600,
         isPrivate: false,
       };
@@ -651,7 +651,7 @@ describe("Security & Edge Cases", () => {
       // Create correct participation entry but wrong winner account
       const correctParticipation = {
         player: actualWinner.player.publicKey, // Correct player
-        playerIndex: winnerIndex, // Correct index
+        ticketIndex: winnerIndex, // Correct index
       };
 
       // Use the OTHER player's account as winner to trigger WinnerPubkeyMismatch
@@ -684,8 +684,8 @@ describe("Security & Edge Cases", () => {
       const gameConfig: GameConfig = {
         gameType: { giveaway: {} },
         amount: new anchor.BN(1_000_000),
-        maxPlayers: 1, // Set max to 1 so game is immediately ready
-        minPlayers: 1, // Allow single player
+        maxTickets: 1, // Set max to 1 so game is immediately ready
+        minTickets: 1, // Allow single player
         timeout: 3600,
         isPrivate: false,
       };
@@ -711,7 +711,7 @@ describe("Security & Edge Cases", () => {
 
       const winnerParticipation = {
         player: creator.player.publicKey,
-        playerIndex: winnerIndex,
+        ticketIndex: winnerIndex,
       };
 
       await testUtils.game.completeGame(
@@ -737,8 +737,8 @@ describe("Security & Edge Cases", () => {
       const gameConfig: GameConfig = {
         gameType: { coinflip: {} },
         amount: new anchor.BN(1_000_000),
-        maxPlayers: 2,
-        minPlayers: 2,
+        maxTickets: 2,
+        minTickets: 2,
         timeout: 1, // Minimum timeout
         isPrivate: false,
       };
@@ -765,8 +765,8 @@ describe("Security & Edge Cases", () => {
       const gameConfig: GameConfig = {
         gameType: { coinflip: {} },
         amount: new anchor.BN(1_000_000),
-        maxPlayers: oracle.config.maxPlayers, // Use oracle's max
-        minPlayers: 2,
+        maxTickets: oracle.config.maxTickets, // Use oracle's max
+        minTickets: 2,
         timeout: 3600,
         isPrivate: false,
       };
@@ -779,7 +779,7 @@ describe("Security & Edge Cases", () => {
       );
 
       const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
-      expect(gameAccount.maxPlayers).to.equal(oracle.config.maxPlayers);
+      expect(gameAccount.maxTickets).to.equal(oracle.config.maxTickets);
     });
   });
 
@@ -797,7 +797,7 @@ describe("Security & Edge Cases", () => {
       const newConfig = {
         feePercentage: 10, // High fee
         oracleBufferTime: 1,
-        maxPlayers: 2,
+        maxTickets: 2,
         maxTimeout: 60,
         minTimeout: 1,
       };
@@ -825,7 +825,7 @@ describe("Security & Edge Cases", () => {
       const invalidConfig = {
         feePercentage: 101, // Over 100%
         oracleBufferTime: 1,
-        maxPlayers: 1, // Too low for coinflip
+        maxTickets: 1, // Too low for coinflip
         maxTimeout: 0, // Invalid timeout
         minTimeout: 1,
       };
