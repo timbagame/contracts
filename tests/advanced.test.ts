@@ -45,8 +45,8 @@ describe("Advanced Features", () => {
       const gameConfig: GameConfig = {
         gameType: { coinflip: {} },
         amount: new anchor.BN(1_000_000),
-        maxPlayers: 3,
-        minPlayers: 3,
+        maxTickets: 3,
+        minTickets: 3,
         timeout: 3600,
         isPrivate: false,
       };
@@ -77,7 +77,7 @@ describe("Advanced Features", () => {
 
       const winnerParticipation = {
         player: winner.player.publicKey,
-        playerIndex: actualWinnerIndex,
+        ticketIndex: actualWinnerIndex,
       };
 
       // Complete game with proper merkle proof
@@ -102,8 +102,8 @@ describe("Advanced Features", () => {
       const gameConfig: GameConfig = {
         gameType: { coinflip: {} },
         amount: new anchor.BN(500_000),
-        maxPlayers: 6, // Reduce to 6 players to avoid merkle tree limits
-        minPlayers: 6,
+        maxTickets: 6, // Reduce to 6 players to avoid merkle tree limits
+        minTickets: 6,
         timeout: 3600,
         isPrivate: false,
       };
@@ -139,7 +139,7 @@ describe("Advanced Features", () => {
 
       const winnerParticipation = {
         player: winner.player.publicKey,
-        playerIndex: actualWinnerIndex,
+        ticketIndex: actualWinnerIndex,
       };
 
       await testUtils.game.completeGame(
@@ -163,8 +163,8 @@ describe("Advanced Features", () => {
       const gameConfig: GameConfig = {
         gameType: { coinflip: {} },
         amount: new anchor.BN(1_000_000),
-        maxPlayers: 4,
-        minPlayers: 4,
+        maxTickets: 4,
+        minTickets: 4,
         timeout: 3600,
         isPrivate: false,
       };
@@ -199,8 +199,8 @@ describe("Advanced Features", () => {
       const gameConfig: GameConfig = {
         gameType: { coinflip: {} },
         amount: new anchor.BN(1_000_000),
-        maxPlayers: 5,
-        minPlayers: 2,
+        maxTickets: 5,
+        minTickets: 2,
         timeout: 3600,
         isPrivate: false,
       };
@@ -234,8 +234,8 @@ describe("Advanced Features", () => {
       const gameConfig: GameConfig = {
         gameType: { coinflip: {} },
         amount: new anchor.BN(1_000_000),
-        maxPlayers: 2,
-        minPlayers: 2,
+        maxTickets: 2,
+        minTickets: 2,
         timeout: 3600,
         isPrivate: false,
       };
@@ -270,8 +270,8 @@ describe("Advanced Features", () => {
       const gameConfig: GameConfig = {
         gameType: { coinflip: {} },
         amount: new anchor.BN(1_000_000),
-        maxPlayers: Math.min(oracle.config.maxPlayers, 6), // Limit to 6 to avoid merkle tree issues
-        minPlayers: 2,
+        maxTickets: Math.min(oracle.config.maxTickets, 6), // Limit to 6 to avoid merkle tree issues
+        minTickets: 2,
         timeout: 3600,
         isPrivate: false,
       };
@@ -285,19 +285,19 @@ describe("Advanced Features", () => {
       );
 
       // Fill to capacity
-      const maxPlayers = Math.min(gameConfig.maxPlayers, players.length);
-      for (let i = 0; i < maxPlayers; i++) {
+      const maxTickets = Math.min(gameConfig.maxTickets, players.length);
+      for (let i = 0; i < maxTickets; i++) {
         await testUtils.game.joinGame(gameData.gamePDA, players[i].player);
       }
 
       // Verify capacity reached
       const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
-      expect(gameAccount.ticketsCount).to.equal(maxPlayers);
+      expect(gameAccount.ticketsCount).to.equal(maxTickets);
 
       // Try to exceed capacity (should fail)
-      if (players.length > maxPlayers) {
+      if (players.length > maxTickets) {
         try {
-          await testUtils.game.joinGame(gameData.gamePDA, players[maxPlayers].player);
+          await testUtils.game.joinGame(gameData.gamePDA, players[maxTickets].player);
           expect.fail("Should have prevented exceeding capacity");
         } catch (error) {
           expect(error.toString()).to.include("GameFull");
@@ -314,8 +314,8 @@ describe("Advanced Features", () => {
       const gameConfig: GameConfig = {
         gameType: { coinflip: {} },
         amount: new anchor.BN(1_000_000),
-        maxPlayers: 2, // Use max players for immediate completion
-        minPlayers: 2,
+        maxTickets: 2, // Use max players for immediate completion
+        minTickets: 2,
         timeout: 3600,
         isPrivate: false,
       };
@@ -344,7 +344,7 @@ describe("Advanced Features", () => {
 
       const winnerParticipation = {
         player: winner.player.publicKey,
-        playerIndex: winnerIndex,
+        ticketIndex: winnerIndex,
       };
 
       await testUtils.game.completeGame(
@@ -368,8 +368,8 @@ describe("Advanced Features", () => {
       const gameConfig: GameConfig = {
         gameType: { coinflip: {} },
         amount: new anchor.BN(1_000_000),
-        maxPlayers: 2,
-        minPlayers: 2,
+        maxTickets: 2,
+        minTickets: 2,
         timeout: 2, // Short timeout
         isPrivate: false,
       };
@@ -424,8 +424,8 @@ describe("Advanced Features", () => {
       const gameConfig: GameConfig = {
         gameType: { coinflip: {} },
         amount: new anchor.BN(1_000_000),
-        maxPlayers: 4,
-        minPlayers: 3,
+        maxTickets: 4,
+        minTickets: 3,
         timeout: 3600, // Long timeout
         isPrivate: false,
       };
@@ -444,7 +444,7 @@ describe("Advanced Features", () => {
       // Try to complete prematurely
       const winnerParticipation = {
         player: players[0].player.publicKey,
-        playerIndex: 0,
+        ticketIndex: 0,
       };
 
       try {
@@ -474,8 +474,8 @@ describe("Advanced Features", () => {
         const gameConfig: GameConfig = {
           gameType: { coinflip: {} },
           amount: new anchor.BN(1_000_000),
-          maxPlayers: 2,
-          minPlayers: 2,
+          maxTickets: 2,
+          minTickets: 2,
           timeout: 3600,
           isPrivate: false,
         };
@@ -514,7 +514,7 @@ describe("Advanced Features", () => {
 
       const winnerParticipation = {
         player: winner.player.publicKey,
-        playerIndex: winnerIndex,
+        ticketIndex: winnerIndex,
       };
 
       await testUtils.game.completeGame(
@@ -545,8 +545,8 @@ describe("Advanced Features", () => {
       const gameConfig: GameConfig = {
         gameType: { giveaway: {} }, // Use giveaway to avoid balance issues
         amount: new anchor.BN(1_000_000),
-        maxPlayers: 2,
-        minPlayers: 1,
+        maxTickets: 2,
+        minTickets: 1,
         timeout: 3600,
         isPrivate: false,
       };
@@ -590,8 +590,8 @@ describe("Advanced Features", () => {
         const gameConfig: GameConfig = {
           gameType: { giveaway: {} },
           amount: new anchor.BN(1_000_000),
-          maxPlayers: 2,
-          minPlayers: 1,
+          maxTickets: 2,
+          minTickets: 1,
           timeout: 3600,
           isPrivate: false,
         };
@@ -623,8 +623,8 @@ describe("Advanced Features", () => {
       const gameConfig: GameConfig = {
         gameType: { giveaway: {} },
         amount: largeAmount,
-        maxPlayers: 1,
-        minPlayers: 1,
+        maxTickets: 1,
+        minTickets: 1,
         timeout: 3600,
         isPrivate: false,
       };

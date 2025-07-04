@@ -44,13 +44,13 @@ describe("Core Game Operations", () => {
       expect(oracle.oraclePDA).to.not.be.undefined;
       expect(oracle.operator.equals(oracle.operatorKeypair.publicKey)).to.be.true;
       expect(oracle.config.feePercentage).to.equal(1);
-      expect(oracle.config.maxPlayers).to.equal(100);
+      expect(oracle.config.maxTickets).to.equal(100);
     });
 
     it("should return existing oracle configuration", async () => {
       const customConfig = {
         feePercentage: 2,
-        maxPlayers: 50,
+        maxTickets: 50,
         maxTimeout: 1800,
       };
 
@@ -59,7 +59,7 @@ describe("Core Game Operations", () => {
 
       // Should return the default configuration from the first initialization
       expect(oracle.config.feePercentage).to.equal(1);
-      expect(oracle.config.maxPlayers).to.equal(100);
+      expect(oracle.config.maxTickets).to.equal(100);
       expect(oracle.config.maxTimeout).to.equal(86400);
     });
 
@@ -148,8 +148,8 @@ describe("Core Game Operations", () => {
       const gameConfig: GameConfig = {
         gameType: { coinflip: {} },
         amount: new anchor.BN(1_000_000),
-        maxPlayers: 2,
-        minPlayers: 2,
+        maxTickets: 2,
+        minTickets: 2,
         timeout: 3600,
         isPrivate: false,
       };
@@ -164,8 +164,8 @@ describe("Core Game Operations", () => {
       const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
       expect(gameAccount.creator.equals(creator.player.publicKey)).to.be.true;
       expect(gameAccount.ticketAmount.toNumber()).to.equal(1_000_000);
-      expect(gameAccount.maxPlayers).to.equal(2);
-      expect(gameAccount.minPlayers).to.equal(2);
+      expect(gameAccount.maxTickets).to.equal(2);
+      expect(gameAccount.minTickets).to.equal(2);
       expect(gameAccount.ticketsCount).to.equal(0);
     });
 
@@ -177,8 +177,8 @@ describe("Core Game Operations", () => {
       const invalidConfig: GameConfig = {
         gameType: { coinflip: {} },
         amount: new anchor.BN(1_000_000),
-        maxPlayers: 1, // Invalid: coinflip needs at least 2 players
-        minPlayers: 2, // Invalid: min > max
+        maxTickets: 1, // Invalid: coinflip needs at least 2 players
+        minTickets: 2, // Invalid: min > max
         timeout: 3600,
         isPrivate: false,
       };
@@ -204,8 +204,8 @@ describe("Core Game Operations", () => {
       const gameConfig: GameConfig = {
         gameType: { giveaway: {} },
         amount: new anchor.BN(2_000_000),
-        maxPlayers: 5,
-        minPlayers: 1,
+        maxTickets: 5,
+        minTickets: 1,
         timeout: 1800,
         isPrivate: false,
       };
@@ -221,8 +221,8 @@ describe("Core Game Operations", () => {
       expect(gameAccount.gameType.giveaway).to.not.be.undefined;
       expect(gameAccount.totalAmount.toNumber()).to.equal(2_000_000); // Giveaway uses totalAmount
       expect(gameAccount.ticketAmount.toNumber()).to.equal(0); // Giveaway sets ticketAmount to 0
-      expect(gameAccount.maxPlayers).to.equal(5);
-      expect(gameAccount.minPlayers).to.equal(1);
+      expect(gameAccount.maxTickets).to.equal(5);
+      expect(gameAccount.minTickets).to.equal(1);
     });
   });
 
@@ -235,8 +235,8 @@ describe("Core Game Operations", () => {
       const gameConfig: GameConfig = {
         gameType: { coinflip: {} },
         amount: new anchor.BN(1_000_000),
-        maxPlayers: 2,
-        minPlayers: 2,
+        maxTickets: 2,
+        minTickets: 2,
         timeout: 3600,
         isPrivate: false,
       };
@@ -271,8 +271,8 @@ describe("Core Game Operations", () => {
       const gameConfig: GameConfig = {
         gameType: { coinflip: {} },
         amount: new anchor.BN(1_000_000),
-        maxPlayers: 2,
-        minPlayers: 2,
+        maxTickets: 2,
+        minTickets: 2,
         timeout: 3600,
         isPrivate: true, // Private game
       };
@@ -301,8 +301,8 @@ describe("Core Game Operations", () => {
       const gameConfig: GameConfig = {
         gameType: { coinflip: {} },
         amount: new anchor.BN(1_000_000),
-        maxPlayers: 2,
-        minPlayers: 2,
+        maxTickets: 2,
+        minTickets: 2,
         timeout: 3600,
         isPrivate: true,
       };
@@ -332,8 +332,8 @@ describe("Core Game Operations", () => {
       const gameConfig: GameConfig = {
         gameType: { coinflip: {} },
         amount: new anchor.BN(1_000_000),
-        maxPlayers: 2,
-        minPlayers: 2,
+        maxTickets: 2,
+        minTickets: 2,
         timeout: 3600,
         isPrivate: true,
       };
@@ -361,8 +361,8 @@ describe("Core Game Operations", () => {
       const gameConfig: GameConfig = {
         gameType: { coinflip: {} },
         amount: new anchor.BN(1_000_000),
-        maxPlayers: 2,
-        minPlayers: 2,
+        maxTickets: 2,
+        minTickets: 2,
         timeout: 3600,
         isPrivate: false,
       };
@@ -400,8 +400,8 @@ describe("Core Game Operations", () => {
       const gameConfig: GameConfig = {
         gameType: { coinflip: {} },
         amount: new anchor.BN(1_000_000),
-        maxPlayers: 2,
-        minPlayers: 2,
+        maxTickets: 2,
+        minTickets: 2,
         timeout: 3600,
         isPrivate: false,
       };
@@ -431,8 +431,8 @@ describe("Core Game Operations", () => {
       const gameConfig: GameConfig = {
         gameType: { coinflip: {} },
         amount: new anchor.BN(1_000_000),
-        maxPlayers: 2,
-        minPlayers: 2,
+        maxTickets: 2,
+        minTickets: 2,
         timeout: 3600,
         isPrivate: false,
       };
@@ -460,7 +460,7 @@ describe("Core Game Operations", () => {
       // Create participation entry for winner
       const winnerParticipation = {
         player: winner.player.publicKey,
-        playerIndex: winnerIndex,
+        ticketIndex: winnerIndex,
       };
 
       // For simple 2-player game, create minimal merkle proof
@@ -490,8 +490,8 @@ describe("Core Game Operations", () => {
       const gameConfig: GameConfig = {
         gameType: { coinflip: {} },
         amount: new anchor.BN(1_000_000),
-        maxPlayers: 2,
-        minPlayers: 2,
+        maxTickets: 2,
+        minTickets: 2,
         timeout: 3600,
         isPrivate: false,
       };
@@ -516,7 +516,7 @@ describe("Core Game Operations", () => {
 
       const winnerParticipation = {
         player: winner.player.publicKey,
-        playerIndex: winnerIndex,
+        ticketIndex: winnerIndex,
       };
 
       try {
@@ -544,8 +544,8 @@ describe("Core Game Operations", () => {
       const gameConfig: GameConfig = {
         gameType: { coinflip: {} },
         amount: new anchor.BN(1_000_000),
-        maxPlayers: 2,
-        minPlayers: 2,
+        maxTickets: 2,
+        minTickets: 2,
         timeout: 3600,
         isPrivate: false,
       };
@@ -580,7 +580,7 @@ describe("Core Game Operations", () => {
 
       const winnerParticipation = {
         player: winner.player.publicKey,
-        playerIndex: winnerIndex,
+        ticketIndex: winnerIndex,
       };
 
       try {
