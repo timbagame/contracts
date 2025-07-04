@@ -774,12 +774,22 @@ function generateSubtreeMerkleProof(
     return [];
   }
 
-  // Create participation entries for committed tickets only
-  const committedPlayerList = players.slice(0, committedTickets);
-  const leaves = committedPlayerList.map((player, index) => {
-    const entry = createParticipationEntry(player.player.publicKey, index);
-    return hashParticipationEntry(entry);
-  });
+  // For snowball games, we need to reconstruct the actual ticket sequence
+  // Tickets 0, 1, 2 are the original joins, tickets 3+ are rolls by various players
+  const leaves: Buffer[] = [];
+  
+  // Add the original 3 join tickets
+  for (let i = 0; i < Math.min(3, committedTickets); i++) {
+    const player = players[i];
+    const entry = createParticipationEntry(player.player.publicKey, i);
+    leaves.push(hashParticipationEntry(entry));
+  }
+  
+  // Add additional roll tickets (assuming they're all by the first player for simplicity)
+  for (let i = 3; i < committedTickets; i++) {
+    const entry = createParticipationEntry(players[0].player.publicKey, i);
+    leaves.push(hashParticipationEntry(entry));
+  }
 
   // Build merkle tree from committed players and generate proof
   return buildMerkleProof(leaves, targetIndex);
