@@ -608,7 +608,7 @@ export class GameManager {
  * Winner calculation utilities
  */
 export function calculateWinnerIndex(
-  playersCount: number,
+  ticketsCount: number,
   secretKey: number[],
   lastSlot: number,
   gameType?: any,
@@ -620,7 +620,7 @@ export function calculateWinnerIndex(
   if (gameType && gameType.snowball && totalAmount && ticketAmount) {
     nEntries = totalAmount / ticketAmount;
   } else {
-    nEntries = playersCount;
+    nEntries = ticketsCount;
   }
 
   if (nEntries === 1) {
@@ -858,9 +858,9 @@ export function createExclusionProof(
     departingSubtreeOriginalRoot: Buffer.alloc(32),
     lastPlayerProof: [],
     lastSubtreeOriginalRoot: Buffer.alloc(32),
-    remainingPlayersInSmallest: [],
+    remainingTicketsInSmallest: [],
     newPowerOf2Root: null,
-    playersToRecent: [],
+    ticketsToRecent: [],
     departingSubtreeNewRoot: Buffer.alloc(32),
   };
 }

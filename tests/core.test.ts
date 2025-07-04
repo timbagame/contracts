@@ -166,7 +166,7 @@ describe("Core Game Operations", () => {
       expect(gameAccount.ticketAmount.toNumber()).to.equal(1_000_000);
       expect(gameAccount.maxPlayers).to.equal(2);
       expect(gameAccount.minPlayers).to.equal(2);
-      expect(gameAccount.playersCount).to.equal(0);
+      expect(gameAccount.ticketsCount).to.equal(0);
     });
 
     it("should fail to initialize game with invalid parameters", async () => {
@@ -192,7 +192,7 @@ describe("Core Game Operations", () => {
         );
         expect.fail("Should have failed with invalid parameters");
       } catch (error) {
-        expect(error.toString()).to.include("InvalidPlayersCount");
+        expect(error.toString()).to.include("InvalidTicketsCount");
       }
     });
 
@@ -253,13 +253,13 @@ describe("Core Game Operations", () => {
       await testUtils.game.joinGame(gameData.gamePDA, creator.player);
 
       let gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
-      expect(gameAccount.playersCount).to.equal(1);
+      expect(gameAccount.ticketsCount).to.equal(1);
 
       // Second player joins
       await testUtils.game.joinGame(gameData.gamePDA, player1.player);
 
       gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
-      expect(gameAccount.playersCount).to.equal(2);
+      expect(gameAccount.ticketsCount).to.equal(2);
       expect(gameAccount.totalAmount.toNumber()).to.equal(2_000_000);
     });
 
@@ -290,7 +290,7 @@ describe("Core Game Operations", () => {
       await testUtils.game.joinGame(gameData.gamePDA, player1.player, oracle.operatorKeypair);
 
       const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
-      expect(gameAccount.playersCount).to.equal(2);
+      expect(gameAccount.ticketsCount).to.equal(2);
     });
 
     it("should fail to join private game without operator", async () => {
@@ -450,7 +450,7 @@ describe("Core Game Operations", () => {
       // Calculate winner
       const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
       const winnerIndex = calculateWinnerIndex(
-        gameAccount.playersCount,
+        gameAccount.ticketsCount,
         gameData.secretKey,
         Number(gameAccount.lastSlot)
       );
@@ -508,7 +508,7 @@ describe("Core Game Operations", () => {
       // Calculate winner first
       const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
       const winnerIndex = calculateWinnerIndex(
-        gameAccount.playersCount,
+        gameAccount.ticketsCount,
         gameData.secretKey,
         Number(gameAccount.lastSlot)
       );
@@ -572,7 +572,7 @@ describe("Core Game Operations", () => {
       // Calculate winner and create participation
       const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
       const winnerIndex = calculateWinnerIndex(
-        gameAccount.playersCount,
+        gameAccount.ticketsCount,
         gameData.secretKey, // Use correct secret for winner calculation
         Number(gameAccount.lastSlot)
       );

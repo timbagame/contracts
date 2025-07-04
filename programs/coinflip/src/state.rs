@@ -98,10 +98,10 @@ pub struct ExclusionProof {
     pub last_player_proof: Vec<[u8; 32]>,
     pub last_subtree_original_root: [u8; 32],
 
-    /// Reconstruction plan for smallest subtree after last player removal
-    pub remaining_players_in_smallest: Vec<ParticipationEntry>,
+    /// Reconstruction plan for smallest subtree after last ticket removal
+    pub remaining_tickets_in_smallest: Vec<ParticipationEntry>,
     pub new_power_of_2_root: Option<[u8; 32]>, // None if subtree becomes empty
-    pub players_to_recent: Vec<ParticipationEntry>,
+    pub tickets_to_recent: Vec<ParticipationEntry>,
 
     /// New root of departing player's subtree after swap
     pub departing_subtree_new_root: [u8; 32],
@@ -1051,7 +1051,7 @@ impl Game {
         );
 
         // Verify the remaining players count is correct (subtree size - 1)
-        let remaining_count = proof.remaining_players_in_smallest.len();
+        let remaining_count = proof.remaining_tickets_in_smallest.len();
         require!(
             remaining_count == (smallest_subtree.size - 1) as usize,
             ErrorCode::MalformedSubtreeProof
@@ -1062,7 +1062,7 @@ impl Game {
 
     /// Verifies the reconstruction plan maintains power-of-2 subtree requirements
     fn verify_reconstruction_plan(&self, proof: &ExclusionProof) -> Result<()> {
-        let remaining_count = proof.remaining_players_in_smallest.len();
+        let remaining_count = proof.remaining_tickets_in_smallest.len();
 
         if remaining_count == 0 {
             // Case 1: Subtree becomes empty after removing last player
@@ -1085,7 +1085,7 @@ impl Game {
             ErrorCode::InvalidExclusionProof
         );
         require!(
-            proof.players_to_recent.is_empty(),
+            proof.tickets_to_recent.is_empty(),
             ErrorCode::InvalidExclusionProof
         );
         Ok(())
@@ -1098,13 +1098,13 @@ impl Game {
             ErrorCode::InvalidExclusionProof
         );
         require!(
-            proof.players_to_recent.is_empty(),
+            proof.tickets_to_recent.is_empty(),
             ErrorCode::InvalidExclusionProof
         );
         Ok(())
     }
 
-    /// Verifies reconstruction plan when players must be split between subtree and recent buffer
+    /// Verifies reconstruction plan when tickets must be split between subtree and recent buffer
     fn verify_split_reconstruction_plan(
         &self,
         proof: &ExclusionProof,
@@ -1113,17 +1113,17 @@ impl Game {
         // Calculate power-of-2 split threshold
         let largest_power_of_2_le = Self::largest_power_of_2_le(remaining_count);
 
-        let subtree_players = largest_power_of_2_le;
-        let recent_tickets = remaining_count - subtree_players;
+        let subtree_tickets = largest_power_of_2_le;
+        let recent_tickets = remaining_count - subtree_tickets;
 
-        // Verify the correct number of players are moved to recent buffer
+        // Verify the correct number of tickets are moved to recent buffer
         require!(
-            proof.players_to_recent.len() == recent_tickets,
+            proof.tickets_to_recent.len() == recent_tickets,
             ErrorCode::MalformedSubtreeProof
         );
 
-        // Verify new root existence based on whether subtree will have players
-        if subtree_players > 0 {
+        // Verify new root existence based on whether subtree will have tickets
+        if subtree_tickets > 0 {
             require!(
                 proof.new_power_of_2_root.is_some(),
                 ErrorCode::InvalidExclusionProof
@@ -1171,7 +1171,7 @@ impl Game {
         proof: &ExclusionProof,
         smallest_subtree_idx: usize,
     ) -> Result<()> {
-        let remaining_count = proof.remaining_players_in_smallest.len();
+        let remaining_count = proof.remaining_tickets_in_smallest.len();
 
         if remaining_count == 0 {
             // Case 1: Subtree becomes empty - remove it entirely
@@ -1211,27 +1211,27 @@ impl Game {
     ) -> Result<()> {
         // Split calculation: subtree vs recent buffer
         let largest_power_of_2_le = Self::largest_power_of_2_le(remaining_count);
-        let subtree_players = largest_power_of_2_le;
+        let subtree_tickets = largest_power_of_2_le;
 
-        if subtree_players > 0 {
+        if subtree_tickets > 0 {
             // Update subtree with power-of-2 portion
             self.subtrees[smallest_subtree_idx].root_hash = proof.new_power_of_2_root.unwrap();
-            self.subtrees[smallest_subtree_idx].size = subtree_players as u32;
+            self.subtrees[smallest_subtree_idx].size = subtree_tickets as u32;
         } else {
-            // Remove subtree entirely if no players remain
+            // Remove subtree entirely if no tickets remain
             self.remove_empty_subtree(smallest_subtree_idx);
         }
 
-        // Move excess players to recent_tickets buffer
-        self.move_players_to_recent_buffer(proof)?;
+        // Move excess tickets to recent_tickets buffer
+        self.move_tickets_to_recent_buffer(proof)?;
 
         Ok(())
     }
 
-    /// Moves excess players from subtree to recent_tickets buffer
-    fn move_players_to_recent_buffer(&mut self, proof: &ExclusionProof) -> Result<()> {
-        for player_entry in &proof.players_to_recent {
-            let leaf_hash = Game::hash_participation_entry(player_entry);
+    /// Moves excess tickets from subtree to recent_tickets buffer
+    fn move_tickets_to_recent_buffer(&mut self, proof: &ExclusionProof) -> Result<()> {
+        for ticket_entry in &proof.tickets_to_recent {
+            let leaf_hash = Game::hash_participation_entry(ticket_entry);
             self.recent_tickets.push(RecentLeaf { hash: leaf_hash });
             self.recent_count += 1;
         }
