@@ -505,7 +505,6 @@ describe("Game Types", () => {
 
       console.log("Starting 10 rolls...");
       // Creator rolls 10 times (10 additional entries)
-      
       for (let i = 0; i < 10; i++) {
         console.log(`Roll ${i}/10`);
         
@@ -513,10 +512,11 @@ describe("Game Types", () => {
         let currentGameState = await env.program.account.game.fetch(gameData.gamePDA);
         console.log(`  Current state: ticketsCount=${currentGameState.ticketsCount}, recentCount=${currentGameState.recentCount}`);
         
+        // Generate proper proof for the creator's original participation (ticket index 0)
         const currentProof = generateMerkleProof([creator, player1, player2], 0, currentGameState);
         console.log(`  Generated proof length: ${currentProof.length}`);
         
-        await testUtils.game.rollGame(gameData.gamePDA, creator.player, 0, currentProof); // Creator's original entry index is 0
+        await testUtils.game.rollGame(gameData.gamePDA, creator.player, 0, currentProof);
       }
 
       console.log("Verifying final state...");
