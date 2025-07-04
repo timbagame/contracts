@@ -66,7 +66,7 @@ describe("Advanced Features", () => {
       // Calculate winner
       const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
       const actualWinnerIndex = calculateWinnerIndex(
-        gameAccount.playersCount,
+        gameAccount.ticketsCount,
         gameData.secretKey,
         Number(gameAccount.lastSlot)
       );
@@ -123,12 +123,12 @@ describe("Advanced Features", () => {
 
       // Verify game state
       const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
-      expect(gameAccount.playersCount).to.equal(6);
+      expect(gameAccount.ticketsCount).to.equal(6);
       expect(gameAccount.totalAmount.toNumber()).to.equal(3_000_000);
 
       // Complete game (force winner to be from recent players to use empty proof)
       const actualWinnerIndex = calculateWinnerIndex(
-        gameAccount.playersCount,
+        gameAccount.ticketsCount,
         gameData.secretKey,
         Number(gameAccount.lastSlot)
       );
@@ -218,13 +218,13 @@ describe("Advanced Features", () => {
         await testUtils.game.joinGame(gameData.gamePDA, players[i].player);
 
         const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
-        expect(gameAccount.playersCount).to.equal(i + 1);
+        expect(gameAccount.ticketsCount).to.equal(i + 1);
         expect(gameAccount.totalAmount.toNumber()).to.equal((i + 1) * 1_000_000);
       }
 
       // Verify final state
       const finalGameAccount = await env.program.account.game.fetch(gameData.gamePDA);
-      expect(finalGameAccount.playersCount).to.equal(4);
+      expect(finalGameAccount.ticketsCount).to.equal(4);
       expect(finalGameAccount.totalAmount.toNumber()).to.equal(4_000_000);
     });
 
@@ -257,7 +257,7 @@ describe("Advanced Features", () => {
         await testUtils.game.joinGame(gameData.gamePDA, players[1].player);
 
         const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
-        expect(gameAccount.playersCount).to.equal(2);
+        expect(gameAccount.ticketsCount).to.equal(2);
         expect(gameAccount.totalAmount.toNumber()).to.equal(2_000_000);
       }
     });
@@ -292,7 +292,7 @@ describe("Advanced Features", () => {
 
       // Verify capacity reached
       const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
-      expect(gameAccount.playersCount).to.equal(maxPlayers);
+      expect(gameAccount.ticketsCount).to.equal(maxPlayers);
 
       // Try to exceed capacity (should fail)
       if (players.length > maxPlayers) {
@@ -335,7 +335,7 @@ describe("Advanced Features", () => {
       // Game should be completable immediately after reaching max players
       const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
       const winnerIndex = calculateWinnerIndex(
-        gameAccount.playersCount,
+        gameAccount.ticketsCount,
         gameData.secretKey,
         Number(gameAccount.lastSlot)
       );
@@ -396,7 +396,7 @@ describe("Advanced Features", () => {
 
       // Verify game is now empty
       const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
-      expect(gameAccount.playersCount).to.equal(0);
+      expect(gameAccount.ticketsCount).to.equal(0);
 
       // Now empty game can be closed
       await env.program.methods
@@ -499,14 +499,14 @@ describe("Advanced Features", () => {
       // Verify all games are independent
       for (let i = 0; i < 3; i++) {
         const gameAccount = await env.program.account.game.fetch(games[i].gameData.gamePDA);
-        expect(gameAccount.playersCount).to.equal(2);
+        expect(gameAccount.ticketsCount).to.equal(2);
         expect(gameAccount.totalAmount.toNumber()).to.equal(2_000_000);
       }
 
       // Complete one game without affecting others
       const gameAccount = await env.program.account.game.fetch(games[0].gameData.gamePDA);
       const winnerIndex = calculateWinnerIndex(
-        gameAccount.playersCount,
+        gameAccount.ticketsCount,
         games[0].gameData.secretKey,
         Number(gameAccount.lastSlot)
       );
@@ -574,8 +574,8 @@ describe("Advanced Features", () => {
       const game1Account = await env.program.account.game.fetch(game1Data.gamePDA);
       const game2Account = await env.program.account.game.fetch(game2Data.gamePDA);
 
-      expect(game1Account.playersCount).to.equal(1);
-      expect(game2Account.playersCount).to.equal(1);
+      expect(game1Account.ticketsCount).to.equal(1);
+      expect(game2Account.ticketsCount).to.equal(1);
     });
   });
 

@@ -136,7 +136,7 @@ describe("Security & Edge Cases", () => {
       // Complete game first time
       const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
       const winnerIndex = calculateWinnerIndex(
-        gameAccount.playersCount,
+        gameAccount.ticketsCount,
         gameData.secretKey,
         Number(gameAccount.lastSlot)
       );
@@ -209,7 +209,7 @@ describe("Security & Edge Cases", () => {
       // Try to complete with fake operator
       const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
       const winnerIndex = calculateWinnerIndex(
-        gameAccount.playersCount,
+        gameAccount.ticketsCount,
         gameData.secretKey,
         Number(gameAccount.lastSlot)
       );
@@ -310,7 +310,7 @@ describe("Security & Edge Cases", () => {
       // Try to complete with wrong creator
       const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
       const winnerIndex = calculateWinnerIndex(
-        gameAccount.playersCount,
+        gameAccount.ticketsCount,
         gameData.secretKey,
         Number(gameAccount.lastSlot)
       );
@@ -544,7 +544,7 @@ describe("Security & Edge Cases", () => {
         expect(gameAccount.maxPlayers).to.equal(255);
       } catch (error) {
         // Might fail due to oracle constraints
-        expect(error.toString()).to.include("InvalidPlayersCount");
+        expect(error.toString()).to.include("InvalidTicketsCount");
       }
     });
   });
@@ -580,7 +580,7 @@ describe("Security & Edge Cases", () => {
       // This ensures merkle proof validation is tested, not recent player buffer validation
       const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
       const actualWinnerIndex = calculateWinnerIndex(
-        gameAccount.playersCount,
+        gameAccount.ticketsCount,
         gameData.secretKey,
         Number(gameAccount.lastSlot)
       );
@@ -642,7 +642,7 @@ describe("Security & Edge Cases", () => {
       // Calculate actual winner to make test deterministic
       const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
       const winnerIndex = calculateWinnerIndex(
-        gameAccount.playersCount,
+        gameAccount.ticketsCount,
         gameData.secretKey,
         Number(gameAccount.lastSlot)
       );
@@ -702,7 +702,7 @@ describe("Security & Edge Cases", () => {
       // Complete single-player game
       const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
       const winnerIndex = calculateWinnerIndex(
-        gameAccount.playersCount,
+        gameAccount.ticketsCount,
         gameData.secretKey,
         Number(gameAccount.lastSlot)
       );

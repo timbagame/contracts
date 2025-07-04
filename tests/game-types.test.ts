@@ -600,7 +600,7 @@ describe("Game Types", () => {
         );
         expect.fail("Should have enforced minimum players for coinflip");
       } catch (error) {
-        expect(error.toString()).to.include("InvalidPlayersCount");
+        expect(error.toString()).to.include("InvalidTicketsCount");
       }
     });
 
@@ -627,7 +627,7 @@ describe("Game Types", () => {
         );
         expect.fail("Should have validated max players limit");
       } catch (error) {
-        expect(error.toString()).to.include("InvalidPlayersCount");
+        expect(error.toString()).to.include("InvalidTicketsCount");
       }
     });
 
