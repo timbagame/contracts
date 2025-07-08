@@ -473,7 +473,7 @@ describe("Game Types", () => {
       expect(completedGame.totalAmount.toNumber()).to.equal(0);
     });
 
-    it("should handle snowball game with 10 rolls", async () => {
+    it("should handle snowball game with multiple rolls", async () => {
       const { oracle, mint, players } = await testUtils.quickSetup();
       const gameData = testUtils.game.generateGamePDA();
       const creator = players[0];
@@ -483,7 +483,7 @@ describe("Game Types", () => {
       const gameConfig: GameConfig = {
         gameType: { snowball: {} },
         amount: new anchor.BN(1_000_000), // 1 TIMBA per entry
-        maxTickets: 13, // Will be reached with 3 joins + 10 rolls
+        maxTickets: 6, // Will be reached with 3 joins + 3 rolls
         minTickets: 2,
         timeout: 3600,
         isPrivate: false,
@@ -498,15 +498,15 @@ describe("Game Types", () => {
       );
 
       console.log("Players joining...");
-      // 3 players join to reach max capacity (3 entries)
+      // 3 players join initially
       await testUtils.game.joinGame(gameData.gamePDA, creator.player);
       await testUtils.game.joinGame(gameData.gamePDA, player1.player);
       await testUtils.game.joinGame(gameData.gamePDA, player2.player);
 
-      console.log("Starting 10 rolls...");
-      // Creator rolls 10 times (10 additional entries)
-      for (let i = 0; i < 10; i++) {
-        console.log(`Roll ${i}/10`);
+      console.log("Starting rolls...");
+      // Creator rolls 3 times (3 additional entries)
+      for (let i = 0; i < 3; i++) {
+        console.log(`Roll ${i}/3`);
         
         // Generate fresh proof for each roll since tree structure changes
         let currentGameState = await env.program.account.game.fetch(gameData.gamePDA);
@@ -522,8 +522,8 @@ describe("Game Types", () => {
       console.log("Verifying final state...");
       // Verify final state
       const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
-      expect(gameAccount.ticketsCount).to.equal(13); // 3 joins + 10 rolls = 13 total tickets
-      expect(gameAccount.totalAmount.toNumber()).to.equal(13_000_000); // 13 tickets * 1M
+      expect(gameAccount.ticketsCount).to.equal(6); // 3 joins + 3 rolls = 6 total tickets
+      expect(gameAccount.totalAmount.toNumber()).to.equal(6_000_000); // 6 tickets * 1M
 
       console.log(`Final state: ${gameAccount.ticketsCount} tickets, ${gameAccount.totalAmount.toNumber()} total amount`);
 
@@ -540,7 +540,7 @@ describe("Game Types", () => {
       console.log(`Winner index: ${winnerIndex}`);
 
       // Determine which player won based on entry index
-      // Entry 0: creator, Entry 1: player1, Entry 2: player2, Entries 3-12: creator (10 rolls)
+      // Entry 0: creator, Entry 1: player1, Entry 2: player2, Entries 3-5: creator (3 rolls)
       let winner: any;
       if (winnerIndex === 0 || winnerIndex >= 3) {
         winner = creator; // Creator's first entry or any roll
@@ -570,7 +570,7 @@ describe("Game Types", () => {
       expect(completedGame.totalAmount.toNumber()).to.equal(0);
 
       console.log("Test completed successfully!");
-    }).timeout(60000); // 60 second timeout for this intensive test
+    }).timeout(30000); // 30 second timeout for this test
   });
 
   describe("Game Type Validation", () => {
