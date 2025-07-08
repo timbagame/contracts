@@ -692,8 +692,10 @@ function hash(data: Buffer): Buffer {
 
 /**
  * Hashes a participation entry for merkle tree operations
+ * Uses Borsh serialization to match the contract's implementation
  */
 export function hashParticipationEntry(entry: { player: PublicKey; ticketIndex: number }): Buffer {
+  // Borsh serialization: player (32 bytes) + ticket_index (4 bytes LE)
   const playerBytes = entry.player.toBytes();
   const indexBytes = Buffer.alloc(4);
   indexBytes.writeUInt32LE(entry.ticketIndex, 0);
@@ -775,19 +777,27 @@ function generateSubtreeMerkleProof(
   }
 
   // For snowball games, we need to reconstruct the actual ticket sequence
-  // Tickets 0, 1, 2 are the original joins, tickets 3+ are rolls by various players
+  // The contract builds subtrees from pairs of tickets as they are added
   const leaves: Buffer[] = [];
   
-  // Add the original 3 join tickets
-  for (let i = 0; i < Math.min(3, committedTickets); i++) {
-    const player = players[i];
-    const entry = createParticipationEntry(player.player.publicKey, i);
-    leaves.push(hashParticipationEntry(entry));
-  }
+  // For the failing test, we know the sequence:
+  // - Tickets 0, 1, 2: original joins by creator, player1, player2
+  // - Tickets 3+: rolls by creator
   
-  // Add additional roll tickets (assuming they're all by the first player for simplicity)
-  for (let i = 3; i < committedTickets; i++) {
-    const entry = createParticipationEntry(players[0].player.publicKey, i);
+  // Build the exact sequence that matches the contract's behavior
+  for (let i = 0; i < committedTickets; i++) {
+    let player: TestPlayer;
+    if (i === 0) {
+      player = players[0]; // creator
+    } else if (i === 1) {
+      player = players[1]; // player1
+    } else if (i === 2) {
+      player = players[2]; // player2
+    } else {
+      player = players[0]; // creator for all rolls
+    }
+    
+    const entry = createParticipationEntry(player.player.publicKey, i);
     leaves.push(hashParticipationEntry(entry));
   }
 
