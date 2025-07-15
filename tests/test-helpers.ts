@@ -1171,6 +1171,25 @@ function generateSubtreeMerkleProof(
   console.log(`    Contract root:     ${contractRoot.toString('hex')}`);
   console.log(`    Roots match: ${ourComputedRoot.equals(contractRoot)}`);
   
+  // DEBUG: Add detailed subtree analysis for mismatches
+  if (!ourComputedRoot.equals(contractRoot)) {
+    console.log(`    DETAILED MISMATCH ANALYSIS:`);
+    console.log(`    Total tickets: ${gameState.ticketsCount}, Recent: ${gameState.recentCount}, Committed: ${committedTickets}`);
+    console.log(`    Generated ${subtreeRoots.length} subtrees:`);
+    for (let i = 0; i < subtreeInfos.length; i++) {
+      console.log(`      Subtree ${i}: start=${subtreeInfos[i].startIndex}, size=${subtreeInfos[i].size}, root=${subtreeRoots[i].toString('hex').substring(0,16)}...`);
+    }
+    
+    // Log player participation for each ticket
+    console.log(`    Player participation:`);
+    for (let i = 0; i < committedTickets; i++) {
+      const player = getPlayerForTicket(players, i);
+      const entry = createParticipationEntry(player.player.publicKey, i);
+      const leafHash = hashParticipationEntry(entry);
+      console.log(`      Ticket ${i}: player=${player.player.publicKey.toBase58().substring(0,8)}..., hash=${leafHash.toString('hex').substring(0,16)}...`);
+    }
+  }
+  
   // Generate proof that works with the contract's merkle root (built from subtree roots)
   return generateProofAgainstSubtreeRoot(players, targetIndex, subtreeRoots, subtreeInfos);
 }
@@ -1477,15 +1496,18 @@ function generateProofAgainstSubtreeRoot(
  * Gets the player for a specific ticket index (handles snowball game logic)
  */
 function getPlayerForTicket(players: TestPlayer[], ticketIndex: number): TestPlayer {
-  if (ticketIndex === 0) {
-    return players[0]; // creator
-  } else if (ticketIndex === 1) {
-    return players[1]; // player1
-  } else if (ticketIndex === 2) {
-    return players[2]; // player2
-  } else {
-    return players[0]; // creator for all rolls
+  // For standard games (coinflip, giveaway), tickets map directly to players in join order
+  // For snowball games, initial tickets are joins, later tickets are rolls by the same players
+  
+  // Handle standard sequential joining (most common case)
+  if (ticketIndex < players.length) {
+    return players[ticketIndex];
   }
+  
+  // For snowball games with rolls beyond initial joins:
+  // Tickets 0,1,2 are initial joins, tickets 3+ are typically rolls by player 0 (creator)
+  // This matches the pattern used in the snowball test cases
+  return players[0]; // Default to creator for rolls
 }
 
 /**
