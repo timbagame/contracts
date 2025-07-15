@@ -583,7 +583,24 @@ describe("Game Types", () => {
       console.log("Completing game...");
       // Generate proper merkle proof for game completion
       const finalGameState = await env.program.account.game.fetch(gameData.gamePDA);
-      const completionProof = generateMerkleProof([creator, player1, player2], winnerIndex, finalGameState);
+      
+      // Create a player array that represents all 13 tickets:
+      // Tickets 0,1,2 are the initial joins, tickets 3-12 are creator's rolls
+      const allTicketPlayers = [];
+      for (let i = 0; i < finalGameState.ticketsCount; i++) {
+        if (i === 0) {
+          allTicketPlayers.push(creator);
+        } else if (i === 1) {
+          allTicketPlayers.push(player1);
+        } else if (i === 2) {
+          allTicketPlayers.push(player2);
+        } else {
+          // All rolls (tickets 3-12) are by creator
+          allTicketPlayers.push(creator);
+        }
+      }
+      
+      const completionProof = generateMerkleProof(allTicketPlayers, winnerIndex, finalGameState);
       console.log(`  Completion proof length: ${completionProof.length}`);
       
       await testUtils.game.completeGame(
