@@ -735,7 +735,6 @@ class MerkleTreeSimulator {
   private recentTickets: Buffer[] = [];
   private recentCount: number = 0;
   private subtrees: { rootHash: Buffer; startIndex: number; size: number }[] = [];
-  private merkleRoot: Buffer = Buffer.alloc(32);
   private ticketsCount: number = 0;
   private ticketToPlayer: Map<number, PublicKey> = new Map();
 
@@ -760,7 +759,6 @@ class MerkleTreeSimulator {
       this.mergeSubtree(newSubtree);
       this.recentTickets = [leafHash];
       this.recentCount = 1;
-      this.updateMerkleRoot();
     }
 
     this.ticketsCount += 1;
@@ -793,20 +791,6 @@ class MerkleTreeSimulator {
     this.subtrees.push(newSubtree);
   }
 
-  /**
-   * Updates the merkle root from all subtrees
-   */
-  private updateMerkleRoot(): void {
-    if (this.subtrees.length === 0) {
-      this.merkleRoot = Buffer.alloc(32);
-      return;
-    }
-
-    // Sort subtrees by start_index
-    const sortedSubtrees = [...this.subtrees].sort((a, b) => a.startIndex - b.startIndex);
-    const hashes = sortedSubtrees.map(s => s.rootHash);
-    this.merkleRoot = this.computeMerkleRoot(hashes);
-  }
 
   /**
    * Computes merkle root using the same logic as the contract
@@ -1078,38 +1062,6 @@ function generateSimulatorBasedProof(
 }
 
 /**
- * Generates a logical merkle proof that matches the contract's verification expectations
- * The contract expects a binary tree where ticket N is at position N in the tree
- */
-function generateLogicalMerkleProof(
-  players: TestPlayer[],
-  targetIndex: number,
-  committedTickets: number
-): number[][] {
-  // Build leaves for all committed tickets in their logical positions
-  const leaves: Buffer[] = [];
-  
-  for (let i = 0; i < committedTickets; i++) {
-    let player: TestPlayer;
-    if (i === 0) {
-      player = players[0]; // creator
-    } else if (i === 1) {
-      player = players[1]; // player1
-    } else if (i === 2) {
-      player = players[2]; // player2
-    } else {
-      player = players[0]; // creator for all rolls
-    }
-    
-    const entry = createParticipationEntry(player.player.publicKey, i);
-    leaves.push(hashParticipationEntry(entry));
-  }
-
-  // Build the logical binary merkle tree that the contract expects
-  return buildMerkleProof(leaves, targetIndex);
-}
-
-/**
  * Generates a simple merkle proof for committed tickets
  * Builds a straightforward binary merkle tree from the committed tickets
  */
@@ -1319,25 +1271,6 @@ function buildContractSubtreeRoots(players: TestPlayer[], totalTickets: number, 
   const subtreeInfos = subtrees.map(s => ({ startIndex: s.startIndex, size: s.size }));
   console.log(`    Final: ${subtreeRoots.length} subtrees (ignoring ${bufferCount} recent tickets in buffer)`);
   return { subtreeRoots, subtreeInfos };
-}
-
-/**
- * Builds a subtree from a pair of tickets (or single ticket)
- */
-function buildSubtreeFromPair(players: TestPlayer[], startIndex: number, endIndex: number): { rootHash: Buffer; startIndex: number; size: number } {
-  const leaves: Buffer[] = [];
-  
-  for (let i = startIndex; i <= endIndex; i++) {
-    const player = getPlayerForTicket(players, i);
-    const entry = createParticipationEntry(player.player.publicKey, i);
-    leaves.push(hashParticipationEntry(entry));
-  }
-  
-  return {
-    rootHash: computeMerkleRootFromLeaves(leaves),
-    startIndex,
-    size: endIndex - startIndex + 1
-  };
 }
 
 /**
