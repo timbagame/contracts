@@ -134,7 +134,9 @@ describe("Security & Edge Cases", () => {
       await testUtils.game.joinGame(gameData.gamePDA, player1.player);
 
       // Complete game first time
-      const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+      const gameAccount = await env.program.account.game.fetch(
+        gameData.gamePDA
+      );
       const winnerIndex = calculateWinnerIndex(
         gameAccount.ticketsCount,
         gameData.secretKey,
@@ -207,7 +209,9 @@ describe("Security & Edge Cases", () => {
       await testUtils.game.joinGame(gameData.gamePDA, player1.player);
 
       // Try to complete with fake operator
-      const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+      const gameAccount = await env.program.account.game.fetch(
+        gameData.gamePDA
+      );
       const winnerIndex = calculateWinnerIndex(
         gameAccount.ticketsCount,
         gameData.secretKey,
@@ -308,7 +312,9 @@ describe("Security & Edge Cases", () => {
       await testUtils.game.joinGame(gameData.gamePDA, player1.player);
 
       // Try to complete with wrong creator
-      const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+      const gameAccount = await env.program.account.game.fetch(
+        gameData.gamePDA
+      );
       const winnerIndex = calculateWinnerIndex(
         gameAccount.ticketsCount,
         gameData.secretKey,
@@ -362,7 +368,7 @@ describe("Security & Edge Cases", () => {
       );
 
       // Wait for timeout to expire
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise((resolve) => setTimeout(resolve, 2000));
 
       // Try to join expired game
       try {
@@ -540,7 +546,9 @@ describe("Security & Edge Cases", () => {
         );
 
         // Should handle large player count configuration
-        const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+        const gameAccount = await env.program.account.game.fetch(
+          gameData.gamePDA
+        );
         expect(gameAccount.maxTickets).to.equal(255);
       } catch (error) {
         // Might fail due to oracle constraints
@@ -578,16 +586,21 @@ describe("Security & Edge Cases", () => {
 
       // Force winner to be one of the first 4 players (indices 0-3) who are in committed subtrees
       // This ensures merkle proof validation is tested, not recent player buffer validation
-      const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+      const gameAccount = await env.program.account.game.fetch(
+        gameData.gamePDA
+      );
       const actualWinnerIndex = calculateWinnerIndex(
         gameAccount.ticketsCount,
         gameData.secretKey,
         Number(gameAccount.lastSlot)
       );
-      
+
       // Use a player from committed subtrees (indices 0-3) to test merkle proof validation
       const testWinnerIndex = actualWinnerIndex >= 4 ? 0 : actualWinnerIndex; // Force to committed subtree if in recent buffer
-      const testWinner = getWinnerFromPlayers(players.slice(0, 5), testWinnerIndex);
+      const testWinner = getWinnerFromPlayers(
+        players.slice(0, 5),
+        testWinnerIndex
+      );
 
       const winnerParticipation = {
         player: testWinner.player.publicKey,
@@ -597,7 +610,7 @@ describe("Security & Edge Cases", () => {
       // Try to complete with invalid merkle proof
       const invalidProof = [
         Array.from({ length: 32 }, () => 255), // All 0xFF bytes
-        Array.from({ length: 32 }, () => 0),   // All 0x00 bytes
+        Array.from({ length: 32 }, () => 0), // All 0x00 bytes
       ];
 
       try {
@@ -640,13 +653,18 @@ describe("Security & Edge Cases", () => {
       await testUtils.game.joinGame(gameData.gamePDA, player1.player);
 
       // Calculate actual winner to make test deterministic
-      const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+      const gameAccount = await env.program.account.game.fetch(
+        gameData.gamePDA
+      );
       const winnerIndex = calculateWinnerIndex(
         gameAccount.ticketsCount,
         gameData.secretKey,
         Number(gameAccount.lastSlot)
       );
-      const actualWinner = getWinnerFromPlayers([creator, player1], winnerIndex);
+      const actualWinner = getWinnerFromPlayers(
+        [creator, player1],
+        winnerIndex
+      );
 
       // Create correct participation entry but wrong winner account
       const correctParticipation = {
@@ -655,8 +673,10 @@ describe("Security & Edge Cases", () => {
       };
 
       // Use the OTHER player's account as winner to trigger WinnerPubkeyMismatch
-      const wrongWinnerAccount = actualWinner.player.publicKey.equals(creator.player.publicKey) 
-        ? player1.player.publicKey 
+      const wrongWinnerAccount = actualWinner.player.publicKey.equals(
+        creator.player.publicKey
+      )
+        ? player1.player.publicKey
         : creator.player.publicKey;
 
       try {
@@ -700,7 +720,9 @@ describe("Security & Edge Cases", () => {
       await testUtils.game.joinGame(gameData.gamePDA, creator.player);
 
       // Complete single-player game
-      const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+      const gameAccount = await env.program.account.game.fetch(
+        gameData.gamePDA
+      );
       const winnerIndex = calculateWinnerIndex(
         gameAccount.ticketsCount,
         gameData.secretKey,
@@ -724,7 +746,9 @@ describe("Security & Edge Cases", () => {
       );
 
       // Verify completion
-      const completedGame = await env.program.account.game.fetch(gameData.gamePDA);
+      const completedGame = await env.program.account.game.fetch(
+        gameData.gamePDA
+      );
       expect(completedGame.totalAmount.toNumber()).to.equal(0);
     });
 
@@ -750,7 +774,9 @@ describe("Security & Edge Cases", () => {
         mint.mint
       );
 
-      const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+      const gameAccount = await env.program.account.game.fetch(
+        gameData.gamePDA
+      );
       expect(gameAccount.timeout).to.equal(1);
     });
 
@@ -778,7 +804,9 @@ describe("Security & Edge Cases", () => {
         mint.mint
       );
 
-      const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+      const gameAccount = await env.program.account.game.fetch(
+        gameData.gamePDA
+      );
       expect(gameAccount.maxTickets).to.equal(oracle.config.maxTickets);
     });
   });
