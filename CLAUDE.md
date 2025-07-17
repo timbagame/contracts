@@ -13,12 +13,18 @@ This is a Solana blockchain project implementing a coinflip smart contract game 
 - `anchor test` - Run the test suite (uses ts-mocha with 1000000ms timeout)
 - `yarn run setup-local` - Set up local development environment with airdrops and token creation
 
-**CRITICAL TESTING RULE**: 
+**CRITICAL TESTING RULES**: 
 🚨 **NEVER run `anchor test` with grep, pipes, tail, head, or any other commands!** 🚨
 - Each test run takes 8+ minutes - ONLY run `anchor test` once
 - Read the FULL output from that single run
 - Do NOT use: `anchor test | grep`, `anchor test | tail`, etc.
 - This wastes enormous amounts of time and must be avoided
+
+🚨 **NEVER use `yarn test` - it's not a valid command for Anchor!** 🚨
+- Anchor doesn't support running individual test files
+- To run specific tests, edit `Anchor.toml` and modify the `[[test]]` section
+- Only use `anchor test` to run the configured test suite
+- Remember: `yarn test` will always fail with Anchor projects
 
 ### Code Quality
 - `yarn run lint` - Check code formatting with Prettier
