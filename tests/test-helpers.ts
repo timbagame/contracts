@@ -1032,18 +1032,9 @@ function generateSimulatorBasedProof(
   
   // Simulate the exact sequence of ticket additions that led to the current game state
   // For snowball games: tickets 0,1,2 are initial joins, tickets 3+ are rolls by creator
+  // BUT for massive tests with 10+ players, we need to use the actual player array
   for (let i = 0; i < gameState.ticketsCount; i++) {
-    let player: TestPlayer;
-    if (i === 0) {
-      player = players[0]; // creator
-    } else if (i === 1) {
-      player = players[1]; // player1  
-    } else if (i === 2) {
-      player = players[2]; // player2
-    } else {
-      player = players[0]; // creator for all rolls
-    }
-    
+    const player = getPlayerForTicket(players, i);
     simulator.addTicket(player.player.publicKey);
   }
   
@@ -1074,17 +1065,7 @@ function generateSimpleMerkleProof(
   const leaves: Buffer[] = [];
   
   for (let i = 0; i < committedTickets; i++) {
-    let player: TestPlayer;
-    if (i === 0) {
-      player = players[0]; // creator
-    } else if (i === 1) {
-      player = players[1]; // player1
-    } else if (i === 2) {
-      player = players[2]; // player2
-    } else {
-      player = players[0]; // creator for all rolls
-    }
-    
+    const player = getPlayerForTicket(players, i);
     const entry = createParticipationEntry(player.player.publicKey, i);
     leaves.push(hashParticipationEntry(entry));
   }
@@ -1112,7 +1093,7 @@ function generateSubtreeMerkleProof(
   console.log(`    Need proof for ticket ${targetIndex}, committed=${committedTickets}, recent=${gameState.recentCount}`);
   
   // Build the contract's exact subtree structure
-  const { subtreeRoots, subtreeInfos } = buildContractSubtreeRoots(players, gameState.ticketsCount, committedTickets);
+  const { subtreeRoots, subtreeInfos } = buildContractSubtreeRoots(players, gameState.ticketsCount, committedTickets, gameState.maxTickets);
   console.log(`    Generated ${subtreeRoots.length} subtree roots`);
   
   // Compute our merkle root from subtree roots
@@ -1178,7 +1159,7 @@ function computeMerkleRootFromSubtrees(subtreeRoots: Buffer[]): Buffer {
  * Builds subtree roots by simulating the contract's exact sequential process
  * This simulates ticket-by-ticket addition to determine the final subtree structure
  */
-function buildContractSubtreeRoots(players: TestPlayer[], totalTickets: number, committedTickets: number): { subtreeRoots: Buffer[], subtreeInfos: Array<{ startIndex: number, size: number }> } {
+function buildContractSubtreeRoots(players: TestPlayer[], totalTickets: number, committedTickets: number, maxTickets: number): { subtreeRoots: Buffer[], subtreeInfos: Array<{ startIndex: number, size: number }> } {
   // The key insight: we need to simulate processing ALL tickets (committed + recent)
   // to reach the final state, then extract only the subtrees
   
@@ -1190,7 +1171,7 @@ function buildContractSubtreeRoots(players: TestPlayer[], totalTickets: number, 
     return { subtreeRoots: [], subtreeInfos: [] };
   }
   
-  const maxTickets = 13;
+  // Use the maxTickets parameter passed from the game state
   const bufferFills = Math.ceil(maxTickets / 2);
   const maxSubtrees = countOnes(bufferFills);
   console.log(`    Max subtrees allowed: ${maxSubtrees}`);
@@ -1267,9 +1248,14 @@ function buildContractSubtreeRoots(players: TestPlayer[], totalTickets: number, 
     console.log(`      Subtree ${i}: start=${subtrees[i].startIndex}, size=${subtrees[i].size}`);
   }
   
-  const subtreeRoots = subtrees.map(s => s.rootHash);
-  const subtreeInfos = subtrees.map(s => ({ startIndex: s.startIndex, size: s.size }));
+  // Filter subtrees to only include those that represent committed tickets
+  // Only subtrees that end at or before the committed ticket boundary should be included
+  const committedSubtrees = subtrees.filter(s => s.startIndex + s.size <= committedTickets);
+  
+  const subtreeRoots = committedSubtrees.map(s => s.rootHash);
+  const subtreeInfos = committedSubtrees.map(s => ({ startIndex: s.startIndex, size: s.size }));
   console.log(`    Final: ${subtreeRoots.length} subtrees (ignoring ${bufferCount} recent tickets in buffer)`);
+  console.log(`    Filtered out ${subtrees.length - committedSubtrees.length} subtrees that include recent tickets`);
   return { subtreeRoots, subtreeInfos };
 }
 
@@ -1395,6 +1381,11 @@ function generateProofAgainstSubtreeRoot(
   const isLeftInSubtree = positionInSubtree % 2 === 0;
   console.log(`    Ticket ${targetIndex} is in subtree ${subtreeIndex}, isLeft=${isLeftInSubtree}`);
   
+  // DEBUG: Add detailed subtree context
+  console.log(`    Subtree details: start=${subtreeInfos[subtreeIndex].startIndex}, size=${subtreeInfos[subtreeIndex].size}`);
+  console.log(`    Position in subtree: ${positionInSubtree}`);
+  console.log(`    Total subtrees: ${subtreeRoots.length}`);
+  
   // Build the complete proof chain
   const proof: number[][] = [];
   
@@ -1432,15 +1423,22 @@ function getPlayerForTicket(players: TestPlayer[], ticketIndex: number): TestPla
   // For standard games (coinflip, giveaway), tickets map directly to players in join order
   // For snowball games, initial tickets are joins, later tickets are rolls by the same players
   
-  // Handle standard sequential joining (most common case)
+  // If the player array has been constructed to match the exact ticket-to-player mapping
+  // (like in the massive test), then use direct indexing
   if (ticketIndex < players.length) {
     return players[ticketIndex];
   }
   
-  // For snowball games with rolls beyond initial joins:
-  // Tickets 0,1,2 are initial joins, tickets 3+ are typically rolls by player 0 (creator)
-  // This matches the pattern used in the snowball test cases
-  return players[0]; // Default to creator for rolls
+  // Fallback logic for small test cases where we have fewer players than tickets
+  if (ticketIndex === 0) {
+    return players[0]; // creator
+  } else if (ticketIndex === 1) {
+    return players[1]; // player1
+  } else if (ticketIndex === 2) {
+    return players[2]; // player2
+  } else {
+    return players[0]; // creator for all rolls
+  }
 }
 
 /**
@@ -1461,7 +1459,6 @@ function buildMerkleProof(leaves: Buffer[], targetIndex: number): number[][] {
 
   while (currentLevel.length > 1) {
     const nextLevel: Buffer[] = [];
-    const levelProof: number[] = [];
 
     for (let i = 0; i < currentLevel.length; i += 2) {
       if (i + 1 < currentLevel.length) {
@@ -1472,10 +1469,13 @@ function buildMerkleProof(leaves: Buffer[], targetIndex: number): number[][] {
         nextLevel.push(hash(combined));
 
         // If current index is in this pair, add sibling to proof
+        // Each proof element should be a complete 32-byte array
         if (currentIndex === i) {
-          levelProof.push(...Array.from(right));
+          proof.push(Array.from(right));
+          console.log(`      Level proof: added right sibling (${right.toString('hex').substring(0,16)}...)`);
         } else if (currentIndex === i + 1) {
-          levelProof.push(...Array.from(left));
+          proof.push(Array.from(left));
+          console.log(`      Level proof: added left sibling (${left.toString('hex').substring(0,16)}...)`);
         }
       } else {
         // Odd element, promote to next level
@@ -1483,9 +1483,6 @@ function buildMerkleProof(leaves: Buffer[], targetIndex: number): number[][] {
       }
     }
 
-    if (levelProof.length > 0) {
-      proof.push(levelProof);
-    }
 
     // Update index for next level
     currentIndex = Math.floor(currentIndex / 2);
