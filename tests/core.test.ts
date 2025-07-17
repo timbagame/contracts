@@ -42,7 +42,8 @@ describe("Core Game Operations", () => {
       const oracle = await testUtils.oracle.createOracle();
 
       expect(oracle.oraclePDA).to.not.be.undefined;
-      expect(oracle.operator.equals(oracle.operatorKeypair.publicKey)).to.be.true;
+      expect(oracle.operator.equals(oracle.operatorKeypair.publicKey)).to.be
+        .true;
       expect(oracle.config.feePercentage).to.equal(1);
       expect(oracle.config.maxTickets).to.equal(100);
     });
@@ -87,7 +88,11 @@ describe("Core Game Operations", () => {
       const player = await testUtils.player.createPlayer(mint.mint);
       const amount = new anchor.BN(1_000_000);
 
-      await testUtils.mint.mintTokensToAccount(mint, player.playerTokenAccount.address, amount);
+      await testUtils.mint.mintTokensToAccount(
+        mint,
+        player.playerTokenAccount.address,
+        amount
+      );
 
       const balance = await env.provider.connection.getTokenAccountBalance(
         player.playerTokenAccount.address
@@ -161,7 +166,9 @@ describe("Core Game Operations", () => {
         mint.mint
       );
 
-      const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+      const gameAccount = await env.program.account.game.fetch(
+        gameData.gamePDA
+      );
       expect(gameAccount.creator.equals(creator.player.publicKey)).to.be.true;
       expect(gameAccount.ticketAmount.toNumber()).to.equal(1_000_000);
       expect(gameAccount.maxTickets).to.equal(2);
@@ -217,7 +224,9 @@ describe("Core Game Operations", () => {
         mint.mint
       );
 
-      const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+      const gameAccount = await env.program.account.game.fetch(
+        gameData.gamePDA
+      );
       expect(gameAccount.gameType.giveaway).to.not.be.undefined;
       expect(gameAccount.totalAmount.toNumber()).to.equal(2_000_000); // Giveaway uses totalAmount
       expect(gameAccount.ticketAmount.toNumber()).to.equal(0); // Giveaway sets ticketAmount to 0
@@ -286,10 +295,20 @@ describe("Core Game Operations", () => {
       );
 
       // Players join with oracle operator
-      await testUtils.game.joinGame(gameData.gamePDA, creator.player, oracle.operatorKeypair);
-      await testUtils.game.joinGame(gameData.gamePDA, player1.player, oracle.operatorKeypair);
+      await testUtils.game.joinGame(
+        gameData.gamePDA,
+        creator.player,
+        oracle.operatorKeypair
+      );
+      await testUtils.game.joinGame(
+        gameData.gamePDA,
+        player1.player,
+        oracle.operatorKeypair
+      );
 
-      const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+      const gameAccount = await env.program.account.game.fetch(
+        gameData.gamePDA
+      );
       expect(gameAccount.ticketsCount).to.equal(2);
     });
 
@@ -346,7 +365,11 @@ describe("Core Game Operations", () => {
       );
 
       try {
-        await testUtils.game.joinGame(gameData.gamePDA, player1.player, fakeOperator);
+        await testUtils.game.joinGame(
+          gameData.gamePDA,
+          player1.player,
+          fakeOperator
+        );
         expect.fail("Should have failed with wrong operator");
       } catch (error) {
         expect(error.toString()).to.include("PrivateGameAccessDenied");
@@ -448,7 +471,9 @@ describe("Core Game Operations", () => {
       await testUtils.game.joinGame(gameData.gamePDA, player1.player);
 
       // Calculate winner
-      const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+      const gameAccount = await env.program.account.game.fetch(
+        gameData.gamePDA
+      );
       const winnerIndex = calculateWinnerIndex(
         gameAccount.ticketsCount,
         gameData.secretKey,
@@ -477,7 +502,9 @@ describe("Core Game Operations", () => {
       );
 
       // Verify completion
-      const completedGame = await env.program.account.game.fetch(gameData.gamePDA);
+      const completedGame = await env.program.account.game.fetch(
+        gameData.gamePDA
+      );
       expect(completedGame.totalAmount.toNumber()).to.equal(0);
     });
 
@@ -506,7 +533,9 @@ describe("Core Game Operations", () => {
       await testUtils.game.joinGame(gameData.gamePDA, player1.player);
 
       // Calculate winner first
-      const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+      const gameAccount = await env.program.account.game.fetch(
+        gameData.gamePDA
+      );
       const winnerIndex = calculateWinnerIndex(
         gameAccount.ticketsCount,
         gameData.secretKey,
@@ -570,7 +599,9 @@ describe("Core Game Operations", () => {
       };
 
       // Calculate winner and create participation
-      const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+      const gameAccount = await env.program.account.game.fetch(
+        gameData.gamePDA
+      );
       const winnerIndex = calculateWinnerIndex(
         gameAccount.ticketsCount,
         gameData.secretKey, // Use correct secret for winner calculation
@@ -648,7 +679,9 @@ describe("Core Game Operations", () => {
 
   describe("Winner Calculation", () => {
     it("should calculate winner correctly for 2 players", async () => {
-      const secretKey = Array.from(anchor.web3.Keypair.generate().secretKey.slice(0, 32));
+      const secretKey = Array.from(
+        anchor.web3.Keypair.generate().secretKey.slice(0, 32)
+      );
       const lastSlot = 12345;
 
       const winnerIndex = calculateWinnerIndex(2, secretKey, lastSlot);
@@ -657,18 +690,26 @@ describe("Core Game Operations", () => {
     });
 
     it("should calculate winner correctly for multiple players", async () => {
-      const secretKey = Array.from(anchor.web3.Keypair.generate().secretKey.slice(0, 32));
+      const secretKey = Array.from(
+        anchor.web3.Keypair.generate().secretKey.slice(0, 32)
+      );
       const lastSlot = 67890;
       const playerCount = 5;
 
-      const winnerIndex = calculateWinnerIndex(playerCount, secretKey, lastSlot);
+      const winnerIndex = calculateWinnerIndex(
+        playerCount,
+        secretKey,
+        lastSlot
+      );
 
       expect(winnerIndex).to.be.at.least(0);
       expect(winnerIndex).to.be.below(playerCount);
     });
 
     it("should return 0 for single player", async () => {
-      const secretKey = Array.from(anchor.web3.Keypair.generate().secretKey.slice(0, 32));
+      const secretKey = Array.from(
+        anchor.web3.Keypair.generate().secretKey.slice(0, 32)
+      );
       const lastSlot = 11111;
 
       const winnerIndex = calculateWinnerIndex(1, secretKey, lastSlot);

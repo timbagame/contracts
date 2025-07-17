@@ -64,7 +64,9 @@ describe("Game Types", () => {
       await testUtils.game.joinGame(gameData.gamePDA, player1.player);
 
       // Verify game state before completion
-      const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+      const gameAccount = await env.program.account.game.fetch(
+        gameData.gamePDA
+      );
       expect(gameAccount.ticketsCount).to.equal(2);
       expect(gameAccount.totalAmount.toNumber()).to.equal(2_000_000);
 
@@ -91,7 +93,9 @@ describe("Game Types", () => {
       );
 
       // Verify completion
-      const completedGame = await env.program.account.game.fetch(gameData.gamePDA);
+      const completedGame = await env.program.account.game.fetch(
+        gameData.gamePDA
+      );
       expect(completedGame.totalAmount.toNumber()).to.equal(0);
     });
 
@@ -122,7 +126,9 @@ describe("Game Types", () => {
       }
 
       // Verify game state
-      const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+      const gameAccount = await env.program.account.game.fetch(
+        gameData.gamePDA
+      );
       expect(gameAccount.ticketsCount).to.equal(4);
       expect(gameAccount.totalAmount.toNumber()).to.equal(2_000_000);
 
@@ -134,8 +140,15 @@ describe("Game Types", () => {
       );
 
       // Use actual winner index and generate proper merkle proof
-      const winner = getWinnerFromPlayers(players.slice(0, 4), actualWinnerIndex);
-      const merkleProof = generateMerkleProof(players.slice(0, 4), actualWinnerIndex, gameAccount);
+      const winner = getWinnerFromPlayers(
+        players.slice(0, 4),
+        actualWinnerIndex
+      );
+      const merkleProof = generateMerkleProof(
+        players.slice(0, 4),
+        actualWinnerIndex,
+        gameAccount
+      );
 
       const winnerParticipation = {
         player: winner.player.publicKey,
@@ -152,7 +165,9 @@ describe("Game Types", () => {
       );
 
       // Verify completion
-      const completedGame = await env.program.account.game.fetch(gameData.gamePDA);
+      const completedGame = await env.program.account.game.fetch(
+        gameData.gamePDA
+      );
       expect(completedGame.totalAmount.toNumber()).to.equal(0);
     });
 
@@ -211,7 +226,9 @@ describe("Game Types", () => {
       await testUtils.game.joinGame(gameData.gamePDA, player2.player);
 
       // Verify game state
-      const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+      const gameAccount = await env.program.account.game.fetch(
+        gameData.gamePDA
+      );
       expect(gameAccount.ticketsCount).to.equal(2);
       expect(gameAccount.totalAmount.toNumber()).to.equal(1_000_000); // Only creator's contribution
 
@@ -238,7 +255,9 @@ describe("Game Types", () => {
       );
 
       // Verify completion
-      const completedGame = await env.program.account.game.fetch(gameData.gamePDA);
+      const completedGame = await env.program.account.game.fetch(
+        gameData.gamePDA
+      );
       expect(completedGame.totalAmount.toNumber()).to.equal(0);
     });
 
@@ -267,7 +286,9 @@ describe("Game Types", () => {
       await testUtils.game.joinGame(gameData.gamePDA, creator.player);
 
       // Complete game (creator is the only participant)
-      const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+      const gameAccount = await env.program.account.game.fetch(
+        gameData.gamePDA
+      );
       const winnerIndex = calculateWinnerIndex(
         gameAccount.ticketsCount,
         gameData.secretKey,
@@ -291,7 +312,9 @@ describe("Game Types", () => {
       );
 
       // Verify completion
-      const completedGame = await env.program.account.game.fetch(gameData.gamePDA);
+      const completedGame = await env.program.account.game.fetch(
+        gameData.gamePDA
+      );
       expect(completedGame.totalAmount.toNumber()).to.equal(0);
     });
 
@@ -316,9 +339,11 @@ describe("Game Types", () => {
           players[0].player,
           mint.mint
         );
-        
+
         // If we get here, zero amounts are allowed
-        const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+        const gameAccount = await env.program.account.game.fetch(
+          gameData.gamePDA
+        );
         expect(gameAccount.ticketAmount.toNumber()).to.equal(0);
       } catch (error) {
         // If zero amounts are not allowed, verify the error
@@ -356,12 +381,25 @@ describe("Game Types", () => {
       await testUtils.game.joinGame(gameData.gamePDA, players[2].player); // Third player to reach max
 
       // Then creator rolls for additional entry (creator's original entry index is 0)
-      let gameStateForProof = await env.program.account.game.fetch(gameData.gamePDA);
-      const creatorMerkleProof = generateMerkleProof([creator, player1, players[2]], 0, gameStateForProof);
-      await testUtils.game.rollGame(gameData.gamePDA, creator.player, 0, creatorMerkleProof);
+      let gameStateForProof = await env.program.account.game.fetch(
+        gameData.gamePDA
+      );
+      const creatorMerkleProof = generateMerkleProof(
+        [creator, player1, players[2]],
+        0,
+        gameStateForProof
+      );
+      await testUtils.game.rollGame(
+        gameData.gamePDA,
+        creator.player,
+        0,
+        creatorMerkleProof
+      );
 
       // Verify accumulating pot
-      const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+      const gameAccount = await env.program.account.game.fetch(
+        gameData.gamePDA
+      );
       expect(gameAccount.totalAmount.toNumber()).to.equal(4_000_000); // 4 entries
       expect(gameAccount.ticketsCount).to.equal(4); // 4 total tickets (3 joins + 1 roll)
 
@@ -389,7 +427,11 @@ describe("Game Types", () => {
       // Generate merkle proof for snowball game
       // Create a player list that represents the entries: [creator, player1, players[2], creator]
       const entryPlayers = [creator, player1, players[2], creator];
-      const merkleProof = generateMerkleProof(entryPlayers, winnerIndex, gameAccount);
+      const merkleProof = generateMerkleProof(
+        entryPlayers,
+        winnerIndex,
+        gameAccount
+      );
 
       const winnerParticipation = {
         player: actualWinner.player.publicKey,
@@ -406,7 +448,9 @@ describe("Game Types", () => {
       );
 
       // Verify completion
-      const completedGame = await env.program.account.game.fetch(gameData.gamePDA);
+      const completedGame = await env.program.account.game.fetch(
+        gameData.gamePDA
+      );
       expect(completedGame.totalAmount.toNumber()).to.equal(0);
     });
 
@@ -437,7 +481,9 @@ describe("Game Types", () => {
       await testUtils.game.joinGame(gameData.gamePDA, players[2].player);
 
       // Verify snowball accumulation
-      const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+      const gameAccount = await env.program.account.game.fetch(
+        gameData.gamePDA
+      );
       expect(gameAccount.ticketsCount).to.equal(3); // 3 tickets total
       expect(gameAccount.totalAmount.toNumber()).to.equal(3_000_000);
 
@@ -452,7 +498,11 @@ describe("Game Types", () => {
       );
 
       const winner = getWinnerFromPlayers(players.slice(0, 3), winnerIndex);
-      const merkleProof = generateMerkleProof(players.slice(0, 3), winnerIndex, gameAccount);
+      const merkleProof = generateMerkleProof(
+        players.slice(0, 3),
+        winnerIndex,
+        gameAccount
+      );
 
       const winnerParticipation = {
         player: winner.player.publicKey,
@@ -469,7 +519,9 @@ describe("Game Types", () => {
       );
 
       // Verify completion
-      const completedGame = await env.program.account.game.fetch(gameData.gamePDA);
+      const completedGame = await env.program.account.game.fetch(
+        gameData.gamePDA
+      );
       expect(completedGame.totalAmount.toNumber()).to.equal(0);
     });
 
@@ -516,16 +568,21 @@ describe("Game Types", () => {
       // Creator rolls 10 times (10 additional entries)
       for (let i = 0; i < 10; i++) {
         console.log(`Roll ${i}/10`);
-        
+
         // Generate fresh proof for each roll since tree structure changes
-        let currentGameState = await env.program.account.game.fetch(gameData.gamePDA);
-        console.log(`  Current state: ticketsCount=${currentGameState.ticketsCount}, recentCount=${currentGameState.recentCount}`);
-        
+        let currentGameState = await env.program.account.game.fetch(
+          gameData.gamePDA
+        );
+        console.log(
+          `  Current state: ticketsCount=${currentGameState.ticketsCount}, recentCount=${currentGameState.recentCount}`
+        );
+
         // Smart ticket selection: use the creator's most recent ticket instead of always ticket 0
         // This avoids the need for complex merkle proofs as recent tickets don't need proofs
-        const committedTickets = currentGameState.ticketsCount - currentGameState.recentCount;
+        const committedTickets =
+          currentGameState.ticketsCount - currentGameState.recentCount;
         let ticketIndexToUse: number;
-        
+
         if (i === 0) {
           // First roll: use ticket 0 (creator's original join)
           ticketIndexToUse = 0;
@@ -534,23 +591,40 @@ describe("Game Types", () => {
           // The creator's last roll created ticket at index (3 + i - 1)
           ticketIndexToUse = 3 + i - 1;
         }
-        
-        console.log(`  Using ticket index: ${ticketIndexToUse}, committed threshold: ${committedTickets}`);
-        
+
+        console.log(
+          `  Using ticket index: ${ticketIndexToUse}, committed threshold: ${committedTickets}`
+        );
+
         // Generate proof based on whether ticket is in committed subtree or recent buffer
-        const currentProof = generateMerkleProof([creator, player1, player2], ticketIndexToUse, currentGameState);
+        const currentProof = generateMerkleProof(
+          [creator, player1, player2],
+          ticketIndexToUse,
+          currentGameState
+        );
         console.log(`  Generated proof length: ${currentProof.length}`);
-        
-        await testUtils.game.rollGame(gameData.gamePDA, creator.player, ticketIndexToUse, currentProof);
+
+        await testUtils.game.rollGame(
+          gameData.gamePDA,
+          creator.player,
+          ticketIndexToUse,
+          currentProof
+        );
       }
 
       console.log("Verifying final state...");
       // Verify final state
-      const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+      const gameAccount = await env.program.account.game.fetch(
+        gameData.gamePDA
+      );
       expect(gameAccount.ticketsCount).to.equal(13); // 3 joins + 10 rolls = 13 total tickets
       expect(gameAccount.totalAmount.toNumber()).to.equal(13_000_000); // 13 tickets * 1M
 
-      console.log(`Final state: ${gameAccount.ticketsCount} tickets, ${gameAccount.totalAmount.toNumber()} total amount`);
+      console.log(
+        `Final state: ${
+          gameAccount.ticketsCount
+        } tickets, ${gameAccount.totalAmount.toNumber()} total amount`
+      );
 
       // Complete game with entry-based winner calculation
       const winnerIndex = calculateWinnerIndex(
@@ -579,8 +653,10 @@ describe("Game Types", () => {
 
       console.log("Completing game...");
       // Generate proper merkle proof for game completion
-      const finalGameState = await env.program.account.game.fetch(gameData.gamePDA);
-      
+      const finalGameState = await env.program.account.game.fetch(
+        gameData.gamePDA
+      );
+
       // Create a player array that represents all 13 tickets using the same logic as during rolls
       // This ensures consistency between roll-time and completion-time player mapping
       const rollTimePlayerArray = [creator, player1, player2]; // The players used during rolls
@@ -594,10 +670,14 @@ describe("Game Types", () => {
           allTicketPlayers.push(creator);
         }
       }
-      
-      const completionProof = generateMerkleProof(allTicketPlayers, winnerIndex, finalGameState);
+
+      const completionProof = generateMerkleProof(
+        allTicketPlayers,
+        winnerIndex,
+        finalGameState
+      );
       console.log(`  Completion proof length: ${completionProof.length}`);
-      
+
       await testUtils.game.completeGame(
         gameData,
         winner.player.publicKey,
@@ -608,7 +688,9 @@ describe("Game Types", () => {
       );
 
       // Verify completion
-      const completedGame = await env.program.account.game.fetch(gameData.gamePDA);
+      const completedGame = await env.program.account.game.fetch(
+        gameData.gamePDA
+      );
       expect(completedGame.totalAmount.toNumber()).to.equal(0);
 
       console.log("Test completed successfully!");
@@ -616,24 +698,36 @@ describe("Game Types", () => {
 
     it("should handle massive snowball game with 10 players and 40 rolls", async () => {
       console.log("Initializing massive snowball game...");
-      
+
       // Get basic setup first
       const { oracle, mint } = await testUtils.quickSetup();
-      
+
       // Create 10 players for initial joins
       const players = await testUtils.player.createPlayerPool(10, mint.mint);
-      
+
       // Fund all players
       for (const player of players) {
-        await testUtils.player.fundPlayer(player, mint, new anchor.BN(100_000_000));
+        await testUtils.player.fundPlayer(
+          player,
+          mint,
+          new anchor.BN(100_000_000)
+        );
       }
-      
+
       // Extra funding for the two players who will do the rolls
-      await testUtils.player.fundPlayer(players[0], mint, new anchor.BN(200_000_000)); // Player 0 does 20 rolls
-      await testUtils.player.fundPlayer(players[1], mint, new anchor.BN(200_000_000)); // Player 1 does 20 rolls
-      
+      await testUtils.player.fundPlayer(
+        players[0],
+        mint,
+        new anchor.BN(200_000_000)
+      ); // Player 0 does 20 rolls
+      await testUtils.player.fundPlayer(
+        players[1],
+        mint,
+        new anchor.BN(200_000_000)
+      ); // Player 1 does 20 rolls
+
       console.log("Players funded for massive game...");
-      
+
       // Create snowball game
       const gameData = testUtils.game.generateGamePDA();
       const gameConfig: GameConfig = {
@@ -644,25 +738,27 @@ describe("Game Types", () => {
         timeout: 7200,
         isPrivate: false,
       };
-      
+
       await testUtils.game.initializeGame(
         gameData,
         gameConfig,
         players[0].player,
         mint.mint
       );
-      
+
       console.log("Game initialized, players joining...");
-      
+
       // All 10 players join
       for (let i = 0; i < 10; i++) {
         await testUtils.game.joinGame(gameData.gamePDA, players[i].player);
       }
-      
+
       console.log("All 10 players joined, starting rolls...");
-      
+
       // Helper function to create player array based on current game state
-      const createPlayerArrayForCurrentState = (currentTicketsCount: number) => {
+      const createPlayerArrayForCurrentState = (
+        currentTicketsCount: number
+      ) => {
         const playerArray = [];
         for (let i = 0; i < currentTicketsCount; i++) {
           if (i < 10) {
@@ -676,59 +772,102 @@ describe("Game Types", () => {
             playerArray.push(players[1]);
           }
         }
-        console.log(`    Creating player array for ${currentTicketsCount} tickets:`);
+        console.log(
+          `    Creating player array for ${currentTicketsCount} tickets:`
+        );
         for (let i = 0; i < Math.min(currentTicketsCount, 10); i++) {
-          console.log(`      Ticket ${i}: player=${playerArray[i].player.publicKey.toBase58().substring(0,8)}...`);
+          console.log(
+            `      Ticket ${i}: player=${playerArray[i].player.publicKey
+              .toBase58()
+              .substring(0, 8)}...`
+          );
         }
         return playerArray;
       };
-      
-      // Player 0 does 20 rolls  
+
+      // Player 0 does 20 rolls
       console.log("Player 0 starting 20 rolls...");
       for (let i = 0; i < 20; i++) {
         console.log(`Player 0 roll ${i + 1}/20`);
-        
+
         // Generate proof for the roll using Player 0's initial ticket (index 0)
-        const currentGameState = await env.program.account.game.fetch(gameData.gamePDA);
+        const currentGameState = await env.program.account.game.fetch(
+          gameData.gamePDA
+        );
         const ticketIndexToUse = 0; // Use Player 0's initial ticket for all rolls
-        const currentPlayerArray = createPlayerArrayForCurrentState(currentGameState.ticketsCount);
-        const currentProof = generateMerkleProof(currentPlayerArray, ticketIndexToUse, currentGameState);
-        
-        await testUtils.game.rollGame(gameData.gamePDA, players[0].player, ticketIndexToUse, currentProof);
+        const currentPlayerArray = createPlayerArrayForCurrentState(
+          currentGameState.ticketsCount
+        );
+        const currentProof = generateMerkleProof(
+          currentPlayerArray,
+          ticketIndexToUse,
+          currentGameState
+        );
+
+        await testUtils.game.rollGame(
+          gameData.gamePDA,
+          players[0].player,
+          ticketIndexToUse,
+          currentProof
+        );
       }
-      
+
       // Player 1 does 20 rolls
       console.log("Player 1 starting 20 rolls...");
       for (let i = 0; i < 20; i++) {
         console.log(`Player 1 roll ${i + 1}/20`);
-        
+
         // Generate proof for the roll using Player 1's initial ticket (index 1)
-        const currentGameState = await env.program.account.game.fetch(gameData.gamePDA);
-        console.log(`  DEBUG: Current game state - tickets: ${currentGameState.ticketsCount}, maxTickets: ${currentGameState.maxTickets}, recent: ${currentGameState.recentCount}`);
-        
+        const currentGameState = await env.program.account.game.fetch(
+          gameData.gamePDA
+        );
+        console.log(
+          `  DEBUG: Current game state - tickets: ${currentGameState.ticketsCount}, maxTickets: ${currentGameState.maxTickets}, recent: ${currentGameState.recentCount}`
+        );
+
         const ticketIndexToUse = 1; // Use Player 1's initial ticket for all rolls
-        const currentPlayerArray = createPlayerArrayForCurrentState(currentGameState.ticketsCount);
-        const currentProof = generateMerkleProof(currentPlayerArray, ticketIndexToUse, currentGameState);
-        
-        console.log(`  DEBUG: About to roll - proof length: ${currentProof.length}, using ticket: ${ticketIndexToUse}`);
-        
+        const currentPlayerArray = createPlayerArrayForCurrentState(
+          currentGameState.ticketsCount
+        );
+        const currentProof = generateMerkleProof(
+          currentPlayerArray,
+          ticketIndexToUse,
+          currentGameState
+        );
+
+        console.log(
+          `  DEBUG: About to roll - proof length: ${currentProof.length}, using ticket: ${ticketIndexToUse}`
+        );
+
         try {
-          await testUtils.game.rollGame(gameData.gamePDA, players[1].player, ticketIndexToUse, currentProof);
+          await testUtils.game.rollGame(
+            gameData.gamePDA,
+            players[1].player,
+            ticketIndexToUse,
+            currentProof
+          );
           console.log(`  DEBUG: Roll ${i + 1} completed successfully`);
         } catch (error) {
-          console.log(`  DEBUG: Roll ${i + 1} failed with error:`, error.toString());
+          console.log(
+            `  DEBUG: Roll ${i + 1} failed with error:`,
+            error.toString()
+          );
           throw error;
         }
       }
-      
+
       console.log("All rolls completed, verifying final state...");
-      
+
       // Verify final state
       const finalGame = await env.program.account.game.fetch(gameData.gamePDA);
-      console.log(`Final state: ${finalGame.ticketsCount} tickets, ${finalGame.totalAmount.toNumber()} total amount`);
-      expect(finalGame.ticketsCount).to.equal(50); // 10 initial + 20 + 20 rolls  
+      console.log(
+        `Final state: ${
+          finalGame.ticketsCount
+        } tickets, ${finalGame.totalAmount.toNumber()} total amount`
+      );
+      expect(finalGame.ticketsCount).to.equal(50); // 10 initial + 20 + 20 rolls
       expect(finalGame.totalAmount.toNumber()).to.equal(50_000_000); // 50 tickets * 1M each
-      
+
       // Calculate winner
       const winnerIndex = calculateWinnerIndex(
         finalGame.ticketsCount,
@@ -736,7 +875,7 @@ describe("Game Types", () => {
         Number(finalGame.lastSlot)
       );
       console.log(`Winner index: ${winnerIndex}`);
-      
+
       // Determine which player won based on ticket index
       // Tickets 0-9: players[0] through players[9]
       // Tickets 10-29: players[0] (20 rolls)
@@ -749,36 +888,62 @@ describe("Game Types", () => {
       } else {
         winner = players[1]; // Player 1's rolls
       }
-      
+
       const winnerParticipation = {
         player: winner.player.publicKey,
         ticketIndex: winnerIndex,
       };
-      
+
       console.log("Completing massive game...");
-      
+
       // Generate proper merkle proof for game completion
-      const finalGameState = await env.program.account.game.fetch(gameData.gamePDA);
-      
+      const finalGameState = await env.program.account.game.fetch(
+        gameData.gamePDA
+      );
+
       // DEBUG: Log detailed completion state
       console.log(`  DEBUG COMPLETION STATE:`);
       console.log(`    Winner index: ${winnerIndex}`);
       console.log(`    Total tickets: ${finalGameState.ticketsCount}`);
       console.log(`    Recent tickets: ${finalGameState.recentCount}`);
-      console.log(`    Committed tickets: ${finalGameState.ticketsCount - finalGameState.recentCount}`);
-      console.log(`    Winner player: ${winner.player.publicKey.toBase58().substring(0,8)}...`);
+      console.log(
+        `    Committed tickets: ${
+          finalGameState.ticketsCount - finalGameState.recentCount
+        }`
+      );
+      console.log(
+        `    Winner player: ${winner.player.publicKey
+          .toBase58()
+          .substring(0, 8)}...`
+      );
       console.log(`    Max tickets: ${finalGameState.maxTickets}`);
-      
+
       // Create a player array that represents all 50 tickets
-      const allTicketPlayers = createPlayerArrayForCurrentState(finalGameState.ticketsCount);
-      
+      const allTicketPlayers = createPlayerArrayForCurrentState(
+        finalGameState.ticketsCount
+      );
+
       // DEBUG: Log winner ticket details
-      console.log(`    Winner ticket player from array: ${allTicketPlayers[winnerIndex].player.publicKey.toBase58().substring(0,8)}...`);
-      console.log(`    Winner matches array: ${winner.player.publicKey.equals(allTicketPlayers[winnerIndex].player.publicKey)}`);
-      
-      const completionProof = generateMerkleProof(allTicketPlayers, winnerIndex, finalGameState);
+      console.log(
+        `    Winner ticket player from array: ${allTicketPlayers[
+          winnerIndex
+        ].player.publicKey
+          .toBase58()
+          .substring(0, 8)}...`
+      );
+      console.log(
+        `    Winner matches array: ${winner.player.publicKey.equals(
+          allTicketPlayers[winnerIndex].player.publicKey
+        )}`
+      );
+
+      const completionProof = generateMerkleProof(
+        allTicketPlayers,
+        winnerIndex,
+        finalGameState
+      );
       console.log(`    Completion proof length: ${completionProof.length}`);
-      
+
       await testUtils.game.completeGame(
         gameData,
         winner.player.publicKey,
@@ -787,11 +952,13 @@ describe("Game Types", () => {
         winnerParticipation,
         completionProof
       );
-      
+
       // Verify completion
-      const completedGame = await env.program.account.game.fetch(gameData.gamePDA);
+      const completedGame = await env.program.account.game.fetch(
+        gameData.gamePDA
+      );
       expect(completedGame.totalAmount.toNumber()).to.equal(0);
-      
+
       console.log("Massive test completed successfully!");
     }).timeout(120000); // 2 minute timeout for this very intensive test
   });
@@ -917,7 +1084,9 @@ describe("Game Types", () => {
       );
 
       // Verify both players joined
-      const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+      const gameAccount = await env.program.account.game.fetch(
+        gameData.gamePDA
+      );
       expect(gameAccount.ticketsCount).to.equal(2);
       expect(gameAccount.isPrivate).to.be.true;
     });

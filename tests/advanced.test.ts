@@ -64,7 +64,9 @@ describe("Advanced Features", () => {
       }
 
       // Calculate winner
-      const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+      const gameAccount = await env.program.account.game.fetch(
+        gameData.gamePDA
+      );
       const actualWinnerIndex = calculateWinnerIndex(
         gameAccount.ticketsCount,
         gameData.secretKey,
@@ -72,8 +74,15 @@ describe("Advanced Features", () => {
       );
 
       // Use actual winner index and generate proper merkle proof
-      const winner = getWinnerFromPlayers(players.slice(0, 3), actualWinnerIndex);
-      const merkleProof = generateMerkleProof(players.slice(0, 3), actualWinnerIndex, gameAccount);
+      const winner = getWinnerFromPlayers(
+        players.slice(0, 3),
+        actualWinnerIndex
+      );
+      const merkleProof = generateMerkleProof(
+        players.slice(0, 3),
+        actualWinnerIndex,
+        gameAccount
+      );
 
       const winnerParticipation = {
         player: winner.player.publicKey,
@@ -91,7 +100,9 @@ describe("Advanced Features", () => {
       );
 
       // Verify completion
-      const completedGame = await env.program.account.game.fetch(gameData.gamePDA);
+      const completedGame = await env.program.account.game.fetch(
+        gameData.gamePDA
+      );
       expect(completedGame.totalAmount.toNumber()).to.equal(0);
     });
 
@@ -122,7 +133,9 @@ describe("Advanced Features", () => {
       }
 
       // Verify game state
-      const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+      const gameAccount = await env.program.account.game.fetch(
+        gameData.gamePDA
+      );
       expect(gameAccount.ticketsCount).to.equal(6);
       expect(gameAccount.totalAmount.toNumber()).to.equal(3_000_000);
 
@@ -134,8 +147,15 @@ describe("Advanced Features", () => {
       );
 
       // Use actual winner index and generate proper merkle proof
-      const winner = getWinnerFromPlayers(players.slice(0, 6), actualWinnerIndex);
-      const merkleProof = generateMerkleProof(players.slice(0, 6), actualWinnerIndex, gameAccount);
+      const winner = getWinnerFromPlayers(
+        players.slice(0, 6),
+        actualWinnerIndex
+      );
+      const merkleProof = generateMerkleProof(
+        players.slice(0, 6),
+        actualWinnerIndex,
+        gameAccount
+      );
 
       const winnerParticipation = {
         player: winner.player.publicKey,
@@ -152,7 +172,9 @@ describe("Advanced Features", () => {
       );
 
       // Verify completion
-      const completedGame = await env.program.account.game.fetch(gameData.gamePDA);
+      const completedGame = await env.program.account.game.fetch(
+        gameData.gamePDA
+      );
       expect(completedGame.totalAmount.toNumber()).to.equal(0);
     });
 
@@ -182,7 +204,9 @@ describe("Advanced Features", () => {
       }
 
       // Verify merkle root is computed and stored
-      const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+      const gameAccount = await env.program.account.game.fetch(
+        gameData.gamePDA
+      );
       expect(gameAccount.merkleRoot).to.not.deep.equal(new Array(32).fill(0));
 
       // Game should have proper subtree structure
@@ -217,13 +241,19 @@ describe("Advanced Features", () => {
       for (let i = 0; i < 4; i++) {
         await testUtils.game.joinGame(gameData.gamePDA, players[i].player);
 
-        const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+        const gameAccount = await env.program.account.game.fetch(
+          gameData.gamePDA
+        );
         expect(gameAccount.ticketsCount).to.equal(i + 1);
-        expect(gameAccount.totalAmount.toNumber()).to.equal((i + 1) * 1_000_000);
+        expect(gameAccount.totalAmount.toNumber()).to.equal(
+          (i + 1) * 1_000_000
+        );
       }
 
       // Verify final state
-      const finalGameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+      const finalGameAccount = await env.program.account.game.fetch(
+        gameData.gamePDA
+      );
       expect(finalGameAccount.ticketsCount).to.equal(4);
       expect(finalGameAccount.totalAmount.toNumber()).to.equal(4_000_000);
     });
@@ -256,7 +286,9 @@ describe("Advanced Features", () => {
         await testUtils.game.joinGame(gameData.gamePDA, players[0].player);
         await testUtils.game.joinGame(gameData.gamePDA, players[1].player);
 
-        const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+        const gameAccount = await env.program.account.game.fetch(
+          gameData.gamePDA
+        );
         expect(gameAccount.ticketsCount).to.equal(2);
         expect(gameAccount.totalAmount.toNumber()).to.equal(2_000_000);
       }
@@ -291,13 +323,18 @@ describe("Advanced Features", () => {
       }
 
       // Verify capacity reached
-      const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+      const gameAccount = await env.program.account.game.fetch(
+        gameData.gamePDA
+      );
       expect(gameAccount.ticketsCount).to.equal(maxTickets);
 
       // Try to exceed capacity (should fail)
       if (players.length > maxTickets) {
         try {
-          await testUtils.game.joinGame(gameData.gamePDA, players[maxTickets].player);
+          await testUtils.game.joinGame(
+            gameData.gamePDA,
+            players[maxTickets].player
+          );
           expect.fail("Should have prevented exceeding capacity");
         } catch (error) {
           expect(error.toString()).to.include("GameFull");
@@ -333,14 +370,23 @@ describe("Advanced Features", () => {
       await testUtils.game.joinGame(gameData.gamePDA, players[1].player);
 
       // Game should be completable immediately after reaching max players
-      const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+      const gameAccount = await env.program.account.game.fetch(
+        gameData.gamePDA
+      );
       const winnerIndex = calculateWinnerIndex(
         gameAccount.ticketsCount,
         gameData.secretKey,
         Number(gameAccount.lastSlot)
       );
-      const winner = getWinnerFromPlayers([players[0], players[1]], winnerIndex);
-      const merkleProof = generateMerkleProof([players[0], players[1]], winnerIndex, gameAccount);
+      const winner = getWinnerFromPlayers(
+        [players[0], players[1]],
+        winnerIndex
+      );
+      const merkleProof = generateMerkleProof(
+        [players[0], players[1]],
+        winnerIndex,
+        gameAccount
+      );
 
       const winnerParticipation = {
         player: winner.player.publicKey,
@@ -357,7 +403,9 @@ describe("Advanced Features", () => {
       );
 
       // Verify completion
-      const completedGame = await env.program.account.game.fetch(gameData.gamePDA);
+      const completedGame = await env.program.account.game.fetch(
+        gameData.gamePDA
+      );
       expect(completedGame.totalAmount.toNumber()).to.equal(0);
     });
 
@@ -386,16 +434,29 @@ describe("Advanced Features", () => {
       await testUtils.game.joinGame(gameData.gamePDA, players[1].player);
 
       // Wait for timeout + oracle buffer time to expire
-      const totalWaitTime = (gameConfig.timeout + oracle.config.oracleBufferTime + 1) * 1000;
-      await new Promise(resolve => setTimeout(resolve, totalWaitTime));
+      const totalWaitTime =
+        (gameConfig.timeout + oracle.config.oracleBufferTime + 1) * 1000;
+      await new Promise((resolve) => setTimeout(resolve, totalWaitTime));
 
       // Players can now recover their funds via emergency unjoin
       // For 2 players, both are in recent buffer (indices 0 and 1)
-      await testUtils.game.unjoinGame(gameData.gamePDA, players[1].player, 1, null);
-      await testUtils.game.unjoinGame(gameData.gamePDA, players[0].player, 0, null);
+      await testUtils.game.unjoinGame(
+        gameData.gamePDA,
+        players[1].player,
+        1,
+        null
+      );
+      await testUtils.game.unjoinGame(
+        gameData.gamePDA,
+        players[0].player,
+        0,
+        null
+      );
 
       // Verify game is now empty
-      const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+      const gameAccount = await env.program.account.game.fetch(
+        gameData.gamePDA
+      );
       expect(gameAccount.ticketsCount).to.equal(0);
 
       // Now empty game can be closed
@@ -492,19 +553,29 @@ describe("Advanced Features", () => {
 
       // Fill each game with different players
       for (let i = 0; i < 3; i++) {
-        await testUtils.game.joinGame(games[i].gameData.gamePDA, games[i].creator.player);
-        await testUtils.game.joinGame(games[i].gameData.gamePDA, players[(i + 1) % 3].player);
+        await testUtils.game.joinGame(
+          games[i].gameData.gamePDA,
+          games[i].creator.player
+        );
+        await testUtils.game.joinGame(
+          games[i].gameData.gamePDA,
+          players[(i + 1) % 3].player
+        );
       }
 
       // Verify all games are independent
       for (let i = 0; i < 3; i++) {
-        const gameAccount = await env.program.account.game.fetch(games[i].gameData.gamePDA);
+        const gameAccount = await env.program.account.game.fetch(
+          games[i].gameData.gamePDA
+        );
         expect(gameAccount.ticketsCount).to.equal(2);
         expect(gameAccount.totalAmount.toNumber()).to.equal(2_000_000);
       }
 
       // Complete one game without affecting others
-      const gameAccount = await env.program.account.game.fetch(games[0].gameData.gamePDA);
+      const gameAccount = await env.program.account.game.fetch(
+        games[0].gameData.gamePDA
+      );
       const winnerIndex = calculateWinnerIndex(
         gameAccount.ticketsCount,
         games[0].gameData.secretKey,
@@ -527,10 +598,14 @@ describe("Advanced Features", () => {
       );
 
       // Verify first game completed, others still active
-      const completedGame = await env.program.account.game.fetch(games[0].gameData.gamePDA);
+      const completedGame = await env.program.account.game.fetch(
+        games[0].gameData.gamePDA
+      );
       expect(completedGame.totalAmount.toNumber()).to.equal(0);
 
-      const stillActiveGame = await env.program.account.game.fetch(games[1].gameData.gamePDA);
+      const stillActiveGame = await env.program.account.game.fetch(
+        games[1].gameData.gamePDA
+      );
       expect(stillActiveGame.totalAmount.toNumber()).to.equal(2_000_000);
     });
 
@@ -571,8 +646,12 @@ describe("Advanced Features", () => {
       await testUtils.game.joinGame(game2Data.gamePDA, player.player);
 
       // Verify player is in both games
-      const game1Account = await env.program.account.game.fetch(game1Data.gamePDA);
-      const game2Account = await env.program.account.game.fetch(game2Data.gamePDA);
+      const game1Account = await env.program.account.game.fetch(
+        game1Data.gamePDA
+      );
+      const game2Account = await env.program.account.game.fetch(
+        game2Data.gamePDA
+      );
 
       expect(game1Account.ticketsCount).to.equal(1);
       expect(game2Account.ticketsCount).to.equal(1);
@@ -637,10 +716,14 @@ describe("Advanced Features", () => {
         mint.mint
       );
 
-      const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+      const gameAccount = await env.program.account.game.fetch(
+        gameData.gamePDA
+      );
       // For giveaway games, ticketAmount is 0 (players don't pay), but totalAmount should be the creator's contribution
       expect(gameAccount.ticketAmount.toNumber()).to.equal(0);
-      expect(gameAccount.totalAmount.toString()).to.equal(largeAmount.toString());
+      expect(gameAccount.totalAmount.toString()).to.equal(
+        largeAmount.toString()
+      );
     });
   });
 });
