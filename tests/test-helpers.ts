@@ -1548,3 +1548,208 @@ export class TestUtils {
     return { oracle, mint, players };
   }
 }
+
+// =============================================================================
+// RANDOM TEST DATA GENERATION UTILITIES FOR FUZZ TESTING
+// =============================================================================
+
+/**
+ * Random utility functions for fuzz testing
+ */
+export class RandomUtils {
+  /**
+   * Generate random integer in range [min, max] (inclusive)
+   */
+  static randomInt(min: number, max: number): number {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+  }
+
+  /**
+   * Generate random boolean with optional probability
+   */
+  static randomBoolean(probability: number = 0.5): boolean {
+    return Math.random() < probability;
+  }
+
+  /**
+   * Generate random game type for testing
+   */
+  static randomGameType(): any {
+    const types = [
+      { coinflip: {} },
+      { giveaway: {} },
+      { snowball: {} }
+    ];
+    return types[this.randomInt(0, types.length - 1)];
+  }
+
+  /**
+   * Generate random game configuration for testing
+   */
+  static randomGameConfig(maxPlayers: number = 100): GameConfig {
+    const gameType = this.randomGameType();
+    const maxTickets = this.randomInt(2, maxPlayers);
+    const minTickets = this.randomInt(1, Math.min(maxTickets, 10));
+    
+    return {
+      gameType,
+      amount: new anchor.BN(this.randomInt(100_000, 10_000_000)),
+      maxTickets,
+      minTickets,
+      timeout: this.randomInt(600, 7200), // 10 minutes to 2 hours
+      isPrivate: this.randomBoolean(0.1), // 10% chance of private game
+    };
+  }
+
+  /**
+   * Shuffle an array using Fisher-Yates algorithm
+   */
+  static shuffle<T>(array: T[]): T[] {
+    const shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  }
+
+  /**
+   * Generate random subset of array
+   */
+  static randomSubset<T>(array: T[], minSize: number = 1): T[] {
+    const shuffled = this.shuffle(array);
+    const size = this.randomInt(minSize, array.length);
+    return shuffled.slice(0, size);
+  }
+
+  /**
+   * Generate random player action sequence for testing
+   */
+  static generateRandomActions(
+    numPlayers: number,
+    maxActions: number = 100
+  ): Array<{ type: 'join' | 'roll' | 'unjoin'; playerIndex: number }> {
+    const actions = [];
+    const numActions = this.randomInt(1, maxActions);
+    
+    for (let i = 0; i < numActions; i++) {
+      const actionType = this.randomChoice(['join', 'roll', 'unjoin'], [0.5, 0.4, 0.1]);
+      const playerIndex = this.randomInt(0, numPlayers - 1);
+      
+      actions.push({
+        type: actionType as 'join' | 'roll' | 'unjoin',
+        playerIndex
+      });
+    }
+    
+    return actions;
+  }
+
+  /**
+   * Weighted random choice from array
+   */
+  static randomChoice<T>(choices: T[], weights: number[]): T {
+    if (choices.length !== weights.length) {
+      throw new Error('Choices and weights arrays must have same length');
+    }
+    
+    const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
+    let random = Math.random() * totalWeight;
+    
+    for (let i = 0; i < choices.length; i++) {
+      random -= weights[i];
+      if (random <= 0) {
+        return choices[i];
+      }
+    }
+    
+    // Fallback to last choice
+    return choices[choices.length - 1];
+  }
+
+  /**
+   * Generate random token amount for testing
+   */
+  static randomTokenAmount(min: number = 1000, max: number = 100_000_000): anchor.BN {
+    return new anchor.BN(this.randomInt(min, max));
+  }
+
+  /**
+   * Generate random timeout value in seconds
+   */
+  static randomTimeout(): number {
+    return this.randomChoice(
+      [60, 300, 600, 1800, 3600, 7200], // 1min, 5min, 10min, 30min, 1hr, 2hr
+      [0.1, 0.2, 0.3, 0.2, 0.1, 0.1]
+    );
+  }
+
+  /**
+   * Generate random merkle tree configuration for testing
+   */
+  static randomMerkleTreeConfig(): {
+    numPlayers: number;
+    rollsPerPlayer: number;
+    expectedSubtrees: number;
+    expectedDepth: number;
+  } {
+    const numPlayers = this.randomInt(1, 100);
+    const rollsPerPlayer = this.randomInt(0, 20);
+    const totalTickets = numPlayers + (numPlayers * rollsPerPlayer);
+    
+    // Estimate expected subtrees and depth based on total tickets
+    const expectedSubtrees = Math.min(5, Math.ceil(Math.log2(totalTickets / 2)));
+    const expectedDepth = Math.ceil(Math.log2(totalTickets));
+    
+    return {
+      numPlayers,
+      rollsPerPlayer,
+      expectedSubtrees,
+      expectedDepth
+    };
+  }
+
+  /**
+   * Generate random player distribution for testing different scenarios
+   */
+  static randomPlayerDistribution(totalPlayers: number): {
+    initialJoins: number;
+    rollPlayers: number;
+    rollsPerPlayer: number;
+  } {
+    const initialJoins = this.randomInt(1, totalPlayers);
+    const rollPlayers = this.randomInt(0, initialJoins);
+    const rollsPerPlayer = rollPlayers > 0 ? this.randomInt(1, 10) : 0;
+    
+    return {
+      initialJoins,
+      rollPlayers,
+      rollsPerPlayer
+    };
+  }
+
+  /**
+   * Generate random seed for deterministic testing
+   */
+  static randomSeed(): number {
+    return Math.floor(Math.random() * 1000000);
+  }
+
+  /**
+   * Set seed for deterministic random generation (basic seeded random)
+   */
+  static setSeed(seed: number): void {
+    // Simple seeded random implementation for testing
+    Math.random = this.seededRandom(seed);
+  }
+
+  /**
+   * Simple seeded random number generator
+   */
+  private static seededRandom(seed: number): () => number {
+    return function() {
+      seed = (seed * 9301 + 49297) % 233280;
+      return seed / 233280;
+    };
+  }
+}
