@@ -614,7 +614,7 @@ describe("Game Types", () => {
       console.log("Test completed successfully!");
     }).timeout(60000); // 60 second timeout for this intensive test
 
-    it("should handle massive snowball game with 10 players and 20 rolls", async () => {
+    it("should handle massive snowball game with 10 players and 40 rolls", async () => {
       console.log("Initializing massive snowball game...");
       
       // Get basic setup first
@@ -629,8 +629,8 @@ describe("Game Types", () => {
       }
       
       // Extra funding for the two players who will do the rolls
-      await testUtils.player.fundPlayer(players[0], mint, new anchor.BN(100_000_000)); // Player 0 does 10 rolls
-      await testUtils.player.fundPlayer(players[1], mint, new anchor.BN(100_000_000)); // Player 1 does 10 rolls
+      await testUtils.player.fundPlayer(players[0], mint, new anchor.BN(200_000_000)); // Player 0 does 20 rolls
+      await testUtils.player.fundPlayer(players[1], mint, new anchor.BN(200_000_000)); // Player 1 does 20 rolls
       
       console.log("Players funded for massive game...");
       
@@ -639,7 +639,7 @@ describe("Game Types", () => {
       const gameConfig: GameConfig = {
         gameType: { snowball: {} },
         amount: new anchor.BN(1_000_000), // 1 TIMBA per roll
-        maxTickets: 30, // Allow for 10 initial + 20 rolls
+        maxTickets: 50, // Allow for 10 initial + 40 rolls
         minTickets: 10, // Start with 10 players
         timeout: 7200,
         isPrivate: false,
@@ -668,11 +668,11 @@ describe("Game Types", () => {
           if (i < 10) {
             // Initial players (tickets 0-9) - each player gets their own ticket
             playerArray.push(players[i]);
-          } else if (i < 20) {
-            // Player 0's rolls (tickets 10-19) - all go to player 0
+          } else if (i < 30) {
+            // Player 0's rolls (tickets 10-29) - all go to player 0
             playerArray.push(players[0]);
           } else {
-            // Player 1's rolls (tickets 20-29) - all go to player 1
+            // Player 1's rolls (tickets 30-49) - all go to player 1
             playerArray.push(players[1]);
           }
         }
@@ -683,10 +683,10 @@ describe("Game Types", () => {
         return playerArray;
       };
       
-      // Player 0 does 10 rolls  
-      console.log("Player 0 starting 10 rolls...");
-      for (let i = 0; i < 10; i++) {
-        console.log(`Player 0 roll ${i + 1}/10`);
+      // Player 0 does 20 rolls  
+      console.log("Player 0 starting 20 rolls...");
+      for (let i = 0; i < 20; i++) {
+        console.log(`Player 0 roll ${i + 1}/20`);
         
         // Generate proof for the roll using Player 0's initial ticket (index 0)
         const currentGameState = await env.program.account.game.fetch(gameData.gamePDA);
@@ -697,10 +697,10 @@ describe("Game Types", () => {
         await testUtils.game.rollGame(gameData.gamePDA, players[0].player, ticketIndexToUse, currentProof);
       }
       
-      // Player 1 does 10 rolls
-      console.log("Player 1 starting 10 rolls...");
-      for (let i = 0; i < 10; i++) {
-        console.log(`Player 1 roll ${i + 1}/10`);
+      // Player 1 does 20 rolls
+      console.log("Player 1 starting 20 rolls...");
+      for (let i = 0; i < 20; i++) {
+        console.log(`Player 1 roll ${i + 1}/20`);
         
         // Generate proof for the roll using Player 1's initial ticket (index 1)
         const currentGameState = await env.program.account.game.fetch(gameData.gamePDA);
@@ -726,8 +726,8 @@ describe("Game Types", () => {
       // Verify final state
       const finalGame = await env.program.account.game.fetch(gameData.gamePDA);
       console.log(`Final state: ${finalGame.ticketsCount} tickets, ${finalGame.totalAmount.toNumber()} total amount`);
-      expect(finalGame.ticketsCount).to.equal(30); // 10 initial + 10 + 10 rolls  
-      expect(finalGame.totalAmount.toNumber()).to.equal(30_000_000); // 30 tickets * 1M each
+      expect(finalGame.ticketsCount).to.equal(50); // 10 initial + 20 + 20 rolls  
+      expect(finalGame.totalAmount.toNumber()).to.equal(50_000_000); // 50 tickets * 1M each
       
       // Calculate winner
       const winnerIndex = calculateWinnerIndex(
@@ -739,12 +739,12 @@ describe("Game Types", () => {
       
       // Determine which player won based on ticket index
       // Tickets 0-9: players[0] through players[9]
-      // Tickets 10-19: players[0] (10 rolls)
-      // Tickets 20-29: players[1] (10 rolls)
+      // Tickets 10-29: players[0] (20 rolls)
+      // Tickets 30-49: players[1] (20 rolls)
       let winner: any;
       if (winnerIndex < 10) {
         winner = players[winnerIndex]; // One of the initial 10 players
-      } else if (winnerIndex < 20) {
+      } else if (winnerIndex < 30) {
         winner = players[0]; // Player 0's rolls
       } else {
         winner = players[1]; // Player 1's rolls
@@ -769,7 +769,7 @@ describe("Game Types", () => {
       console.log(`    Winner player: ${winner.player.publicKey.toBase58().substring(0,8)}...`);
       console.log(`    Max tickets: ${finalGameState.maxTickets}`);
       
-      // Create a player array that represents all 30 tickets
+      // Create a player array that represents all 50 tickets
       const allTicketPlayers = createPlayerArrayForCurrentState(finalGameState.ticketsCount);
       
       // DEBUG: Log winner ticket details

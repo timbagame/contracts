@@ -1173,7 +1173,8 @@ function buildContractSubtreeRoots(players: TestPlayer[], totalTickets: number, 
   
   // Use the maxTickets parameter passed from the game state
   const bufferFills = Math.ceil(maxTickets / 2);
-  const maxSubtrees = countOnes(bufferFills);
+  // Use conservative calculation to match the updated smart contract logic
+  const maxSubtrees = bufferFills <= 1 ? 0 : (32 - Math.clz32(bufferFills));
   console.log(`    Max subtrees allowed: ${maxSubtrees}`);
   
   // Simulate the contract's exact state during sequential ticket addition
@@ -1310,17 +1311,6 @@ function mergeSubtrees(
   };
 }
 
-/**
- * Counts the number of 1 bits (same as Rust's count_ones)
- */
-function countOnes(n: number): number {
-  let count = 0;
-  while (n) {
-    count += n & 1;
-    n >>= 1;
-  }
-  return count;
-}
 
 /**
  * Computes merkle root from leaf hashes (same as contract's compute_merkle_root)
