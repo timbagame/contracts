@@ -85,17 +85,51 @@ describe("Merkle Tree Fuzz Tests", () => {
   }
 
   /**
-   * Utility function to validate tree integrity
+   * Calculate required subtrees using the same logic as the contract
+   * 
+   * This mirrors the contract's calculate_required_subtrees function:
+   * - If max_tickets <= 2: return 0 (all fit in recent buffer)
+   * - Calculate buffer_fills = ceil(max_tickets / 2)
+   * - Return (32 - leading_zeros(buffer_fills)) for conservative allocation
+   * 
+   * Examples:
+   * - 32 players: buffer_fills=16, required=5 subtrees
+   * - 65 players: buffer_fills=33, required=6 subtrees
+   * - 100 players: buffer_fills=50, required=6 subtrees
+   */
+  function calculateRequiredSubtrees(maxTickets: number): number {
+    if (maxTickets <= 2) {
+      return 0; // All tickets fit in recent buffer
+    }
+
+    // Calculate how many times we'll fill the 2-ticket buffer
+    const bufferFills = Math.ceil(maxTickets / 2);
+
+    // Use conservative calculation to account for worst-case sequential merging patterns
+    if (bufferFills <= 1) {
+      return 0;
+    }
+
+    // Use log2(buffer_fills) + 1 to ensure sufficient subtree slots
+    // This matches the contract's (32 - buffer_fills.leading_zeros()) calculation
+    return 32 - Math.clz32(bufferFills);
+  }
+
+  /**
+   * Utility function to validate tree integrity with dynamic subtree limits
    */
   async function validateTreeIntegrity(gamePDA: anchor.web3.PublicKey): Promise<void> {
     const gameAccount = await env.program.account.game.fetch(gamePDA);
+    
+    // Calculate the dynamic subtree limit based on max tickets
+    const maxSubtrees = calculateRequiredSubtrees(gameAccount.maxTickets);
     
     // Basic integrity checks
     expect(gameAccount.ticketsCount).to.be.gte(0);
     expect(gameAccount.recentCount).to.be.gte(0);
     expect(gameAccount.recentCount).to.be.lte(2); // Recent buffer max size
     expect(gameAccount.subtreeCount).to.be.gte(0);
-    expect(gameAccount.subtreeCount).to.be.lte(5); // Max subtrees
+    expect(gameAccount.subtreeCount).to.be.lte(maxSubtrees); // Dynamic max subtrees
     
     // Verify total ticket count consistency
     const committedTickets = gameAccount.ticketsCount - gameAccount.recentCount;
@@ -460,7 +494,8 @@ describe("Merkle Tree Fuzz Tests", () => {
           await validateTreeIntegrity(gameData.gamePDA);
           
           // Verify subtree evolution patterns
-          expect(gameState.subtreeCount).to.be.lte(5); // Max subtrees
+          const maxSubtrees = calculateRequiredSubtrees(gameConfig.maxTickets);
+          expect(gameState.subtreeCount).to.be.lte(maxSubtrees); // Dynamic max subtrees
           expect(gameState.recentCount).to.be.lte(2); // Max recent buffer
         }
         
