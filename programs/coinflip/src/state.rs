@@ -456,7 +456,7 @@ impl Game {
     // STORAGE CALCULATION & INITIALIZATION
     // =============================================================================
 
-    /// Calculates required subtrees using binary decomposition of max_tickets
+    /// Calculates required subtrees using conservative approach to handle worst-case merging
     pub fn calculate_required_subtrees(max_tickets: u32) -> usize {
         if max_tickets <= 2 {
             return 0; // All tickets fit in recent buffer
@@ -465,9 +465,15 @@ impl Game {
         // Calculate how many times we'll fill the 2-ticket buffer
         let buffer_fills = (max_tickets + 1) / 2; // ceil(max_tickets / 2)
 
-        // Use binary decomposition to find minimum subtrees needed
-        // Each subtree merge doubles the capacity, so we need count_ones bits
-        buffer_fills.count_ones() as usize
+        // Use conservative calculation to account for worst-case sequential merging patterns
+        // where all subtrees have different sizes and no same-sized pairs exist for merging
+        if buffer_fills <= 1 {
+            0
+        } else {
+            // Use log2(buffer_fills) + 1 to ensure sufficient subtree slots
+            // This is more conservative than count_ones but prevents merge conflicts
+            (32 - buffer_fills.leading_zeros()) as usize
+        }
     }
 
     /// Calculates the total dynamic storage size for a game
