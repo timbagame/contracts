@@ -123,8 +123,8 @@ describe("Merkle Tree Fuzz Tests", () => {
     const committedTickets = gameAccount.ticketsCount - gameAccount.recentCount;
     expect(committedTickets).to.be.gte(0);
 
-    // Verify merkle root is valid (non-zero if there are tickets)
-    if (gameAccount.ticketsCount > 0) {
+    // Verify merkle root is valid (non-zero if there are committed subtrees)
+    if (gameAccount.subtreeCount > 0) {
       const rootIsZero = gameAccount.merkleRoot.every((byte) => byte === 0);
       expect(rootIsZero).to.be.false;
     }
