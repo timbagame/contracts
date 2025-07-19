@@ -2,7 +2,7 @@ use crate::error::ErrorCode;
 use crate::events::PlayerUnjoined;
 use anchor_lang::prelude::*;
 
-pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
+pub fn handler(ctx: Context<super::UnjoinGame>, ticket_index: u32) -> Result<()> {
     let game = &mut ctx.accounts.game;
     let player_balance = &mut ctx.accounts.player_balance;
     let oracle = &ctx.accounts.oracle;
@@ -28,6 +28,12 @@ pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
         ErrorCode::UnauthorizedPlayer
     );
 
+    // Prevent double unjoining of the same game + ticket index
+    require!(
+        !player_balance.has_unjoined_game_index(&game.key(), ticket_index, game.created_at),
+        ErrorCode::AlreadyJoined // Reusing error - player already processed this unjoin
+    );
+
     // ===============================
     // STATE UPDATES
     // ===============================
@@ -42,6 +48,9 @@ pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
     // Refund player
     player_balance.refund(game.ticket_amount);
 
+    // Track this unjoin in bloom filter to prevent double unjoining
+    player_balance.mark_game_index_unjoined(&game.key(), ticket_index, current_time);
+
     // ===============================
     // EVENT EMISSION
     // ===============================
@@ -51,7 +60,7 @@ pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
         player: player_key,
         total_amount: game.total_amount,
         tickets_count: game.tickets_count,
-        ticket_index: 0, // Not meaningful with bloom filter, but required by event
+        ticket_index, // Actual ticket index being unjoined
         last_slot: game.last_slot,
         timestamp: current_time,
     });
