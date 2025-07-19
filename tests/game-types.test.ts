@@ -6,7 +6,6 @@ import {
   calculateWinnerIndex,
   getWinnerFromPlayers,
   GameConfig,
-  generateMerkleProof,
 } from "./test-helpers";
 
 /**
@@ -78,18 +77,12 @@ describe("Game Types", () => {
       );
       const winner = getWinnerFromPlayers([creator, player1], winnerIndex);
 
-      const winnerParticipation = {
-        player: winner.player.publicKey,
-        ticketIndex: winnerIndex,
-      };
-
       await testUtils.game.completeGame(
         gameData,
         winner.player.publicKey,
         creator.player.publicKey,
         oracle.operator,
-        winnerParticipation,
-        []
+        winnerIndex
       );
 
       // Verify completion
@@ -139,29 +132,18 @@ describe("Game Types", () => {
         Number(gameAccount.lastSlot)
       );
 
-      // Use actual winner index and generate proper merkle proof
+      // Use actual winner index
       const winner = getWinnerFromPlayers(
         players.slice(0, 4),
         actualWinnerIndex
       );
-      const merkleProof = generateMerkleProof(
-        players.slice(0, 4),
-        actualWinnerIndex,
-        gameAccount
-      );
-
-      const winnerParticipation = {
-        player: winner.player.publicKey,
-        ticketIndex: actualWinnerIndex,
-      };
 
       await testUtils.game.completeGame(
         gameData,
         winner.player.publicKey,
         players[0].player.publicKey,
         oracle.operator,
-        winnerParticipation,
-        merkleProof
+        actualWinnerIndex
       );
 
       // Verify completion
@@ -240,18 +222,12 @@ describe("Game Types", () => {
       );
       const winner = getWinnerFromPlayers([player1, player2], winnerIndex);
 
-      const winnerParticipation = {
-        player: winner.player.publicKey,
-        ticketIndex: winnerIndex,
-      };
-
       await testUtils.game.completeGame(
         gameData,
         winner.player.publicKey,
         creator.player.publicKey,
         oracle.operator,
-        winnerParticipation,
-        []
+        winnerIndex
       );
 
       // Verify completion
@@ -297,18 +273,12 @@ describe("Game Types", () => {
 
       expect(winnerIndex).to.equal(0); // Only one participant
 
-      const winnerParticipation = {
-        player: creator.player.publicKey,
-        ticketIndex: winnerIndex,
-      };
-
       await testUtils.game.completeGame(
         gameData,
         creator.player.publicKey,
         creator.player.publicKey,
         oracle.operator,
-        winnerParticipation,
-        []
+        winnerIndex
       );
 
       // Verify completion
@@ -380,20 +350,10 @@ describe("Game Types", () => {
       await testUtils.game.joinGame(gameData.gamePDA, player1.player);
       await testUtils.game.joinGame(gameData.gamePDA, players[2].player); // Third player to reach max
 
-      // Then creator rolls for additional entry (creator's original entry index is 0)
-      let gameStateForProof = await env.program.account.game.fetch(
-        gameData.gamePDA
-      );
-      const creatorMerkleProof = generateMerkleProof(
-        [creator, player1, players[2]],
-        0,
-        gameStateForProof
-      );
+      // Then creator rolls for additional entry
       await testUtils.game.rollGame(
         gameData.gamePDA,
-        creator.player,
-        0,
-        creatorMerkleProof
+        creator.player
       );
 
       // Verify accumulating pot
@@ -424,27 +384,12 @@ describe("Game Types", () => {
         actualWinner = players[2]; // players[2] won
       }
 
-      // Generate merkle proof for snowball game
-      // Create a player list that represents the entries: [creator, player1, players[2], creator]
-      const entryPlayers = [creator, player1, players[2], creator];
-      const merkleProof = generateMerkleProof(
-        entryPlayers,
-        winnerIndex,
-        gameAccount
-      );
-
-      const winnerParticipation = {
-        player: actualWinner.player.publicKey,
-        ticketIndex: winnerIndex,
-      };
-
       await testUtils.game.completeGame(
         gameData,
         actualWinner.player.publicKey,
         creator.player.publicKey,
         oracle.operator,
-        winnerParticipation,
-        merkleProof
+        winnerIndex
       );
 
       // Verify completion
@@ -498,24 +443,13 @@ describe("Game Types", () => {
       );
 
       const winner = getWinnerFromPlayers(players.slice(0, 3), winnerIndex);
-      const merkleProof = generateMerkleProof(
-        players.slice(0, 3),
-        winnerIndex,
-        gameAccount
-      );
-
-      const winnerParticipation = {
-        player: winner.player.publicKey,
-        ticketIndex: winnerIndex,
-      };
 
       await testUtils.game.completeGame(
         gameData,
         winner.player.publicKey,
         players[0].player.publicKey,
         oracle.operator,
-        winnerParticipation,
-        merkleProof
+        winnerIndex
       );
 
       // Verify completion
@@ -574,13 +508,11 @@ describe("Game Types", () => {
           gameData.gamePDA
         );
         console.log(
-          `  Current state: ticketsCount=${currentGameState.ticketsCount}, recentCount=${currentGameState.recentCount}`
+          `  Current state: ticketsCount=${currentGameState.ticketsCount}`
         );
 
         // Smart ticket selection: use the creator's most recent ticket instead of always ticket 0
-        // This avoids the need for complex merkle proofs as recent tickets don't need proofs
-        const committedTickets =
-          currentGameState.ticketsCount - currentGameState.recentCount;
+        const committedTickets = currentGameState.ticketsCount;
         let ticketIndexToUse: number;
 
         if (i === 0) {
@@ -596,19 +528,9 @@ describe("Game Types", () => {
           `  Using ticket index: ${ticketIndexToUse}, committed threshold: ${committedTickets}`
         );
 
-        // Generate proof based on whether ticket is in committed subtree or recent buffer
-        const currentProof = generateMerkleProof(
-          [creator, player1, player2],
-          ticketIndexToUse,
-          currentGameState
-        );
-        console.log(`  Generated proof length: ${currentProof.length}`);
-
         await testUtils.game.rollGame(
           gameData.gamePDA,
-          creator.player,
-          ticketIndexToUse,
-          currentProof
+          creator.player
         );
       }
 
@@ -646,45 +568,13 @@ describe("Game Types", () => {
         winner = player2; // Player2's entry
       }
 
-      const winnerParticipation = {
-        player: winner.player.publicKey,
-        ticketIndex: winnerIndex,
-      };
-
       console.log("Completing game...");
-      // Generate proper merkle proof for game completion
-      const finalGameState = await env.program.account.game.fetch(
-        gameData.gamePDA
-      );
-
-      // Create a player array that represents all 13 tickets using the same logic as during rolls
-      // This ensures consistency between roll-time and completion-time player mapping
-      const rollTimePlayerArray = [creator, player1, player2]; // The players used during rolls
-      const allTicketPlayers = [];
-      for (let i = 0; i < finalGameState.ticketsCount; i++) {
-        // Use the same getPlayerForTicket logic from test-helpers.ts
-        if (i < rollTimePlayerArray.length) {
-          allTicketPlayers.push(rollTimePlayerArray[i]);
-        } else {
-          // Fallback for additional tickets (rolls) - use creator
-          allTicketPlayers.push(creator);
-        }
-      }
-
-      const completionProof = generateMerkleProof(
-        allTicketPlayers,
-        winnerIndex,
-        finalGameState
-      );
-      console.log(`  Completion proof length: ${completionProof.length}`);
-
       await testUtils.game.completeGame(
         gameData,
         winner.player.publicKey,
         creator.player.publicKey,
         oracle.operator,
-        winnerParticipation,
-        completionProof
+        winnerIndex
       );
 
       // Verify completion
@@ -755,60 +645,15 @@ describe("Game Types", () => {
 
       console.log("All 10 players joined, starting rolls...");
 
-      // Helper function to create player array based on current game state
-      const createPlayerArrayForCurrentState = (
-        currentTicketsCount: number
-      ) => {
-        const playerArray = [];
-        for (let i = 0; i < currentTicketsCount; i++) {
-          if (i < 10) {
-            // Initial players (tickets 0-9) - each player gets their own ticket
-            playerArray.push(players[i]);
-          } else if (i < 30) {
-            // Player 0's rolls (tickets 10-29) - all go to player 0
-            playerArray.push(players[0]);
-          } else {
-            // Player 1's rolls (tickets 30-49) - all go to player 1
-            playerArray.push(players[1]);
-          }
-        }
-        console.log(
-          `    Creating player array for ${currentTicketsCount} tickets:`
-        );
-        for (let i = 0; i < Math.min(currentTicketsCount, 10); i++) {
-          console.log(
-            `      Ticket ${i}: player=${playerArray[i].player.publicKey
-              .toBase58()
-              .substring(0, 8)}...`
-          );
-        }
-        return playerArray;
-      };
 
       // Player 0 does 20 rolls
       console.log("Player 0 starting 20 rolls...");
       for (let i = 0; i < 20; i++) {
         console.log(`Player 0 roll ${i + 1}/20`);
 
-        // Generate proof for the roll using Player 0's initial ticket (index 0)
-        const currentGameState = await env.program.account.game.fetch(
-          gameData.gamePDA
-        );
-        const ticketIndexToUse = 0; // Use Player 0's initial ticket for all rolls
-        const currentPlayerArray = createPlayerArrayForCurrentState(
-          currentGameState.ticketsCount
-        );
-        const currentProof = generateMerkleProof(
-          currentPlayerArray,
-          ticketIndexToUse,
-          currentGameState
-        );
-
         await testUtils.game.rollGame(
           gameData.gamePDA,
-          players[0].player,
-          ticketIndexToUse,
-          currentProof
+          players[0].player
         );
       }
 
@@ -822,29 +667,13 @@ describe("Game Types", () => {
           gameData.gamePDA
         );
         console.log(
-          `  DEBUG: Current game state - tickets: ${currentGameState.ticketsCount}, maxTickets: ${currentGameState.maxTickets}, recent: ${currentGameState.recentCount}`
-        );
-
-        const ticketIndexToUse = 1; // Use Player 1's initial ticket for all rolls
-        const currentPlayerArray = createPlayerArrayForCurrentState(
-          currentGameState.ticketsCount
-        );
-        const currentProof = generateMerkleProof(
-          currentPlayerArray,
-          ticketIndexToUse,
-          currentGameState
-        );
-
-        console.log(
-          `  DEBUG: About to roll - proof length: ${currentProof.length}, using ticket: ${ticketIndexToUse}`
+          `  DEBUG: Current game state - tickets: ${currentGameState.ticketsCount}, maxTickets: ${currentGameState.maxTickets}`
         );
 
         try {
           await testUtils.game.rollGame(
             gameData.gamePDA,
-            players[1].player,
-            ticketIndexToUse,
-            currentProof
+            players[1].player
           );
           console.log(`  DEBUG: Roll ${i + 1} completed successfully`);
         } catch (error) {
@@ -889,68 +718,14 @@ describe("Game Types", () => {
         winner = players[1]; // Player 1's rolls
       }
 
-      const winnerParticipation = {
-        player: winner.player.publicKey,
-        ticketIndex: winnerIndex,
-      };
-
       console.log("Completing massive game...");
-
-      // Generate proper merkle proof for game completion
-      const finalGameState = await env.program.account.game.fetch(
-        gameData.gamePDA
-      );
-
-      // DEBUG: Log detailed completion state
-      console.log(`  DEBUG COMPLETION STATE:`);
-      console.log(`    Winner index: ${winnerIndex}`);
-      console.log(`    Total tickets: ${finalGameState.ticketsCount}`);
-      console.log(`    Recent tickets: ${finalGameState.recentCount}`);
-      console.log(
-        `    Committed tickets: ${
-          finalGameState.ticketsCount - finalGameState.recentCount
-        }`
-      );
-      console.log(
-        `    Winner player: ${winner.player.publicKey
-          .toBase58()
-          .substring(0, 8)}...`
-      );
-      console.log(`    Max tickets: ${finalGameState.maxTickets}`);
-
-      // Create a player array that represents all 50 tickets
-      const allTicketPlayers = createPlayerArrayForCurrentState(
-        finalGameState.ticketsCount
-      );
-
-      // DEBUG: Log winner ticket details
-      console.log(
-        `    Winner ticket player from array: ${allTicketPlayers[
-          winnerIndex
-        ].player.publicKey
-          .toBase58()
-          .substring(0, 8)}...`
-      );
-      console.log(
-        `    Winner matches array: ${winner.player.publicKey.equals(
-          allTicketPlayers[winnerIndex].player.publicKey
-        )}`
-      );
-
-      const completionProof = generateMerkleProof(
-        allTicketPlayers,
-        winnerIndex,
-        finalGameState
-      );
-      console.log(`    Completion proof length: ${completionProof.length}`);
 
       await testUtils.game.completeGame(
         gameData,
         winner.player.publicKey,
         players[0].player.publicKey,
         oracle.operator,
-        winnerParticipation,
-        completionProof
+        winnerIndex
       );
 
       // Verify completion
