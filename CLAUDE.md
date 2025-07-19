@@ -45,7 +45,7 @@ This is a Solana blockchain project implementing a coinflip smart contract game 
 The coinflip program (`programs/coinflip/src/`) is organized as follows:
 
 - **lib.rs**: Main program entry point with all instruction handlers
-- **state.rs**: Account structures (Oracle, Game, GameToken, PlayerBalance, PlayerParticipation) with size constants
+- **state.rs**: Account structures (Oracle, Game, GameToken, PlayerBalance) with size constants and bloom filter logic
 - **instructions/**: Modular instruction handlers organized by functionality:
   - Oracle management (initialize/update oracle)
   - Token management (initialize/update token configs)
@@ -61,7 +61,7 @@ The coinflip program (`programs/coinflip/src/`) is organized as follows:
 2. Token configuration defines min amounts and fees per token
 3. Players initialize balance accounts for deposits
 4. Game creation with configurable parameters (amount, max/min players, timeout)
-5. Players join games through participation accounts
+5. Players join games tracked via bloom filters in player balance accounts
 6. Game completion uses commit-reveal scheme with hash-based winner selection
 7. Fee collection and balance withdrawals
 
@@ -79,7 +79,7 @@ The codebase implements several security patterns that must be preserved:
    - Game completion reveals the secret key
    - Winner selection uses cryptographically secure randomness with bias elimination
 
-3. **Player Index Management**: When players unjoin, the last player's index is swapped to maintain contiguous indices for winner calculation
+3. **Bloom Filter Tracking**: Player participation tracked using 512-bit bloom filters with timestamp optimization for efficiency
 
 ### Account Architecture Patterns
 - **PDA Seeds**: All PDAs use consistent seed patterns (`b"game"`, `b"oracle"`, `b"player_balance"`, etc.)
@@ -92,7 +92,7 @@ The test suite has been completely revamped with modular organization:
 - **`tests/core.test.ts`** - Basic game operations and lifecycle testing
 - **`tests/security.test.ts`** - Security validation, edge cases, and exploit prevention  
 - **`tests/game-types.test.ts`** - Different game variants (Coinflip, Giveaway, Snowball)
-- **`tests/advanced.test.ts`** - Complex functionality, merkle trees, and performance tests
+- **`tests/advanced.test.ts`** - Complex functionality, bloom filters, and performance tests
 - **`tests/test-helpers.ts`** - Shared utilities (TestUtils, TestEnvironment, winner calculation)
 
 Key features:
@@ -115,6 +115,8 @@ The project uses devcontainer configuration for consistent development setup wit
 - Devnet/Localnet: `GLAicVgkhvVtAbcf9aF4iLqAXZ9GSrsfexoDUN2fBPCG`
 
 ## Important Development Notes
+- **Bloom Filter Migration**: System has migrated from merkle trees to bloom filters for player participation tracking
+- **Winner Validation**: Unlike merkle trees, bloom filters cannot validate winner pubkeys at completion time
 - When modifying winner calculation logic, ensure the TypeScript test implementation stays synchronized
 - Account space constants in `state.rs` must be updated if struct fields change
 - The oracle buffer time mechanism prevents games from being stuck in limbo
