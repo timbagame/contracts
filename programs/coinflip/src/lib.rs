@@ -12,7 +12,7 @@ mod instructions;
 mod state;
 
 use crate::instructions::*;
-use crate::state::{ExclusionProof, GameType, ParticipationEntry};
+use crate::state::GameType;
 
 // =============================================================================
 // PROGRAM ID
@@ -134,22 +134,13 @@ pub mod coinflip {
     }
 
     /// Allows a player to roll in Snowball/Dumbflip games (multiple participation)
-    pub fn roll_game(
-        ctx: Context<RollGame>,
-        player_participation: ParticipationEntry,
-        player_merkle_proof: Vec<[u8; 32]>,
-    ) -> Result<()> {
-        instructions::roll_game::handler(ctx, player_participation, player_merkle_proof)
+    pub fn roll_game(ctx: Context<RollGame>) -> Result<()> {
+        instructions::roll_game::handler(ctx)
     }
 
     /// Allows a player to leave a game before completion (with refund)
-    /// Recent players can unjoin directly, subtree players require exclusion proof
-    pub fn unjoin_game(
-        ctx: Context<UnjoinGame>,
-        ticket_index: u32,
-        exclusion_proof: Option<ExclusionProof>,
-    ) -> Result<()> {
-        instructions::unjoin_game::handler(ctx, ticket_index, exclusion_proof)
+    pub fn unjoin_game(ctx: Context<UnjoinGame>) -> Result<()> {
+        instructions::unjoin_game::handler(ctx)
     }
 
     /// Closes a game with no active players (creator only)
@@ -162,16 +153,9 @@ pub mod coinflip {
         ctx: Context<CompleteGame>,
         random_hash: [u8; 32],
         secret_key: [u8; 32],
-        winner_participation: ParticipationEntry,
-        winner_merkle_proof: Vec<[u8; 32]>,
+        winner_index: u32,
     ) -> Result<()> {
-        instructions::complete_game::handler(
-            ctx,
-            random_hash,
-            secret_key,
-            winner_participation,
-            winner_merkle_proof,
-        )
+        instructions::complete_game::handler(ctx, random_hash, secret_key, winner_index)
     }
 
     // =========================================================================

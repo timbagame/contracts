@@ -1,13 +1,9 @@
 use crate::error::ErrorCode;
 use crate::events::PlayerRolled;
-use crate::state::{GameType, Game, ParticipationEntry};
+use crate::state::GameType;
 use anchor_lang::prelude::*;
 
-pub fn handler(
-    ctx: Context<super::RollGame>,
-    player_participation: ParticipationEntry,
-    player_merkle_proof: Vec<[u8; 32]>,
-) -> Result<()> {
+pub fn handler(ctx: Context<super::RollGame>) -> Result<()> {
     let game = &mut ctx.accounts.game;
     let clock = Clock::get()?;
     let current_time = clock.unix_timestamp as u64;
@@ -28,20 +24,9 @@ pub fn handler(
         ErrorCode::InvalidGameType
     );
 
-    // Verify player participation proof
-    let player_leaf = Game::hash_participation_entry(&player_participation);
+    // Verify player has already joined this game using bloom filter
     require!(
-        game.verify_player_participation(
-            player_leaf,
-            &player_merkle_proof,
-            player_participation.ticket_index,
-        ),
-        ErrorCode::InvalidMerkleProof
-    );
-
-    // Verify the player matches the account
-    require!(
-        player_participation.player == player_key,
+        game.player_likely_joined(&player_key),
         ErrorCode::UnauthorizedPlayer
     );
 
@@ -57,19 +42,18 @@ pub fn handler(
     }
 
     // ===============================
-    // MERKLE TREE UPDATE FOR ADDITIONAL ROLL
+    // BLOOM FILTER UPDATE FOR ADDITIONAL ROLL
     // ===============================
 
     let ticket_amount = game.ticket_amount;
     let entry_index = if game.game_type == GameType::Snowball || game.game_type == GameType::Dumbball {
         // For accumulating games, each roll creates an additional participation entry
-        // The same player can have multiple tickets in the merkle tree
-        game.add_ticket_to_merkle_tree(player_key)?;
+        game.add_player_to_game(&player_key)?;
         game.tickets_count - 1 // New ticket just added
     } else {
-        // For Dumbflip and Dumbaway, return the player's original ticket index
+        // For Dumbflip and Dumbaway, return the player's current ticket index
         // These games don't accumulate additional tickets
-        player_participation.ticket_index
+        game.tickets_count - 1 // Player's existing ticket index
     };
 
     game.last_slot = clock.slot;

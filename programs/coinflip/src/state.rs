@@ -1,4 +1,3 @@
-use crate::error::ErrorCode;
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::hash::hash;
 use anchor_spl::token::{transfer, Transfer};
@@ -23,12 +22,7 @@ pub const GAME_BASE_SIZE: usize = 8
     + 8   // last_slot
     + 1   // is_private
     + 8   // total_amount
-    + 32  // merkle_root
-    + 1   // subtree_count
-    + 1   // max_subtrees
-    + 4   // subtrees length (Vec<T> serialization)
-    + 1   // recent_count
-    + 4; // recent_tickets length (Vec<T> serialization)
+    + 64; // player_filter (512-bit bloom filter for players)
 
 // =============================================================================
 // GAME TYPES
@@ -56,56 +50,6 @@ impl Default for GameType {
     }
 }
 
-// =============================================================================
-// MERKLE TREE STRUCTURES
-// =============================================================================
-
-/// Player participation data that gets hashed into merkle tree leaf
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct ParticipationEntry {
-    /// Player public key
-    pub player: Pubkey,
-    /// Ticket index in the game (position in merkle tree)
-    pub ticket_index: u32,
-}
-
-/// Optimized subtree structure (40 bytes)
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Default)]
-pub struct Subtree {
-    /// Hash of the subtree root
-    pub root_hash: [u8; 32],
-    /// First ticket index in this subtree
-    pub start_index: u32,
-    /// Size of this subtree (power of 2)
-    pub size: u32,
-}
-
-/// Recent ticket leaf hash (32 bytes)
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Default)]
-pub struct RecentLeaf {
-    /// Ticket's leaf hash
-    pub hash: [u8; 32],
-}
-
-/// Swap-with-last proof for maintaining power-of-2 subtrees during unjoin
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct ExclusionProof {
-    /// Departing player's exclusion proof from their subtree
-    pub departing_player_proof: Vec<[u8; 32]>,
-    pub departing_subtree_original_root: [u8; 32],
-
-    /// Last player's exclusion proof from smallest subtree
-    pub last_player_proof: Vec<[u8; 32]>,
-    pub last_subtree_original_root: [u8; 32],
-
-    /// Reconstruction plan for smallest subtree after last ticket removal
-    pub remaining_tickets_in_smallest: Vec<ParticipationEntry>,
-    pub new_power_of_2_root: Option<[u8; 32]>, // None if subtree becomes empty
-    pub tickets_to_recent: Vec<ParticipationEntry>,
-
-    /// New root of departing player's subtree after swap
-    pub departing_subtree_new_root: [u8; 32],
-}
 
 // =============================================================================
 // ORACLE ACCOUNT
@@ -437,18 +381,8 @@ pub struct Game {
     pub is_private: bool,
     /// Total accumulated prize
     pub total_amount: u64,
-    /// Merkle root of all player participations
-    pub merkle_root: [u8; 32],
-    /// Number of active subtrees (dynamic based on max_tickets)
-    pub subtree_count: u8,
-    /// Maximum allowed subtrees (cached from calculate_required_subtrees)
-    pub max_subtrees: u8,
-    /// Dynamic subtree storage - size calculated based on max_tickets
-    pub subtrees: Vec<Subtree>,
-    /// Number of tickets in recent buffer (0-2)
-    pub recent_count: u8,
-    /// Recent ticket leaves (before subtree aggregation) - optimized to 2 tickets
-    pub recent_tickets: Vec<RecentLeaf>,
+    /// 512-bit bloom filter for player participation tracking
+    pub player_filter: [u64; 8],
 }
 
 impl Game {
@@ -456,32 +390,9 @@ impl Game {
     // STORAGE CALCULATION & INITIALIZATION
     // =============================================================================
 
-    /// Calculates required subtrees using conservative approach to handle worst-case merging
-    pub fn calculate_required_subtrees(max_tickets: u32) -> usize {
-        if max_tickets <= 2 {
-            return 0; // All tickets fit in recent buffer
-        }
-
-        // Calculate how many times we'll fill the 2-ticket buffer
-        let buffer_fills = (max_tickets + 1) / 2; // ceil(max_tickets / 2)
-
-        // Use conservative calculation to account for worst-case sequential merging patterns
-        // where all subtrees have different sizes and no same-sized pairs exist for merging
-        if buffer_fills <= 1 {
-            0
-        } else {
-            // Use log2(buffer_fills) + 1 to ensure sufficient subtree slots
-            // This is more conservative than count_ones but prevents merge conflicts
-            (32 - buffer_fills.leading_zeros()) as usize
-        }
-    }
-
-    /// Calculates the total dynamic storage size for a game
-    pub fn calculate_storage_size(max_tickets: u32) -> usize {
-        let required_subtrees = Self::calculate_required_subtrees(max_tickets);
+    /// Calculates the total storage size for a game (now fixed size with Bloom filter)
+    pub fn calculate_storage_size(_max_tickets: u32) -> usize {
         GAME_BASE_SIZE
-            + (required_subtrees * 40)  // Subtree data: 40 bytes per Subtree
-            + (2 * 32) // RecentLeaf data: 32 bytes per RecentLeaf, max 2
     }
 
     // =============================================================================
@@ -583,6 +494,70 @@ impl Game {
     }
 
     // =============================================================================
+    // PLAYER PARTICIPATION TRACKING WITH BLOOM FILTER
+    // =============================================================================
+
+    /// Generate hash values for bloom filter
+    fn hash_player_key(player_key: &Pubkey) -> (usize, usize, usize) {
+        // Generate 3 independent hash values for bloom filter
+        let hash1 = hash(&player_key.to_bytes());
+        let hash2 = hash(&[player_key.to_bytes().as_slice(), b"salt1"].concat());
+        let hash3 = hash(&[player_key.to_bytes().as_slice(), b"salt2"].concat());
+
+        // Convert to bit positions (0-511 for 512-bit filter)
+        let pos1 = (u64::from_le_bytes(hash1.to_bytes()[0..8].try_into().unwrap()) % 512) as usize;
+        let pos2 = (u64::from_le_bytes(hash2.to_bytes()[0..8].try_into().unwrap()) % 512) as usize;
+        let pos3 = (u64::from_le_bytes(hash3.to_bytes()[0..8].try_into().unwrap()) % 512) as usize;
+
+        (pos1, pos2, pos3)
+    }
+
+    /// Set bits in bloom filter for a player key
+    fn set_player_bits(&mut self, player_key: &Pubkey) {
+        let (pos1, pos2, pos3) = Self::hash_player_key(player_key);
+
+        // Set bits in the 512-bit filter (8 x 64-bit words)
+        self.player_filter[pos1 / 64] |= 1u64 << (pos1 % 64);
+        self.player_filter[pos2 / 64] |= 1u64 << (pos2 % 64);
+        self.player_filter[pos3 / 64] |= 1u64 << (pos3 % 64);
+    }
+
+    /// Check if bits are set in bloom filter for a player key
+    fn check_player_bits(&self, player_key: &Pubkey) -> bool {
+        let (pos1, pos2, pos3) = Self::hash_player_key(player_key);
+
+        // Check if all bits are set
+        let bit1_set = (self.player_filter[pos1 / 64] & (1u64 << (pos1 % 64))) != 0;
+        let bit2_set = (self.player_filter[pos2 / 64] & (1u64 << (pos2 % 64))) != 0;
+        let bit3_set = (self.player_filter[pos3 / 64] & (1u64 << (pos3 % 64))) != 0;
+
+        bit1_set && bit2_set && bit3_set
+    }
+
+    /// Check if player likely already joined this game (bloom filter check)
+    pub fn player_likely_joined(&self, player_key: &Pubkey) -> bool {
+        self.check_player_bits(player_key)
+    }
+
+    /// Add player to the game's bloom filter and update counters
+    pub fn add_player_to_game(&mut self, player_key: &Pubkey) -> Result<()> {
+        // Add to bloom filter
+        self.set_player_bits(player_key);
+        
+        // Update counters
+        self.tickets_count += 1;
+        self.total_amount += self.ticket_amount;
+        
+        Ok(())
+    }
+
+    /// Initialize player filter for new game
+    pub fn initialize_player_filter(&mut self) -> Result<()> {
+        self.player_filter = [0; 8];
+        Ok(())
+    }
+
+    // =============================================================================
     // VALIDATION HELPERS
     // =============================================================================
 
@@ -620,627 +595,6 @@ impl Game {
             || token_balance + player_balance >= self.ticket_amount
     }
 
-    // =============================================================================
-    // MERKLE TREE OPERATIONS
-    // =============================================================================
 
-    /// Creates a participation entry for a new ticket
-    pub fn create_participation_entry(player: Pubkey, ticket_index: u32) -> ParticipationEntry {
-        ParticipationEntry {
-            player,
-            ticket_index,
-        }
-    }
 
-    /// Calculates hash of a participation entry (merkle tree leaf)
-    pub fn hash_participation_entry(entry: &ParticipationEntry) -> [u8; 32] {
-        let serialized = entry.try_to_vec().unwrap();
-        hash(&serialized).to_bytes()
-    }
-
-    /// Verifies a merkle proof for a given leaf against this game's merkle root
-    pub fn verify_merkle_proof(&self, leaf: [u8; 32], proof: &[[u8; 32]], leaf_index: u32) -> bool {
-        let mut current_hash = leaf;
-        let mut current_index = leaf_index;
-
-        for proof_element in proof {
-            if current_index % 2 == 0 {
-                // Current node is left child
-                let combined = [current_hash, *proof_element].concat();
-                current_hash = hash(&combined).to_bytes();
-            } else {
-                // Current node is right child
-                let combined = [*proof_element, current_hash].concat();
-                current_hash = hash(&combined).to_bytes();
-            }
-            current_index /= 2;
-        }
-
-        current_hash == self.merkle_root
-    }
-
-    /// Verifies player participation - checks both subtrees and recent players
-    pub fn verify_player_participation(
-        &self,
-        leaf: [u8; 32],
-        proof: &[[u8; 32]],
-        ticket_index: u32,
-    ) -> bool {
-        // Calculate how many tickets are in committed subtrees
-        let committed_tickets = self.tickets_count - self.recent_count as u32;
-
-        if ticket_index >= committed_tickets {
-            // Ticket is in recent_tickets buffer - verify directly
-            self.verify_recent_ticket(leaf, ticket_index - committed_tickets)
-        } else {
-            // Ticket is in committed subtrees - use standard merkle proof
-            self.verify_merkle_proof(leaf, proof, ticket_index)
-        }
-    }
-
-    /// Verifies a recent ticket by direct comparison
-    fn verify_recent_ticket(&self, leaf: [u8; 32], recent_index: u32) -> bool {
-        if recent_index >= self.recent_count as u32 {
-            return false; // Index out of bounds
-        }
-
-        // Direct comparison with stored recent player hash
-        self.recent_tickets[recent_index as usize].hash == leaf
-    }
-
-    /// Adds a ticket to the merkle tree using buffer-based aggregation
-    pub fn add_ticket_to_merkle_tree(&mut self, player: Pubkey) -> Result<()> {
-        let participation = Game::create_participation_entry(player, self.tickets_count);
-        let leaf_hash = Game::hash_participation_entry(&participation);
-
-        if self.recent_count < 2 {
-            // Just add to buffer - no structure change
-            self.recent_tickets.push(RecentLeaf { hash: leaf_hash });
-            self.recent_count += 1;
-            // NO root update needed!
-        } else {
-            // Structure changes - update root
-            let new_subtree = self.build_subtree_from_recent()?;
-            self.merge_subtree(new_subtree)?;
-            self.recent_tickets.clear();
-            self.recent_tickets.push(RecentLeaf { hash: leaf_hash });
-            self.recent_count = 1;
-            self.update_merkle_root()?; // Only update when structure changes
-        }
-
-        self.tickets_count += 1;
-        self.total_amount += self.ticket_amount;
-        Ok(())
-    }
-
-    // =============================================================================
-    // COMMON VALIDATION HELPERS
-    // =============================================================================
-
-    /// Finds largest power-of-2 ≤ n for player splitting during exclusion
-    fn largest_power_of_2_le(n: usize) -> usize {
-        if n > 0 {
-            1 << (31 - (n as u32).leading_zeros() - 1)
-        } else {
-            0
-        }
-    }
-
-    /// Validates merkle proof, returns InvalidExclusionProof on failure
-    fn require_valid_merkle_proof(
-        leaf: [u8; 32],
-        proof: &[[u8; 32]],
-        leaf_index: u32,
-        target_root: [u8; 32],
-    ) -> Result<()> {
-        require!(
-            Self::verify_merkle_proof_against_root(leaf, proof, leaf_index, target_root),
-            ErrorCode::InvalidExclusionProof
-        );
-        Ok(())
-    }
-
-    // =============================================================================
-    // MERKLE TREE INTERNAL HELPERS (PRIVATE)
-    // =============================================================================
-
-    /// Builds 2-player subtree from recent buffer
-    fn build_subtree_from_recent(&self) -> Result<Subtree> {
-        require!(self.recent_count == 2, ErrorCode::InvalidAmount);
-
-        // Start index for recent buffer tickets
-        let start_index = self.tickets_count - self.recent_count as u32;
-        let leaves: Vec<[u8; 32]> = self.recent_tickets.iter().map(|leaf| leaf.hash).collect();
-
-        Ok(Subtree {
-            root_hash: Self::compute_merkle_root(&leaves),
-            start_index,
-            size: 2,
-        })
-    }
-
-    /// Merges new subtree into storage, combining same-sized subtrees if needed
-    fn merge_subtree(&mut self, new: Subtree) -> Result<()> {
-        // If we have space, just add the new subtree
-        if self.subtrees.len() < self.max_subtrees as usize {
-            self.add_subtree_directly(new);
-            return Ok(());
-        }
-
-        // Storage is full - need to merge existing subtrees to make space
-        self.merge_existing_subtrees_for_space()?;
-
-        // Now we have space for the new subtree
-        self.add_subtree_directly(new);
-
-        Ok(())
-    }
-
-    /// Adds a subtree directly to storage when space is available
-    fn add_subtree_directly(&mut self, subtree: Subtree) {
-        self.subtrees.push(subtree);
-        self.subtree_count += 1;
-    }
-
-    /// Merges two existing same-sized subtrees to make space for a new subtree
-    fn merge_existing_subtrees_for_space(&mut self) -> Result<()> {
-        // Find two same-sized subtrees to merge
-        let (idx1, idx2) = self
-            .find_same_sized_pair()
-            .ok_or(ErrorCode::MerkleTreeStructureError)?;
-
-        let subtree1 = self.subtrees[idx1];
-        let subtree2 = self.subtrees[idx2];
-
-        // Remove both subtrees and create merged version
-        self.remove_subtree_pair(idx1, idx2);
-        let merged_subtree = self.create_merged_subtree(subtree1, subtree2);
-
-        // Add the merged subtree back
-        self.add_subtree_directly(merged_subtree);
-
-        Ok(())
-    }
-
-    /// Removes subtree pair (higher index first to avoid shifting)
-    fn remove_subtree_pair(&mut self, idx1: usize, idx2: usize) {
-        let (first_idx, second_idx) = if idx1 > idx2 {
-            (idx1, idx2)
-        } else {
-            (idx2, idx1)
-        };
-
-        // Remove higher index first
-        self.subtrees.remove(first_idx);
-
-        // Adjust second index after first removal
-        let adjusted_second_idx = if second_idx > first_idx {
-            second_idx - 1
-        } else {
-            second_idx
-        };
-        self.subtrees.remove(adjusted_second_idx);
-
-        self.subtree_count -= 2;
-    }
-
-    fn create_merged_subtree(&self, subtree1: Subtree, subtree2: Subtree) -> Subtree {
-        // Order hashes by start index for consistent structure
-        let (left, right) = if subtree1.start_index < subtree2.start_index {
-            (subtree1.root_hash, subtree2.root_hash)
-        } else {
-            (subtree2.root_hash, subtree1.root_hash)
-        };
-
-        Subtree {
-            root_hash: hash(&[left, right].concat()).to_bytes(),
-            start_index: subtree1.start_index.min(subtree2.start_index),
-            size: subtree1.size + subtree2.size,
-        }
-    }
-
-    /// Finds smallest pair of same-sized subtrees for optimal merging
-    fn find_same_sized_pair(&self) -> Option<(usize, usize)> {
-        let mut best_pair: Option<(usize, usize)> = None;
-        let mut smallest_size = u32::MAX;
-
-        for i in 0..self.subtrees.len() {
-            for j in (i + 1)..self.subtrees.len() {
-                if self.subtrees[i].size == self.subtrees[j].size
-                    && self.subtrees[i].size < smallest_size
-                {
-                    smallest_size = self.subtrees[i].size;
-                    best_pair = Some((i, j));
-                }
-            }
-        }
-        best_pair
-    }
-
-    fn find_smallest_subtree(&self) -> usize {
-        let mut smallest_idx = 0;
-        let mut smallest_size = u32::MAX;
-
-        for i in 0..self.subtrees.len() {
-            if self.subtrees[i].size < smallest_size {
-                smallest_size = self.subtrees[i].size;
-                smallest_idx = i;
-            }
-        }
-
-        smallest_idx
-    }
-
-    /// Updates global merkle root from subtrees only (excludes recent players)
-    fn update_merkle_root(&mut self) -> Result<()> {
-        let mut hashes = Vec::new();
-
-        // Add all subtree roots (sorted by start_index)
-        let mut subtrees: Vec<&Subtree> = self.subtrees.iter().collect();
-        subtrees.sort_by_key(|s| s.start_index);
-        hashes.extend(subtrees.iter().map(|s| s.root_hash));
-
-        // Recent players excluded - verified separately
-
-        self.merkle_root = if hashes.is_empty() {
-            [0; 32] // Empty tree when no subtrees exist
-        } else {
-            Self::compute_merkle_root(&hashes)
-        };
-
-        Ok(())
-    }
-
-    /// Computes merkle root using bottom-up binary tree construction
-    fn compute_merkle_root(leaves: &[[u8; 32]]) -> [u8; 32] {
-        if leaves.is_empty() {
-            return [0; 32];
-        }
-
-        let mut layer = leaves.to_vec();
-        while layer.len() > 1 {
-            layer = layer
-                .chunks(2)
-                .map(|chunk| {
-                    if chunk.len() == 2 {
-                        hash(&[chunk[0], chunk[1]].concat()).to_bytes()
-                    } else {
-                        chunk[0]
-                    }
-                })
-                .collect();
-        }
-        layer[0]
-    }
-
-    /// Initialize merkle system for new game with dynamic allocation based on max_tickets
-    pub fn initialize_merkle_system(&mut self, max_tickets: u32) -> Result<()> {
-        // Calculate required subtrees and cache the value
-        let required_subtrees = Self::calculate_required_subtrees(max_tickets);
-
-        // Initialize dynamic vectors and cached values
-        self.subtree_count = 0;
-        self.max_subtrees = required_subtrees as u8;
-        self.subtrees = Vec::new();
-        self.recent_count = 0;
-        self.recent_tickets = Vec::new();
-        self.merkle_root = [0; 32];
-
-        Ok(())
-    }
-
-    // =============================================================================
-    // EXCLUSION PROOF VERIFICATION FUNCTIONS
-    // =============================================================================
-
-    /// Finds which subtree contains ticket index (None if in recent buffer)
-    pub fn find_subtree_containing_ticket(&self, ticket_index: u32) -> Option<usize> {
-        for (i, subtree) in self.subtrees.iter().enumerate() {
-            let end_index = subtree.start_index + subtree.size - 1;
-            if ticket_index >= subtree.start_index && ticket_index <= end_index {
-                return Some(i);
-            }
-        }
-        None // Ticket is in recent_tickets
-    }
-
-    /// Verify a merkle proof against a specific root hash
-    pub fn verify_merkle_proof_against_root(
-        leaf: [u8; 32],
-        proof: &[[u8; 32]],
-        leaf_index: u32,
-        target_root: [u8; 32],
-    ) -> bool {
-        let mut current_hash = leaf;
-        let mut current_index = leaf_index;
-
-        for proof_element in proof {
-            if current_index % 2 == 0 {
-                // Current node is left child
-                let combined = [current_hash, *proof_element].concat();
-                current_hash = hash(&combined).to_bytes();
-            } else {
-                // Current node is right child
-                let combined = [*proof_element, current_hash].concat();
-                current_hash = hash(&combined).to_bytes();
-            }
-            current_index /= 2;
-        }
-
-        current_hash == target_root
-    }
-
-    /// Verifies exclusion proof for removing a player via swap-with-last
-    pub fn verify_exclusion_proof(
-        &self,
-        proof: &ExclusionProof,
-        departing_player_key: Pubkey,
-        departing_ticket_index: u32,
-    ) -> Result<bool> {
-        // Find subtrees involved in the swap operation
-        let (departing_subtree_idx, smallest_subtree_idx) =
-            self.find_exclusion_subtrees(departing_ticket_index)?;
-
-        // Verify the departing player is actually in their claimed subtree
-        self.verify_departing_player_in_subtree(
-            proof,
-            departing_player_key,
-            departing_ticket_index,
-            departing_subtree_idx,
-        )?;
-
-        // Verify the smallest subtree state matches the proof
-        self.verify_smallest_subtree_state(proof, smallest_subtree_idx)?;
-
-        // Verify the reconstruction plan maintains merkle tree integrity
-        self.verify_reconstruction_plan(proof)?;
-
-        Ok(true)
-    }
-
-    /// Finds the subtrees involved in exclusion: departing player's subtree and smallest subtree
-    fn find_exclusion_subtrees(&self, departing_ticket_index: u32) -> Result<(usize, usize)> {
-        let departing_subtree_idx = self
-            .find_subtree_containing_ticket(departing_ticket_index)
-            .ok_or(ErrorCode::SubtreeNotFound)?;
-
-        let smallest_subtree_idx = self.find_smallest_subtree();
-
-        Ok((departing_subtree_idx, smallest_subtree_idx))
-    }
-
-    /// Verifies that the departing player exists in their claimed subtree
-    fn verify_departing_player_in_subtree(
-        &self,
-        proof: &ExclusionProof,
-        departing_player_key: Pubkey,
-        departing_ticket_index: u32,
-        departing_subtree_idx: usize,
-    ) -> Result<()> {
-        let departing_subtree = &self.subtrees[departing_subtree_idx];
-
-        // Verify the proof claims the correct subtree root
-        require!(
-            proof.departing_subtree_original_root == departing_subtree.root_hash,
-            ErrorCode::InvalidExclusionProof
-        );
-
-        // Create and hash the participation entry
-        let departing_player_entry =
-            Game::create_participation_entry(departing_player_key, departing_ticket_index);
-        let departing_leaf = Game::hash_participation_entry(&departing_player_entry);
-        let departing_relative_index = departing_ticket_index - departing_subtree.start_index;
-
-        // Verify merkle proof that player exists in the subtree
-        Self::require_valid_merkle_proof(
-            departing_leaf,
-            &proof.departing_player_proof,
-            departing_relative_index,
-            proof.departing_subtree_original_root,
-        )?;
-
-        Ok(())
-    }
-
-    /// Verifies the smallest subtree state matches what the proof claims
-    fn verify_smallest_subtree_state(
-        &self,
-        proof: &ExclusionProof,
-        smallest_subtree_idx: usize,
-    ) -> Result<()> {
-        let smallest_subtree = &self.subtrees[smallest_subtree_idx];
-
-        // Verify the proof claims the correct smallest subtree root
-        require!(
-            proof.last_subtree_original_root == smallest_subtree.root_hash,
-            ErrorCode::InvalidExclusionProof
-        );
-
-        // Verify the remaining players count is correct (subtree size - 1)
-        let remaining_count = proof.remaining_tickets_in_smallest.len();
-        require!(
-            remaining_count == (smallest_subtree.size - 1) as usize,
-            ErrorCode::MalformedSubtreeProof
-        );
-
-        Ok(())
-    }
-
-    /// Verifies the reconstruction plan maintains power-of-2 subtree requirements
-    fn verify_reconstruction_plan(&self, proof: &ExclusionProof) -> Result<()> {
-        let remaining_count = proof.remaining_tickets_in_smallest.len();
-
-        if remaining_count == 0 {
-            // Case 1: Subtree becomes empty after removing last player
-            self.verify_empty_subtree_plan(proof)?;
-        } else if remaining_count.is_power_of_two() {
-            // Case 2: Perfect power-of-2, all players stay in subtree
-            self.verify_perfect_power_of_2_plan(proof)?;
-        } else {
-            // Case 3: Split players between subtree and recent buffer
-            self.verify_split_reconstruction_plan(proof, remaining_count)?;
-        }
-
-        Ok(())
-    }
-
-    /// Verifies reconstruction plan when subtree becomes empty
-    fn verify_empty_subtree_plan(&self, proof: &ExclusionProof) -> Result<()> {
-        require!(
-            proof.new_power_of_2_root.is_none(),
-            ErrorCode::InvalidExclusionProof
-        );
-        require!(
-            proof.tickets_to_recent.is_empty(),
-            ErrorCode::InvalidExclusionProof
-        );
-        Ok(())
-    }
-
-    /// Verifies reconstruction plan when remaining count is a perfect power-of-2
-    fn verify_perfect_power_of_2_plan(&self, proof: &ExclusionProof) -> Result<()> {
-        require!(
-            proof.new_power_of_2_root.is_some(),
-            ErrorCode::InvalidExclusionProof
-        );
-        require!(
-            proof.tickets_to_recent.is_empty(),
-            ErrorCode::InvalidExclusionProof
-        );
-        Ok(())
-    }
-
-    /// Verifies reconstruction plan when tickets must be split between subtree and recent buffer
-    fn verify_split_reconstruction_plan(
-        &self,
-        proof: &ExclusionProof,
-        remaining_count: usize,
-    ) -> Result<()> {
-        // Calculate power-of-2 split threshold
-        let largest_power_of_2_le = Self::largest_power_of_2_le(remaining_count);
-
-        let subtree_tickets = largest_power_of_2_le;
-        let recent_tickets = remaining_count - subtree_tickets;
-
-        // Verify the correct number of tickets are moved to recent buffer
-        require!(
-            proof.tickets_to_recent.len() == recent_tickets,
-            ErrorCode::MalformedSubtreeProof
-        );
-
-        // Verify new root existence based on whether subtree will have tickets
-        if subtree_tickets > 0 {
-            require!(
-                proof.new_power_of_2_root.is_some(),
-                ErrorCode::InvalidExclusionProof
-            );
-        } else {
-            require!(
-                proof.new_power_of_2_root.is_none(),
-                ErrorCode::InvalidExclusionProof
-            );
-        }
-
-        Ok(())
-    }
-
-    /// Executes verified exclusion by updating subtrees and global root
-    pub fn modify_subtree_after_verified_exclusion(
-        &mut self,
-        proof: &ExclusionProof,
-        departing_ticket_index: u32,
-    ) -> Result<()> {
-        let (departing_subtree_idx, smallest_subtree_idx) =
-            self.find_exclusion_subtrees(departing_ticket_index)?;
-
-        // Update departing player's subtree with swapped-in last player
-        self.update_departing_subtree(proof, departing_subtree_idx);
-
-        // Handle smallest subtree reconstruction based on remaining players
-        self.reconstruct_smallest_subtree(proof, smallest_subtree_idx)?;
-
-        // Update global merkle root to reflect all changes
-        self.update_merkle_root()?;
-
-        Ok(())
-    }
-
-    /// Updates the departing player's subtree with the new root after swap
-    fn update_departing_subtree(&mut self, proof: &ExclusionProof, departing_subtree_idx: usize) {
-        // Replace departing player with last player (swap operation)
-        self.subtrees[departing_subtree_idx].root_hash = proof.departing_subtree_new_root;
-        // Size unchanged (swap, not removal)
-    }
-
-    fn reconstruct_smallest_subtree(
-        &mut self,
-        proof: &ExclusionProof,
-        smallest_subtree_idx: usize,
-    ) -> Result<()> {
-        let remaining_count = proof.remaining_tickets_in_smallest.len();
-
-        if remaining_count == 0 {
-            // Case 1: Subtree becomes empty - remove it entirely
-            self.remove_empty_subtree(smallest_subtree_idx);
-        } else if remaining_count.is_power_of_two() {
-            // Case 2: Perfect power-of-2 - update subtree in place
-            self.update_perfect_power_of_2_subtree(proof, smallest_subtree_idx, remaining_count);
-        } else {
-            // Case 3: Split between subtree and recent buffer
-            self.split_subtree_reconstruction(proof, smallest_subtree_idx, remaining_count)?;
-        }
-
-        Ok(())
-    }
-
-    fn remove_empty_subtree(&mut self, subtree_idx: usize) {
-        self.subtrees.remove(subtree_idx);
-        self.subtree_count -= 1;
-    }
-
-    fn update_perfect_power_of_2_subtree(
-        &mut self,
-        proof: &ExclusionProof,
-        subtree_idx: usize,
-        remaining_count: usize,
-    ) {
-        self.subtrees[subtree_idx].root_hash = proof.new_power_of_2_root.unwrap();
-        self.subtrees[subtree_idx].size = remaining_count as u32;
-    }
-
-    /// Handles split reconstruction: some players to subtree, some to recent buffer
-    fn split_subtree_reconstruction(
-        &mut self,
-        proof: &ExclusionProof,
-        smallest_subtree_idx: usize,
-        remaining_count: usize,
-    ) -> Result<()> {
-        // Split calculation: subtree vs recent buffer
-        let largest_power_of_2_le = Self::largest_power_of_2_le(remaining_count);
-        let subtree_tickets = largest_power_of_2_le;
-
-        if subtree_tickets > 0 {
-            // Update subtree with power-of-2 portion
-            self.subtrees[smallest_subtree_idx].root_hash = proof.new_power_of_2_root.unwrap();
-            self.subtrees[smallest_subtree_idx].size = subtree_tickets as u32;
-        } else {
-            // Remove subtree entirely if no tickets remain
-            self.remove_empty_subtree(smallest_subtree_idx);
-        }
-
-        // Move excess tickets to recent_tickets buffer
-        self.move_tickets_to_recent_buffer(proof)?;
-
-        Ok(())
-    }
-
-    /// Moves excess tickets from subtree to recent_tickets buffer
-    fn move_tickets_to_recent_buffer(&mut self, proof: &ExclusionProof) -> Result<()> {
-        for ticket_entry in &proof.tickets_to_recent {
-            let leaf_hash = Game::hash_participation_entry(ticket_entry);
-            self.recent_tickets.push(RecentLeaf { hash: leaf_hash });
-            self.recent_count += 1;
-        }
-        Ok(())
-    }
 }

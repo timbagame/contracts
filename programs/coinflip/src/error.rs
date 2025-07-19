@@ -79,37 +79,17 @@ pub enum ErrorCode {
     #[msg("Insufficient balance")]
     InsufficientBalance = 1201,
 
-    /// Exclusion proof verification failed
-    #[msg("Invalid exclusion proof")]
-    InvalidExclusionProof = 1202,
-
-    /// Subtree proof structure is malformed or invalid
-    #[msg("Malformed subtree proof")]
-    MalformedSubtreeProof = 1203,
-
-    /// Cannot locate subtree containing the specified player
-    #[msg("Subtree not found")]
-    SubtreeNotFound = 1204,
-
-    /// Merkle tree structure error - unable to maintain proper binary tree
-    #[msg("Merkle tree structure error")]
-    MerkleTreeStructureError = 1205,
-
-    /// Invalid merkle proof provided for player verification
-    #[msg("Invalid merkle proof")]
-    InvalidMerkleProof = 1206,
-
     /// Winner index does not match calculated winner from secret key
     #[msg("Invalid winner index")]
-    InvalidWinnerIndex = 1207,
+    InvalidWinnerIndex = 1202,
 
     /// Winner pubkey does not match participation entry
     #[msg("Winner pubkey mismatch")]
-    WinnerPubkeyMismatch = 1208,
+    WinnerPubkeyMismatch = 1203,
 
     /// Player not authorized for private game
     #[msg("Private game access denied")]
-    PrivateGameAccessDenied = 1209,
+    PrivateGameAccessDenied = 1204,
 
     // =========================================================================
     // CONFIGURATION ERRORS (1300-1399)

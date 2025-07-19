@@ -1,13 +1,8 @@
 use crate::error::ErrorCode;
 use crate::events::PlayerUnjoined;
-use crate::state::{ExclusionProof, Game};
 use anchor_lang::prelude::*;
 
-pub fn handler(
-    ctx: Context<super::UnjoinGame>,
-    ticket_index: u32,
-    exclusion_proof: Option<ExclusionProof>,
-) -> Result<()> {
+pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
     let game = &mut ctx.accounts.game;
     let player_balance = &mut ctx.accounts.player_balance;
     let oracle = &ctx.accounts.oracle;
@@ -27,91 +22,25 @@ pub fn handler(
 
     require!(game.tickets_count > 0, ErrorCode::InvalidTicketsCount);
 
+    // Verify player likely joined this game using bloom filter
     require!(
-        ticket_index < game.tickets_count,
+        game.player_likely_joined(&player_key),
         ErrorCode::UnauthorizedPlayer
     );
 
     // ===============================
-    // VERIFY PLAYER IDENTITY
+    // STATE UPDATES
     // ===============================
 
-    let participation_entry = Game::create_participation_entry(player_key, ticket_index);
-    let player_leaf_hash = Game::hash_participation_entry(&participation_entry);
-
-    // ===============================
-    // DETERMINE UNJOIN STRATEGY BASED ON PLAYER LOCATION
-    // ===============================
-
-    // Check if player is in recent_tickets
-    let mut found_in_recent = false;
-    let mut recent_ticket_index = 0;
-
-    for (i, recent_leaf) in game.recent_tickets.iter().enumerate() {
-        if recent_leaf.hash == player_leaf_hash {
-            found_in_recent = true;
-            recent_ticket_index = i;
-            break;
-        }
-    }
-
-    if found_in_recent {
-        // ===============================
-        // CASE 1: PLAYER IN RECENT_TICKETS
-        // ===============================
-
-        let last_recent_index = (game.recent_count - 1) as usize;
-
-        if recent_ticket_index == last_recent_index {
-            // Case 1a: Player is last in recent_tickets - simple removal
-            game.recent_tickets.remove(recent_ticket_index);
-            game.recent_count -= 1;
-        } else {
-            // Case 1b: Player is not last in recent_tickets - swap with last
-            game.recent_tickets
-                .swap(recent_ticket_index, last_recent_index);
-            game.recent_tickets.remove(last_recent_index);
-            game.recent_count -= 1;
-        }
-    } else {
-        // ===============================
-        // CASE 2: PLAYER IN SUBTREE
-        // ===============================
-
-        // Verify the player is actually in a subtree
-        require!(
-            game.find_subtree_containing_ticket(ticket_index).is_some(),
-            ErrorCode::UnauthorizedPlayer
-        );
-
-        // Case 2: Subtree player unjoin - always use swap-with-last approach
-        let exclusion_proof = exclusion_proof.ok_or(ErrorCode::InvalidExclusionProof)?;
-
-        // Verify the exclusion proof with swap-with-last operation
-        require!(
-            game.verify_exclusion_proof(&exclusion_proof, player_key, ticket_index)?,
-            ErrorCode::InvalidExclusionProof
-        );
-
-        // Apply the verified swap-with-last operation
-        game.modify_subtree_after_verified_exclusion(&exclusion_proof, ticket_index)?;
-    }
-
-    // ===============================
-    // STATE UPDATES (COMMON)
-    // ===============================
-
-    let refund_amount = game.ticket_amount;
-
-    // Process refund if there's a ticket amount
-    if refund_amount > 0 {
-        player_balance.refund(refund_amount);
-        game.total_amount -= refund_amount;
-    }
-
-    // Update game state - decrement ticket counter
+    // Simple unjoin - just decrement counters and refund
+    // Note: We cannot remove from bloom filter without causing false negatives
+    // for other players, so we just decrement counters
     game.tickets_count -= 1;
+    game.total_amount -= game.ticket_amount;
     game.last_slot = clock.slot;
+
+    // Refund player
+    player_balance.refund(game.ticket_amount);
 
     // ===============================
     // EVENT EMISSION
@@ -122,7 +51,7 @@ pub fn handler(
         player: player_key,
         total_amount: game.total_amount,
         tickets_count: game.tickets_count,
-        ticket_index,
+        ticket_index: 0, // Not meaningful with bloom filter, but required by event
         last_slot: game.last_slot,
         timestamp: current_time,
     });

@@ -17,9 +17,15 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
 
     require!(!game.is_expired(current_time), ErrorCode::GameExpired);
 
-    // Check for double join using bloom filter
+    // Check for double join using player balance bloom filter
     require!(
         player_balance.can_join_game(&game_key, game.created_at),
+        ErrorCode::AlreadyJoined
+    );
+
+    // Check for double join using game's player bloom filter
+    require!(
+        !game.player_likely_joined(&player_key),
         ErrorCode::AlreadyJoined
     );
 
@@ -27,8 +33,8 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
     // STATE UPDATES
     // ===============================
 
-    // Add ticket to merkle tree
-    game.add_ticket_to_merkle_tree(player_key)?;
+    // Add player to game's bloom filter and update counters
+    game.add_player_to_game(&player_key)?;
     game.last_slot = clock.slot;
 
     // Mark game as joined in player's bloom filter
