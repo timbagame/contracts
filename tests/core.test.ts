@@ -45,7 +45,7 @@ describe("Core Game Operations", () => {
       expect(oracle.operator.equals(oracle.operatorKeypair.publicKey)).to.be
         .true;
       expect(oracle.config.feePercentage).to.equal(1);
-      expect(oracle.config.maxTickets).to.equal(100);
+      expect(oracle.config.maxTickets).to.equal(50000);
     });
 
     it("should return existing oracle configuration", async () => {
@@ -60,7 +60,7 @@ describe("Core Game Operations", () => {
 
       // Should return the default configuration from the first initialization
       expect(oracle.config.feePercentage).to.equal(1);
-      expect(oracle.config.maxTickets).to.equal(100);
+      expect(oracle.config.maxTickets).to.equal(50000);
       expect(oracle.config.maxTimeout).to.equal(86400);
     });
 
