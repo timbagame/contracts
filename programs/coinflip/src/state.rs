@@ -8,7 +8,7 @@ use anchor_spl::token::{transfer, Transfer};
 
 pub const ORACLE_SIZE: usize = 8 + 32 + 1 + 2 + 4 + 4 + 4;
 pub const GAME_TOKEN_SIZE: usize = 8 + 32 + 1 + 8 + 8 + 1;
-pub const PLAYER_BALANCE_SIZE: usize = 8 + 8 + 64 + 64 + 8 + 8; // amount + game_filter + game_index_filter + filter_last_updated + longest_game_expiry
+pub const PLAYER_BALANCE_SIZE: usize = 8 + 8 + 64 + 64 + 64 + 8 + 8; // amount + game_filter + game_index_filter + unjoin_index_filter + filter_last_updated + longest_game_expiry
 pub const GAME_BASE_SIZE: usize = 8
     + 32  // creator
     + 1   // game_type
@@ -207,6 +207,8 @@ pub struct PlayerBalance {
     pub game_filter: [u64; 8],
     /// 512-bit bloom filter for game + ticket index tracking
     pub game_index_filter: [u64; 8],
+    /// 512-bit bloom filter for game + ticket index unjoin tracking
+    pub unjoin_index_filter: [u64; 8],
     /// Timestamp when filter was last updated
     pub filter_last_updated: u64,
     /// Longest expiration time of games in filter
@@ -274,6 +276,16 @@ impl PlayerBalance {
         self.game_index_filter[pos3 / 64] |= 1u64 << (pos3 % 64);
     }
 
+    /// Set bits in unjoin index bloom filter for a game key + index
+    fn set_unjoin_index_bits(&mut self, game_key: &Pubkey, ticket_index: u32) {
+        let (pos1, pos2, pos3) = Self::hash_game_index(game_key, ticket_index);
+
+        // Set bits in the 512-bit filter (8 x 64-bit words)
+        self.unjoin_index_filter[pos1 / 64] |= 1u64 << (pos1 % 64);
+        self.unjoin_index_filter[pos2 / 64] |= 1u64 << (pos2 % 64);
+        self.unjoin_index_filter[pos3 / 64] |= 1u64 << (pos3 % 64);
+    }
+
     /// Check if bits are set in bloom filter for a game key
     fn check_bloom_bits(&self, game_key: &Pubkey) -> bool {
         let (pos1, pos2, pos3) = Self::hash_game_key(game_key);
@@ -294,6 +306,18 @@ impl PlayerBalance {
         let bit1_set = (self.game_index_filter[pos1 / 64] & (1u64 << (pos1 % 64))) != 0;
         let bit2_set = (self.game_index_filter[pos2 / 64] & (1u64 << (pos2 % 64))) != 0;
         let bit3_set = (self.game_index_filter[pos3 / 64] & (1u64 << (pos3 % 64))) != 0;
+
+        bit1_set && bit2_set && bit3_set
+    }
+
+    /// Check if bits are set in unjoin index bloom filter for a game key + index
+    fn check_unjoin_index_bits(&self, game_key: &Pubkey, ticket_index: u32) -> bool {
+        let (pos1, pos2, pos3) = Self::hash_game_index(game_key, ticket_index);
+
+        // Check if all bits are set
+        let bit1_set = (self.unjoin_index_filter[pos1 / 64] & (1u64 << (pos1 % 64))) != 0;
+        let bit2_set = (self.unjoin_index_filter[pos2 / 64] & (1u64 << (pos2 % 64))) != 0;
+        let bit3_set = (self.unjoin_index_filter[pos3 / 64] & (1u64 << (pos3 % 64))) != 0;
 
         bit1_set && bit2_set && bit3_set
     }
@@ -321,6 +345,7 @@ impl PlayerBalance {
         if current_time > self.longest_game_expiry {
             self.game_filter = [0; 8];
             self.game_index_filter = [0; 8];
+            self.unjoin_index_filter = [0; 8];
             self.filter_last_updated = current_time;
             self.longest_game_expiry = 0; // No games tracked
         }
@@ -435,6 +460,40 @@ impl PlayerBalance {
 
         // Game is older than our filter, check bloom filter
         !self.check_game_index_bits(game_key, ticket_index)
+    }
+
+    /// Mark game + index as unjoined in bloom filter
+    pub fn mark_game_index_unjoined(
+        &mut self,
+        game_key: &Pubkey,
+        ticket_index: u32,
+        current_time: u64,
+    ) {
+        // Maybe reset filter if all old games expired
+        self.maybe_reset_filter(current_time);
+
+        // Add to unjoin index bloom filter
+        self.set_unjoin_index_bits(game_key, ticket_index);
+
+        // Update timestamp
+        self.filter_last_updated = current_time;
+    }
+
+    /// Check if player has already unjoined this specific game + index
+    pub fn has_unjoined_game_index(
+        &self,
+        game_key: &Pubkey,
+        ticket_index: u32,
+        game_created_time: u64,
+    ) -> bool {
+        // If game was created AFTER our filter was last updated,
+        // it can't possibly be in our filter (even if bits match)
+        if game_created_time > self.filter_last_updated {
+            return false; // Definitely hasn't unjoined
+        }
+
+        // Game is older than our filter, check unjoin bloom filter
+        self.check_unjoin_index_bits(game_key, ticket_index)
     }
 }
 

@@ -139,8 +139,8 @@ pub mod coinflip {
     }
 
     /// Allows a player to leave a game before completion (with refund)
-    pub fn unjoin_game(ctx: Context<UnjoinGame>) -> Result<()> {
-        instructions::unjoin_game::handler(ctx)
+    pub fn unjoin_game(ctx: Context<UnjoinGame>, ticket_index: u32) -> Result<()> {
+        instructions::unjoin_game::handler(ctx, ticket_index)
     }
 
     /// Closes a game with no active players (creator only)
