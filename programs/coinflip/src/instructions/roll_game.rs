@@ -5,9 +5,10 @@ use anchor_lang::prelude::*;
 
 pub fn handler(ctx: Context<super::RollGame>) -> Result<()> {
     let game = &mut ctx.accounts.game;
+    let oracle = &ctx.accounts.oracle;
     let clock = Clock::get()?;
     let current_time = clock.unix_timestamp as u64;
-    let player_key = ctx.accounts.player.key();
+    let _player_key = ctx.accounts.player.key();
     let player_balance = &mut ctx.accounts.player_balance;
 
     // ===============================
@@ -24,9 +25,9 @@ pub fn handler(ctx: Context<super::RollGame>) -> Result<()> {
         ErrorCode::InvalidGameType
     );
 
-    // Verify player has already joined this game using bloom filter
+    // Verify player has already joined this game using player balance bloom filter
     require!(
-        game.player_likely_joined(&player_key),
+        !player_balance.can_join_game(&game.key(), game.created_at),
         ErrorCode::UnauthorizedPlayer
     );
 
@@ -48,8 +49,14 @@ pub fn handler(ctx: Context<super::RollGame>) -> Result<()> {
     let ticket_amount = game.ticket_amount;
     let entry_index = if game.game_type == GameType::Snowball || game.game_type == GameType::Dumbball {
         // For accumulating games, each roll creates an additional participation entry
-        game.add_player_to_game(&player_key)?;
-        game.tickets_count - 1 // New ticket just added
+        game.add_player_to_game()?;
+        let new_index = game.tickets_count - 1;
+        
+        // Mark this specific game + index combination in player's filter
+        let game_expiry = game.calculate_expiry_timestamp(oracle.oracle_buffer_time);
+        player_balance.mark_game_index_joined(&game.key(), new_index, game_expiry, current_time);
+        
+        new_index // New ticket just added
     } else {
         // For Dumbflip and Dumbaway, return the player's current ticket index
         // These games don't accumulate additional tickets

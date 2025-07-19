@@ -23,18 +23,12 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
         ErrorCode::AlreadyJoined
     );
 
-    // Check for double join using game's player bloom filter
-    require!(
-        !game.player_likely_joined(&player_key),
-        ErrorCode::AlreadyJoined
-    );
-
     // ===============================
     // STATE UPDATES
     // ===============================
 
-    // Add player to game's bloom filter and update counters
-    game.add_player_to_game(&player_key)?;
+    // Add player to game and update counters
+    game.add_player_to_game()?;
     game.last_slot = clock.slot;
 
     // Mark game as joined in player's bloom filter
