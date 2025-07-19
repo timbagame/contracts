@@ -22,9 +22,9 @@ pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
 
     require!(game.tickets_count > 0, ErrorCode::InvalidTicketsCount);
 
-    // Verify player likely joined this game using bloom filter
+    // Verify player joined this game using player balance bloom filter
     require!(
-        game.player_likely_joined(&player_key),
+        !player_balance.can_join_game(&game.key(), game.created_at),
         ErrorCode::UnauthorizedPlayer
     );
 

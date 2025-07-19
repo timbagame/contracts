@@ -8,7 +8,7 @@ use anchor_spl::token::{transfer, Transfer};
 
 pub const ORACLE_SIZE: usize = 8 + 32 + 1 + 2 + 4 + 4 + 4;
 pub const GAME_TOKEN_SIZE: usize = 8 + 32 + 1 + 8 + 8 + 1;
-pub const PLAYER_BALANCE_SIZE: usize = 8 + 8 + 64 + 8 + 8; // amount + game_filter + filter_last_updated + longest_game_expiry
+pub const PLAYER_BALANCE_SIZE: usize = 8 + 8 + 64 + 64 + 8 + 8; // amount + game_filter + game_index_filter + filter_last_updated + longest_game_expiry
 pub const GAME_BASE_SIZE: usize = 8
     + 32  // creator
     + 1   // game_type
@@ -22,7 +22,7 @@ pub const GAME_BASE_SIZE: usize = 8
     + 8   // last_slot
     + 1   // is_private
     + 8   // total_amount
-    + 64; // player_filter (512-bit bloom filter for players)
+;
 
 // =============================================================================
 // GAME TYPES
@@ -205,6 +205,8 @@ pub struct PlayerBalance {
     pub amount: u64,
     /// 512-bit bloom filter for game participation tracking
     pub game_filter: [u64; 8],
+    /// 512-bit bloom filter for game + ticket index tracking
+    pub game_index_filter: [u64; 8],
     /// Timestamp when filter was last updated
     pub filter_last_updated: u64,
     /// Longest expiration time of games in filter
@@ -217,12 +219,32 @@ impl PlayerBalance {
         self.amount += amount;
     }
 
-    /// Generate hash values for bloom filter
+    /// Generate hash values for game key bloom filter
     fn hash_game_key(game_key: &Pubkey) -> (usize, usize, usize) {
         // Generate 3 independent hash values for bloom filter
         let hash1 = hash(&game_key.to_bytes());
         let hash2 = hash(&[game_key.to_bytes().as_slice(), b"salt1"].concat());
         let hash3 = hash(&[game_key.to_bytes().as_slice(), b"salt2"].concat());
+
+        // Convert to bit positions (0-511 for 512-bit filter)
+        let pos1 = (u64::from_le_bytes(hash1.to_bytes()[0..8].try_into().unwrap()) % 512) as usize;
+        let pos2 = (u64::from_le_bytes(hash2.to_bytes()[0..8].try_into().unwrap()) % 512) as usize;
+        let pos3 = (u64::from_le_bytes(hash3.to_bytes()[0..8].try_into().unwrap()) % 512) as usize;
+
+        (pos1, pos2, pos3)
+    }
+
+    /// Generate hash values for game key + index bloom filter
+    fn hash_game_index(game_key: &Pubkey, ticket_index: u32) -> (usize, usize, usize) {
+        // Combine game key and ticket index
+        let mut combined_data = Vec::with_capacity(36);
+        combined_data.extend_from_slice(&game_key.to_bytes());
+        combined_data.extend_from_slice(&ticket_index.to_le_bytes());
+
+        // Generate 3 independent hash values for bloom filter
+        let hash1 = hash(&combined_data);
+        let hash2 = hash(&[combined_data.as_slice(), b"index1"].concat());
+        let hash3 = hash(&[combined_data.as_slice(), b"index2"].concat());
 
         // Convert to bit positions (0-511 for 512-bit filter)
         let pos1 = (u64::from_le_bytes(hash1.to_bytes()[0..8].try_into().unwrap()) % 512) as usize;
@@ -242,6 +264,16 @@ impl PlayerBalance {
         self.game_filter[pos3 / 64] |= 1u64 << (pos3 % 64);
     }
 
+    /// Set bits in game index bloom filter for a game key + index
+    fn set_game_index_bits(&mut self, game_key: &Pubkey, ticket_index: u32) {
+        let (pos1, pos2, pos3) = Self::hash_game_index(game_key, ticket_index);
+
+        // Set bits in the 512-bit filter (8 x 64-bit words)
+        self.game_index_filter[pos1 / 64] |= 1u64 << (pos1 % 64);
+        self.game_index_filter[pos2 / 64] |= 1u64 << (pos2 % 64);
+        self.game_index_filter[pos3 / 64] |= 1u64 << (pos3 % 64);
+    }
+
     /// Check if bits are set in bloom filter for a game key
     fn check_bloom_bits(&self, game_key: &Pubkey) -> bool {
         let (pos1, pos2, pos3) = Self::hash_game_key(game_key);
@@ -250,6 +282,18 @@ impl PlayerBalance {
         let bit1_set = (self.game_filter[pos1 / 64] & (1u64 << (pos1 % 64))) != 0;
         let bit2_set = (self.game_filter[pos2 / 64] & (1u64 << (pos2 % 64))) != 0;
         let bit3_set = (self.game_filter[pos3 / 64] & (1u64 << (pos3 % 64))) != 0;
+
+        bit1_set && bit2_set && bit3_set
+    }
+
+    /// Check if bits are set in game index bloom filter for a game key + index
+    fn check_game_index_bits(&self, game_key: &Pubkey, ticket_index: u32) -> bool {
+        let (pos1, pos2, pos3) = Self::hash_game_index(game_key, ticket_index);
+
+        // Check if all bits are set
+        let bit1_set = (self.game_index_filter[pos1 / 64] & (1u64 << (pos1 % 64))) != 0;
+        let bit2_set = (self.game_index_filter[pos2 / 64] & (1u64 << (pos2 % 64))) != 0;
+        let bit3_set = (self.game_index_filter[pos3 / 64] & (1u64 << (pos3 % 64))) != 0;
 
         bit1_set && bit2_set && bit3_set
     }
@@ -271,11 +315,12 @@ impl PlayerBalance {
         !self.likely_joined_game(game_key)
     }
 
-    /// Reset filter if all games have expired
+    /// Reset filters if all games have expired
     pub fn maybe_reset_filter(&mut self, current_time: u64) {
         // Only reset when ALL games have expired (current > longest expiry)
         if current_time > self.longest_game_expiry {
             self.game_filter = [0; 8];
+            self.game_index_filter = [0; 8];
             self.filter_last_updated = current_time;
             self.longest_game_expiry = 0; // No games tracked
         }
@@ -349,6 +394,48 @@ impl PlayerBalance {
 
         Ok(())
     }
+
+    /// Mark game + index as joined in bloom filter
+    pub fn mark_game_index_joined(
+        &mut self,
+        game_key: &Pubkey,
+        ticket_index: u32,
+        game_expiry_time: u64,
+        current_time: u64,
+    ) {
+        // Maybe reset filter if all old games expired
+        self.maybe_reset_filter(current_time);
+
+        // Add to game index bloom filter
+        self.set_game_index_bits(game_key, ticket_index);
+
+        // Update timestamps
+        self.filter_last_updated = current_time;
+
+        // Keep the LONGEST expiration time
+        if self.longest_game_expiry == 0 {
+            self.longest_game_expiry = game_expiry_time;
+        } else {
+            self.longest_game_expiry = self.longest_game_expiry.max(game_expiry_time);
+        }
+    }
+
+    /// Check if player can join game with specific index (considers timestamps + bloom filter)
+    pub fn can_join_with_index(
+        &self,
+        game_key: &Pubkey,
+        ticket_index: u32,
+        game_created_time: u64,
+    ) -> bool {
+        // If game was created AFTER our filter was last updated,
+        // it can't possibly be in our filter (even if bits match)
+        if game_created_time > self.filter_last_updated {
+            return true; // Definitely can join
+        }
+
+        // Game is older than our filter, check bloom filter
+        !self.check_game_index_bits(game_key, ticket_index)
+    }
 }
 
 // =============================================================================
@@ -381,8 +468,6 @@ pub struct Game {
     pub is_private: bool,
     /// Total accumulated prize
     pub total_amount: u64,
-    /// 512-bit bloom filter for player participation tracking
-    pub player_filter: [u64; 8],
 }
 
 impl Game {
@@ -494,66 +579,15 @@ impl Game {
     }
 
     // =============================================================================
-    // PLAYER PARTICIPATION TRACKING WITH BLOOM FILTER
+    // PLAYER PARTICIPATION TRACKING
     // =============================================================================
 
-    /// Generate hash values for bloom filter
-    fn hash_player_key(player_key: &Pubkey) -> (usize, usize, usize) {
-        // Generate 3 independent hash values for bloom filter
-        let hash1 = hash(&player_key.to_bytes());
-        let hash2 = hash(&[player_key.to_bytes().as_slice(), b"salt1"].concat());
-        let hash3 = hash(&[player_key.to_bytes().as_slice(), b"salt2"].concat());
-
-        // Convert to bit positions (0-511 for 512-bit filter)
-        let pos1 = (u64::from_le_bytes(hash1.to_bytes()[0..8].try_into().unwrap()) % 512) as usize;
-        let pos2 = (u64::from_le_bytes(hash2.to_bytes()[0..8].try_into().unwrap()) % 512) as usize;
-        let pos3 = (u64::from_le_bytes(hash3.to_bytes()[0..8].try_into().unwrap()) % 512) as usize;
-
-        (pos1, pos2, pos3)
-    }
-
-    /// Set bits in bloom filter for a player key
-    fn set_player_bits(&mut self, player_key: &Pubkey) {
-        let (pos1, pos2, pos3) = Self::hash_player_key(player_key);
-
-        // Set bits in the 512-bit filter (8 x 64-bit words)
-        self.player_filter[pos1 / 64] |= 1u64 << (pos1 % 64);
-        self.player_filter[pos2 / 64] |= 1u64 << (pos2 % 64);
-        self.player_filter[pos3 / 64] |= 1u64 << (pos3 % 64);
-    }
-
-    /// Check if bits are set in bloom filter for a player key
-    fn check_player_bits(&self, player_key: &Pubkey) -> bool {
-        let (pos1, pos2, pos3) = Self::hash_player_key(player_key);
-
-        // Check if all bits are set
-        let bit1_set = (self.player_filter[pos1 / 64] & (1u64 << (pos1 % 64))) != 0;
-        let bit2_set = (self.player_filter[pos2 / 64] & (1u64 << (pos2 % 64))) != 0;
-        let bit3_set = (self.player_filter[pos3 / 64] & (1u64 << (pos3 % 64))) != 0;
-
-        bit1_set && bit2_set && bit3_set
-    }
-
-    /// Check if player likely already joined this game (bloom filter check)
-    pub fn player_likely_joined(&self, player_key: &Pubkey) -> bool {
-        self.check_player_bits(player_key)
-    }
-
-    /// Add player to the game's bloom filter and update counters
-    pub fn add_player_to_game(&mut self, player_key: &Pubkey) -> Result<()> {
-        // Add to bloom filter
-        self.set_player_bits(player_key);
-        
-        // Update counters
+    /// Add player to the game and update counters (no bloom filter)
+    pub fn add_player_to_game(&mut self) -> Result<()> {
+        // Update counters only
         self.tickets_count += 1;
         self.total_amount += self.ticket_amount;
         
-        Ok(())
-    }
-
-    /// Initialize player filter for new game
-    pub fn initialize_player_filter(&mut self) -> Result<()> {
-        self.player_filter = [0; 8];
         Ok(())
     }
 
