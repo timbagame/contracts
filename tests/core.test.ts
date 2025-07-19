@@ -482,23 +482,13 @@ describe("Core Game Operations", () => {
 
       const winner = getWinnerFromPlayers([creator, player1], winnerIndex);
 
-      // Create participation entry for winner
-      const winnerParticipation = {
-        player: winner.player.publicKey,
-        ticketIndex: winnerIndex,
-      };
-
-      // For simple 2-player game, create minimal merkle proof
-      const winnerMerkleProof: number[][] = [];
-
-      // Complete game
+      // Complete game with winner index
       await testUtils.game.completeGame(
         gameData,
         winner.player.publicKey,
         creator.player.publicKey,
         oracle.operator,
-        winnerParticipation,
-        winnerMerkleProof
+        winnerIndex
       );
 
       // Verify completion
@@ -543,19 +533,13 @@ describe("Core Game Operations", () => {
       );
       const winner = getWinnerFromPlayers([creator, player1], winnerIndex);
 
-      const winnerParticipation = {
-        player: winner.player.publicKey,
-        ticketIndex: winnerIndex,
-      };
-
       try {
         await testUtils.game.completeGame(
           gameData,
           winner.player.publicKey,
           creator.player.publicKey,
           fakeOperator.publicKey,
-          winnerParticipation,
-          [],
+          winnerIndex,
           fakeOperator
         );
         expect.fail("Should have failed with wrong operator");
@@ -609,19 +593,13 @@ describe("Core Game Operations", () => {
       );
       const winner = getWinnerFromPlayers([creator, player1], winnerIndex);
 
-      const winnerParticipation = {
-        player: winner.player.publicKey,
-        ticketIndex: winnerIndex,
-      };
-
       try {
         await testUtils.game.completeGame(
           fakeGameData, // This has the wrong secret key
           winner.player.publicKey,
           creator.player.publicKey,
           oracle.operator,
-          winnerParticipation,
-          []
+          winnerIndex
         );
         expect.fail("Should have failed with wrong secret key");
       } catch (error) {

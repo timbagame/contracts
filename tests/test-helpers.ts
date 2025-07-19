@@ -559,8 +559,6 @@ export class GameManager {
   async rollGame(
     gamePDA: PublicKey,
     player: anchor.web3.Keypair,
-    ticketIndex: number,
-    merkleProof?: number[][],
     oracleOperator?: anchor.web3.Keypair
   ): Promise<void> {
     const accounts: any = {
@@ -575,31 +573,20 @@ export class GameManager {
       signers.push(oracleOperator);
     }
 
-    // Create participation entry for the player
-    const playerParticipation = {
-      player: player.publicKey,
-      ticketIndex,
-    };
-
-    // Use provided proof or empty array for testing
-    const playerMerkleProof: number[][] = merkleProof || [];
-
     await this.program.methods
-      .rollGame(playerParticipation, playerMerkleProof)
-      .accounts(accounts)
+      .rollGame()
+      .accountsPartial(accounts)
       .signers(signers)
       .rpc();
   }
 
   async unjoinGame(
     gamePDA: PublicKey,
-    player: anchor.web3.Keypair,
-    ticketIndex: number,
-    exclusionProof?: any
+    player: anchor.web3.Keypair
   ): Promise<void> {
     await this.program.methods
-      .unjoinGame(ticketIndex, exclusionProof)
-      .accounts({
+      .unjoinGame()
+      .accountsPartial({
         game: gamePDA,
         player: player.publicKey,
       })
@@ -612,19 +599,9 @@ export class GameManager {
     winner: PublicKey,
     creator: PublicKey,
     oracleOperator: PublicKey,
-    winnerParticipation?: { player: PublicKey; ticketIndex: number },
-    winnerMerkleProof?: number[][],
+    winnerIndex: number,
     oracleOperatorKeypair?: anchor.web3.Keypair
   ): Promise<void> {
-    // Default participation entry if not provided
-    const participation = winnerParticipation || {
-      player: winner,
-      ticketIndex: 0,
-    };
-
-    // Default empty proof if not provided
-    const proof = winnerMerkleProof || [];
-
     // Use provided oracle operator keypair or default to deterministic one
     const operatorKeypair =
       oracleOperatorKeypair ||
@@ -634,10 +611,9 @@ export class GameManager {
       .completeGame(
         gameData.randomHash,
         gameData.secretKey,
-        participation,
-        proof
+        winnerIndex
       )
-      .accounts({
+      .accountsPartial({
         oracleOperator,
         winner,
         creator,
