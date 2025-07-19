@@ -264,7 +264,7 @@ describe("Security & Edge Cases", () => {
         );
         expect.fail("Should have rejected non-participant");
       } catch (error) {
-        expect(error.toString()).to.include("InvalidMerkleProof");
+        expect(error.toString()).to.include("WinnerPubkeyMismatch");
       }
     });
 
@@ -528,8 +528,8 @@ describe("Security & Edge Cases", () => {
     });
   });
 
-  describe("Merkle Proof Security", () => {
-    it("should reject invalid merkle proofs", async () => {
+  describe("Winner Index Security", () => {
+    it("should reject invalid winner indices", async () => {
       const { oracle, mint, players } = await testUtils.quickSetup();
       const gameData = testUtils.game.generateGamePDA();
 
@@ -582,13 +582,13 @@ describe("Security & Edge Cases", () => {
           oracle.operator,
           99 // Invalid index out of bounds
         );
-        expect.fail("Should have rejected invalid merkle proof");
+        expect.fail("Should have rejected invalid winner index");
       } catch (error) {
-        expect(error.toString()).to.include("InvalidMerkleProof");
+        expect(error.toString()).to.include("InvalidWinnerIndex");
       }
     });
 
-    it("should reject tampered participation entries", async () => {
+    it("should reject tampered winner pubkeys", async () => {
       const { oracle, mint, players } = await testUtils.quickSetup();
       const gameData = testUtils.game.generateGamePDA();
       const [creator, player1] = players;
@@ -642,7 +642,7 @@ describe("Security & Edge Cases", () => {
           oracle.operator,
           winnerIndex // Use correct index but wrong winner account
         );
-        expect.fail("Should have rejected tampered participation");
+        expect.fail("Should have rejected tampered winner pubkey");
       } catch (error) {
         expect(error.toString()).to.include("WinnerPubkeyMismatch");
       }
