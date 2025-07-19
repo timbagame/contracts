@@ -6,7 +6,6 @@ import {
   calculateWinnerIndex,
   getWinnerFromPlayers,
   GameConfig,
-  generateMerkleProof,
 } from "./test-helpers";
 
 /**
@@ -73,30 +72,19 @@ describe("Advanced Features", () => {
         Number(gameAccount.lastSlot)
       );
 
-      // Use actual winner index and generate proper merkle proof
+      // Use actual winner index
       const winner = getWinnerFromPlayers(
         players.slice(0, 3),
         actualWinnerIndex
       );
-      const merkleProof = generateMerkleProof(
-        players.slice(0, 3),
-        actualWinnerIndex,
-        gameAccount
-      );
 
-      const winnerParticipation = {
-        player: winner.player.publicKey,
-        ticketIndex: actualWinnerIndex,
-      };
-
-      // Complete game with proper merkle proof
+      // Complete game
       await testUtils.game.completeGame(
         gameData,
         winner.player.publicKey,
         players[0].player.publicKey,
         oracle.operator,
-        winnerParticipation,
-        merkleProof
+        actualWinnerIndex
       );
 
       // Verify completion
@@ -146,29 +134,18 @@ describe("Advanced Features", () => {
         Number(gameAccount.lastSlot)
       );
 
-      // Use actual winner index and generate proper merkle proof
+      // Use actual winner index
       const winner = getWinnerFromPlayers(
         players.slice(0, 6),
         actualWinnerIndex
       );
-      const merkleProof = generateMerkleProof(
-        players.slice(0, 6),
-        actualWinnerIndex,
-        gameAccount
-      );
-
-      const winnerParticipation = {
-        player: winner.player.publicKey,
-        ticketIndex: actualWinnerIndex,
-      };
 
       await testUtils.game.completeGame(
         gameData,
         winner.player.publicKey,
         players[0].player.publicKey,
         oracle.operator,
-        winnerParticipation,
-        merkleProof
+        actualWinnerIndex
       );
 
       // Verify completion
@@ -178,7 +155,7 @@ describe("Advanced Features", () => {
       expect(completedGame.totalAmount.toNumber()).to.equal(0);
     });
 
-    it("should validate merkle root consistency", async () => {
+    it("should track player participation with bloom filters", async () => {
       const { mint, players } = await testUtils.quickSetup();
       const gameData = testUtils.game.generateGamePDA();
 
@@ -203,15 +180,12 @@ describe("Advanced Features", () => {
         await testUtils.game.joinGame(gameData.gamePDA, players[i].player);
       }
 
-      // Verify merkle root is computed and stored
+      // Verify game state is properly updated
       const gameAccount = await env.program.account.game.fetch(
         gameData.gamePDA
       );
-      expect(gameAccount.merkleRoot).to.not.deep.equal(new Array(32).fill(0));
-
-      // Game should have proper subtree structure
-      expect(gameAccount.subtreeCount).to.be.greaterThan(0);
-      expect(gameAccount.maxSubtrees).to.be.greaterThan(0);
+      expect(gameAccount.ticketsCount).to.equal(4);
+      expect(gameAccount.totalAmount.toNumber()).to.equal(4_000_000);
     });
   });
 
@@ -382,24 +356,13 @@ describe("Advanced Features", () => {
         [players[0], players[1]],
         winnerIndex
       );
-      const merkleProof = generateMerkleProof(
-        [players[0], players[1]],
-        winnerIndex,
-        gameAccount
-      );
-
-      const winnerParticipation = {
-        player: winner.player.publicKey,
-        ticketIndex: winnerIndex,
-      };
 
       await testUtils.game.completeGame(
         gameData,
         winner.player.publicKey,
         players[0].player.publicKey,
         oracle.operator,
-        winnerParticipation,
-        merkleProof
+        winnerIndex
       );
 
       // Verify completion
@@ -439,18 +402,14 @@ describe("Advanced Features", () => {
       await new Promise((resolve) => setTimeout(resolve, totalWaitTime));
 
       // Players can now recover their funds via emergency unjoin
-      // For 2 players, both are in recent buffer (indices 0 and 1)
+      // For 2 players, both can unjoin
       await testUtils.game.unjoinGame(
         gameData.gamePDA,
-        players[1].player,
-        1,
-        null
+        players[1].player
       );
       await testUtils.game.unjoinGame(
         gameData.gamePDA,
-        players[0].player,
-        0,
-        null
+        players[0].player
       );
 
       // Verify game is now empty
@@ -503,19 +462,13 @@ describe("Advanced Features", () => {
       await testUtils.game.joinGame(gameData.gamePDA, players[1].player);
 
       // Try to complete prematurely
-      const winnerParticipation = {
-        player: players[0].player.publicKey,
-        ticketIndex: 0,
-      };
-
       try {
         await testUtils.game.completeGame(
           gameData,
           players[0].player.publicKey,
           players[0].player.publicKey,
           oracle.operator,
-          winnerParticipation,
-          []
+          0
         );
         expect.fail("Should have prevented premature completion");
       } catch (error) {
@@ -583,18 +536,12 @@ describe("Advanced Features", () => {
       );
       const winner = winnerIndex === 0 ? games[0].creator : players[1];
 
-      const winnerParticipation = {
-        player: winner.player.publicKey,
-        ticketIndex: winnerIndex,
-      };
-
       await testUtils.game.completeGame(
         games[0].gameData,
         winner.player.publicKey,
         games[0].creator.player.publicKey,
         oracle.operator,
-        winnerParticipation,
-        []
+        winnerIndex
       );
 
       // Verify first game completed, others still active

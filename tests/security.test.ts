@@ -144,18 +144,12 @@ describe("Security & Edge Cases", () => {
       );
       const winner = getWinnerFromPlayers([creator, player1], winnerIndex);
 
-      const winnerParticipation = {
-        player: winner.player.publicKey,
-        ticketIndex: winnerIndex,
-      };
-
       await testUtils.game.completeGame(
         gameData,
         winner.player.publicKey,
         creator.player.publicKey,
         oracle.operator,
-        winnerParticipation,
-        []
+        winnerIndex
       );
 
       // Try to complete again
@@ -165,8 +159,7 @@ describe("Security & Edge Cases", () => {
           winner.player.publicKey,
           creator.player.publicKey,
           oracle.operator,
-          winnerParticipation,
-          []
+          winnerIndex
         );
         expect.fail("Should have prevented double completion");
       } catch (error) {
@@ -219,10 +212,6 @@ describe("Security & Edge Cases", () => {
       );
       const winner = getWinnerFromPlayers([creator, player1], winnerIndex);
 
-      const winnerParticipation = {
-        player: winner.player.publicKey,
-        ticketIndex: winnerIndex,
-      };
 
       try {
         await testUtils.game.completeGame(
@@ -230,8 +219,7 @@ describe("Security & Edge Cases", () => {
           winner.player.publicKey,
           creator.player.publicKey,
           fakeOperator.publicKey, // Wrong operator
-          winnerParticipation,
-          [],
+          winnerIndex,
           fakeOperator // Pass the keypair for signing
         );
         expect.fail("Should have rejected fake operator");
@@ -265,20 +253,14 @@ describe("Security & Edge Cases", () => {
       await testUtils.game.joinGame(gameData.gamePDA, creator.player);
       await testUtils.game.joinGame(gameData.gamePDA, player1.player);
 
-      // Try to complete with non-participant as winner
-      const fakeParticipation = {
-        player: nonParticipant.player.publicKey, // Not in game
-        ticketIndex: 0,
-      };
-
+      // Try to complete with non-participant as winner (using fake index 0)
       try {
         await testUtils.game.completeGame(
           gameData,
           nonParticipant.player.publicKey,
           creator.player.publicKey,
           oracle.operator,
-          fakeParticipation,
-          []
+          0 // Use valid index but wrong winner
         );
         expect.fail("Should have rejected non-participant");
       } catch (error) {
@@ -322,10 +304,6 @@ describe("Security & Edge Cases", () => {
       );
       const winner = getWinnerFromPlayers([creator, player1], winnerIndex);
 
-      const winnerParticipation = {
-        player: winner.player.publicKey,
-        ticketIndex: winnerIndex,
-      };
 
       try {
         await testUtils.game.completeGame(
@@ -333,8 +311,7 @@ describe("Security & Edge Cases", () => {
           winner.player.publicKey,
           fakeCreator.player.publicKey, // Wrong creator
           oracle.operator,
-          winnerParticipation,
-          []
+          winnerIndex
         );
         expect.fail("Should have rejected wrong creator");
       } catch (error) {
@@ -436,19 +413,13 @@ describe("Security & Edge Cases", () => {
       await testUtils.game.joinGame(gameData.gamePDA, creator.player);
 
       // Try to complete with insufficient players
-      const winnerParticipation = {
-        player: creator.player.publicKey,
-        ticketIndex: 0,
-      };
-
       try {
         await testUtils.game.completeGame(
           gameData,
           creator.player.publicKey,
           creator.player.publicKey,
           oracle.operator,
-          winnerParticipation,
-          []
+          0
         );
         expect.fail("Should have enforced minimum player requirement");
       } catch (error) {
@@ -602,25 +573,14 @@ describe("Security & Edge Cases", () => {
         testWinnerIndex
       );
 
-      const winnerParticipation = {
-        player: testWinner.player.publicKey,
-        ticketIndex: testWinnerIndex,
-      };
-
-      // Try to complete with invalid merkle proof
-      const invalidProof = [
-        Array.from({ length: 32 }, () => 255), // All 0xFF bytes
-        Array.from({ length: 32 }, () => 0), // All 0x00 bytes
-      ];
-
+      // Try to complete with invalid winner index (out of bounds)
       try {
         await testUtils.game.completeGame(
           gameData,
           testWinner.player.publicKey,
           players[0].player.publicKey,
           oracle.operator,
-          winnerParticipation,
-          invalidProof
+          99 // Invalid index out of bounds
         );
         expect.fail("Should have rejected invalid merkle proof");
       } catch (error) {
@@ -667,11 +627,6 @@ describe("Security & Edge Cases", () => {
       );
 
       // Create correct participation entry but wrong winner account
-      const correctParticipation = {
-        player: actualWinner.player.publicKey, // Correct player
-        ticketIndex: winnerIndex, // Correct index
-      };
-
       // Use the OTHER player's account as winner to trigger WinnerPubkeyMismatch
       const wrongWinnerAccount = actualWinner.player.publicKey.equals(
         creator.player.publicKey
@@ -685,8 +640,7 @@ describe("Security & Edge Cases", () => {
           wrongWinnerAccount, // Wrong winner account
           creator.player.publicKey,
           oracle.operator,
-          correctParticipation,
-          []
+          winnerIndex // Use correct index but wrong winner account
         );
         expect.fail("Should have rejected tampered participation");
       } catch (error) {
@@ -731,18 +685,12 @@ describe("Security & Edge Cases", () => {
 
       expect(winnerIndex).to.equal(0); // Only one player
 
-      const winnerParticipation = {
-        player: creator.player.publicKey,
-        ticketIndex: winnerIndex,
-      };
-
       await testUtils.game.completeGame(
         gameData,
         creator.player.publicKey,
         creator.player.publicKey,
         oracle.operator,
-        winnerParticipation,
-        []
+        winnerIndex
       );
 
       // Verify completion
