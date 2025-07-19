@@ -22,7 +22,7 @@ The program implements a secure commit-reveal scheme for provably fair randomnes
 
 - **CEI Pattern** - All instructions follow Checks-Effects-Interactions
 - **Commit-Reveal Scheme** - Cryptographically secure randomness
-- **Merkle Tree Verification** - Efficient player participation validation
+- **Bloom Filter Tracking** - Efficient player participation tracking
 - **Oracle Buffer Time** - Prevents games from being stuck in limbo
 
 ## Development Environment

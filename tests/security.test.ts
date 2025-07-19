@@ -228,11 +228,17 @@ describe("Security & Edge Cases", () => {
       }
     });
 
-    it("should reject non-participant claiming winnings", async () => {
+    it("should reject completing with missing winner balance account", async () => {
       const { oracle, mint, players } = await testUtils.quickSetup();
       const gameData = testUtils.game.generateGamePDA();
       const [creator, player1] = players;
-      const nonParticipant = players[2];
+      
+      // Create a fresh player without initialized balance account
+      const uninitializedPlayer = anchor.web3.Keypair.generate();
+      await env.provider.connection.requestAirdrop(
+        uninitializedPlayer.publicKey,
+        3 * anchor.web3.LAMPORTS_PER_SOL
+      );
 
       const gameConfig: GameConfig = {
         gameType: { coinflip: {} },
@@ -253,18 +259,26 @@ describe("Security & Edge Cases", () => {
       await testUtils.game.joinGame(gameData.gamePDA, creator.player);
       await testUtils.game.joinGame(gameData.gamePDA, player1.player);
 
-      // Try to complete with non-participant as winner (using fake index 0)
+      // Calculate real winner to ensure test determinism
+      const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+      const winnerIndex = calculateWinnerIndex(
+        gameAccount.ticketsCount,
+        gameData.secretKey,
+        Number(gameAccount.lastSlot)
+      );
+
+      // Try to complete with uninitialized player as winner (should fail due to missing balance account)
       try {
         await testUtils.game.completeGame(
           gameData,
-          nonParticipant.player.publicKey,
+          uninitializedPlayer.publicKey,
           creator.player.publicKey,
           oracle.operator,
-          0 // Use valid index but wrong winner
+          winnerIndex
         );
-        expect.fail("Should have rejected non-participant");
+        expect.fail("Should have rejected missing winner balance account");
       } catch (error) {
-        expect(error.toString()).to.include("WinnerPubkeyMismatch");
+        expect(error.toString()).to.include("AccountNotInitialized");
       }
     });
 
@@ -588,7 +602,7 @@ describe("Security & Edge Cases", () => {
       }
     });
 
-    it("should reject tampered winner pubkeys", async () => {
+    it("should reject incorrect secret key", async () => {
       const { oracle, mint, players } = await testUtils.quickSetup();
       const gameData = testUtils.game.generateGamePDA();
       const [creator, player1] = players;
@@ -626,25 +640,20 @@ describe("Security & Edge Cases", () => {
         winnerIndex
       );
 
-      // Create correct participation entry but wrong winner account
-      // Use the OTHER player's account as winner to trigger WinnerPubkeyMismatch
-      const wrongWinnerAccount = actualWinner.player.publicKey.equals(
-        creator.player.publicKey
-      )
-        ? player1.player.publicKey
-        : creator.player.publicKey;
-
+      // Try to complete with wrong secret key
+      const wrongSecret = new Array(32).fill(99); // Wrong secret key
       try {
+        const completeGameData = { ...gameData, secretKey: wrongSecret };
         await testUtils.game.completeGame(
-          gameData,
-          wrongWinnerAccount, // Wrong winner account
+          completeGameData,
+          actualWinner.player.publicKey,
           creator.player.publicKey,
           oracle.operator,
-          winnerIndex // Use correct index but wrong winner account
+          winnerIndex
         );
-        expect.fail("Should have rejected tampered winner pubkey");
+        expect.fail("Should have rejected wrong secret key");
       } catch (error) {
-        expect(error.toString()).to.include("WinnerPubkeyMismatch");
+        expect(error.toString()).to.include("InvalidSecretKey");
       }
     });
   });
