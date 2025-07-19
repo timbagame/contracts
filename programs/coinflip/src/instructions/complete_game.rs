@@ -1,14 +1,12 @@
 use crate::events::GameCompleted;
 use crate::error::ErrorCode;
-use crate::state::{Game, ParticipationEntry};
 use anchor_lang::prelude::*;
 
 pub fn handler(
     ctx: Context<super::CompleteGame>,
     _random_hash: [u8; 32],
     secret_key: [u8; 32],
-    winner_participation: ParticipationEntry,
-    winner_merkle_proof: Vec<[u8; 32]>,
+    winner_index: u32,
 ) -> Result<()> {
     let game = &mut ctx.accounts.game;
     let oracle = &ctx.accounts.oracle;
@@ -27,28 +25,17 @@ pub fn handler(
     // WINNER VERIFICATION
     // ===============================
 
-    // 1. Verify the winner participation entry (subtree or recent player)
-    let winner_leaf = Game::hash_participation_entry(&winner_participation);
-    require!(
-        game.verify_player_participation(
-            winner_leaf,
-            &winner_merkle_proof,
-            winner_participation.ticket_index,
-        ),
-        ErrorCode::InvalidMerkleProof
-    );
-
-    // 2. Verify the winner index is correctly calculated from secret key
+    // 1. Verify the winner index is correctly calculated from secret key
     let calculated_winner_index = game.calculate_winner_index(secret_key);
     require!(
-        winner_participation.ticket_index == calculated_winner_index,
+        winner_index == calculated_winner_index,
         ErrorCode::InvalidWinnerIndex
     );
 
-    // 3. Verify the winner's pubkey matches the account provided
+    // 2. Verify the winner index is within valid range
     require!(
-        winner_participation.player == ctx.accounts.winner.key(),
-        ErrorCode::WinnerPubkeyMismatch
+        winner_index < game.tickets_count,
+        ErrorCode::InvalidWinnerIndex
     );
 
     // ===============================

@@ -48,10 +48,10 @@ pub fn handler(ctx: Context<super::InitializeGame>, config: GameConfig) -> Resul
     }
 
     // ===============================
-    // MERKLE SYSTEM INITIALIZATION
+    // BLOOM FILTER INITIALIZATION
     // ===============================
 
-    game.initialize_merkle_system(config.max_tickets)?;
+    game.initialize_player_filter()?;
 
     // ===============================
     // EVENT EMISSION

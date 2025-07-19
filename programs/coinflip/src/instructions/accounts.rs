@@ -289,12 +289,7 @@ pub struct JoinGame<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(
-    random_hash: [u8; 32],
-    secret_key: [u8; 32],
-    winner_participation: ParticipationEntry,
-    winner_merkle_proof: Vec<[u8; 32]>,
-)]
+#[instruction(random_hash: [u8; 32], secret_key: [u8; 32], winner_index: u32)]
 pub struct CompleteGame<'info> {
     #[account(
         mut,
@@ -335,7 +330,6 @@ pub struct CompleteGame<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(ticket_index: u32, exclusion_proof: Option<ExclusionProof>)]
 pub struct UnjoinGame<'info> {
     #[account(mut)]
     pub game: Account<'info, Game>,
@@ -375,7 +369,6 @@ pub struct CloseGame<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(player_participation: ParticipationEntry, player_merkle_proof: Vec<[u8; 32]>)]
 pub struct RollGame<'info> {
     #[account(
         mut,
