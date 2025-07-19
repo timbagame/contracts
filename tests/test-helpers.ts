@@ -582,10 +582,11 @@ export class GameManager {
 
   async unjoinGame(
     gamePDA: PublicKey,
-    player: anchor.web3.Keypair
+    player: anchor.web3.Keypair,
+    ticketIndex: number = 0
   ): Promise<void> {
     await this.program.methods
-      .unjoinGame()
+      .unjoinGame(ticketIndex)
       .accountsPartial({
         game: gamePDA,
         player: player.publicKey,
