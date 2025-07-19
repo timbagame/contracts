@@ -774,7 +774,7 @@ describe("Game Types", () => {
       const invalidConfig: GameConfig = {
         gameType: { coinflip: {} },
         amount: new anchor.BN(1_000_000),
-        maxTickets: 1000, // Exceeds oracle limits
+        maxTickets: 100000, // Exceeds oracle limits (oracle max is 50000)
         minTickets: 2,
         timeout: 3600,
         isPrivate: false,
