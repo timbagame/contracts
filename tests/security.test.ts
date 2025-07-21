@@ -785,6 +785,7 @@ describe("Security & Edge Cases", () => {
         maxTickets: 2,
         maxTimeout: 60,
         minTimeout: 1,
+        filterCleanupBuffer: 1,
       };
 
       try {
@@ -813,6 +814,7 @@ describe("Security & Edge Cases", () => {
         maxTickets: 1, // Too low for coinflip
         maxTimeout: 0, // Invalid timeout
         minTimeout: 1,
+        filterCleanupBuffer: 1,
       };
 
       try {

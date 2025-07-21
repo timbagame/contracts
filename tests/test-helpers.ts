@@ -44,6 +44,7 @@ export interface OracleConfig {
   maxTickets: number;
   maxTimeout: number;
   minTimeout: number;
+  filterCleanupBuffer: number;
 }
 
 export interface GameConfig {
@@ -153,6 +154,7 @@ export class OracleManager {
       maxTickets: 50000,
       maxTimeout: 86400,
       minTimeout: 1,
+      filterCleanupBuffer: 2,
       ...config,
     };
 
@@ -183,6 +185,7 @@ export class OracleManager {
             maxTickets: existingOracle.maxTickets,
             maxTimeout: existingOracle.maxTimeout,
             minTimeout: existingOracle.minTimeout,
+            filterCleanupBuffer: existingOracle.filterCleanupBuffer || 2, // Default if missing
           },
         };
       } catch (fetchError) {
@@ -247,6 +250,7 @@ export class OracleManager {
         maxTickets: oracleAccount.maxTickets,
         maxTimeout: oracleAccount.maxTimeout,
         minTimeout: oracleAccount.minTimeout,
+        filterCleanupBuffer: oracleAccount.filterCleanupBuffer || 2, // Default if missing
       },
     };
   }
