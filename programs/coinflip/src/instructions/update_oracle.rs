@@ -16,6 +16,7 @@ pub fn handler(ctx: Context<super::UpdateOracle>, config: OracleConfig) -> Resul
         config.max_tickets,
         config.max_timeout,
         config.min_timeout,
+        config.filter_cleanup_buffer,
         new_operator_key,
     );
 

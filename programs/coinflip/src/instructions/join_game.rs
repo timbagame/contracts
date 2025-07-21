@@ -32,8 +32,11 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
     game.last_slot = clock.slot;
 
     // Mark game as joined in player's bloom filter
-    let game_expiry = game.calculate_expiry_timestamp(oracle.oracle_buffer_time);
+    let game_expiry = game.calculate_expiry_timestamp(oracle.get_total_buffer_time());
     player_balance.mark_game_joined(&game_key, game_expiry, current_time);
+    
+    // Also mark the specific game+index combination for ticket index 0
+    player_balance.mark_game_index_joined(&game_key, game.tickets_count - 1, game_expiry, current_time);
 
     // ===============================
     // TOKEN TRANSFER

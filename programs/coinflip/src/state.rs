@@ -6,7 +6,7 @@ use anchor_spl::token::{transfer, Transfer};
 // ACCOUNT SIZE CONSTANTS
 // =============================================================================
 
-pub const ORACLE_SIZE: usize = 8 + 32 + 1 + 2 + 4 + 4 + 4;
+pub const ORACLE_SIZE: usize = 8 + 32 + 1 + 2 + 4 + 4 + 4 + 2;
 pub const GAME_TOKEN_SIZE: usize = 8 + 32 + 1 + 8 + 8 + 1;
 pub const PLAYER_BALANCE_SIZE: usize = 8 + 8 + 64 + 64 + 64 + 8 + 8; // amount + game_filter + game_index_filter + unjoin_index_filter + filter_last_updated + longest_game_expiry
 pub const GAME_BASE_SIZE: usize = 8
@@ -69,6 +69,8 @@ pub struct Oracle {
     pub max_timeout: u32,
     /// Minimum timeout duration in seconds for a game
     pub min_timeout: u32,
+    /// Additional buffer time for filter cleanup after oracle buffer expires
+    pub filter_cleanup_buffer: u16,
 }
 
 impl Oracle {
@@ -80,6 +82,7 @@ impl Oracle {
         max_tickets: u32,
         max_timeout: u32,
         min_timeout: u32,
+        filter_cleanup_buffer: u16,
         new_operator: Pubkey,
     ) {
         self.fee_percentage = fee_percentage;
@@ -87,6 +90,7 @@ impl Oracle {
         self.max_tickets = max_tickets;
         self.max_timeout = max_timeout;
         self.min_timeout = min_timeout;
+        self.filter_cleanup_buffer = filter_cleanup_buffer;
         self.operator = new_operator;
     }
 
@@ -113,6 +117,11 @@ impl Oracle {
     /// Validates ticket count is positive
     pub fn is_valid_tickets_count(&self, max_tickets: u32) -> bool {
         max_tickets > 0
+    }
+
+    /// Gets total buffer time including filter cleanup buffer
+    pub fn get_total_buffer_time(&self) -> u64 {
+        self.oracle_buffer_time as u64 + self.filter_cleanup_buffer as u64
     }
 }
 
@@ -576,8 +585,8 @@ impl Game {
     }
 
     /// Calculate when this game will expire (for bloom filter tracking)
-    pub fn calculate_expiry_timestamp(&self, oracle_buffer_time: u16) -> u64 {
-        self.created_at + self.timeout as u64 + oracle_buffer_time as u64
+    pub fn calculate_expiry_timestamp(&self, total_buffer_time: u64) -> u64 {
+        self.created_at + self.timeout as u64 + total_buffer_time
     }
 
     /// Marks the game as completed by setting total_amount to zero
