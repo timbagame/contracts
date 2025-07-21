@@ -402,14 +402,16 @@ describe("Advanced Features", () => {
       await new Promise((resolve) => setTimeout(resolve, totalWaitTime));
 
       // Players can now recover their funds via emergency unjoin
-      // For 2 players, both can unjoin
+      // For 2 players, both can unjoin with their correct ticket indices
       await testUtils.game.unjoinGame(
         gameData.gamePDA,
-        players[1].player
+        players[1].player,
+        1 // Player 1 has ticket index 1
       );
       await testUtils.game.unjoinGame(
         gameData.gamePDA,
-        players[0].player
+        players[0].player,
+        0 // Player 0 has ticket index 0
       );
 
       // Verify game is now empty
