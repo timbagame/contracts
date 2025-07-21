@@ -53,7 +53,7 @@ pub fn handler(ctx: Context<super::RollGame>) -> Result<()> {
         let new_index = game.tickets_count - 1;
         
         // Mark this specific game + index combination in player's filter
-        let game_expiry = game.calculate_expiry_timestamp(oracle.oracle_buffer_time);
+        let game_expiry = game.calculate_expiry_timestamp(oracle.get_total_buffer_time());
         player_balance.mark_game_index_joined(&game.key(), new_index, game_expiry, current_time);
         
         new_index // New ticket just added

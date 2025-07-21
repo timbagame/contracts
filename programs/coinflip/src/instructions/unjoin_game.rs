@@ -28,6 +28,12 @@ pub fn handler(ctx: Context<super::UnjoinGame>, ticket_index: u32) -> Result<()>
         ErrorCode::UnauthorizedPlayer
     );
 
+    // Verify player joined this specific game+index combination
+    require!(
+        !player_balance.can_join_with_index(&game.key(), ticket_index, game.created_at),
+        ErrorCode::UnauthorizedPlayer
+    );
+
     // Prevent double unjoining of the same game + ticket index
     require!(
         !player_balance.has_unjoined_game_index(&game.key(), ticket_index, game.created_at),

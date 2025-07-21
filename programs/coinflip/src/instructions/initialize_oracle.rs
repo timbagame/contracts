@@ -15,6 +15,7 @@ pub fn handler(ctx: Context<super::InitializeOracle>, config: OracleConfig) -> R
         config.max_tickets,
         config.max_timeout,
         config.min_timeout,
+        config.filter_cleanup_buffer,
         operator_key,
     );
 
