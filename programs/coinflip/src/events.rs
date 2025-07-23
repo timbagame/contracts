@@ -12,14 +12,14 @@ use anchor_lang::prelude::*;
 /// Emitted when the global oracle account is initialized
 #[event]
 pub struct OracleInitialized {
-    /// Authority that controls the oracle
-    pub authority: Pubkey,
+    /// Operator that controls the oracle
+    pub operator: Pubkey,
     /// Fee percentage taken from game winnings (0-100)
     pub fee_percentage: u8,
     /// Buffer time in seconds after game timeout
     pub oracle_buffer_time: u16,
-    /// Maximum players allowed in any game
-    pub max_players: u32,
+    /// Maximum tickets allowed in any game
+    pub max_tickets: u32,
     /// Maximum timeout duration for games
     pub max_timeout: u32,
     /// Minimum timeout duration for games
@@ -29,16 +29,16 @@ pub struct OracleInitialized {
 /// Emitted when oracle configuration is updated
 #[event]
 pub struct OracleUpdated {
-    /// Previous authority
-    pub old_authority: Pubkey,
-    /// New authority
-    pub new_authority: Pubkey,
+    /// Previous operator
+    pub old_operator: Pubkey,
+    /// New operator
+    pub new_operator: Pubkey,
     /// Updated fee percentage
     pub fee_percentage: u8,
     /// Updated buffer time
     pub oracle_buffer_time: u16,
-    /// Updated maximum players
-    pub max_players: u32,
+    /// Updated maximum tickets
+    pub max_tickets: u32,
     /// Updated maximum timeout
     pub max_timeout: u32,
     /// Updated minimum timeout
@@ -71,11 +71,11 @@ pub struct TokenUpdated {
     pub enabled: bool,
 }
 
-/// Emitted when accumulated fees are withdrawn by authority
+/// Emitted when accumulated fees are withdrawn by operator
 #[event]
 pub struct TokenFeeWithdrawn {
-    /// Authority that withdrew the fees
-    pub authority: Pubkey,
+    /// Operator that withdrew the fees
+    pub operator: Pubkey,
     /// Token mint of the withdrawn fees
     pub token_mint: Pubkey,
     /// Amount of fees withdrawn
@@ -115,10 +115,10 @@ pub struct PlayerJoined {
     pub player: Pubkey,
     /// Total prize amount after join
     pub total_amount: u64,
-    /// Number of players after join
-    pub players_count: u32,
-    /// Player's index in the game
-    pub player_index: u32,
+    /// Total number of tickets after join
+    pub tickets_count: u32,
+    /// Ticket index for this join
+    pub ticket_index: u32,
     /// Last slot for entropy
     pub last_slot: u64,
     /// Timestamp of the join
@@ -134,34 +134,13 @@ pub struct PlayerUnjoined {
     pub player: Pubkey,
     /// Remaining total amount after unjoin
     pub total_amount: u64,
-    /// Remaining players count
-    pub players_count: u32,
-    /// Player's index that was removed
-    pub player_index: u32,
+    /// Remaining total tickets count
+    pub tickets_count: u32,
+    /// Ticket index that was removed
+    pub ticket_index: u32,
     /// Last slot for entropy
     pub last_slot: u64,
     /// Timestamp of the unjoin
-    pub timestamp: u64,
-}
-
-/// Emitted when expired player participation is cleaned up
-#[event]
-pub struct PlayerParticipationCleaned {
-    /// Game being cleaned
-    pub game_key: Pubkey,
-    /// Player whose participation was cleaned
-    pub player: Pubkey,
-    /// Remaining total amount
-    pub total_amount: u64,
-    /// Remaining players count
-    pub players_count: u32,
-    /// Player's index that was cleaned
-    pub player_index: u32,
-    /// Amount refunded to player (if any)
-    pub refund_amount: u64,
-    /// Whether the game was already completed
-    pub is_completed_game: bool,
-    /// Timestamp of the cleanup
     pub timestamp: u64,
 }
 
@@ -174,8 +153,10 @@ pub struct PlayerRolled {
     pub player: Pubkey,
     /// Total amount after roll
     pub total_amount: u64,
-    /// Player's index in the game
-    pub player_index: u32,
+    /// Total number of tickets after roll
+    pub tickets_count: u32,
+    /// Ticket index for this roll
+    pub ticket_index: u32,
     /// Last slot for entropy
     pub last_slot: u64,
     /// Timestamp of the roll
@@ -199,10 +180,10 @@ pub struct GameInitialized {
     pub ticket_amount: u64,
     /// Initial total amount in the game
     pub total_amount: u64,
-    /// Maximum players allowed
-    pub max_players: u32,
-    /// Minimum players required
-    pub min_players: u32,
+    /// Maximum tickets allowed
+    pub max_tickets: u32,
+    /// Minimum tickets required
+    pub min_tickets: u32,
     /// Token mint used for the game
     pub token_mint: Pubkey,
     /// Whether game is private
@@ -220,8 +201,8 @@ pub struct GameCompleted {
     pub game_key: Pubkey,
     /// Winner of the game
     pub winner: Pubkey,
-    /// Total number of players who participated
-    pub players_count: u32,
+    /// Total number of tickets that participated
+    pub tickets_count: u32,
     /// Amount awarded to the winner
     pub winner_amount: u64,
     /// Fee amount collected

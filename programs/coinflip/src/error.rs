@@ -5,22 +5,21 @@ use anchor_lang::prelude::*;
 // =============================================================================
 
 /// Custom error codes for the coinflip program.
-/// 
+///
 /// Error codes are organized into ranges by category:
-/// - 1000-1099: Authority and Permission Errors
-/// - 1100-1199: Game State Errors  
+/// - 1000-1099: Operator and Permission Errors
+/// - 1100-1199: Game State Errors
 /// - 1200-1299: Player Action Errors
 /// - 1300-1399: Configuration Errors
 /// - 1400-1499: Token Errors
 #[error_code]
 pub enum ErrorCode {
     // =========================================================================
-    // AUTHORITY AND PERMISSION ERRORS (1000-1099)
+    // OPERATOR AND PERMISSION ERRORS (1000-1099)
     // =========================================================================
-
-    /// The provided authority does not match the required authority
-    #[msg("Unauthorized authority")]
-    UnauthorizedAuthority = 1000,
+    /// The provided operator does not match the required operator
+    #[msg("Unauthorized operator")]
+    UnauthorizedOperator = 1000,
 
     /// Player is not authorized to perform this action
     #[msg("Unauthorized player")]
@@ -33,7 +32,6 @@ pub enum ErrorCode {
     // =========================================================================
     // GAME STATE ERRORS (1100-1199)
     // =========================================================================
-
     /// Game has reached maximum player capacity
     #[msg("Game already full")]
     GameFull = 1100,
@@ -66,10 +64,13 @@ pub enum ErrorCode {
     #[msg("Game already completed")]
     GameAlreadyCompleted = 1107,
 
+    /// Oracle buffer time has not expired yet - emergency operations not allowed
+    #[msg("Oracle buffer time not expired")]
+    OracleBufferNotExpired = 1108,
+
     // =========================================================================
     // PLAYER ACTION ERRORS (1200-1299)
     // =========================================================================
-
     /// Player has already joined this game
     #[msg("Player already joined")]
     AlreadyJoined = 1200,
@@ -78,21 +79,28 @@ pub enum ErrorCode {
     #[msg("Insufficient balance")]
     InsufficientBalance = 1201,
 
-    /// Cannot unjoin Snowball game when multiple players are present
-    #[msg("Cannot unjoin Snowball game with multiple players")]
-    SnowballMultiPlayerUnjoin = 1202,
+    /// Winner index does not match calculated winner from secret key
+    #[msg("Invalid winner index")]
+    InvalidWinnerIndex = 1202,
 
-    /// The provided last player index is invalid
-    #[msg("Invalid last player index")]
-    InvalidLastPlayerIndex = 1203,
+    /// Winner pubkey does not match participation entry
+    #[msg("Winner pubkey mismatch")]
+    WinnerPubkeyMismatch = 1203,
+
+    /// Player not authorized for private game
+    #[msg("Private game access denied")]
+    PrivateGameAccessDenied = 1204,
+
+    /// Failed to generate unbiased random number for winner selection
+    #[msg("Randomness generation failed")]
+    RandomnessGenerationFailed = 1205,
 
     // =========================================================================
     // CONFIGURATION ERRORS (1300-1399)
     // =========================================================================
-
-    /// Player count configuration is invalid
-    #[msg("Invalid players count")]
-    InvalidPlayersCount = 1300,
+    /// Ticket count configuration is invalid
+    #[msg("Invalid tickets count")]
+    InvalidTicketsCount = 1300,
 
     /// Timeout configuration is invalid
     #[msg("Invalid timeout")]
@@ -106,10 +114,13 @@ pub enum ErrorCode {
     #[msg("Invalid secret key")]
     InvalidSecretKey = 1303,
 
+    /// Oracle configuration parameters are invalid
+    #[msg("Invalid configuration")]
+    InvalidConfiguration = 1304,
+
     // =========================================================================
     // TOKEN ERRORS (1400-1499)
     // =========================================================================
-
     /// Token is not enabled for game operations
     #[msg("Token not enabled")]
     TokenNotEnabled = 1400,

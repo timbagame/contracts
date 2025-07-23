@@ -10,7 +10,6 @@ mod error;
 mod events;
 mod instructions;
 mod state;
-mod utils;
 
 use crate::instructions::*;
 use crate::state::GameType;
@@ -32,12 +31,14 @@ pub struct OracleConfig {
     pub fee_percentage: u8,
     /// Buffer time in seconds after game timeout before cancellation
     pub oracle_buffer_time: u16,
-    /// Maximum number of players allowed in any game
-    pub max_players: u32,
+    /// Maximum number of tickets allowed in any game
+    pub max_tickets: u32,
     /// Maximum timeout duration in seconds for games
     pub max_timeout: u32,
     /// Minimum timeout duration in seconds for games
     pub min_timeout: u32,
+    /// Additional buffer time for filter cleanup after oracle buffer expires
+    pub filter_cleanup_buffer: u16,
 }
 
 /// Configuration parameters for token initialization and updates
@@ -56,13 +57,13 @@ pub struct GameConfig {
     pub game_type: GameType,
     /// Amount per player (ticket amount for regular games, total prize for giveaways)
     pub amount: u64,
-    /// Maximum number of players allowed
-    pub max_players: u32,
-    /// Minimum number of players required to complete
-    pub min_players: u32,
+    /// Maximum number of tickets allowed
+    pub max_tickets: u32,
+    /// Minimum number of tickets required to complete
+    pub min_tickets: u32,
     /// Timeout duration in seconds
     pub timeout: u32,
-    /// Whether game requires oracle authority to join
+    /// Whether game requires oracle operator to join
     pub is_private: bool,
 }
 
@@ -83,7 +84,7 @@ pub mod coinflip {
         instructions::initialize_oracle::handler(ctx, config)
     }
 
-    /// Updates oracle configuration including authority transfer
+    /// Updates oracle configuration including operator transfer
     pub fn update_oracle(ctx: Context<UpdateOracle>, config: OracleConfig) -> Result<()> {
         instructions::update_oracle::handler(ctx, config)
     }
@@ -120,7 +121,7 @@ pub mod coinflip {
     // GAME MANAGEMENT
     // =========================================================================
 
-    /// Creates a new game with specified configuration and random hash
+    /// Creates a new game with specified configuration
     pub fn initialize_game(
         ctx: Context<InitializeGame>,
         config: GameConfig,
@@ -140,13 +141,8 @@ pub mod coinflip {
     }
 
     /// Allows a player to leave a game before completion (with refund)
-    pub fn unjoin_game(ctx: Context<UnjoinGame>) -> Result<()> {
-        instructions::unjoin_game::handler(ctx)
-    }
-
-    /// Cleans up expired player participation accounts
-    pub fn clean_player_participation(ctx: Context<CleanPlayerParticipation>) -> Result<()> {
-        instructions::clean_player_participation::handler(ctx)
+    pub fn unjoin_game(ctx: Context<UnjoinGame>, ticket_index: u32) -> Result<()> {
+        instructions::unjoin_game::handler(ctx, ticket_index)
     }
 
     /// Closes a game with no active players (creator only)
@@ -158,16 +154,17 @@ pub mod coinflip {
     pub fn complete_game(
         ctx: Context<CompleteGame>,
         _random_hash: [u8; 32],
-        _secret_key: [u8; 32],
+        secret_key: [u8; 32],
+        winner_index: u32,
     ) -> Result<()> {
-        instructions::complete_game::handler(ctx)
+        instructions::complete_game::handler(ctx, _random_hash, secret_key, winner_index)
     }
 
     // =========================================================================
     // FEE MANAGEMENT
     // =========================================================================
 
-    /// Allows oracle authority to withdraw accumulated fees for a token
+    /// Allows oracle operator to withdraw accumulated fees for a token
     pub fn withdraw_token_fee(ctx: Context<WithdrawTokenFee>) -> Result<()> {
         instructions::withdraw_token_fee::handler(ctx)
     }

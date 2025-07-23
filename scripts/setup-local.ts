@@ -80,7 +80,8 @@ async function main() {
   const neededAmount = 1002 * LAMPORTS_PER_SOL;
   if (authorityBalance < neededAmount) {
     console.log(
-      `Airdropping ${neededAmount / LAMPORTS_PER_SOL
+      `Airdropping ${
+        neededAmount / LAMPORTS_PER_SOL
       } SOL to authority ${wallet.publicKey.toString()}`
     );
     const authorityAirdrop = await safeAirdrop(
