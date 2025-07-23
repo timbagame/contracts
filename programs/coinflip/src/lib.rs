@@ -121,7 +121,7 @@ pub mod coinflip {
     // GAME MANAGEMENT
     // =========================================================================
 
-    /// Creates a new game with specified configuration and random hash
+    /// Creates a new game with specified configuration
     pub fn initialize_game(
         ctx: Context<InitializeGame>,
         config: GameConfig,
@@ -153,11 +153,11 @@ pub mod coinflip {
     /// Completes a game by revealing the secret key and distributing winnings
     pub fn complete_game(
         ctx: Context<CompleteGame>,
-        random_hash: [u8; 32],
+        _random_hash: [u8; 32],
         secret_key: [u8; 32],
         winner_index: u32,
     ) -> Result<()> {
-        instructions::complete_game::handler(ctx, random_hash, secret_key, winner_index)
+        instructions::complete_game::handler(ctx, _random_hash, secret_key, winner_index)
     }
 
     // =========================================================================

@@ -26,7 +26,8 @@ pub fn handler(
     // ===============================
 
     // 1. Verify the winner index is correctly calculated from secret key
-    let calculated_winner_index = game.calculate_winner_index(secret_key);
+    let calculated_winner_index = game.calculate_winner_index(secret_key)
+        .ok_or(ErrorCode::RandomnessGenerationFailed)?;
     require!(
         winner_index == calculated_winner_index,
         ErrorCode::InvalidWinnerIndex
