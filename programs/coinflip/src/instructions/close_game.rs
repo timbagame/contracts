@@ -1,3 +1,4 @@
+use crate::error::ErrorCode;
 use crate::events::GameClosed;
 use anchor_lang::prelude::*;
 
@@ -12,7 +13,7 @@ pub fn handler(ctx: Context<super::CloseGame>) -> Result<()> {
 
     require!(
         !game.waiting_for_oracle(oracle.oracle_buffer_time as u64, current_time),
-        crate::error::ErrorCode::GameWaitingForOracle
+        ErrorCode::GameWaitingForOracle
     );
 
     // ===============================

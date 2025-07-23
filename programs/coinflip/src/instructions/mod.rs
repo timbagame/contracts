@@ -14,7 +14,6 @@ pub mod initialize_player_balance;
 pub mod withdraw_player_balance;
 
 // Game management
-pub mod clean_player_participation;
 pub mod close_game;
 pub mod complete_game;
 pub mod initialize_game;

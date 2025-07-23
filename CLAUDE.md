@@ -13,6 +13,19 @@ This is a Solana blockchain project implementing a coinflip smart contract game 
 - `anchor test` - Run the test suite (uses ts-mocha with 1000000ms timeout)
 - `yarn run setup-local` - Set up local development environment with airdrops and token creation
 
+**CRITICAL TESTING RULES**: 
+🚨 **NEVER run `anchor test` with grep, pipes, tail, head, or any other commands!** 🚨
+- Each test run takes 8+ minutes - ONLY run `anchor test` once
+- Read the FULL output from that single run
+- Do NOT use: `anchor test | grep`, `anchor test | tail`, etc.
+- This wastes enormous amounts of time and must be avoided
+
+🚨 **NEVER use `yarn test` - it's not a valid command for Anchor!** 🚨
+- Anchor doesn't support running individual test files
+- To run specific tests, edit `Anchor.toml` and modify the `[[test]]` section
+- Only use `anchor test` to run the configured test suite
+- Remember: `yarn test` will always fail with Anchor projects
+
 ### Code Quality
 - `yarn run lint` - Check code formatting with Prettier
 - `yarn run lint:fix` - Fix code formatting issues
@@ -32,7 +45,7 @@ This is a Solana blockchain project implementing a coinflip smart contract game 
 The coinflip program (`programs/coinflip/src/`) is organized as follows:
 
 - **lib.rs**: Main program entry point with all instruction handlers
-- **state.rs**: Account structures (Oracle, Game, GameToken, PlayerBalance, PlayerParticipation) with size constants
+- **state.rs**: Account structures (Oracle, Game, GameToken, PlayerBalance) with size constants and bloom filter logic
 - **instructions/**: Modular instruction handlers organized by functionality:
   - Oracle management (initialize/update oracle)
   - Token management (initialize/update token configs)
@@ -48,7 +61,7 @@ The coinflip program (`programs/coinflip/src/`) is organized as follows:
 2. Token configuration defines min amounts and fees per token
 3. Players initialize balance accounts for deposits
 4. Game creation with configurable parameters (amount, max/min players, timeout)
-5. Players join games through participation accounts
+5. Players join games tracked via bloom filters in player balance accounts
 6. Game completion uses commit-reveal scheme with hash-based winner selection
 7. Fee collection and balance withdrawals
 
@@ -66,7 +79,7 @@ The codebase implements several security patterns that must be preserved:
    - Game completion reveals the secret key
    - Winner selection uses cryptographically secure randomness with bias elimination
 
-3. **Player Index Management**: When players unjoin, the last player's index is swapped to maintain contiguous indices for winner calculation
+3. **Bloom Filter Tracking**: Player participation tracked using 512-bit bloom filters with timestamp optimization for efficiency
 
 ### Account Architecture Patterns
 - **PDA Seeds**: All PDAs use consistent seed patterns (`b"game"`, `b"oracle"`, `b"player_balance"`, etc.)
@@ -74,12 +87,20 @@ The codebase implements several security patterns that must be preserved:
 - **State Management**: Account states are designed for minimal rent and optimal serialization
 
 ### Testing Architecture
-Tests in `tests/coinflip.ts` include comprehensive scenarios for:
-- Game lifecycle with multiple players
+The test suite has been completely revamped with modular organization:
+
+- **`tests/core.test.ts`** - Basic game operations and lifecycle testing
+- **`tests/security.test.ts`** - Security validation, edge cases, and exploit prevention  
+- **`tests/game-types.test.ts`** - Different game variants (Coinflip, Giveaway, Snowball)
+- **`tests/advanced.test.ts`** - Complex functionality, bloom filters, and performance tests
+- **`tests/test-helpers.ts`** - Shared utilities (TestUtils, TestEnvironment, winner calculation)
+
+Key features:
+- All tests use `anchor test` command - individual test file execution is not supported
+- Comprehensive scenarios for game lifecycle with multiple players
 - Security measures (replay attack prevention, overflow handling)
-- Player participation edge cases
 - Winner calculation using the same algorithm as the contract
-- The JavaScript winner calculation mirrors the Rust implementation exactly for validation
+- The JavaScript winner calculation in test-helpers.ts mirrors the Rust implementation exactly
 
 ### Development Environment
 The project uses devcontainer configuration for consistent development setup with pre-installed Solana tools, Anchor, and dependencies. Manual setup requires Rust, Solana CLI, Anchor, Node.js, and Yarn.
@@ -94,6 +115,8 @@ The project uses devcontainer configuration for consistent development setup wit
 - Devnet/Localnet: `GLAicVgkhvVtAbcf9aF4iLqAXZ9GSrsfexoDUN2fBPCG`
 
 ## Important Development Notes
+- **Bloom Filter Migration**: System has migrated from merkle trees to bloom filters for player participation tracking
+- **Winner Validation**: Unlike merkle trees, bloom filters cannot validate winner pubkeys at completion time
 - When modifying winner calculation logic, ensure the TypeScript test implementation stays synchronized
 - Account space constants in `state.rs` must be updated if struct fields change
 - The oracle buffer time mechanism prevents games from being stuck in limbo

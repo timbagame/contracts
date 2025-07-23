@@ -1,50 +1,50 @@
-use crate::{events::PlayerJoined, utils::handle_player_token_transfer};
+use crate::error::ErrorCode;
+use crate::events::PlayerJoined;
 use anchor_lang::prelude::*;
 
 pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
     let game = &mut ctx.accounts.game;
-    let player_participation = &mut ctx.accounts.player_participation;
+    let player_balance = &mut ctx.accounts.player_balance;
+    let oracle = &ctx.accounts.oracle;
     let clock = Clock::get()?;
     let current_time = clock.unix_timestamp as u64;
     let player_key = ctx.accounts.player.key();
+    let game_key = game.key();
 
     // ===============================
     // VALIDATION
     // ===============================
 
+    require!(!game.is_expired(current_time), ErrorCode::GameExpired);
+
+    // Check for double join using player balance bloom filter
     require!(
-        !game.is_expired(current_time),
-        crate::error::ErrorCode::GameExpired
+        player_balance.can_join_game(&game_key, game.created_at),
+        ErrorCode::AlreadyJoined
     );
 
     // ===============================
     // STATE UPDATES
     // ===============================
 
-    let ticket_amount = game.ticket_amount;
-    let player_index = game.players_count;
-
-    // Update player participation
-    player_participation.player_index = player_index;
-
-    // Update game state
-    game.players_count += 1;
+    // Add player to game and update counters
+    game.add_player_to_game()?;
     game.last_slot = clock.slot;
 
-    // Update amounts for non-giveaway games
-    if ticket_amount > 0 {
-        player_participation.player_amount = ticket_amount;
-        game.total_amount += ticket_amount;
-    }
+    // Mark game as joined in player's bloom filter
+    let game_expiry = game.calculate_expiry_timestamp(oracle.get_total_buffer_time());
+    player_balance.mark_game_joined(&game_key, game_expiry, current_time);
+    
+    // Also mark the specific game+index combination for ticket index 0
+    player_balance.mark_game_index_joined(&game_key, game.tickets_count - 1, game_expiry, current_time);
 
     // ===============================
     // TOKEN TRANSFER
     // ===============================
 
-    if ticket_amount > 0 {
-        handle_player_token_transfer(
-            &mut ctx.accounts.player_balance,
-            ticket_amount,
+    if game.ticket_amount > 0 {
+        player_balance.handle_token_transfer(
+            game.ticket_amount,
             ctx.accounts.player_token_account.to_account_info(),
             ctx.accounts.game_token_account.to_account_info(),
             ctx.accounts.player.to_account_info(),
@@ -60,8 +60,8 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
         game_key: game.key(),
         player: player_key,
         total_amount: game.total_amount,
-        players_count: game.players_count,
-        player_index,
+        tickets_count: game.tickets_count,
+        ticket_index: game.tickets_count - 1, // Just joined, so index is tickets_count - 1
         last_slot: game.last_slot,
         timestamp: current_time,
     });

@@ -1,7 +1,13 @@
 use crate::events::GameCompleted;
+use crate::error::ErrorCode;
 use anchor_lang::prelude::*;
 
-pub fn handler(ctx: Context<super::CompleteGame>) -> Result<()> {
+pub fn handler(
+    ctx: Context<super::CompleteGame>,
+    _random_hash: [u8; 32],
+    secret_key: [u8; 32],
+    winner_index: u32,
+) -> Result<()> {
     let game = &mut ctx.accounts.game;
     let oracle = &ctx.accounts.oracle;
     let current_time = Clock::get()?.unix_timestamp as u64;
@@ -12,7 +18,25 @@ pub fn handler(ctx: Context<super::CompleteGame>) -> Result<()> {
 
     require!(
         game.waiting_for_oracle(oracle.oracle_buffer_time as u64, current_time),
-        crate::error::ErrorCode::GameNotReadyForOracle
+        ErrorCode::GameNotReadyForOracle
+    );
+
+    // ===============================
+    // WINNER VERIFICATION
+    // ===============================
+
+    // 1. Verify the winner index is correctly calculated from secret key
+    let calculated_winner_index = game.calculate_winner_index(secret_key)
+        .ok_or(ErrorCode::RandomnessGenerationFailed)?;
+    require!(
+        winner_index == calculated_winner_index,
+        ErrorCode::InvalidWinnerIndex
+    );
+
+    // 2. Verify the winner index is within valid range
+    require!(
+        winner_index < game.tickets_count,
+        ErrorCode::InvalidWinnerIndex
     );
 
     // ===============================
@@ -36,7 +60,7 @@ pub fn handler(ctx: Context<super::CompleteGame>) -> Result<()> {
     emit!(GameCompleted {
         game_key: game.key(),
         winner: ctx.accounts.winner.key(),
-        players_count: game.players_count,
+        tickets_count: game.tickets_count,
         winner_amount,
         fee_amount,
         timestamp: current_time,
