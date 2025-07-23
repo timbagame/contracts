@@ -601,12 +601,12 @@ impl Game {
     }
 
     /// Calculates the winner index using secret key with unbiased random selection
-    pub fn calculate_winner_index(&self, secret_key: [u8; 32]) -> u32 {
+    pub fn calculate_winner_index(&self, secret_key: [u8; 32]) -> Option<u32> {
         // Use total tickets count for all game types
         let n_entries = self.tickets_count as u64;
 
         if n_entries == 1 {
-            return 0;
+            return Some(0);
         }
 
         // Hash combination of secret key and last_slot for additional entropy
@@ -623,16 +623,18 @@ impl Game {
 
             // Use this value if it's in the unbiased range
             if random_u64 < max_valid {
-                return (random_u64 % n_entries) as u32;
+                return Some((random_u64 % n_entries) as u32);
             }
         }
 
-        panic!("Unable to generate unbiased random number - game must be cancelled");
+        // Return None if unable to generate unbiased random number
+        None
     }
 
     /// Calculates prize distribution with fee deduction
     pub fn calculate_amounts(&self, fee_percentage: u64) -> (u64, u64) {
-        let fee_amount = self.total_amount * fee_percentage / 100;
+        // Use u128 for intermediate calculation to prevent overflow
+        let fee_amount = (self.total_amount as u128 * fee_percentage as u128 / 100) as u64;
         let winner_amount = self.total_amount - fee_amount;
         (winner_amount, fee_amount)
     }

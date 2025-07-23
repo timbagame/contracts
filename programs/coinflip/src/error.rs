@@ -91,6 +91,10 @@ pub enum ErrorCode {
     #[msg("Private game access denied")]
     PrivateGameAccessDenied = 1204,
 
+    /// Failed to generate unbiased random number for winner selection
+    #[msg("Randomness generation failed")]
+    RandomnessGenerationFailed = 1205,
+
     // =========================================================================
     // CONFIGURATION ERRORS (1300-1399)
     // =========================================================================
