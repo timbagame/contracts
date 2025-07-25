@@ -14,7 +14,7 @@ pub fn handler(ctx: Context<super::InitializePlayerBalance>) -> Result<()> {
     player_balance.amount = 0;
     
     // Initialize recent games tracking
-    player_balance.recent_games = [Pubkey::default(); 5];
+    player_balance.recent_games = [Pubkey::default(); 8];
     player_balance.recent_games_idx = 0;
     
     // Initialize dual filter system (filter_a is active by default)
