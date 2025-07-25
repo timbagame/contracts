@@ -115,9 +115,28 @@ The project uses devcontainer configuration for consistent development setup wit
 - Devnet/Localnet: `GLAicVgkhvVtAbcf9aF4iLqAXZ9GSrsfexoDUN2fBPCG`
 
 ## Important Development Notes
-- **Bloom Filter Migration**: System has migrated from merkle trees to bloom filters for player participation tracking
-- **Winner Validation**: Unlike merkle trees, bloom filters cannot validate winner pubkeys at completion time
-- When modifying winner calculation logic, ensure the TypeScript test implementation stays synchronized
-- Account space constants in `state.rs` must be updated if struct fields change
-- The oracle buffer time mechanism prevents games from being stuck in limbo
-- Token transfers use optimized balance + wallet token combinations via `utils.rs`
+
+### Advanced Bloom Filter System (V2)
+The system implements a sophisticated triple-layer safety architecture for player participation tracking:
+
+**Layer 1: Recent Games Tracking (100% Accuracy)**
+- `recent_games: [Pubkey; 8]` - Circular buffer for last 8 games
+- Eliminates false positives for recent game interactions
+- Provides high-confidence detection without bloom filter limitations
+
+**Layer 2: Dual A/B Bloom Filter System**
+- `filter_a` and `filter_b` with `active_filter_index` switching (0 or 1)
+- Safe filter swapping without downtime: inactive filter gets cleaned when all its games expire
+- Both filters are checked during verification for maximum safety
+- `maybe_reset_filter()` automatically manages filter rotation on player interactions
+
+**Layer 3: Timestamp Protection**
+- Mathematical guarantee: if game created after both filters' last update, cannot be in either filter
+- Prevents impossible false positives through temporal logic
+
+### Critical Implementation Rules
+- **Account Space**: `PLAYER_BALANCE_SIZE = 704 bytes` (includes discriminator + padding)
+- **Filter Cleaning**: Only occurs when `current_time > inactive_longest_expiry` 
+- **Winner Calculation Sync**: Must stay synchronized across Rust contract, TypeScript tests, and Oracle service
+- **No Individual Test Execution**: Always use full `anchor test` suite (8+ minute runtime)
+- **Memory Alignment**: Account for Rust struct padding when calculating sizes

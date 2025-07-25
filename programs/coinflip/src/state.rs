@@ -8,7 +8,7 @@ use anchor_spl::token::{transfer, Transfer};
 
 pub const ORACLE_SIZE: usize = 8 + 32 + 1 + 2 + 4 + 4 + 4 + 2;
 pub const GAME_TOKEN_SIZE: usize = 8 + 32 + 1 + 8 + 8 + 1;
-pub const PLAYER_BALANCE_SIZE: usize = 8 + 8 + 592; // 8 discriminator + 8 lamports + 592 actual data size (including padding)
+pub const PLAYER_BALANCE_SIZE: usize = 8 + 8 + 688; // 8 discriminator + 8 lamports + 688 actual data size (including padding)
 pub const GAME_BASE_SIZE: usize = 8
     + 32  // creator
     + 1   // game_type
@@ -229,7 +229,7 @@ pub struct PlayerBalance {
     pub amount: u64,
     
     /// Hybrid approach: recent games tracking for high-confidence detection
-    pub recent_games: [Pubkey; 5],
+    pub recent_games: [Pubkey; 8],
     pub recent_games_idx: u8,
     
     /// Dual bloom filter system - 0 means filter_a is active, 1 means filter_b is active
@@ -260,7 +260,7 @@ impl PlayerBalance {
     /// Add a game to the recent games list using circular buffer
     fn add_to_recent_games(&mut self, game_key: &Pubkey) {
         self.recent_games[self.recent_games_idx as usize] = *game_key;
-        self.recent_games_idx = (self.recent_games_idx + 1) % 5;
+        self.recent_games_idx = (self.recent_games_idx + 1) % 8;
     }
 
     /// Get reference to the active filter set
@@ -468,7 +468,7 @@ impl PlayerBalance {
             self.active_filter_index = 1 - self.active_filter_index;
             
             // Reset recent games list when swapping
-            self.recent_games = [Pubkey::default(); 5];
+            self.recent_games = [Pubkey::default(); 8];
             self.recent_games_idx = 0;
         }
     }
