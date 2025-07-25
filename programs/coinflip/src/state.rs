@@ -8,7 +8,7 @@ use anchor_spl::token::{transfer, Transfer};
 
 pub const ORACLE_SIZE: usize = 8 + 32 + 1 + 2 + 4 + 4 + 4 + 2;
 pub const GAME_TOKEN_SIZE: usize = 8 + 32 + 1 + 8 + 8 + 1;
-pub const PLAYER_BALANCE_SIZE: usize = 8 + 8 + 64 + 64 + 64 + 8 + 8; // amount + game_filter + game_index_filter + unjoin_index_filter + filter_last_updated + longest_game_expiry
+pub const PLAYER_BALANCE_SIZE: usize = 8 + 8 + 592; // 8 discriminator + 8 lamports + 592 actual data size (including padding)
 pub const GAME_BASE_SIZE: usize = 8
     + 32  // creator
     + 1   // game_type
@@ -205,6 +205,21 @@ impl GameToken {
 }
 
 // =============================================================================
+// BLOOM FILTER STRUCTURES
+// =============================================================================
+
+/// Simplified bloom filter structure (no metadata, just filters)
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Default)]
+pub struct BloomFilters {
+    /// 512-bit bloom filter for game participation tracking
+    pub game_filter: [u64; 8],
+    /// 512-bit bloom filter for game + ticket index tracking
+    pub game_index_filter: [u64; 8],
+    /// 512-bit bloom filter for game + ticket index unjoin tracking
+    pub unjoin_index_filter: [u64; 8],
+}
+
+// =============================================================================
 // PLAYER BALANCE ACCOUNT
 // =============================================================================
 #[account]
@@ -212,22 +227,76 @@ impl GameToken {
 pub struct PlayerBalance {
     /// Current balance amount
     pub amount: u64,
-    /// 512-bit bloom filter for game participation tracking
-    pub game_filter: [u64; 8],
-    /// 512-bit bloom filter for game + ticket index tracking
-    pub game_index_filter: [u64; 8],
-    /// 512-bit bloom filter for game + ticket index unjoin tracking
-    pub unjoin_index_filter: [u64; 8],
-    /// Timestamp when filter was last updated
-    pub filter_last_updated: u64,
-    /// Longest expiration time of games in filter
-    pub longest_game_expiry: u64,
+    
+    /// Hybrid approach: recent games tracking for high-confidence detection
+    pub recent_games: [Pubkey; 5],
+    pub recent_games_idx: u8,
+    
+    /// Dual bloom filter system - 0 means filter_a is active, 1 means filter_b is active
+    pub active_filter_index: u8,
+    
+    /// Filter Set A
+    pub filter_a: BloomFilters,
+    pub filter_a_last_updated: u64,
+    pub filter_a_longest_expiry: u64,
+    
+    /// Filter Set B
+    pub filter_b: BloomFilters,
+    pub filter_b_last_updated: u64,
+    pub filter_b_longest_expiry: u64,
 }
 
 impl PlayerBalance {
     /// Adds refund amount to player balance
     pub fn refund(&mut self, amount: u64) {
         self.amount += amount;
+    }
+
+    /// Check if a game is in the recent games list (high-confidence check)
+    fn is_in_recent_games(&self, game_key: &Pubkey) -> bool {
+        self.recent_games.iter().any(|&game| game == *game_key)
+    }
+
+    /// Add a game to the recent games list using circular buffer
+    fn add_to_recent_games(&mut self, game_key: &Pubkey) {
+        self.recent_games[self.recent_games_idx as usize] = *game_key;
+        self.recent_games_idx = (self.recent_games_idx + 1) % 5;
+    }
+
+    /// Get reference to the active filter set
+    fn get_active_filter(&self) -> (&BloomFilters, u64, u64) {
+        if self.active_filter_index == 0 {
+            (&self.filter_a, self.filter_a_last_updated, self.filter_a_longest_expiry)
+        } else {
+            (&self.filter_b, self.filter_b_last_updated, self.filter_b_longest_expiry)
+        }
+    }
+
+    /// Get mutable reference to the active filter set
+    fn get_active_filter_mut(&mut self) -> (&mut BloomFilters, &mut u64, &mut u64) {
+        if self.active_filter_index == 0 {
+            (&mut self.filter_a, &mut self.filter_a_last_updated, &mut self.filter_a_longest_expiry)
+        } else {
+            (&mut self.filter_b, &mut self.filter_b_last_updated, &mut self.filter_b_longest_expiry)
+        }
+    }
+
+    /// Get reference to the inactive filter set
+    fn get_inactive_filter(&self) -> (&BloomFilters, u64, u64) {
+        if self.active_filter_index == 1 {
+            (&self.filter_a, self.filter_a_last_updated, self.filter_a_longest_expiry)
+        } else {
+            (&self.filter_b, self.filter_b_last_updated, self.filter_b_longest_expiry)
+        }
+    }
+
+    /// Get mutable reference to the inactive filter set
+    fn get_inactive_filter_mut(&mut self) -> (&mut BloomFilters, &mut u64, &mut u64) {
+        if self.active_filter_index == 1 {
+            (&mut self.filter_a, &mut self.filter_a_last_updated, &mut self.filter_a_longest_expiry)
+        } else {
+            (&mut self.filter_b, &mut self.filter_b_last_updated, &mut self.filter_b_longest_expiry)
+        }
     }
 
     /// Generate hash values for game key bloom filter
@@ -265,70 +334,94 @@ impl PlayerBalance {
         (pos1, pos2, pos3)
     }
 
-    /// Set bits in bloom filter for a game key
+    /// Set bits in bloom filter for a game key (writes to active filter set)
     fn set_bloom_bits(&mut self, game_key: &Pubkey) {
         let (pos1, pos2, pos3) = Self::hash_game_key(game_key);
+        let (active_filter, _, _) = self.get_active_filter_mut();
 
         // Set bits in the 512-bit filter (8 x 64-bit words)
-        self.game_filter[pos1 / 64] |= 1u64 << (pos1 % 64);
-        self.game_filter[pos2 / 64] |= 1u64 << (pos2 % 64);
-        self.game_filter[pos3 / 64] |= 1u64 << (pos3 % 64);
+        active_filter.game_filter[pos1 / 64] |= 1u64 << (pos1 % 64);
+        active_filter.game_filter[pos2 / 64] |= 1u64 << (pos2 % 64);
+        active_filter.game_filter[pos3 / 64] |= 1u64 << (pos3 % 64);
     }
 
-    /// Set bits in game index bloom filter for a game key + index
+    /// Set bits in game index bloom filter for a game key + index (writes to active filter set)
     fn set_game_index_bits(&mut self, game_key: &Pubkey, ticket_index: u32) {
         let (pos1, pos2, pos3) = Self::hash_game_index(game_key, ticket_index);
+        let (active_filter, _, _) = self.get_active_filter_mut();
 
         // Set bits in the 512-bit filter (8 x 64-bit words)
-        self.game_index_filter[pos1 / 64] |= 1u64 << (pos1 % 64);
-        self.game_index_filter[pos2 / 64] |= 1u64 << (pos2 % 64);
-        self.game_index_filter[pos3 / 64] |= 1u64 << (pos3 % 64);
+        active_filter.game_index_filter[pos1 / 64] |= 1u64 << (pos1 % 64);
+        active_filter.game_index_filter[pos2 / 64] |= 1u64 << (pos2 % 64);
+        active_filter.game_index_filter[pos3 / 64] |= 1u64 << (pos3 % 64);
     }
 
-    /// Set bits in unjoin index bloom filter for a game key + index
+    /// Set bits in unjoin index bloom filter for a game key + index (writes to active filter set)
     fn set_unjoin_index_bits(&mut self, game_key: &Pubkey, ticket_index: u32) {
         let (pos1, pos2, pos3) = Self::hash_game_index(game_key, ticket_index);
+        let (active_filter, _, _) = self.get_active_filter_mut();
 
         // Set bits in the 512-bit filter (8 x 64-bit words)
-        self.unjoin_index_filter[pos1 / 64] |= 1u64 << (pos1 % 64);
-        self.unjoin_index_filter[pos2 / 64] |= 1u64 << (pos2 % 64);
-        self.unjoin_index_filter[pos3 / 64] |= 1u64 << (pos3 % 64);
+        active_filter.unjoin_index_filter[pos1 / 64] |= 1u64 << (pos1 % 64);
+        active_filter.unjoin_index_filter[pos2 / 64] |= 1u64 << (pos2 % 64);
+        active_filter.unjoin_index_filter[pos3 / 64] |= 1u64 << (pos3 % 64);
     }
 
-    /// Check if bits are set in bloom filter for a game key
+    /// Check if bits are set in bloom filter for a game key (checks both filter sets)
     fn check_bloom_bits(&self, game_key: &Pubkey) -> bool {
         let (pos1, pos2, pos3) = Self::hash_game_key(game_key);
 
-        // Check if all bits are set
-        let bit1_set = (self.game_filter[pos1 / 64] & (1u64 << (pos1 % 64))) != 0;
-        let bit2_set = (self.game_filter[pos2 / 64] & (1u64 << (pos2 % 64))) != 0;
-        let bit3_set = (self.game_filter[pos3 / 64] & (1u64 << (pos3 % 64))) != 0;
+        // Check filter_a
+        let a_bit1_set = (self.filter_a.game_filter[pos1 / 64] & (1u64 << (pos1 % 64))) != 0;
+        let a_bit2_set = (self.filter_a.game_filter[pos2 / 64] & (1u64 << (pos2 % 64))) != 0;
+        let a_bit3_set = (self.filter_a.game_filter[pos3 / 64] & (1u64 << (pos3 % 64))) != 0;
+        let a_match = a_bit1_set && a_bit2_set && a_bit3_set;
 
-        bit1_set && bit2_set && bit3_set
+        // Check filter_b
+        let b_bit1_set = (self.filter_b.game_filter[pos1 / 64] & (1u64 << (pos1 % 64))) != 0;
+        let b_bit2_set = (self.filter_b.game_filter[pos2 / 64] & (1u64 << (pos2 % 64))) != 0;
+        let b_bit3_set = (self.filter_b.game_filter[pos3 / 64] & (1u64 << (pos3 % 64))) != 0;
+        let b_match = b_bit1_set && b_bit2_set && b_bit3_set;
+
+        a_match || b_match
     }
 
-    /// Check if bits are set in game index bloom filter for a game key + index
+    /// Check if bits are set in game index bloom filter for a game key + index (checks both filter sets)
     fn check_game_index_bits(&self, game_key: &Pubkey, ticket_index: u32) -> bool {
         let (pos1, pos2, pos3) = Self::hash_game_index(game_key, ticket_index);
 
-        // Check if all bits are set
-        let bit1_set = (self.game_index_filter[pos1 / 64] & (1u64 << (pos1 % 64))) != 0;
-        let bit2_set = (self.game_index_filter[pos2 / 64] & (1u64 << (pos2 % 64))) != 0;
-        let bit3_set = (self.game_index_filter[pos3 / 64] & (1u64 << (pos3 % 64))) != 0;
+        // Check filter_a
+        let a_bit1_set = (self.filter_a.game_index_filter[pos1 / 64] & (1u64 << (pos1 % 64))) != 0;
+        let a_bit2_set = (self.filter_a.game_index_filter[pos2 / 64] & (1u64 << (pos2 % 64))) != 0;
+        let a_bit3_set = (self.filter_a.game_index_filter[pos3 / 64] & (1u64 << (pos3 % 64))) != 0;
+        let a_match = a_bit1_set && a_bit2_set && a_bit3_set;
 
-        bit1_set && bit2_set && bit3_set
+        // Check filter_b
+        let b_bit1_set = (self.filter_b.game_index_filter[pos1 / 64] & (1u64 << (pos1 % 64))) != 0;
+        let b_bit2_set = (self.filter_b.game_index_filter[pos2 / 64] & (1u64 << (pos2 % 64))) != 0;
+        let b_bit3_set = (self.filter_b.game_index_filter[pos3 / 64] & (1u64 << (pos3 % 64))) != 0;
+        let b_match = b_bit1_set && b_bit2_set && b_bit3_set;
+
+        a_match || b_match
     }
 
-    /// Check if bits are set in unjoin index bloom filter for a game key + index
+    /// Check if bits are set in unjoin index bloom filter for a game key + index (checks both filter sets)
     fn check_unjoin_index_bits(&self, game_key: &Pubkey, ticket_index: u32) -> bool {
         let (pos1, pos2, pos3) = Self::hash_game_index(game_key, ticket_index);
 
-        // Check if all bits are set
-        let bit1_set = (self.unjoin_index_filter[pos1 / 64] & (1u64 << (pos1 % 64))) != 0;
-        let bit2_set = (self.unjoin_index_filter[pos2 / 64] & (1u64 << (pos2 % 64))) != 0;
-        let bit3_set = (self.unjoin_index_filter[pos3 / 64] & (1u64 << (pos3 % 64))) != 0;
+        // Check filter_a
+        let a_bit1_set = (self.filter_a.unjoin_index_filter[pos1 / 64] & (1u64 << (pos1 % 64))) != 0;
+        let a_bit2_set = (self.filter_a.unjoin_index_filter[pos2 / 64] & (1u64 << (pos2 % 64))) != 0;
+        let a_bit3_set = (self.filter_a.unjoin_index_filter[pos3 / 64] & (1u64 << (pos3 % 64))) != 0;
+        let a_match = a_bit1_set && a_bit2_set && a_bit3_set;
 
-        bit1_set && bit2_set && bit3_set
+        // Check filter_b
+        let b_bit1_set = (self.filter_b.unjoin_index_filter[pos1 / 64] & (1u64 << (pos1 % 64))) != 0;
+        let b_bit2_set = (self.filter_b.unjoin_index_filter[pos2 / 64] & (1u64 << (pos2 % 64))) != 0;
+        let b_bit3_set = (self.filter_b.unjoin_index_filter[pos3 / 64] & (1u64 << (pos3 % 64))) != 0;
+        let b_match = b_bit1_set && b_bit2_set && b_bit3_set;
+
+        a_match || b_match
     }
 
     /// Check if player likely joined this game (bloom filter check)
@@ -336,31 +429,51 @@ impl PlayerBalance {
         self.check_bloom_bits(game_key)
     }
 
-    /// Main entry point: Check if player can join game (considers timestamps + bloom filter)
+    /// Main entry point: Check if player can join game (hybrid approach: recent games + dual bloom filter)
     pub fn can_join_game(&self, game_key: &Pubkey, game_created_time: u64) -> bool {
-        // If game was created AFTER our filter was last updated,
-        // it can't possibly be in our filter (even if bits match)
-        if game_created_time > self.filter_last_updated {
+        // First, check the recent games list for high-confidence detection
+        if self.is_in_recent_games(game_key) {
+            return false; // Definitely already joined
+        }
+
+        // Check both filter sets' timestamps
+        let (_, active_last_updated, _) = self.get_active_filter();
+        let (_, inactive_last_updated, _) = self.get_inactive_filter();
+        
+        // If game was created AFTER both filters were last updated,
+        // it can't possibly be in either filter (even if bits match)
+        if game_created_time > active_last_updated && game_created_time > inactive_last_updated {
             return true; // Definitely can join
         }
 
-        // Game is older than our filter, check bloom filter
+        // Game might be in filters, check bloom filter
         !self.likely_joined_game(game_key)
     }
 
-    /// Reset filters if all games have expired
+    /// Reset filters using dual filter system with safe swapping mechanism
     pub fn maybe_reset_filter(&mut self, current_time: u64) {
-        // Only reset when ALL games have expired (current > longest expiry)
-        if current_time > self.longest_game_expiry {
-            self.game_filter = [0; 8];
-            self.game_index_filter = [0; 8];
-            self.unjoin_index_filter = [0; 8];
-            self.filter_last_updated = current_time;
-            self.longest_game_expiry = 0; // No games tracked
+        // Get the inactive filter's expiry time
+        let (_, _, inactive_longest_expiry) = self.get_inactive_filter();
+        
+        // Only swap and reset when inactive filter's games have ALL expired
+        if current_time > inactive_longest_expiry {
+            // Reset the inactive filter set
+            let (inactive_filter, inactive_last_updated, inactive_longest_expiry) = self.get_inactive_filter_mut();
+            
+            *inactive_filter = BloomFilters::default();
+            *inactive_last_updated = current_time;
+            *inactive_longest_expiry = 0;
+            
+            // Swap the active filter (the previous inactive becomes active)
+            self.active_filter_index = 1 - self.active_filter_index;
+            
+            // Reset recent games list when swapping
+            self.recent_games = [Pubkey::default(); 5];
+            self.recent_games_idx = 0;
         }
     }
 
-    /// Mark game as joined in bloom filter with timestamp tracking
+    /// Mark game as joined in both recent games list and active bloom filter with timestamp tracking
     pub fn mark_game_joined(
         &mut self,
         game_key: &Pubkey,
@@ -370,17 +483,21 @@ impl PlayerBalance {
         // Maybe reset filter if all old games expired
         self.maybe_reset_filter(current_time);
 
-        // Add to bloom filter
+        // Add to recent games list for high-confidence tracking
+        self.add_to_recent_games(game_key);
+
+        // Add to active bloom filter for long-term tracking
         self.set_bloom_bits(game_key);
 
-        // Update timestamps
-        self.filter_last_updated = current_time;
+        // Update timestamps for active filter set
+        let (_, filter_last_updated, longest_game_expiry) = self.get_active_filter_mut();
+        *filter_last_updated = current_time;
 
-        // Keep the LONGEST expiration time
-        if self.longest_game_expiry == 0 {
-            self.longest_game_expiry = game_expiry_time;
+        // Keep the LONGEST expiration time for active filter set
+        if *longest_game_expiry == 0 {
+            *longest_game_expiry = game_expiry_time;
         } else {
-            self.longest_game_expiry = self.longest_game_expiry.max(game_expiry_time);
+            *longest_game_expiry = (*longest_game_expiry).max(game_expiry_time);
         }
     }
 
@@ -429,7 +546,7 @@ impl PlayerBalance {
         Ok(())
     }
 
-    /// Mark game + index as joined in bloom filter
+    /// Mark game + index as joined in both recent games list and active bloom filter
     pub fn mark_game_index_joined(
         &mut self,
         game_key: &Pubkey,
@@ -440,38 +557,51 @@ impl PlayerBalance {
         // Maybe reset filter if all old games expired
         self.maybe_reset_filter(current_time);
 
-        // Add to game index bloom filter
+        // Add to recent games list for high-confidence tracking
+        self.add_to_recent_games(game_key);
+
+        // Add to active game index bloom filter
         self.set_game_index_bits(game_key, ticket_index);
 
-        // Update timestamps
-        self.filter_last_updated = current_time;
+        // Update timestamps for active filter set
+        let (_, filter_last_updated, longest_game_expiry) = self.get_active_filter_mut();
+        *filter_last_updated = current_time;
 
-        // Keep the LONGEST expiration time
-        if self.longest_game_expiry == 0 {
-            self.longest_game_expiry = game_expiry_time;
+        // Keep the LONGEST expiration time for active filter set
+        if *longest_game_expiry == 0 {
+            *longest_game_expiry = game_expiry_time;
         } else {
-            self.longest_game_expiry = self.longest_game_expiry.max(game_expiry_time);
+            *longest_game_expiry = (*longest_game_expiry).max(game_expiry_time);
         }
     }
 
-    /// Check if player can join game with specific index (considers timestamps + bloom filter)
+    /// Check if player can join game with specific index (hybrid approach: recent games + dual bloom filter)
     pub fn can_join_with_index(
         &self,
         game_key: &Pubkey,
         ticket_index: u32,
         game_created_time: u64,
     ) -> bool {
-        // If game was created AFTER our filter was last updated,
-        // it can't possibly be in our filter (even if bits match)
-        if game_created_time > self.filter_last_updated {
+        // First, check the recent games list for high-confidence detection
+        if self.is_in_recent_games(game_key) {
+            return false; // Definitely already joined this game
+        }
+
+        // Check both filter sets' timestamps
+        let (_, active_last_updated, _) = self.get_active_filter();
+        let (_, inactive_last_updated, _) = self.get_inactive_filter();
+        
+        // If game was created AFTER both filters were last updated,
+        // it can't possibly be in either filter (even if bits match)
+        if game_created_time > active_last_updated && game_created_time > inactive_last_updated {
             return true; // Definitely can join
         }
 
-        // Game is older than our filter, check bloom filter
+        // Game might be in filters, check bloom filter
         !self.check_game_index_bits(game_key, ticket_index)
     }
 
-    /// Mark game + index as unjoined in bloom filter
+    /// Mark game + index as unjoined in active bloom filter
     pub fn mark_game_index_unjoined(
         &mut self,
         game_key: &Pubkey,
@@ -481,11 +611,12 @@ impl PlayerBalance {
         // Maybe reset filter if all old games expired
         self.maybe_reset_filter(current_time);
 
-        // Add to unjoin index bloom filter
+        // Add to active unjoin index bloom filter
         self.set_unjoin_index_bits(game_key, ticket_index);
 
-        // Update timestamp
-        self.filter_last_updated = current_time;
+        // Update timestamp for active filter set
+        let (_, filter_last_updated, _) = self.get_active_filter_mut();
+        *filter_last_updated = current_time;
     }
 
     /// Check if player has already unjoined this specific game + index
@@ -495,13 +626,17 @@ impl PlayerBalance {
         ticket_index: u32,
         game_created_time: u64,
     ) -> bool {
-        // If game was created AFTER our filter was last updated,
-        // it can't possibly be in our filter (even if bits match)
-        if game_created_time > self.filter_last_updated {
+        // Check both filter sets' timestamps
+        let (_, active_last_updated, _) = self.get_active_filter();
+        let (_, inactive_last_updated, _) = self.get_inactive_filter();
+        
+        // If game was created AFTER both filters were last updated,
+        // it can't possibly be in either filter (even if bits match)
+        if game_created_time > active_last_updated && game_created_time > inactive_last_updated {
             return false; // Definitely hasn't unjoined
         }
 
-        // Game is older than our filter, check unjoin bloom filter
+        // Game might be in filters, check unjoin bloom filter
         self.check_unjoin_index_bits(game_key, ticket_index)
     }
 }
@@ -543,8 +678,8 @@ impl Game {
     // STORAGE CALCULATION & INITIALIZATION
     // =============================================================================
 
-    /// Calculates the total storage size for a game (now fixed size with Bloom filter)
-    pub fn calculate_storage_size(_max_tickets: u32) -> usize {
+    /// Calculates the total storage size for a game (fixed size with Bloom filter)
+    pub fn calculate_storage_size() -> usize {
         GAME_BASE_SIZE
     }
 
@@ -698,7 +833,4 @@ impl Game {
             || self.game_type == GameType::Dumbaway
             || token_balance + player_balance >= self.ticket_amount
     }
-
-
-
 }
