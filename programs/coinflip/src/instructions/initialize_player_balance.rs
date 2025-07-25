@@ -10,7 +10,25 @@ pub fn handler(ctx: Context<super::InitializePlayerBalance>) -> Result<()> {
     // STATE INITIALIZATION
     // ===============================
 
+    // Initialize basic fields
     player_balance.amount = 0;
+    
+    // Initialize recent games tracking
+    player_balance.recent_games = [Pubkey::default(); 5];
+    player_balance.recent_games_idx = 0;
+    
+    // Initialize dual filter system (filter_a is active by default)
+    player_balance.active_filter_index = 0;
+    
+    // Initialize filter_a
+    player_balance.filter_a = crate::state::BloomFilters::default();
+    player_balance.filter_a_last_updated = 0;
+    player_balance.filter_a_longest_expiry = 0;
+    
+    // Initialize filter_b
+    player_balance.filter_b = crate::state::BloomFilters::default();
+    player_balance.filter_b_last_updated = 0;
+    player_balance.filter_b_longest_expiry = 0;
 
     // ===============================
     // EVENT EMISSION
