@@ -13,7 +13,7 @@ import {
  * - Filter switching and A/B rotation
  * - Filter clearing after game expiry
  * - Long-term unjoin scenarios that trigger filter saturation
- * - Recent games buffer behavior with 8 game capacity
+ * - Recent games buffer behavior with 6 game capacity
  * - Triple-layer safety verification (recent games + dual filters + timestamps)
  */
 
@@ -33,8 +33,8 @@ describe("Bloom Filter Advanced Testing", () => {
     console.log("✅ Bloom filter test environment ready");
   });
 
-  describe("Recent Games Buffer (8 Games)", () => {
-    it("should provide 100% accuracy for last 8 games", async () => {
+  describe("Recent Games Buffer (6 Games)", () => {
+    it("should provide 100% accuracy for last 6 games", async () => {
       const { mint, players } = await testUtils.quickSetup();
       const testPlayer = players[0];
 
@@ -66,14 +66,14 @@ describe("Bloom Filter Advanced Testing", () => {
         console.log(`Game ${i + 1}/10 created and joined`);
       }
 
-      // The recent games buffer should contain the last 8 games
-      // Games 0 and 1 should have been evicted from the buffer
-      // Games 2-9 should still be in the recent games buffer
+      // The recent games buffer should contain the last 6 games
+      // Games 0-3 should have been evicted from the buffer
+      // Games 4-9 should still be in the recent games buffer
 
       console.log("Testing recent games accuracy...");
       
-      // Try to join games 2-9 again - should fail (in recent buffer)
-      for (let i = 2; i < 10; i++) {
+      // Try to join games 4-9 again - should fail (in recent buffer)
+      for (let i = 4; i < 10; i++) {
         try {
           await testUtils.game.joinGame(games[i].gamePDA, testPlayer.player);
           expect.fail(`Should not be able to rejoin game ${i} (in recent buffer)`);
@@ -83,9 +83,9 @@ describe("Bloom Filter Advanced Testing", () => {
         }
       }
 
-      // Games 0 and 1 might be blocked by bloom filter (probabilistic)
+      // Games 0-3 might be blocked by bloom filter (probabilistic)
       // but should NOT be in recent games buffer
-      console.log("Games 0-1 are no longer in recent buffer (may be in bloom filter)");
+      console.log("Games 0-3 are no longer in recent buffer (may be in bloom filter)");
     });
   });
 
