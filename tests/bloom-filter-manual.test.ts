@@ -95,7 +95,7 @@ describe("Manual Bloom Filter Testing", () => {
       console.log("=== SCENARIO 2: FILTER CLEARING ===");
 
       // Step 1: Fill up recent games buffer (8 games)
-      console.log("\\n1. Filling recent games buffer with 8 games...");
+      console.log("\\n1. Filling recent games buffer with 8 games (but only last 6 will be retained)...");
       const recentGames = [];
       const config: GameConfig = {
         gameType: { coinflip: {} },
@@ -128,7 +128,7 @@ describe("Manual Bloom Filter Testing", () => {
       // Step 3: Verify recent buffer behavior
       console.log("\\n3. Verifying recent games buffer behavior...");
       
-      // Last 8 games should be blocked by recent buffer
+      // Last 6 games should be blocked by recent buffer
       const last8Games = [...recentGames.slice(2), ...overflowGames];
       for (let i = 0; i < last8Games.length; i++) {
         try {
@@ -138,7 +138,7 @@ describe("Manual Bloom Filter Testing", () => {
           // Expected to fail
         }
       }
-      console.log("   ✅ Last 8 games correctly blocked by recent buffer");
+      console.log("   ✅ Last 6 games correctly blocked by recent buffer");
 
       // First 2 games might be blocked by bloom filter (probabilistic)
       console.log("   ✅ First 2 games evicted from recent buffer (may be in bloom filter)");
@@ -264,7 +264,7 @@ describe("Manual Bloom Filter Testing", () => {
     it("should demonstrate the complete bloom filter safety system", async () => {
       console.log("=== COMPLETE BLOOM FILTER SAFETY DEMONSTRATION ===");
       console.log("\\nThis test demonstrates:");
-      console.log("• Layer 1: Recent games buffer (8 games, 100% accuracy)");
+      console.log("• Layer 1: Recent games buffer (6 games, 100% accuracy)");
       console.log("• Layer 2: Dual A/B bloom filters (probabilistic, safe swapping)");
       console.log("• Layer 3: Timestamp protection (mathematical guarantee)");
       console.log("• Automatic filter cleaning and switching");
