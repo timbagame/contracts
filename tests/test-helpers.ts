@@ -105,7 +105,7 @@ export class TestEnvironment {
       await mintManager.mintTokensToAccount(
         this.globalMint,
         player.playerTokenAccount.address,
-        new anchor.BN(10_000_000)
+        new anchor.BN(100_000_000)
       );
     }
 
@@ -733,9 +733,9 @@ export class TestUtils {
     const mint = await this.mint.createMint();
     const players = await this.player.createPlayerPool(8, mint.mint);
 
-    // Fund all players with tokens
+    // Fund all players with tokens (100 million for extensive testing)
     for (const player of players) {
-      await this.player.fundPlayer(player, mint, new anchor.BN(10_000_000));
+      await this.player.fundPlayer(player, mint, new anchor.BN(100_000_000));
     }
 
     return { oracle, mint, players };

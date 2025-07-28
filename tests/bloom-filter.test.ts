@@ -78,7 +78,7 @@ describe("Bloom Filter Advanced Testing", () => {
           await testUtils.game.joinGame(games[i].gamePDA, testPlayer.player);
           expect.fail(`Should not be able to rejoin game ${i} (in recent buffer)`);
         } catch (error) {
-          expect(error.toString()).to.include("AlreadyJoined");
+          expect(error.toString()).to.include("Player already joined");
           console.log(`✅ Game ${i} correctly blocked by recent games buffer`);
         }
       }
