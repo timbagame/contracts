@@ -631,20 +631,28 @@ impl PlayerBalance {
             );
             
             // Handle collision by switching filters and scheduling cleaning
-            self.handle_collision_detected(game, oracle, current_time);
-            return true; // Allow join after filter switch
+            let collision_resolved = self.handle_collision_detected(game, oracle, current_time);
+            return collision_resolved; // Allow join only if collision was resolved
         }
         
         false // Legitimate double-join attempt
     }
 
     /// Handle detected collision by switching filters and scheduling cleaning
+    /// Returns true if collision was resolved, false if it couldn't be handled
     fn handle_collision_detected(
         &mut self,
         game: &crate::state::Game,
         oracle: &crate::state::Oracle,
         current_time: u64,
-    ) {
+    ) -> bool {
+        // Check if there's already a pending cleanup that hasn't completed
+        if self.filter_cleaning_scheduled_at > 0 && current_time < self.filter_cleaning_scheduled_at {
+            msg!("Cannot handle collision: previous cleanup still pending (scheduled at {}, current time {})", 
+                 self.filter_cleaning_scheduled_at, current_time);
+            return false; // Cannot resolve collision right now
+        }
+        
         // Calculate when it's safe to clean the current active filter
         let game_expiry = game.calculate_expiry_timestamp(oracle.get_total_buffer_time());
         let safety_buffer = oracle.filter_cleanup_buffer as u64;
@@ -667,6 +675,8 @@ impl PlayerBalance {
         
         msg!("Filter collision handled: switched to filter {}, cleaning scheduled at {}", 
              self.active_filter_index, cleaning_time);
+        
+        true // Collision successfully resolved
     }
 
     /// Check if emergency unjoin mode should be activated
