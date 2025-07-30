@@ -625,10 +625,6 @@ impl PlayerBalance {
         // 1. Player NOT in Game filter (different game collision), OR
         // 2. PlayerBalance filter was updated BEFORE this game was created (temporal collision)
         if !in_game_filter || filter_older_than_game {
-            msg!(
-                "Collision detected for player {} in game {}: in_game_filter={}, filter_older_than_game={}",
-                player_key, game_key, in_game_filter, filter_older_than_game
-            );
             
             // Handle collision by switching filters and scheduling cleaning
             let collision_resolved = self.handle_collision_detected(game, oracle, current_time);
@@ -648,8 +644,6 @@ impl PlayerBalance {
     ) -> bool {
         // Check if there's already a pending cleanup that hasn't completed
         if self.filter_cleaning_scheduled_at > 0 && current_time < self.filter_cleaning_scheduled_at {
-            msg!("Cannot handle collision: previous cleanup still pending (scheduled at {}, current time {})", 
-                 self.filter_cleaning_scheduled_at, current_time);
             return false; // Cannot resolve collision right now
         }
         
@@ -673,9 +667,6 @@ impl PlayerBalance {
         // Reset collision detection state for new filter
         self.max_game_expiry_tracked = 0;
         
-        msg!("Filter collision handled: switched to filter {}, cleaning scheduled at {}", 
-             self.active_filter_index, cleaning_time);
-        
         true // Collision successfully resolved
     }
 
@@ -686,7 +677,6 @@ impl PlayerBalance {
            current_time >= self.filter_cleaning_scheduled_at {
             
             self.emergency_unjoin_mode = true;
-            msg!("Emergency unjoin mode activated at time {}", current_time);
         }
     }
 
@@ -699,7 +689,6 @@ impl PlayerBalance {
             if current_time >= deactivation_time {
                 self.emergency_unjoin_mode = false;
                 self.filter_cleaning_scheduled_at = 0; // Reset cleaning schedule
-                msg!("Emergency unjoin mode deactivated at time {}", current_time);
             }
         }
     }
@@ -734,8 +723,6 @@ impl PlayerBalance {
         // In emergency mode, only check Game filter (more permissive)
         if self.emergency_unjoin_mode {
             let in_game_filter = game.check_participant_in_filter(player_key);
-            msg!("Emergency unjoin mode: player {} in game {}, game_filter_check={}", 
-                 player_key, game_key, in_game_filter);
             return in_game_filter;
         }
         
