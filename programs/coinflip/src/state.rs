@@ -445,24 +445,6 @@ impl PlayerBalance {
         !self.likely_joined_game(game_key)
     }
 
-    /// Reset filters using dual filter system with safe swapping mechanism
-    pub fn maybe_reset_filter(&mut self, current_time: u64) {
-        // Get the inactive filter's expiry time
-        let (_, _, inactive_longest_expiry) = self.get_inactive_filter();
-        
-        // Only swap and reset when inactive filter's games have ALL expired
-        if current_time > inactive_longest_expiry {
-            // Reset the inactive filter set
-            let (inactive_filter, inactive_last_updated, inactive_longest_expiry) = self.get_inactive_filter_mut();
-            
-            *inactive_filter = BloomFilters::default();
-            *inactive_last_updated = current_time;
-            *inactive_longest_expiry = 0;
-            
-            // Swap the active filter (the previous inactive becomes active)
-            self.active_filter_index = 1 - self.active_filter_index;
-        }
-    }
 
     /// Basic mark_game_joined - core functionality without collision detection extras
     fn basic_mark_game_joined(
@@ -471,9 +453,6 @@ impl PlayerBalance {
         game_expiry_time: u64,
         current_time: u64,
     ) {
-        // Maybe reset filter if all old games expired
-        self.maybe_reset_filter(current_time);
-
         // Add to active bloom filter for tracking
         self.set_bloom_bits(game_key);
 
@@ -542,9 +521,6 @@ impl PlayerBalance {
         game_expiry_time: u64,
         current_time: u64,
     ) {
-        // Maybe reset filter if all old games expired
-        self.maybe_reset_filter(current_time);
-
         // Add to active game index bloom filter
         self.set_game_index_bits(game_key, ticket_index);
 
@@ -588,9 +564,6 @@ impl PlayerBalance {
         ticket_index: u32,
         current_time: u64,
     ) {
-        // Maybe reset filter if all old games expired
-        self.maybe_reset_filter(current_time);
-
         // Add to active unjoin index bloom filter
         self.set_unjoin_index_bits(game_key, ticket_index);
 
@@ -634,7 +607,7 @@ impl PlayerBalance {
         current_time: u64,
     ) -> bool {
         // First, check if emergency unjoin mode is active and should be deactivated
-        self.maybe_deactivate_emergency_mode(current_time);
+        self.maybe_deactivate_emergency_mode(oracle, current_time);
         
         // Perform basic bloom filter check
         let basic_check = self.basic_can_join_game(game_key, game.created_at);
@@ -708,10 +681,10 @@ impl PlayerBalance {
     }
 
     /// Check if emergency unjoin mode should be deactivated (after sufficient time has passed)
-    fn maybe_deactivate_emergency_mode(&mut self, current_time: u64) {
+    fn maybe_deactivate_emergency_mode(&mut self, oracle: &crate::state::Oracle, current_time: u64) {
         if self.emergency_unjoin_mode {
-            // Keep emergency mode active for additional safety period
-            let deactivation_time = self.filter_cleaning_scheduled_at + 3600; // 1 hour additional safety
+            // Use the user-configured filter cleanup buffer for deactivation timing
+            let deactivation_time = self.filter_cleaning_scheduled_at + oracle.filter_cleanup_buffer as u64;
             
             if current_time >= deactivation_time {
                 self.emergency_unjoin_mode = false;
