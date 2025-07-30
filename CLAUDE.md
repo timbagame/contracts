@@ -117,26 +117,48 @@ The project uses devcontainer configuration for consistent development setup wit
 ## Important Development Notes
 
 ### Advanced Bloom Filter System (V2)
-The system implements a sophisticated triple-layer safety architecture for player participation tracking:
+The system implements a sophisticated dual-layer safety architecture with collision detection for player participation tracking:
 
-**Layer 1: Recent Games Tracking (100% Accuracy)**
-- `recent_games: [Pubkey; 8]` - Circular buffer for last 8 games
-- Eliminates false positives for recent game interactions
-- Provides high-confidence detection without bloom filter limitations
-
-**Layer 2: Dual A/B Bloom Filter System**
+**Layer 1: Dual A/B Bloom Filter System with Collision Detection**
 - `filter_a` and `filter_b` with `active_filter_index` switching (0 or 1)
-- Safe filter swapping without downtime: inactive filter gets cleaned when all its games expire
-- Both filters are checked during verification for maximum safety
-- `maybe_reset_filter()` automatically manages filter rotation on player interactions
+- Only the **active filter** receives new participation data
+- Both filters are **always checked** during verification for maximum safety
+- **Collision Detection**: Cross-validates PlayerBalance bloom filters against Game bloom filters
+- **Automatic Recovery**: Detected collisions trigger immediate filter switching and cleanup
+- **Emergency Unjoin Mode**: Activated during filter cleaning periods for safer unjoin operations
 
-**Layer 3: Timestamp Protection**
+**Layer 2: Timestamp Protection**
 - Mathematical guarantee: if game created after both filters' last update, cannot be in either filter
 - Prevents impossible false positives through temporal logic
+- Games newer than filter updates can skip bloom filter checks entirely
+
+**Collision Detection Logic:**
+- **Different Game Collision**: Player not in Game filter but flagged in PlayerBalance filter
+- **Temporal Collision**: PlayerBalance filter updated before game was created
+- **Recovery Process**: Switch to clean inactive filter, schedule old filter cleanup
+- **Safety Buffers**: Uses `oracle.filter_cleanup_buffer` for timing calculations
 
 ### Critical Implementation Rules
 - **Account Space**: `PLAYER_BALANCE_SIZE = 704 bytes` (includes discriminator + padding)
-- **Filter Cleaning**: Only occurs when `current_time > inactive_longest_expiry` 
+- **No Normal Cleanup**: Removed time-based filter cleanup - only collision-triggered cleanup
+- **Emergency Mode Timing**: Uses `oracle.filter_cleanup_buffer` for deactivation timing
 - **Winner Calculation Sync**: Must stay synchronized across Rust contract, TypeScript tests, and Oracle service
 - **No Individual Test Execution**: Always use full `anchor test` suite (8+ minute runtime)
 - **Memory Alignment**: Account for Rust struct padding when calculating sizes
+
+### Bloom Filter Structure Details
+**PlayerBalance Filters:**
+- `game_index_filter: [u64; 8]` - 512-bit filter for game+index participation tracking
+- `unjoin_index_filter: [u64; 8]` - 512-bit filter for game+index unjoin tracking
+- Dual filter sets (A/B) with metadata (last_updated, longest_expiry)
+- **No recent_games buffer** - pure probabilistic tracking
+
+**Game Filter (Safety Redundancy):**
+- `participants_filter: [u64; 8]` - 512-bit filter for basic player participation
+- Used for collision detection cross-validation
+- Single filter per game (no A/B system needed)
+
+**Hash Functions:**
+- Three independent hash functions for each filter type
+- Different salt values prevent cross-contamination
+- Positions mapped to 512-bit range (0-511)
