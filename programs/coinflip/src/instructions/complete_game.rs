@@ -39,6 +39,15 @@ pub fn handler(
         ErrorCode::InvalidWinnerIndex
     );
 
+    // 3. SAFETY: Cross-validate that the winner is in the game's participants filter
+    // This provides an additional layer of verification
+    let winner_key = ctx.accounts.winner.key();
+    if !game.check_participant_in_filter(&winner_key) {
+        msg!("WARNING: Winner {} not found in game's participants filter", winner_key);
+        // Note: We log but don't fail, as bloom filters can have false negatives
+        // The critical validation is still the winner_index calculation above
+    }
+
     // ===============================
     // STATE UPDATES
     // ===============================

@@ -22,23 +22,22 @@ pub fn handler(ctx: Context<super::UnjoinGame>, ticket_index: u32) -> Result<()>
 
     require!(game.tickets_count > 0, ErrorCode::InvalidTicketsCount);
 
-    // Verify player joined this game using player balance bloom filter
+    // Check if emergency mode should be activated (timer-based)
+    player_balance.maybe_activate_emergency_mode(current_time);
+
+    // Unjoin validation with emergency mode support
     require!(
-        !player_balance.can_join_game(&game.key(), game.created_at),
+        player_balance.can_unjoin_game(&game.key(), &player_key, ticket_index, &game, current_time),
         ErrorCode::UnauthorizedPlayer
     );
 
-    // Verify player joined this specific game+index combination
-    require!(
-        !player_balance.can_join_with_index(&game.key(), ticket_index, game.created_at),
-        ErrorCode::UnauthorizedPlayer
-    );
-
-    // Prevent double unjoining of the same game + ticket index
-    require!(
-        !player_balance.has_unjoined_game_index(&game.key(), ticket_index, game.created_at),
-        ErrorCode::AlreadyJoined // Reusing error - player already processed this unjoin
-    );
+    // Prevent double unjoining (only in normal mode - emergency mode is more permissive)
+    if !player_balance.emergency_unjoin_mode {
+        require!(
+            !player_balance.has_unjoined_game_index(&game.key(), ticket_index, game.created_at),
+            ErrorCode::AlreadyJoined // Reusing error - player already processed this unjoin
+        );
+    }
 
     // ===============================
     // STATE UPDATES
