@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a Solana blockchain project implementing a coinflip smart contract game using the Anchor framework. The project structure follows standard Anchor conventions with a Rust program in `programs/coinflip/` and TypeScript tests in `tests/`.
+This is a comprehensive Solana smart contract implementing multiple gambling game types using the Anchor framework. Part of the larger Timba gaming platform, it features sophisticated bloom filter participation tracking, commit-reveal randomness, and support for both traditional and real-time game variants. The project structure follows standard Anchor conventions with a Rust program in `programs/coinflip/` and TypeScript tests in `tests/`.
 
 ## Common Commands
 
@@ -56,14 +56,19 @@ The coinflip program (`programs/coinflip/src/`) is organized as follows:
 - **events.rs**: Event definitions for program logging
 - **utils.rs**: Shared utility functions
 
+### Supported Game Types
+- **Coinflip/Dumbflip** - Competitive games where players compete for the pot (traditional vs real-time)
+- **Giveaway/Dumbaway** - Creator-funded games with free participation (traditional vs real-time)  
+- **Snowball/Dumbball** - Progressive games with accumulating pot and multiple rolls (traditional vs real-time)
+
 ### Key Game Flow
-1. Oracle initialization sets global game parameters
-2. Token configuration defines min amounts and fees per token
-3. Players initialize balance accounts for deposits
-4. Game creation with configurable parameters (amount, max/min players, timeout)
-5. Players join games tracked via bloom filters in player balance accounts
-6. Game completion uses commit-reveal scheme with hash-based winner selection
-7. Fee collection and balance withdrawals
+1. Oracle initialization sets global game parameters and buffer timings
+2. Token configuration defines min amounts and fees per supported SPL token
+3. Players initialize balance accounts for deposits and participation tracking
+4. Game creation with configurable parameters (amount, max/min players, timeout, game type)
+5. Players join games tracked via dual bloom filter system in player balance accounts
+6. Game completion uses commit-reveal scheme with cryptographically secure winner selection
+7. Automatic fee collection and prize distribution
 
 ### Critical Game Security Patterns
 The codebase implements several security patterns that must be preserved:
@@ -103,7 +108,7 @@ Key features:
 - The JavaScript winner calculation in test-helpers.ts mirrors the Rust implementation exactly
 
 ### Development Environment
-The project uses devcontainer configuration for consistent development setup with pre-installed Solana tools, Anchor, and dependencies. Manual setup requires Rust, Solana CLI, Anchor, Node.js, and Yarn.
+The project includes devcontainer configuration for VS Code/Cursor and GitHub Codespaces with automatic dependency installation. Manual setup requires Rust, Solana CLI, Anchor, Node.js, and Yarn. Use `yarn run setup-local` to initialize local test environment with funded accounts and token configurations.
 
 ### Code Organization Principles
 - All instruction handlers are in separate files under `instructions/`
