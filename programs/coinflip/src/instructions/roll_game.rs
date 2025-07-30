@@ -25,9 +25,15 @@ pub fn handler(ctx: Context<super::RollGame>) -> Result<()> {
         ErrorCode::InvalidGameType
     );
 
-    // Verify player has already joined this game using player balance bloom filter
+    // Verify player has already joined this game using basic validation (roll doesn't need collision detection)
     require!(
-        !player_balance.can_join_game(&game.key(), game.created_at),
+        !player_balance.basic_can_join_game(&game.key(), game.created_at),
+        ErrorCode::UnauthorizedPlayer
+    );
+
+    // Cross-validation: Ensure Game filter also shows player as joined
+    require!(
+        game.check_participant_in_filter(&_player_key),
         ErrorCode::UnauthorizedPlayer
     );
 
@@ -55,6 +61,10 @@ pub fn handler(ctx: Context<super::RollGame>) -> Result<()> {
         // Mark this specific game + index combination in player's filter
         let game_expiry = game.calculate_expiry_timestamp(oracle.get_total_buffer_time());
         player_balance.mark_game_index_joined(&game.key(), new_index, game_expiry, current_time);
+        
+        // SAFETY: Update Game's participants filter to reflect the additional participation
+        // Note: Player is already in the filter from initial join, but we update timestamp
+        game.add_participant_to_filter(&ctx.accounts.player.key(), current_time);
         
         new_index // New ticket just added
     } else {

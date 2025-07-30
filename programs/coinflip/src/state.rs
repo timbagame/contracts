@@ -8,7 +8,7 @@ use anchor_spl::token::{transfer, Transfer};
 
 pub const ORACLE_SIZE: usize = 8 + 32 + 1 + 2 + 4 + 4 + 4 + 2;
 pub const GAME_TOKEN_SIZE: usize = 8 + 32 + 1 + 8 + 8 + 1;
-pub const PLAYER_BALANCE_SIZE: usize = 8 + 624; // 8 discriminator + 624 actual data size (including padding)
+pub const PLAYER_BALANCE_SIZE: usize = 8 + 385; // 8 discriminator + 385 actual data size (collision detection system: +17 bytes)
 pub const GAME_BASE_SIZE: usize = 8
     + 32  // creator
     + 1   // game_type
@@ -22,6 +22,7 @@ pub const GAME_BASE_SIZE: usize = 8
     + 8   // last_slot
     + 1   // is_private
     + 8   // total_amount
+    + 64  // participants_filter (8 * u64)
 ;
 
 // =============================================================================
@@ -208,11 +209,9 @@ impl GameToken {
 // BLOOM FILTER STRUCTURES
 // =============================================================================
 
-/// Simplified bloom filter structure (no metadata, just filters)
+/// Simplified bloom filter structure (removed redundant game_filter)
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Default)]
 pub struct BloomFilters {
-    /// 512-bit bloom filter for game participation tracking
-    pub game_filter: [u64; 8],
     /// 512-bit bloom filter for game + ticket index tracking
     pub game_index_filter: [u64; 8],
     /// 512-bit bloom filter for game + ticket index unjoin tracking
@@ -228,10 +227,6 @@ pub struct PlayerBalance {
     /// Current balance amount
     pub amount: u64,
     
-    /// Hybrid approach: recent games tracking for high-confidence detection
-    pub recent_games: [Pubkey; 6],
-    pub recent_games_idx: u8,
-    
     /// Dual bloom filter system - 0 means filter_a is active, 1 means filter_b is active
     pub active_filter_index: u8,
     
@@ -244,6 +239,14 @@ pub struct PlayerBalance {
     pub filter_b: BloomFilters,
     pub filter_b_last_updated: u64,
     pub filter_b_longest_expiry: u64,
+    
+    /// Collision Detection & Recovery System
+    /// Timestamp when current active filter is scheduled for cleaning
+    pub filter_cleaning_scheduled_at: u64,
+    /// Whether emergency unjoin mode is active (Game-filter-only validation)
+    pub emergency_unjoin_mode: bool,
+    /// Highest game expiry time tracked in current active filter
+    pub max_game_expiry_tracked: u64,
 }
 
 impl PlayerBalance {
@@ -252,16 +255,6 @@ impl PlayerBalance {
         self.amount += amount;
     }
 
-    /// Check if a game is in the recent games list (high-confidence check)
-    fn is_in_recent_games(&self, game_key: &Pubkey) -> bool {
-        self.recent_games.iter().any(|&game| game == *game_key)
-    }
-
-    /// Add a game to the recent games list using circular buffer
-    fn add_to_recent_games(&mut self, game_key: &Pubkey) {
-        self.recent_games[self.recent_games_idx as usize] = *game_key;
-        self.recent_games_idx = (self.recent_games_idx + 1) % 6;
-    }
 
     /// Get reference to the active filter set
     fn get_active_filter(&self) -> (&BloomFilters, u64, u64) {
@@ -299,12 +292,15 @@ impl PlayerBalance {
         }
     }
 
-    /// Generate hash values for game key bloom filter
-    fn hash_game_key(game_key: &Pubkey) -> (usize, usize, usize) {
+    /// Generate hash values for basic game participation (no index)
+    fn hash_game_participation(game_key: &Pubkey) -> (usize, usize, usize) {
+        // Use only game key for basic participation tracking
+        let game_data = game_key.to_bytes();
+
         // Generate 3 independent hash values for bloom filter
-        let hash1 = hash(&game_key.to_bytes());
-        let hash2 = hash(&[game_key.to_bytes().as_slice(), b"salt1"].concat());
-        let hash3 = hash(&[game_key.to_bytes().as_slice(), b"salt2"].concat());
+        let hash1 = hash(&game_data);
+        let hash2 = hash(&[game_data.as_slice(), b"participation1"].concat());
+        let hash3 = hash(&[game_data.as_slice(), b"participation2"].concat());
 
         // Convert to bit positions (0-511 for 512-bit filter)
         let pos1 = (u64::from_le_bytes(hash1.to_bytes()[0..8].try_into().unwrap()) % 512) as usize;
@@ -334,15 +330,17 @@ impl PlayerBalance {
         (pos1, pos2, pos3)
     }
 
+
     /// Set bits in bloom filter for a game key (writes to active filter set)
+    /// Uses game participation hash (no index) to track basic game participation
     fn set_bloom_bits(&mut self, game_key: &Pubkey) {
-        let (pos1, pos2, pos3) = Self::hash_game_key(game_key);
+        let (pos1, pos2, pos3) = Self::hash_game_participation(game_key);
         let (active_filter, _, _) = self.get_active_filter_mut();
 
         // Set bits in the 512-bit filter (8 x 64-bit words)
-        active_filter.game_filter[pos1 / 64] |= 1u64 << (pos1 % 64);
-        active_filter.game_filter[pos2 / 64] |= 1u64 << (pos2 % 64);
-        active_filter.game_filter[pos3 / 64] |= 1u64 << (pos3 % 64);
+        active_filter.game_index_filter[pos1 / 64] |= 1u64 << (pos1 % 64);
+        active_filter.game_index_filter[pos2 / 64] |= 1u64 << (pos2 % 64);
+        active_filter.game_index_filter[pos3 / 64] |= 1u64 << (pos3 % 64);
     }
 
     /// Set bits in game index bloom filter for a game key + index (writes to active filter set)
@@ -368,19 +366,20 @@ impl PlayerBalance {
     }
 
     /// Check if bits are set in bloom filter for a game key (checks both filter sets)
+    /// Uses game participation hash (no index) to track basic game participation
     fn check_bloom_bits(&self, game_key: &Pubkey) -> bool {
-        let (pos1, pos2, pos3) = Self::hash_game_key(game_key);
+        let (pos1, pos2, pos3) = Self::hash_game_participation(game_key);
 
         // Check filter_a
-        let a_bit1_set = (self.filter_a.game_filter[pos1 / 64] & (1u64 << (pos1 % 64))) != 0;
-        let a_bit2_set = (self.filter_a.game_filter[pos2 / 64] & (1u64 << (pos2 % 64))) != 0;
-        let a_bit3_set = (self.filter_a.game_filter[pos3 / 64] & (1u64 << (pos3 % 64))) != 0;
+        let a_bit1_set = (self.filter_a.game_index_filter[pos1 / 64] & (1u64 << (pos1 % 64))) != 0;
+        let a_bit2_set = (self.filter_a.game_index_filter[pos2 / 64] & (1u64 << (pos2 % 64))) != 0;
+        let a_bit3_set = (self.filter_a.game_index_filter[pos3 / 64] & (1u64 << (pos3 % 64))) != 0;
         let a_match = a_bit1_set && a_bit2_set && a_bit3_set;
 
         // Check filter_b
-        let b_bit1_set = (self.filter_b.game_filter[pos1 / 64] & (1u64 << (pos1 % 64))) != 0;
-        let b_bit2_set = (self.filter_b.game_filter[pos2 / 64] & (1u64 << (pos2 % 64))) != 0;
-        let b_bit3_set = (self.filter_b.game_filter[pos3 / 64] & (1u64 << (pos3 % 64))) != 0;
+        let b_bit1_set = (self.filter_b.game_index_filter[pos1 / 64] & (1u64 << (pos1 % 64))) != 0;
+        let b_bit2_set = (self.filter_b.game_index_filter[pos2 / 64] & (1u64 << (pos2 % 64))) != 0;
+        let b_bit3_set = (self.filter_b.game_index_filter[pos3 / 64] & (1u64 << (pos3 % 64))) != 0;
         let b_match = b_bit1_set && b_bit2_set && b_bit3_set;
 
         a_match || b_match
@@ -429,13 +428,9 @@ impl PlayerBalance {
         self.check_bloom_bits(game_key)
     }
 
-    /// Main entry point: Check if player can join game (hybrid approach: recent games + dual bloom filter)
-    pub fn can_join_game(&self, game_key: &Pubkey, game_created_time: u64) -> bool {
-        // First, check the recent games list for high-confidence detection
-        if self.is_in_recent_games(game_key) {
-            return false; // Definitely already joined
-        }
-
+    /// Basic join check - dual bloom filter + timestamp protection (without collision detection)
+    /// Used for internal validation where collision detection is not needed
+    pub fn basic_can_join_game(&self, game_key: &Pubkey, game_created_time: u64) -> bool {
         // Check both filter sets' timestamps
         let (_, active_last_updated, _) = self.get_active_filter();
         let (_, inactive_last_updated, _) = self.get_inactive_filter();
@@ -466,15 +461,11 @@ impl PlayerBalance {
             
             // Swap the active filter (the previous inactive becomes active)
             self.active_filter_index = 1 - self.active_filter_index;
-            
-            // Reset recent games list when swapping
-            self.recent_games = [Pubkey::default(); 6];
-            self.recent_games_idx = 0;
         }
     }
 
-    /// Mark game as joined in both recent games list and active bloom filter with timestamp tracking
-    pub fn mark_game_joined(
+    /// Basic mark_game_joined - core functionality without collision detection extras
+    fn basic_mark_game_joined(
         &mut self,
         game_key: &Pubkey,
         game_expiry_time: u64,
@@ -483,10 +474,7 @@ impl PlayerBalance {
         // Maybe reset filter if all old games expired
         self.maybe_reset_filter(current_time);
 
-        // Add to recent games list for high-confidence tracking
-        self.add_to_recent_games(game_key);
-
-        // Add to active bloom filter for long-term tracking
+        // Add to active bloom filter for tracking
         self.set_bloom_bits(game_key);
 
         // Update timestamps for active filter set
@@ -546,7 +534,7 @@ impl PlayerBalance {
         Ok(())
     }
 
-    /// Mark game + index as joined in both recent games list and active bloom filter
+    /// Mark game + index as joined in active bloom filter
     pub fn mark_game_index_joined(
         &mut self,
         game_key: &Pubkey,
@@ -556,9 +544,6 @@ impl PlayerBalance {
     ) {
         // Maybe reset filter if all old games expired
         self.maybe_reset_filter(current_time);
-
-        // Add to recent games list for high-confidence tracking
-        self.add_to_recent_games(game_key);
 
         // Add to active game index bloom filter
         self.set_game_index_bits(game_key, ticket_index);
@@ -575,18 +560,13 @@ impl PlayerBalance {
         }
     }
 
-    /// Check if player can join game with specific index (hybrid approach: recent games + dual bloom filter)
+    /// Check if player can join game with specific index (dual bloom filter + timestamp protection)
     pub fn can_join_with_index(
         &self,
         game_key: &Pubkey,
         ticket_index: u32,
         game_created_time: u64,
     ) -> bool {
-        // First, check the recent games list for high-confidence detection
-        if self.is_in_recent_games(game_key) {
-            return false; // Definitely already joined this game
-        }
-
         // Check both filter sets' timestamps
         let (_, active_last_updated, _) = self.get_active_filter();
         let (_, inactive_last_updated, _) = self.get_inactive_filter();
@@ -639,6 +619,150 @@ impl PlayerBalance {
         // Game might be in filters, check unjoin bloom filter
         self.check_unjoin_index_bits(game_key, ticket_index)
     }
+
+    // =============================================================================
+    // COLLISION DETECTION & RECOVERY SYSTEM
+    // =============================================================================
+
+    /// Main entry point: Check if player can join game with collision detection and filter switching  
+    pub fn can_join_game(
+        &mut self,
+        game_key: &Pubkey,
+        player_key: &Pubkey,
+        game: &crate::state::Game,
+        oracle: &crate::state::Oracle,
+        current_time: u64,
+    ) -> bool {
+        // First, check if emergency unjoin mode is active and should be deactivated
+        self.maybe_deactivate_emergency_mode(current_time);
+        
+        // Perform basic bloom filter check
+        let basic_check = self.basic_can_join_game(game_key, game.created_at);
+        
+        if basic_check {
+            return true; // Definitely can join
+        }
+        
+        // Potential collision detected - perform cross-validation
+        let in_game_filter = game.check_participant_in_filter(player_key);
+        let (_, active_last_updated, _) = self.get_active_filter();
+        let filter_older_than_game = active_last_updated < game.created_at;
+        
+        // Collision detected if:
+        // 1. Player NOT in Game filter (different game collision), OR
+        // 2. PlayerBalance filter was updated BEFORE this game was created (temporal collision)
+        if !in_game_filter || filter_older_than_game {
+            msg!(
+                "Collision detected for player {} in game {}: in_game_filter={}, filter_older_than_game={}",
+                player_key, game_key, in_game_filter, filter_older_than_game
+            );
+            
+            // Handle collision by switching filters and scheduling cleaning
+            self.handle_collision_detected(game, oracle, current_time);
+            return true; // Allow join after filter switch
+        }
+        
+        false // Legitimate double-join attempt
+    }
+
+    /// Handle detected collision by switching filters and scheduling cleaning
+    fn handle_collision_detected(
+        &mut self,
+        game: &crate::state::Game,
+        oracle: &crate::state::Oracle,
+        current_time: u64,
+    ) {
+        // Calculate when it's safe to clean the current active filter
+        let game_expiry = game.calculate_expiry_timestamp(oracle.get_total_buffer_time());
+        let safety_buffer = oracle.filter_cleanup_buffer as u64;
+        let cleaning_time = self.max_game_expiry_tracked.max(game_expiry) + safety_buffer;
+        
+        // Schedule current active filter for cleaning
+        self.filter_cleaning_scheduled_at = cleaning_time;
+        
+        // Switch to inactive filter immediately
+        self.active_filter_index = 1 - self.active_filter_index;
+        
+        // Reset the new active filter (previously inactive)
+        let (new_active_filter, new_last_updated, new_longest_expiry) = self.get_active_filter_mut();
+        *new_active_filter = BloomFilters::default();
+        *new_last_updated = current_time;
+        *new_longest_expiry = 0;
+        
+        // Reset collision detection state for new filter
+        self.max_game_expiry_tracked = 0;
+        
+        msg!("Filter collision handled: switched to filter {}, cleaning scheduled at {}", 
+             self.active_filter_index, cleaning_time);
+    }
+
+    /// Check if emergency unjoin mode should be activated
+    pub fn maybe_activate_emergency_mode(&mut self, current_time: u64) {
+        if !self.emergency_unjoin_mode && 
+           self.filter_cleaning_scheduled_at > 0 && 
+           current_time >= self.filter_cleaning_scheduled_at {
+            
+            self.emergency_unjoin_mode = true;
+            msg!("Emergency unjoin mode activated at time {}", current_time);
+        }
+    }
+
+    /// Check if emergency unjoin mode should be deactivated (after sufficient time has passed)
+    fn maybe_deactivate_emergency_mode(&mut self, current_time: u64) {
+        if self.emergency_unjoin_mode {
+            // Keep emergency mode active for additional safety period
+            let deactivation_time = self.filter_cleaning_scheduled_at + 3600; // 1 hour additional safety
+            
+            if current_time >= deactivation_time {
+                self.emergency_unjoin_mode = false;
+                self.filter_cleaning_scheduled_at = 0; // Reset cleaning schedule
+                msg!("Emergency unjoin mode deactivated at time {}", current_time);
+            }
+        }
+    }
+
+    /// Main entry point: Mark game as joined with collision detection integration
+    pub fn mark_game_joined(
+        &mut self,
+        game_key: &Pubkey,
+        game_expiry_time: u64,
+        current_time: u64,
+    ) {
+        // Update max expiry tracking for collision detection
+        if self.max_game_expiry_tracked == 0 {
+            self.max_game_expiry_tracked = game_expiry_time;
+        } else {
+            self.max_game_expiry_tracked = self.max_game_expiry_tracked.max(game_expiry_time);
+        }
+        
+        // Call basic mark_game_joined logic
+        self.basic_mark_game_joined(game_key, game_expiry_time, current_time);
+    }
+
+    /// Main entry point: Check if player can unjoin game with emergency mode support
+    pub fn can_unjoin_game(
+        &self,
+        game_key: &Pubkey,
+        player_key: &Pubkey,
+        ticket_index: u32,
+        game: &crate::state::Game,
+        _current_time: u64,
+    ) -> bool {
+        // In emergency mode, only check Game filter (more permissive)
+        if self.emergency_unjoin_mode {
+            let in_game_filter = game.check_participant_in_filter(player_key);
+            msg!("Emergency unjoin mode: player {} in game {}, game_filter_check={}", 
+                 player_key, game_key, in_game_filter);
+            return in_game_filter;
+        }
+        
+        // Normal mode: use standard PlayerBalance filter validation
+        let already_joined = !self.can_join_with_index(game_key, ticket_index, game.created_at);
+        let not_already_unjoined = !self.has_unjoined_game_index(game_key, ticket_index, game.created_at);
+        
+        already_joined && not_already_unjoined
+    }
+
 }
 
 // =============================================================================
@@ -671,6 +795,8 @@ pub struct Game {
     pub is_private: bool,
     /// Total accumulated prize
     pub total_amount: u64,
+    /// 512-bit bloom filter for this game's participants (safety redundancy) - same size as PlayerBalance filters
+    pub participants_filter: [u64; 8],
 }
 
 impl Game {
@@ -795,6 +921,48 @@ impl Game {
         
         Ok(())
     }
+
+    // =============================================================================
+    // GAME-LEVEL BLOOM FILTER METHODS (SAFETY REDUNDANCY)
+    // =============================================================================
+
+    /// Generate hash values for player participation in this game's bloom filter
+    fn hash_participant(player_key: &Pubkey) -> (usize, usize, usize) {
+        // Generate 3 independent hash values for bloom filter
+        let hash1 = hash(&player_key.to_bytes());
+        let hash2 = hash(&[player_key.to_bytes().as_slice(), b"game_salt1"].concat());
+        let hash3 = hash(&[player_key.to_bytes().as_slice(), b"game_salt2"].concat());
+
+        // Convert to bit positions (0-511 for 512-bit filter)
+        let pos1 = (u64::from_le_bytes(hash1.to_bytes()[0..8].try_into().unwrap()) % 512) as usize;
+        let pos2 = (u64::from_le_bytes(hash2.to_bytes()[0..8].try_into().unwrap()) % 512) as usize;
+        let pos3 = (u64::from_le_bytes(hash3.to_bytes()[0..8].try_into().unwrap()) % 512) as usize;
+
+        (pos1, pos2, pos3)
+    }
+
+    /// Add participant to this game's bloom filter (safety redundancy)
+    pub fn add_participant_to_filter(&mut self, player_key: &Pubkey, _current_time: u64) {
+        let (pos1, pos2, pos3) = Self::hash_participant(player_key);
+
+        // Set bits in the 512-bit filter (8 x 64-bit words)
+        self.participants_filter[pos1 / 64] |= 1u64 << (pos1 % 64);
+        self.participants_filter[pos2 / 64] |= 1u64 << (pos2 % 64);
+        self.participants_filter[pos3 / 64] |= 1u64 << (pos3 % 64);
+    }
+
+    /// Check if participant is likely in this game's bloom filter (safety check)
+    pub fn check_participant_in_filter(&self, player_key: &Pubkey) -> bool {
+        let (pos1, pos2, pos3) = Self::hash_participant(player_key);
+
+        // Check if all three bits are set
+        let bit1_set = (self.participants_filter[pos1 / 64] & (1u64 << (pos1 % 64))) != 0;
+        let bit2_set = (self.participants_filter[pos2 / 64] & (1u64 << (pos2 % 64))) != 0;
+        let bit3_set = (self.participants_filter[pos3 / 64] & (1u64 << (pos3 % 64))) != 0;
+
+        bit1_set && bit2_set && bit3_set
+    }
+
 
     // =============================================================================
     // VALIDATION HELPERS
