@@ -700,7 +700,7 @@ describe("Advanced Features", () => {
         mint.mint
       );
       
-      const baselineJoinTx = await testUtils.game.joinGame(
+      await testUtils.game.joinGame(
         baselineGame.gamePDA,
         player.player
       );
