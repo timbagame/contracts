@@ -4,7 +4,6 @@ import {
   TestUtils,
   TestEnvironment,
   GameConfig,
-  CollisionUtils,
 } from "./test-helpers";
 
 /**
@@ -37,7 +36,7 @@ describe("Collision Detection & Recovery", () => {
 
   describe("Basic Collision Scenarios", () => {
     it("should detect and resolve collision by switching filters", async () => {
-      const { oracle, mint, players } = await testUtils.quickSetup();
+      const { mint, players } = await testUtils.quickSetup();
       const player = players[0];
       
       // Create multiple games to saturate bloom filter and cause collision
@@ -100,7 +99,7 @@ describe("Collision Detection & Recovery", () => {
     });
 
     it("should maintain filter state consistency during collision", async () => {
-      const { oracle, mint, players } = await testUtils.quickSetup();
+      const { mint, players } = await testUtils.quickSetup();
       const player = players[0];
       
       const gameConfig: GameConfig = {
@@ -140,7 +139,7 @@ describe("Collision Detection & Recovery", () => {
 
   describe("Rapid Successive Collision Tests", () => {
     it("should reject second collision before first cleanup completes", async () => {
-      const { oracle, mint, players } = await testUtils.quickSetup();
+      const { mint, players } = await testUtils.quickSetup();
       const player = players[0];
       
       const gameConfig: GameConfig = {
@@ -187,7 +186,7 @@ describe("Collision Detection & Recovery", () => {
     });
 
     it("should maintain cleanup schedule timing during rapid attempts", async () => {
-      const { oracle, mint, players } = await testUtils.quickSetup();
+      const { mint, players } = await testUtils.quickSetup();
       const player = players[0];
       
       const gameConfig: GameConfig = {
@@ -255,7 +254,7 @@ describe("Collision Detection & Recovery", () => {
 
   describe("Collision Recovery Tests", () => {
     it("should handle system recovery after cleanup periods", async () => {
-      const { oracle, mint, players } = await testUtils.quickSetup();
+      const { mint, players } = await testUtils.quickSetup();
       const player = players[0];
       
       const gameConfig: GameConfig = {
@@ -324,7 +323,7 @@ describe("Collision Detection & Recovery", () => {
     });
 
     it("should maintain filter system integrity over time", async () => {
-      const { oracle, mint, players } = await testUtils.quickSetup();
+      const { mint, players } = await testUtils.quickSetup();
       const player = players[0];
       
       const gameConfig: GameConfig = {
@@ -382,7 +381,7 @@ describe("Collision Detection & Recovery", () => {
 
   describe("Emergency Mode Integration", () => {
     it("should handle emergency mode scenarios gracefully", async () => {
-      const { oracle, mint, players } = await testUtils.quickSetup();
+      const { mint, players } = await testUtils.quickSetup();
       const player = players[0];
       
       const gameConfig: GameConfig = {
@@ -443,7 +442,7 @@ describe("Collision Detection & Recovery", () => {
 
   describe("System Stress Tests", () => {
     it("should maintain integrity during sustained collision attempts", async () => {
-      const { oracle, mint, players } = await testUtils.quickSetup();
+      const { mint, players } = await testUtils.quickSetup();
       const player = players[0];
       
       const gameConfig: GameConfig = {

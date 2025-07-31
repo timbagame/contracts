@@ -903,7 +903,7 @@ export class CollisionUtils {
    * Validate PlayerBalance filter state for testing
    */
   static async validateFilterState(
-    program: anchor.Program,
+    program: anchor.Program<Coinflip>,
     playerBalancePDA: anchor.web3.PublicKey
   ): Promise<{
     activeFilterIndex: number;
@@ -967,7 +967,7 @@ export class CollisionUtils {
     await testUtils.game.joinGame(gameData.gamePDA, player.player);
 
     // Create many more games to trigger collision
-    const collisionGames = await this.createCollisionScenario(
+    await this.createCollisionScenario(
       testUtils,
       player,
       mint,
