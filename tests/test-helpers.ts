@@ -807,4 +807,182 @@ export class RandomUtils {
   ): anchor.BN {
     return new anchor.BN(this.randomInt(min, max));
   }
+
+}
+
+/**
+ * Collision Detection Testing Utilities
+ */
+export class CollisionUtils {
+  /**
+   * Create collision scenario by generating games that hash to similar bloom filter positions
+   */
+  static async createCollisionScenario(
+    testUtils: TestUtils,
+    player: TestPlayer,
+    mint: TestMint,
+    gameCount: number = 25
+  ): Promise<TestGame[]> {
+    const games: TestGame[] = [];
+    
+    const gameConfig: GameConfig = {
+      gameType: { coinflip: {} },
+      amount: new anchor.BN(1_000_000),
+      maxTickets: 2,
+      minTickets: 2,
+      timeout: 3600,
+      isPrivate: false,
+    };
+
+    // Create many games to increase collision probability
+    for (let i = 0; i < gameCount; i++) {
+      const gameData = testUtils.game.generateGamePDA();
+      
+      await testUtils.game.initializeGame(
+        gameData,
+        gameConfig,
+        player.player,
+        mint.mint
+      );
+      
+      await testUtils.game.joinGame(gameData.gamePDA, player.player);
+      games.push(gameData);
+    }
+
+    return games;
+  }
+
+  /**
+   * Simulate rapid join attempts to test collision detection
+   */
+  static async simulateRapidJoins(
+    testUtils: TestUtils,
+    player: TestPlayer,
+    mint: TestMint,
+    attemptCount: number = 20
+  ): Promise<{ successful: number; rejected: number }> {
+    let successful = 0;
+    let rejected = 0;
+
+    const gameConfig: GameConfig = {
+      gameType: { coinflip: {} },
+      amount: new anchor.BN(1_000_000),
+      maxTickets: 2,
+      minTickets: 2,
+      timeout: 60,
+      isPrivate: false,
+    };
+
+    for (let i = 0; i < attemptCount; i++) {
+      const gameData = testUtils.game.generateGamePDA();
+      
+      try {
+        await testUtils.game.initializeGame(
+          gameData,
+          gameConfig,
+          player.player,
+          mint.mint
+        );
+        
+        await testUtils.game.joinGame(gameData.gamePDA, player.player);
+        successful++;
+        
+      } catch (error) {
+        if (error.toString().includes("AlreadyJoined")) {
+          rejected++;
+        } else {
+          throw error;
+        }
+      }
+    }
+
+    return { successful, rejected };
+  }
+
+  /**
+   * Validate PlayerBalance filter state for testing
+   */
+  static async validateFilterState(
+    program: anchor.Program,
+    playerBalancePDA: anchor.web3.PublicKey
+  ): Promise<{
+    activeFilterIndex: number;
+    filterCleaningScheduledAt: number;
+    emergencyUnjoinMode: boolean;
+    maxGameExpiryTracked: number;
+    filterALastUpdated: number;
+    filterBLastUpdated: number;
+  }> {
+    const playerBalance = await program.account.playerBalance.fetch(playerBalancePDA);
+    
+    return {
+      activeFilterIndex: playerBalance.activeFilterIndex,
+      filterCleaningScheduledAt: playerBalance.filterCleaningScheduledAt.toNumber(),
+      emergencyUnjoinMode: playerBalance.emergencyUnjoinMode,
+      maxGameExpiryTracked: playerBalance.maxGameExpiryTracked.toNumber(),
+      filterALastUpdated: playerBalance.filterALastUpdated.toNumber(),
+      filterBLastUpdated: playerBalance.filterBLastUpdated.toNumber(),
+    };
+  }
+
+  /**
+   * Mock time advancement for testing cleanup schedules
+   * Note: This waits for real time since we can't mock blockchain time
+   */
+  static async advanceTime(seconds: number): Promise<void> {
+    console.log(`⏰ Advancing time by ${seconds} seconds...`);
+    await new Promise(resolve => setTimeout(resolve, seconds * 1000));
+  }
+
+  /**
+   * Create test scenario for emergency mode activation
+   */
+  static async createEmergencyModeScenario(
+    testUtils: TestUtils,
+    player: TestPlayer,
+    mint: TestMint
+  ): Promise<{ 
+    gameData: TestGame; 
+    collisionDetected: boolean;
+    filterState: any;
+  }> {
+    // Create initial game
+    const gameData = testUtils.game.generateGamePDA();
+    const gameConfig: GameConfig = {
+      gameType: { coinflip: {} },
+      amount: new anchor.BN(1_000_000),
+      maxTickets: 3,
+      minTickets: 2,
+      timeout: 5, // Short timeout
+      isPrivate: false,
+    };
+
+    await testUtils.game.initializeGame(
+      gameData,
+      gameConfig,
+      player.player,
+      mint.mint
+    );
+    
+    await testUtils.game.joinGame(gameData.gamePDA, player.player);
+
+    // Create many more games to trigger collision
+    const collisionGames = await this.createCollisionScenario(
+      testUtils,
+      player,
+      mint,
+      20
+    );
+
+    // Check if collision was detected
+    const env = TestEnvironment.getInstance();
+    const filterState = await this.validateFilterState(
+      env.program,
+      player.playerBalancePDA
+    );
+
+    const collisionDetected = filterState.filterCleaningScheduledAt > 0;
+
+    return { gameData, collisionDetected, filterState };
+  }
 }

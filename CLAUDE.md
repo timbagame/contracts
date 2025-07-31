@@ -26,6 +26,12 @@ This is a comprehensive Solana smart contract implementing multiple gambling gam
 - Only use `anchor test` to run the configured test suite
 - Remember: `yarn test` will always fail with Anchor projects
 
+🚨 **NEVER run individual test files with ts-mocha, yarn run, or any other direct commands!** 🚨
+- Commands like `yarn run ts-mocha tests/collision-detection.test.ts` are FORBIDDEN
+- There is NO quick way to test individual files in Anchor projects
+- The ONLY options are: `anchor test` (full run) OR modify `Anchor.toml`
+- Attempting individual test runs will fail and violate project constraints
+
 ### Code Quality
 - `yarn run lint` - Check code formatting with Prettier
 - `yarn run lint:fix` - Fix code formatting issues
