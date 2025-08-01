@@ -782,15 +782,6 @@ pub struct Game {
 
 impl Game {
     // =============================================================================
-    // STORAGE CALCULATION & INITIALIZATION
-    // =============================================================================
-
-    /// Calculates the total storage size for a game (fixed size with Bloom filter)
-    pub fn calculate_storage_size() -> usize {
-        GAME_BASE_SIZE
-    }
-
-    // =============================================================================
     // CORE GAME LIFECYCLE METHODS
     // =============================================================================
 
