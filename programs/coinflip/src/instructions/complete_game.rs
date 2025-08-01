@@ -41,9 +41,10 @@ pub fn handler(
 
     // Cross-validate winner in participants filter
     let winner_key = ctx.accounts.winner.key();
-    if !game.check_participant_in_filter(&winner_key) {
-        // Bloom filters can have false negatives, so we don't fail here
-    }
+    require!(
+        game.check_participant_in_filter(&winner_key),
+        ErrorCode::UnauthorizedPlayer
+    );
 
     // ===============================
     // STATE UPDATES
