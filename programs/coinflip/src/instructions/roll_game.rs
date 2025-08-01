@@ -64,7 +64,7 @@ pub fn handler(ctx: Context<super::RollGame>) -> Result<()> {
         
         // SAFETY: Update Game's participants filter to reflect the additional participation
         // Note: Player is already in the filter from initial join, but we update timestamp
-        game.add_participant_to_filter(&ctx.accounts.player.key(), current_time);
+        game.add_participant_to_filter(&ctx.accounts.player.key());
         
         new_index // New ticket just added
     } else {

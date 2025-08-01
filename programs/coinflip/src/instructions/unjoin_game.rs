@@ -27,7 +27,7 @@ pub fn handler(ctx: Context<super::UnjoinGame>, ticket_index: u32) -> Result<()>
 
     // Unjoin validation with emergency mode support
     require!(
-        player_balance.can_unjoin_game(&game.key(), &player_key, ticket_index, &game, current_time),
+        player_balance.can_unjoin_game(&game.key(), &player_key, ticket_index, &game),
         ErrorCode::UnauthorizedPlayer
     );
 
