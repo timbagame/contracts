@@ -39,7 +39,7 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
     player_balance.mark_game_index_joined(&game_key, game.tickets_count - 1, game_expiry, current_time);
 
     // SAFETY: Also add player to the Game's participants filter for redundancy
-    game.add_participant_to_filter(&player_key, current_time);
+    game.add_participant_to_filter(&player_key);
 
     // ===============================
     // TOKEN TRANSFER
