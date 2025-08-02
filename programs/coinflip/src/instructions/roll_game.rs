@@ -1,13 +1,13 @@
 use crate::error::ErrorCode;
 use crate::events::PlayerRolled;
 use crate::state::GameType;
+use crate::utils::{get_current_time, get_current_slot};
 use anchor_lang::prelude::*;
 
 pub fn handler(ctx: Context<super::RollGame>) -> Result<()> {
     let game = &mut ctx.accounts.game;
     let oracle = &ctx.accounts.oracle;
-    let clock = Clock::get()?;
-    let current_time = clock.unix_timestamp as u64;
+    let current_time = get_current_time()?;
     let _player_key = ctx.accounts.player.key();
     let player_balance = &mut ctx.accounts.player_balance;
 
@@ -73,7 +73,7 @@ pub fn handler(ctx: Context<super::RollGame>) -> Result<()> {
         game.tickets_count - 1 // Player's existing ticket index
     };
 
-    game.last_slot = clock.slot;
+    game.last_slot = get_current_slot()?;
 
     // ===============================
     // TOKEN TRANSFER

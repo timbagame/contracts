@@ -16,7 +16,7 @@ pub struct InitializeOracle<'info> {
         init,
         payer = oracle_operator,
         space = ORACLE_SIZE,
-        seeds = [b"oracle"],
+        seeds = [ORACLE_SEED],
         bump,
         constraint = Oracle::default().is_valid_fee_percentage(fee_percentage) @ ErrorCode::InvalidAmount,
         constraint = Oracle::default().is_valid_timeout(max_timeout, min_timeout) @ ErrorCode::InvalidTimeout,
@@ -35,7 +35,7 @@ pub struct InitializeOracle<'info> {
 pub struct UpdateOracle<'info> {
     #[account(
         mut,
-        seeds = [b"oracle"],
+        seeds = [ORACLE_SEED],
         bump,
         constraint = oracle.is_authorized_operator(&old_oracle_operator.key()) @ ErrorCode::UnauthorizedOperator,
         constraint = Oracle::default().is_valid_fee_percentage(fee_percentage) @ ErrorCode::InvalidAmount,
@@ -59,7 +59,7 @@ pub struct InitializeToken<'info> {
         init,
         payer = oracle_operator,
         space = GAME_TOKEN_SIZE,
-        seeds = [b"game_token", token_mint.key().as_ref()],
+        seeds = [GAME_TOKEN_SEED, token_mint.key().as_ref()],
         bump,
     )]
     pub game_token: Account<'info, GameToken>,
@@ -67,7 +67,7 @@ pub struct InitializeToken<'info> {
     pub token_mint: Account<'info, Mint>,
 
     /// CHECK: PDA authority for game's token accounts
-    #[account(seeds = [b"game_vault", token_mint.key().as_ref()], bump)]
+    #[account(seeds = [GAME_VAULT_SEED, token_mint.key().as_ref()], bump)]
     pub game_vault: AccountInfo<'info>,
 
     #[account(
@@ -77,7 +77,7 @@ pub struct InitializeToken<'info> {
     pub game_token_account: Account<'info, TokenAccount>,
 
     #[account(
-        seeds = [b"oracle"],
+        seeds = [ORACLE_SEED],
         bump,
         constraint = oracle.is_authorized_operator(&oracle_operator.key()) @ ErrorCode::UnauthorizedOperator,
     )]
@@ -96,7 +96,7 @@ pub struct InitializeToken<'info> {
 pub struct UpdateToken<'info> {
     #[account(
         mut,
-        seeds = [b"game_token", token_mint.key().as_ref()],
+        seeds = [GAME_TOKEN_SEED, token_mint.key().as_ref()],
         bump,
     )]
     pub game_token: Account<'info, GameToken>,
@@ -104,7 +104,7 @@ pub struct UpdateToken<'info> {
     pub token_mint: Account<'info, Mint>,
 
     #[account(
-        seeds = [b"oracle"],
+        seeds = [ORACLE_SEED],
         bump,
         constraint = oracle.is_authorized_operator(&oracle_operator.key()) @ ErrorCode::UnauthorizedOperator,
     )]
@@ -123,7 +123,7 @@ pub struct InitializePlayerBalance<'info> {
         init,
         payer = player,
         space = PLAYER_BALANCE_SIZE,
-        seeds = [b"player_balance", player.key().as_ref(), token_mint.key().as_ref()],
+        seeds = [PLAYER_BALANCE_SEED, player.key().as_ref(), token_mint.key().as_ref()],
         bump,
         constraint = game_token.is_enabled() @ ErrorCode::TokenNotEnabled,
     )]
@@ -131,7 +131,7 @@ pub struct InitializePlayerBalance<'info> {
 
     #[account(
         mut,
-        seeds = [b"game_token", token_mint.key().as_ref()],
+        seeds = [GAME_TOKEN_SEED, token_mint.key().as_ref()],
         bump,
     )]
     pub game_token: Account<'info, GameToken>,
@@ -156,7 +156,7 @@ pub struct InitializePlayerBalance<'info> {
 pub struct WithdrawPlayerBalance<'info> {
     #[account(
         mut,
-        seeds = [b"player_balance", player.key().as_ref(), token_mint.key().as_ref()],
+        seeds = [PLAYER_BALANCE_SEED, player.key().as_ref(), token_mint.key().as_ref()],
         bump,
         constraint = player_balance.has_sufficient_balance() @ ErrorCode::InsufficientBalance,
         constraint = game_token.is_enabled() @ ErrorCode::TokenNotEnabled,
@@ -166,7 +166,7 @@ pub struct WithdrawPlayerBalance<'info> {
     pub player: Signer<'info>,
     pub token_mint: Account<'info, Mint>,
 
-    #[account(seeds = [b"game_token", token_mint.key().as_ref()], bump)]
+    #[account(seeds = [GAME_TOKEN_SEED, token_mint.key().as_ref()], bump)]
     pub game_token: Account<'info, GameToken>,
 
     #[account(
@@ -184,7 +184,7 @@ pub struct WithdrawPlayerBalance<'info> {
     pub game_token_account: Account<'info, TokenAccount>,
 
     /// CHECK: PDA authority for game's token accounts
-    #[account(seeds = [b"game_vault", token_mint.key().as_ref()], bump = game_token.vault_bump)]
+    #[account(seeds = [GAME_VAULT_SEED, token_mint.key().as_ref()], bump = game_token.vault_bump)]
     pub game_vault: AccountInfo<'info>,
 
     pub system_program: Program<'info, System>,
@@ -203,7 +203,7 @@ pub struct InitializeGame<'info> {
         init,
         payer = creator,
         space = GAME_BASE_SIZE,
-        seeds = [b"game", random_hash.as_ref()],
+        seeds = [GAME_SEED, random_hash.as_ref()],
         bump,
         constraint = game_token.is_enabled() @ ErrorCode::TokenNotEnabled,
         constraint = game_token.meets_min_amount(amount) @ ErrorCode::InvalidAmount,
@@ -216,17 +216,17 @@ pub struct InitializeGame<'info> {
     pub creator: Signer<'info>,
     #[account(
         mut,
-        seeds = [b"player_balance", creator.key().as_ref(), token_mint.key().as_ref()],
+        seeds = [PLAYER_BALANCE_SEED, creator.key().as_ref(), token_mint.key().as_ref()],
         bump,
     )]
     pub creator_balance: Account<'info, PlayerBalance>,
     #[account(mut, seeds = [b"oracle"], bump)]
     pub oracle: Account<'info, Oracle>,
     pub token_mint: Account<'info, Mint>,
-    #[account(seeds = [b"game_token", token_mint.key().as_ref()], bump)]
+    #[account(seeds = [GAME_TOKEN_SEED, token_mint.key().as_ref()], bump)]
     pub game_token: Account<'info, GameToken>,
     /// CHECK: PDA authority for game's token accounts
-    #[account(seeds = [b"game_vault", token_mint.key().as_ref()], bump = game_token.vault_bump)]
+    #[account(seeds = [GAME_VAULT_SEED, token_mint.key().as_ref()], bump = game_token.vault_bump)]
     pub game_vault: AccountInfo<'info>,
     #[account(
         mut,
@@ -259,15 +259,15 @@ pub struct JoinGame<'info> {
     pub player: Signer<'info>,
     #[account(
         mut,
-        seeds = [b"player_balance", player.key().as_ref(), game.token_mint.as_ref()],
+        seeds = [PLAYER_BALANCE_SEED, player.key().as_ref(), game.token_mint.as_ref()],
         bump,
     )]
     pub player_balance: Account<'info, PlayerBalance>,
     pub oracle_operator: Option<Signer<'info>>,
-    #[account(seeds = [b"game_token", game.token_mint.as_ref()], bump)]
+    #[account(seeds = [GAME_TOKEN_SEED, game.token_mint.as_ref()], bump)]
     pub game_token: Account<'info, GameToken>,
     /// CHECK: PDA authority for game's token accounts
-    #[account(seeds = [b"game_vault", game.token_mint.as_ref()], bump = game_token.vault_bump)]
+    #[account(seeds = [GAME_VAULT_SEED, game.token_mint.as_ref()], bump = game_token.vault_bump)]
     pub game_vault: AccountInfo<'info>,
     #[account(
         mut,
@@ -281,7 +281,7 @@ pub struct JoinGame<'info> {
         associated_token::authority = game_vault,
     )]
     pub game_token_account: Account<'info, TokenAccount>,
-    #[account(seeds = [b"oracle"], bump)]
+    #[account(seeds = [ORACLE_SEED], bump)]
     pub oracle: Account<'info, Oracle>,
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
@@ -293,7 +293,7 @@ pub struct JoinGame<'info> {
 pub struct CompleteGame<'info> {
     #[account(
         mut,
-        seeds = [b"game", random_hash.as_ref()],
+        seeds = [GAME_SEED, random_hash.as_ref()],
         bump,
         constraint = game.is_creator(&creator.key()) @ ErrorCode::InvalidCreator,
         constraint = Game::verify_secret_key(random_hash, secret_key) @ ErrorCode::InvalidSecretKey,
@@ -301,7 +301,7 @@ pub struct CompleteGame<'info> {
     )]
     pub game: Account<'info, Game>,
     #[account(
-        seeds = [b"oracle"],
+        seeds = [ORACLE_SEED],
         bump,
         constraint = oracle.is_authorized_operator(&oracle_operator.key()) @ ErrorCode::UnauthorizedOperator,
     )]
@@ -316,7 +316,7 @@ pub struct CompleteGame<'info> {
     pub creator: AccountInfo<'info>,
     #[account(
         mut,
-        seeds = [b"player_balance", winner.key().as_ref(), game.token_mint.as_ref()],
+        seeds = [PLAYER_BALANCE_SEED, winner.key().as_ref(), game.token_mint.as_ref()],
         bump,
     )]
     pub winner_balance: Account<'info, PlayerBalance>,
@@ -337,11 +337,11 @@ pub struct UnjoinGame<'info> {
     pub player: Signer<'info>,
     #[account(
         mut,
-        seeds = [b"player_balance", player.key().as_ref(), game.token_mint.as_ref()],
+        seeds = [PLAYER_BALANCE_SEED, player.key().as_ref(), game.token_mint.as_ref()],
         bump,
     )]
     pub player_balance: Account<'info, PlayerBalance>,
-    #[account(seeds = [b"oracle"], bump)]
+    #[account(seeds = [ORACLE_SEED], bump)]
     pub oracle: Account<'info, Oracle>,
     pub system_program: Program<'info, System>,
 }
@@ -363,7 +363,7 @@ pub struct CloseGame<'info> {
         bump,
     )]
     pub creator_balance: Account<'info, PlayerBalance>,
-    #[account(seeds = [b"oracle"], bump)]
+    #[account(seeds = [ORACLE_SEED], bump)]
     pub oracle: Account<'info, Oracle>,
     pub system_program: Program<'info, System>,
 }
@@ -381,15 +381,15 @@ pub struct RollGame<'info> {
     pub player: Signer<'info>,
     #[account(
         mut,
-        seeds = [b"player_balance", player.key().as_ref(), game.token_mint.as_ref()],
+        seeds = [PLAYER_BALANCE_SEED, player.key().as_ref(), game.token_mint.as_ref()],
         bump,
     )]
     pub player_balance: Account<'info, PlayerBalance>,
     pub oracle_operator: Option<Signer<'info>>,
-    #[account(seeds = [b"game_token", game.token_mint.as_ref()], bump)]
+    #[account(seeds = [GAME_TOKEN_SEED, game.token_mint.as_ref()], bump)]
     pub game_token: Account<'info, GameToken>,
     /// CHECK: PDA authority for game's token accounts
-    #[account(seeds = [b"game_vault", game.token_mint.as_ref()], bump = game_token.vault_bump)]
+    #[account(seeds = [GAME_VAULT_SEED, game.token_mint.as_ref()], bump = game_token.vault_bump)]
     pub game_vault: AccountInfo<'info>,
     #[account(
         mut,
@@ -403,7 +403,7 @@ pub struct RollGame<'info> {
         associated_token::authority = game_vault,
     )]
     pub game_token_account: Account<'info, TokenAccount>,
-    #[account(seeds = [b"oracle"], bump)]
+    #[account(seeds = [ORACLE_SEED], bump)]
     pub oracle: Account<'info, Oracle>,
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
@@ -418,17 +418,17 @@ pub struct RollGame<'info> {
 pub struct WithdrawTokenFee<'info> {
     #[account(
         mut,
-        seeds = [b"game_token", token_mint.key().as_ref()],
+        seeds = [GAME_TOKEN_SEED, token_mint.key().as_ref()],
         bump,
     )]
     pub game_token: Account<'info, GameToken>,
     pub token_mint: Account<'info, Mint>,
     /// CHECK: PDA authority for game's token accounts
-    #[account(seeds = [b"game_vault", token_mint.key().as_ref()], bump = game_token.vault_bump)]
+    #[account(seeds = [GAME_VAULT_SEED, token_mint.key().as_ref()], bump = game_token.vault_bump)]
     pub game_vault: AccountInfo<'info>,
     #[account(
         mut,
-        seeds = [b"oracle"],
+        seeds = [ORACLE_SEED],
         bump,
         constraint = oracle.is_authorized_operator(&oracle_operator.key()) @ ErrorCode::UnauthorizedOperator,
     )]

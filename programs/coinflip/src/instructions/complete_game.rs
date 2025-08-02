@@ -1,5 +1,6 @@
 use crate::events::GameCompleted;
 use crate::error::ErrorCode;
+use crate::utils::get_current_time;
 use anchor_lang::prelude::*;
 
 pub fn handler(
@@ -10,7 +11,7 @@ pub fn handler(
 ) -> Result<()> {
     let game = &mut ctx.accounts.game;
     let oracle = &ctx.accounts.oracle;
-    let current_time = Clock::get()?.unix_timestamp as u64;
+    let current_time = get_current_time()?;
 
     // ===============================
     // VALIDATION

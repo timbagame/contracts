@@ -1,13 +1,13 @@
 use crate::error::ErrorCode;
 use crate::events::PlayerJoined;
+use crate::utils::{get_current_time, get_current_slot};
 use anchor_lang::prelude::*;
 
 pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
     let game = &mut ctx.accounts.game;
     let player_balance = &mut ctx.accounts.player_balance;
     let oracle = &ctx.accounts.oracle;
-    let clock = Clock::get()?;
-    let current_time = clock.unix_timestamp as u64;
+    let current_time = get_current_time()?;
     let player_key = ctx.accounts.player.key();
     let game_key = game.key();
 
@@ -29,7 +29,7 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
 
     // Add player to game and update counters
     game.add_player_to_game()?;
-    game.last_slot = clock.slot;
+    game.last_slot = get_current_slot()?;
 
     // Mark game as joined in player's bloom filter with collision detection integration
     let game_expiry = game.calculate_expiry_timestamp(oracle.get_total_buffer_time());
