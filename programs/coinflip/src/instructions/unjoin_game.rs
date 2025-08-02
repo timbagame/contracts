@@ -1,13 +1,13 @@
 use crate::error::ErrorCode;
 use crate::events::PlayerUnjoined;
+use crate::utils::{get_current_time, get_current_slot};
 use anchor_lang::prelude::*;
 
 pub fn handler(ctx: Context<super::UnjoinGame>, ticket_index: u32) -> Result<()> {
     let game = &mut ctx.accounts.game;
     let player_balance = &mut ctx.accounts.player_balance;
     let oracle = &ctx.accounts.oracle;
-    let clock = Clock::get()?;
-    let current_time = clock.unix_timestamp as u64;
+    let current_time = get_current_time()?;
     let player_key = ctx.accounts.player.key();
 
     // ===============================
@@ -48,7 +48,7 @@ pub fn handler(ctx: Context<super::UnjoinGame>, ticket_index: u32) -> Result<()>
     // for other players, so we just decrement counters
     game.tickets_count -= 1;
     game.total_amount -= game.ticket_amount;
-    game.last_slot = clock.slot;
+    game.last_slot = get_current_slot()?;
 
     // Refund player
     player_balance.refund(game.ticket_amount);

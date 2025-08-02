@@ -10,6 +10,7 @@ mod error;
 mod events;
 mod instructions;
 mod state;
+mod utils;
 
 use crate::instructions::*;
 use crate::state::GameType;

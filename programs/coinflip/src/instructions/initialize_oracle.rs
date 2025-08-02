@@ -1,4 +1,5 @@
 use crate::{events::OracleInitialized, OracleConfig};
+use crate::utils::update_oracle_configuration;
 use anchor_lang::prelude::*;
 
 pub fn handler(ctx: Context<super::InitializeOracle>, config: OracleConfig) -> Result<()> {
@@ -9,15 +10,7 @@ pub fn handler(ctx: Context<super::InitializeOracle>, config: OracleConfig) -> R
     // STATE INITIALIZATION
     // ===============================
 
-    oracle.update_config(
-        config.fee_percentage,
-        config.oracle_buffer_time,
-        config.max_tickets,
-        config.max_timeout,
-        config.min_timeout,
-        config.filter_cleanup_buffer,
-        operator_key,
-    );
+    update_oracle_configuration(oracle, &config, operator_key);
 
     // ===============================
     // EVENT EMISSION

@@ -1,11 +1,12 @@
 use crate::error::ErrorCode;
 use crate::events::GameClosed;
+use crate::utils::get_current_time;
 use anchor_lang::prelude::*;
 
 pub fn handler(ctx: Context<super::CloseGame>) -> Result<()> {
     let game = &ctx.accounts.game;
     let oracle = &ctx.accounts.oracle;
-    let current_time = Clock::get()?.unix_timestamp as u64;
+    let current_time = get_current_time()?;
 
     // ===============================
     // VALIDATION

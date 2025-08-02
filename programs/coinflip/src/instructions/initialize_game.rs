@@ -1,9 +1,10 @@
 use crate::{events::GameInitialized, state::GameType, GameConfig};
+use crate::utils::{get_current_time, get_current_slot};
 use anchor_lang::prelude::*;
 
 pub fn handler(ctx: Context<super::InitializeGame>, config: GameConfig) -> Result<()> {
     let game: &mut Account<'_, crate::state::Game> = &mut ctx.accounts.game;
-    let clock = Clock::get()?;
+    let current_time = get_current_time()?;
     let creator_key = ctx.accounts.creator.key();
     let creator_balance = &mut ctx.accounts.creator_balance;
     let token_mint_key = ctx.accounts.token_mint.key();
@@ -18,9 +19,9 @@ pub fn handler(ctx: Context<super::InitializeGame>, config: GameConfig) -> Resul
     game.min_tickets = config.min_tickets;
     game.tickets_count = 0;
     game.token_mint = token_mint_key;
-    game.created_at = clock.unix_timestamp as u64;
+    game.created_at = current_time;
     game.timeout = config.timeout;
-    game.last_slot = clock.slot;
+    game.last_slot = get_current_slot()?;
     game.is_private = config.is_private;
 
     // Set amounts based on game type
