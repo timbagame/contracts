@@ -133,7 +133,7 @@ describe("Collision Detection & Recovery", () => {
       
       // Verify collision detection fields are initialized
       expect(playerBalance.emergencyUnjoinMode).to.be.false;
-      expect(playerBalance.maxGameExpiryTracked.toNumber()).to.be.greaterThan(0);
+      expect(playerBalance.filterALongestExpiry.toNumber()).to.be.greaterThan(0);
     });
   });
 
