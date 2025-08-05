@@ -909,9 +909,10 @@ export class CollisionUtils {
     activeFilterIndex: number;
     filterCleaningScheduledAt: number;
     emergencyUnjoinMode: boolean;
-    maxGameExpiryTracked: number;
     filterALastUpdated: number;
     filterBLastUpdated: number;
+    filterALongestExpiry: number;
+    filterBLongestExpiry: number;
   }> {
     const playerBalance = await program.account.playerBalance.fetch(playerBalancePDA);
     
@@ -919,9 +920,10 @@ export class CollisionUtils {
       activeFilterIndex: playerBalance.activeFilterIndex,
       filterCleaningScheduledAt: playerBalance.filterCleaningScheduledAt.toNumber(),
       emergencyUnjoinMode: playerBalance.emergencyUnjoinMode,
-      maxGameExpiryTracked: playerBalance.maxGameExpiryTracked.toNumber(),
       filterALastUpdated: playerBalance.filterALastUpdated.toNumber(),
       filterBLastUpdated: playerBalance.filterBLastUpdated.toNumber(),
+      filterALongestExpiry: playerBalance.filterALongestExpiry.toNumber(),
+      filterBLongestExpiry: playerBalance.filterBLongestExpiry.toNumber(),
     };
   }
 
