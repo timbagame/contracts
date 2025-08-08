@@ -619,7 +619,7 @@ describe("Game Types", () => {
         amount: new anchor.BN(1_000_000), // 1 TIMBA per roll
         maxTickets: 50, // Allow for 10 initial + 40 rolls
         minTickets: 10, // Start with 10 players
-        timeout: 7200,
+        timeout: new anchor.BN(7200),
         isPrivate: false,
       };
 
@@ -790,7 +790,7 @@ describe("Game Types", () => {
         amount: new anchor.BN(1_000_000),
         maxTickets: 4,
         minTickets: 2,
-        timeout: 0, // Invalid timeout
+        timeout: new anchor.BN(0), // Invalid timeout
         isPrivate: false,
       };
 

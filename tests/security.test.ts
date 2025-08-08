@@ -180,7 +180,7 @@ describe("Security & Edge Cases", () => {
         fakeOperator.publicKey,
         anchor.web3.LAMPORTS_PER_SOL
       );
-      await env.provider.connection.confirmTransaction(airdropSignature);
+      await env.provider.connection.confirmTransaction(airdropSignature, "confirmed");
 
       const gameConfig: GameConfig = {
         gameType: { coinflip: {} },
@@ -777,7 +777,7 @@ describe("Security & Edge Cases", () => {
         fakeOperator.publicKey,
         anchor.web3.LAMPORTS_PER_SOL
       );
-      await env.provider.connection.confirmTransaction(airdropSignature);
+      await env.provider.connection.confirmTransaction(airdropSignature, "confirmed");
 
       const newConfig = {
         feePercentage: 10, // High fee
@@ -810,11 +810,11 @@ describe("Security & Edge Cases", () => {
       // Try to set invalid configuration
       const invalidConfig = {
         feePercentage: 101, // Over 100%
-        oracleBufferTime: 1,
+        oracleBufferTime: new anchor.BN(1),
         maxTickets: 1, // Too low for coinflip
-        maxTimeout: 0, // Invalid timeout
-        minTimeout: 1,
-        filterCleanupBuffer: 1,
+        maxTimeout: new anchor.BN(0), // Invalid timeout
+        minTimeout: new anchor.BN(1),
+        filterCleanupBuffer: new anchor.BN(1),
       };
 
       try {

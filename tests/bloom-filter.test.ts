@@ -100,7 +100,7 @@ describe("Bloom Filter Advanced Testing", () => {
         amount: new anchor.BN(1_000_000),
         maxTickets: 2,
         minTickets: 2,
-        timeout: 5, // Very short timeout
+        timeout: new anchor.BN(5), // Very short timeout
         isPrivate: false,
       };
 
@@ -191,7 +191,7 @@ describe("Bloom Filter Advanced Testing", () => {
         amount: new anchor.BN(1_000_000),
         maxTickets: 2,
         minTickets: 2,
-        timeout: 10, // Short timeout for testing
+        timeout: new anchor.BN(10), // Short timeout for testing
         isPrivate: false,
       };
 

@@ -204,8 +204,8 @@ export class OracleManager {
         5 * anchor.web3.LAMPORTS_PER_SOL
       );
 
-      await this.provider.connection.confirmTransaction(providerAirdrop);
-      await this.provider.connection.confirmTransaction(operatorAirdrop);
+      await this.provider.connection.confirmTransaction(providerAirdrop, "confirmed");
+      await this.provider.connection.confirmTransaction(operatorAirdrop, "confirmed");
 
       const configForProgram = {
         feePercentage: defaultConfig.feePercentage,
@@ -292,7 +292,7 @@ export class MintManager {
       mintAuthority.publicKey,
       5 * anchor.web3.LAMPORTS_PER_SOL
     );
-    await this.provider.connection.confirmTransaction(signature);
+    await this.provider.connection.confirmTransaction(signature, "confirmed");
 
     // Create mint
     const mint = await createMint(
@@ -401,7 +401,7 @@ export class PlayerManager {
       player.publicKey,
       3 * anchor.web3.LAMPORTS_PER_SOL
     );
-    await this.provider.connection.confirmTransaction(signature);
+    await this.provider.connection.confirmTransaction(signature, "confirmed");
 
     // Create token account
     const playerTokenAccount = await getOrCreateAssociatedTokenAccount(
@@ -456,7 +456,7 @@ export class PlayerManager {
     const signatures = await Promise.all(airdropPromises);
     await Promise.all(
       signatures.map((signature) =>
-        this.provider.connection.confirmTransaction(signature)
+        this.provider.connection.confirmTransaction(signature, "confirmed")
       )
     );
 
