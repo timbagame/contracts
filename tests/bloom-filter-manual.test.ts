@@ -208,7 +208,7 @@ describe("Manual Bloom Filter Testing", () => {
         amount: new anchor.BN(5_000_000), // Higher amount
         maxTickets: 2,
         minTickets: 2,
-        timeout: 8, // Short timeout for testing
+        timeout: new anchor.BN(8), // Short timeout for testing
         isPrivate: false,
       };
 
