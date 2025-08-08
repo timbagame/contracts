@@ -351,10 +351,7 @@ describe("Game Types", () => {
       await testUtils.game.joinGame(gameData.gamePDA, players[2].player); // Third player to reach max
 
       // Then creator rolls for additional entry
-      await testUtils.game.rollGame(
-        gameData.gamePDA,
-        creator.player
-      );
+      await testUtils.game.rollGame(gameData.gamePDA, creator.player);
 
       // Verify accumulating pot
       const gameAccount = await env.program.account.game.fetch(
@@ -528,10 +525,7 @@ describe("Game Types", () => {
           `  Using ticket index: ${ticketIndexToUse}, committed threshold: ${committedTickets}`
         );
 
-        await testUtils.game.rollGame(
-          gameData.gamePDA,
-          creator.player
-        );
+        await testUtils.game.rollGame(gameData.gamePDA, creator.player);
       }
 
       console.log("Verifying final state...");
@@ -645,16 +639,12 @@ describe("Game Types", () => {
 
       console.log("All 10 players joined, starting rolls...");
 
-
       // Player 0 does 20 rolls
       console.log("Player 0 starting 20 rolls...");
       for (let i = 0; i < 20; i++) {
         console.log(`Player 0 roll ${i + 1}/20`);
 
-        await testUtils.game.rollGame(
-          gameData.gamePDA,
-          players[0].player
-        );
+        await testUtils.game.rollGame(gameData.gamePDA, players[0].player);
       }
 
       // Player 1 does 20 rolls
@@ -671,10 +661,7 @@ describe("Game Types", () => {
         );
 
         try {
-          await testUtils.game.rollGame(
-            gameData.gamePDA,
-            players[1].player
-          );
+          await testUtils.game.rollGame(gameData.gamePDA, players[1].player);
           console.log(`  DEBUG: Roll ${i + 1} completed successfully`);
         } catch (error) {
           console.log(

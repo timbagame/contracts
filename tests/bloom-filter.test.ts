@@ -1,10 +1,6 @@
 import { expect } from "chai";
 import * as anchor from "@coral-xyz/anchor";
-import {
-  TestUtils,
-  TestEnvironment,
-  GameConfig,
-} from "./test-helpers";
+import { TestUtils, TestEnvironment, GameConfig } from "./test-helpers";
 
 /**
  * Bloom Filter Advanced Testing Suite
@@ -58,11 +54,11 @@ describe("Bloom Filter Advanced Testing", () => {
           testPlayer.player,
           mint.mint
         );
-        
+
         // Join the game to add it to recent games buffer
         await testUtils.game.joinGame(gameData.gamePDA, testPlayer.player);
         games.push(gameData);
-        
+
         console.log(`Game ${i + 1}/10 created and joined`);
       }
 
@@ -71,12 +67,14 @@ describe("Bloom Filter Advanced Testing", () => {
       // Games 4-9 should still be in the recent games buffer
 
       console.log("Testing recent games accuracy...");
-      
+
       // Try to join games 4-9 again - should fail (in recent buffer)
       for (let i = 4; i < 10; i++) {
         try {
           await testUtils.game.joinGame(games[i].gamePDA, testPlayer.player);
-          expect.fail(`Should not be able to rejoin game ${i} (in recent buffer)`);
+          expect.fail(
+            `Should not be able to rejoin game ${i} (in recent buffer)`
+          );
         } catch (error) {
           expect(error.toString()).to.include("Player already joined");
           console.log(`✅ Game ${i} correctly blocked by recent games buffer`);
@@ -85,7 +83,9 @@ describe("Bloom Filter Advanced Testing", () => {
 
       // Games 0-3 might be blocked by bloom filter (probabilistic)
       // but should NOT be in recent games buffer
-      console.log("Games 0-3 are no longer in recent buffer (may be in bloom filter)");
+      console.log(
+        "Games 0-3 are no longer in recent buffer (may be in bloom filter)"
+      );
     });
   });
 
@@ -130,12 +130,15 @@ describe("Bloom Filter Advanced Testing", () => {
 
       console.log("Phase 2: Waiting for short games to expire...");
       // Wait for short games to expire + oracle buffer + filter cleanup buffer
-      const totalBufferTime = oracle.config.oracleBufferTime + oracle.config.filterCleanupBuffer;
+      const totalBufferTime =
+        oracle.config.oracleBufferTime + oracle.config.filterCleanupBuffer;
       const waitTime = (shortGameConfig.timeout + totalBufferTime + 2) * 1000;
-      console.log(`Waiting ${waitTime/1000} seconds for filter switching...`);
+      console.log(`Waiting ${waitTime / 1000} seconds for filter switching...`);
       await new Promise((resolve) => setTimeout(resolve, waitTime));
 
-      console.log("Phase 3: Creating long-timeout games (should trigger filter switch)...");
+      console.log(
+        "Phase 3: Creating long-timeout games (should trigger filter switch)..."
+      );
       const longGames = [];
       for (let i = 0; i < 3; i++) {
         const gameData = testUtils.game.generateGamePDA();
@@ -147,7 +150,9 @@ describe("Bloom Filter Advanced Testing", () => {
         );
         await testUtils.game.joinGame(gameData.gamePDA, testPlayer.player);
         longGames.push(gameData);
-        console.log(`Long game ${i + 1}/3 created (filter should have switched)`);
+        console.log(
+          `Long game ${i + 1}/3 created (filter should have switched)`
+        );
       }
 
       console.log("Phase 4: Verifying filter switching worked...");
@@ -157,7 +162,10 @@ describe("Bloom Filter Advanced Testing", () => {
       // Try to rejoin long games - should fail (recent + active filter)
       for (let i = 0; i < longGames.length; i++) {
         try {
-          await testUtils.game.joinGame(longGames[i].gamePDA, testPlayer.player);
+          await testUtils.game.joinGame(
+            longGames[i].gamePDA,
+            testPlayer.player
+          );
           expect.fail(`Should not be able to rejoin long game ${i}`);
         } catch (error) {
           expect(error.toString()).to.include("AlreadyJoined");
@@ -175,7 +183,9 @@ describe("Bloom Filter Advanced Testing", () => {
       const testPlayer = players[0];
       const otherPlayer = players[1];
 
-      console.log("Phase 1: Creating a game that will be stuck for a long time...");
+      console.log(
+        "Phase 1: Creating a game that will be stuck for a long time..."
+      );
       const stuckGameConfig: GameConfig = {
         gameType: { coinflip: {} },
         amount: new anchor.BN(1_000_000),
@@ -197,7 +207,9 @@ describe("Bloom Filter Advanced Testing", () => {
       await testUtils.game.joinGame(stuckGameData.gamePDA, testPlayer.player);
       await testUtils.game.joinGame(stuckGameData.gamePDA, otherPlayer.player);
 
-      console.log("Phase 2: Creating many other games while stuck game is pending...");
+      console.log(
+        "Phase 2: Creating many other games while stuck game is pending..."
+      );
       // Create many other games to fill up filters and test filter saturation resistance
       const normalConfig: GameConfig = {
         gameType: { giveaway: {} }, // Use giveaway for instant completion
@@ -209,7 +221,8 @@ describe("Bloom Filter Advanced Testing", () => {
       };
 
       const normalGames = [];
-      for (let i = 0; i < 15; i++) { // Create many games to stress test filters
+      for (let i = 0; i < 15; i++) {
+        // Create many games to stress test filters
         const gameData = testUtils.game.generateGamePDA();
         await testUtils.game.initializeGame(
           gameData,
@@ -217,11 +230,11 @@ describe("Bloom Filter Advanced Testing", () => {
           testPlayer.player,
           mint.mint
         );
-        
+
         // Join the game (will add to filters)
         await testUtils.game.joinGame(gameData.gamePDA, testPlayer.player);
         normalGames.push(gameData);
-        
+
         if (i % 5 === 0) {
           console.log(`Created ${i + 1}/15 normal games...`);
         }
@@ -229,18 +242,35 @@ describe("Bloom Filter Advanced Testing", () => {
 
       console.log("Phase 3: Waiting for stuck game to expire...");
       // Wait for stuck game to expire + oracle buffer time
-      const waitTime = (stuckGameConfig.timeout + oracle.config.oracleBufferTime + 2) * 1000;
-      console.log(`Waiting ${waitTime/1000} seconds for stuck game to become unjoin-able...`);
+      const waitTime =
+        (stuckGameConfig.timeout + oracle.config.oracleBufferTime + 2) * 1000;
+      console.log(
+        `Waiting ${
+          waitTime / 1000
+        } seconds for stuck game to become unjoin-able...`
+      );
       await new Promise((resolve) => setTimeout(resolve, waitTime));
 
       console.log("Phase 4: Player finally unjoins from stuck game...");
       // Now players can emergency unjoin from the stuck game
-      await testUtils.game.unjoinGame(stuckGameData.gamePDA, testPlayer.player, 0);
-      await testUtils.game.unjoinGame(stuckGameData.gamePDA, otherPlayer.player, 1);
+      await testUtils.game.unjoinGame(
+        stuckGameData.gamePDA,
+        testPlayer.player,
+        0
+      );
+      await testUtils.game.unjoinGame(
+        stuckGameData.gamePDA,
+        otherPlayer.player,
+        1
+      );
 
-      console.log("Phase 5: Verifying system integrity after long-term unjoin...");
+      console.log(
+        "Phase 5: Verifying system integrity after long-term unjoin..."
+      );
       // Verify stuck game is now empty
-      const stuckGame = await env.program.account.game.fetch(stuckGameData.gamePDA);
+      const stuckGame = await env.program.account.game.fetch(
+        stuckGameData.gamePDA
+      );
       expect(stuckGame.ticketsCount).to.equal(0);
 
       // Verify player can still join new games (filters not corrupted)
@@ -253,11 +283,15 @@ describe("Bloom Filter Advanced Testing", () => {
       );
       await testUtils.game.joinGame(testGameData.gamePDA, testPlayer.player);
 
-      const testGame = await env.program.account.game.fetch(testGameData.gamePDA);
+      const testGame = await env.program.account.game.fetch(
+        testGameData.gamePDA
+      );
       expect(testGame.ticketsCount).to.equal(1);
 
       console.log("✅ Long-term unjoin scenario completed successfully");
-      console.log("✅ Filter system maintained integrity despite extended delays");
+      console.log(
+        "✅ Filter system maintained integrity despite extended delays"
+      );
     });
   });
 
@@ -267,7 +301,7 @@ describe("Bloom Filter Advanced Testing", () => {
       const testPlayer = players[0];
 
       console.log("Phase 1: Testing Layer 1 (Recent Games Buffer)...");
-      
+
       // Create a game and join it
       const recentGameData = testUtils.game.generateGamePDA();
       const gameConfig: GameConfig = {
@@ -289,7 +323,10 @@ describe("Bloom Filter Advanced Testing", () => {
 
       // Should be blocked by Layer 1 (recent games)
       try {
-        await testUtils.game.joinGame(recentGameData.gamePDA, testPlayer.player);
+        await testUtils.game.joinGame(
+          recentGameData.gamePDA,
+          testPlayer.player
+        );
         expect.fail("Should be blocked by recent games layer");
       } catch (error) {
         expect(error.toString()).to.include("AlreadyJoined");
@@ -297,7 +334,7 @@ describe("Bloom Filter Advanced Testing", () => {
       }
 
       console.log("Phase 2: Testing Layer 3 (Timestamp Protection)...");
-      
+
       // Create a new game with current timestamp
       const timestampGameData = testUtils.game.generateGamePDA();
       await testUtils.game.initializeGame(
@@ -308,11 +345,16 @@ describe("Bloom Filter Advanced Testing", () => {
       );
 
       // This should be allowed because the game was created after filter updates
-      await testUtils.game.joinGame(timestampGameData.gamePDA, testPlayer.player);
+      await testUtils.game.joinGame(
+        timestampGameData.gamePDA,
+        testPlayer.player
+      );
       console.log("✅ Layer 3 (Timestamp Protection) working correctly");
 
-      console.log("Phase 3: Testing Layer 2 (Dual Bloom Filters) integration...");
-      
+      console.log(
+        "Phase 3: Testing Layer 2 (Dual Bloom Filters) integration..."
+      );
+
       // Create many games to test bloom filter functionality
       const bloomGames = [];
       for (let i = 0; i < 10; i++) {
@@ -330,7 +372,10 @@ describe("Bloom Filter Advanced Testing", () => {
       // Verify that attempting to rejoin any of these games is blocked
       for (let i = 0; i < bloomGames.length; i++) {
         try {
-          await testUtils.game.joinGame(bloomGames[i].gamePDA, testPlayer.player);
+          await testUtils.game.joinGame(
+            bloomGames[i].gamePDA,
+            testPlayer.player
+          );
           expect.fail(`Should not be able to rejoin game ${i}`);
         } catch (error) {
           expect(error.toString()).to.include("AlreadyJoined");
@@ -348,7 +393,7 @@ describe("Bloom Filter Advanced Testing", () => {
       const testPlayer = players[0];
 
       console.log("Phase 1: Creating games with short expiry times...");
-      
+
       const shortConfig: GameConfig = {
         gameType: { coinflip: {} },
         amount: new anchor.BN(1_000_000),
@@ -374,15 +419,16 @@ describe("Bloom Filter Advanced Testing", () => {
       }
 
       console.log("Phase 2: Waiting for filter cleaning opportunity...");
-      
+
       // Wait for games to expire + buffers
-      const totalBuffer = oracle.config.oracleBufferTime + oracle.config.filterCleanupBuffer;
+      const totalBuffer =
+        oracle.config.oracleBufferTime + oracle.config.filterCleanupBuffer;
       const waitTime = (shortConfig.timeout + totalBuffer + 2) * 1000;
-      console.log(`Waiting ${waitTime/1000} seconds for filter cleaning...`);
+      console.log(`Waiting ${waitTime / 1000} seconds for filter cleaning...`);
       await new Promise((resolve) => setTimeout(resolve, waitTime));
 
       console.log("Phase 3: Creating new game to trigger filter cleaning...");
-      
+
       // Create a new game - this should trigger filter cleaning
       const cleanGameData = testUtils.game.generateGamePDA();
       const longConfig: GameConfig = {
@@ -400,10 +446,10 @@ describe("Bloom Filter Advanced Testing", () => {
         testPlayer.player,
         mint.mint
       );
-      
+
       // This join should trigger filter cleaning and reset recent games
       await testUtils.game.joinGame(cleanGameData.gamePDA, testPlayer.player);
-      
+
       console.log("✅ Filter cleaning completed successfully");
       console.log("✅ System continues to function normally after cleaning");
     });
