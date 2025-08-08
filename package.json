@@ -5,7 +5,8 @@
   "scripts": {
     "lint:fix": "prettier */*.js \"*/**/*{.js,.ts}\" -w",
     "lint": "prettier */*.js \"*/**/*{.js,.ts}\" --check",
-    "setup-local": "ts-node scripts/setup-local.ts"
+  "setup-local": "ts-node scripts/setup-local.ts",
+  "update-idl": "ts-node scripts/update-idl.ts"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.31.1"
