@@ -539,8 +539,25 @@ export class GameManager {
     creator: anchor.web3.Keypair,
     tokenMint: PublicKey
   ): Promise<void> {
+    // Normalize config fields to Anchor-compatible types (u64 -> BN)
+    const cfg: any = {
+      gameType: config.gameType,
+      amount:
+        // Allow tests to pass either BN or number
+        (anchor.BN.isBN && (config as any).amount && (config as any).amount.isZero !== undefined)
+          ? (config as any).amount
+          : new anchor.BN((config as any).amount),
+      maxTickets: config.maxTickets,
+      minTickets: config.minTickets,
+      timeout:
+        (anchor.BN.isBN && (config as any).timeout && (config as any).timeout.isZero !== undefined)
+          ? (config as any).timeout
+          : new anchor.BN((config as any).timeout),
+      isPrivate: config.isPrivate,
+    };
+
     await this.program.methods
-      .initializeGame(config, gameData.randomHash)
+      .initializeGame(cfg, gameData.randomHash)
       .accounts({
         creator: creator.publicKey,
         tokenMint,

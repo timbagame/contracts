@@ -69,7 +69,7 @@ pub const GAME_BASE_SIZE: usize = 8
     + 4   // tickets_count
     + 32  // token_mint
     + 8   // created_at
-    + 4   // timeout
+    + 8   // timeout (u64)
     + 8   // last_slot
     + 1   // is_private
     + 8   // total_amount
