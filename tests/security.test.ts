@@ -244,7 +244,7 @@ describe("Security & Edge Cases", () => {
         amount: new anchor.BN(1_000_000),
         maxTickets: 2,
         minTickets: 2,
-        timeout: 3600,
+        timeout: new anchor.BN(3600),
         isPrivate: false,
       };
 
@@ -294,7 +294,7 @@ describe("Security & Edge Cases", () => {
         amount: new anchor.BN(1_000_000),
         maxTickets: 2,
         minTickets: 2,
-        timeout: 3600,
+        timeout: new anchor.BN(3600),
         isPrivate: false,
       };
 
@@ -346,7 +346,7 @@ describe("Security & Edge Cases", () => {
         amount: new anchor.BN(1_000_000),
         maxTickets: 4,
         minTickets: 2,
-        timeout: 1, // Very short timeout - 1 second
+        timeout: new anchor.BN(1), // Very short timeout - 1 second
         isPrivate: false,
       };
 
@@ -781,11 +781,11 @@ describe("Security & Edge Cases", () => {
 
       const newConfig = {
         feePercentage: 10, // High fee
-        oracleBufferTime: 1,
+        oracleBufferTime: new anchor.BN(1),
         maxTickets: 2,
-        maxTimeout: 60,
-        minTimeout: 1,
-        filterCleanupBuffer: 1,
+        maxTimeout: new anchor.BN(60),
+        minTimeout: new anchor.BN(1),
+        filterCleanupBuffer: new anchor.BN(1),
       };
 
       try {

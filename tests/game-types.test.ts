@@ -46,7 +46,7 @@ describe("Game Types", () => {
         amount: new anchor.BN(1_000_000),
         maxTickets: 2,
         minTickets: 2,
-        timeout: 3600,
+        timeout: new anchor.BN(3600),
         isPrivate: false,
       };
 
@@ -101,7 +101,7 @@ describe("Game Types", () => {
         amount: new anchor.BN(500_000),
         maxTickets: 4,
         minTickets: 3,
-        timeout: 3600,
+        timeout: new anchor.BN(3600),
         isPrivate: false,
       };
 
@@ -162,7 +162,7 @@ describe("Game Types", () => {
         amount: new anchor.BN(0), // Invalid amount
         maxTickets: 2,
         minTickets: 2,
-        timeout: 3600,
+        timeout: new anchor.BN(3600),
         isPrivate: false,
       };
 
@@ -191,7 +191,7 @@ describe("Game Types", () => {
         amount: new anchor.BN(1_000_000), // Creator funds this
         maxTickets: 2, // Match actual player count for immediate completion
         minTickets: 2,
-        timeout: 3600,
+        timeout: new anchor.BN(3600),
         isPrivate: false,
       };
 
@@ -247,7 +247,7 @@ describe("Game Types", () => {
         amount: new anchor.BN(1_000_000),
         maxTickets: 1,
         minTickets: 1,
-        timeout: 3600,
+        timeout: new anchor.BN(3600),
         isPrivate: false,
       };
 
@@ -297,7 +297,7 @@ describe("Game Types", () => {
         amount: new anchor.BN(0), // Zero amount - test if this is actually allowed
         maxTickets: 2,
         minTickets: 1,
-        timeout: 3600,
+        timeout: new anchor.BN(3600),
         isPrivate: false,
       };
 
@@ -333,7 +333,7 @@ describe("Game Types", () => {
         amount: new anchor.BN(1_000_000),
         maxTickets: 4, // Will be reached with 3 joins + 1 roll
         minTickets: 2,
-        timeout: 3600,
+        timeout: new anchor.BN(3600),
         isPrivate: false,
       };
 
@@ -405,7 +405,7 @@ describe("Game Types", () => {
         amount: new anchor.BN(1_000_000),
         maxTickets: 3,
         minTickets: 2,
-        timeout: 3600,
+        timeout: new anchor.BN(3600),
         isPrivate: false,
       };
 
@@ -468,7 +468,7 @@ describe("Game Types", () => {
         amount: new anchor.BN(1_000_000), // 1 TIMBA per entry
         maxTickets: 13, // Will be reached with 3 joins + 10 rolls
         minTickets: 2,
-        timeout: 3600,
+        timeout: new anchor.BN(3600),
         isPrivate: false,
       };
 
@@ -736,7 +736,7 @@ describe("Game Types", () => {
         amount: new anchor.BN(1_000_000),
         maxTickets: 4,
         minTickets: 1, // Too low for coinflip
-        timeout: 3600,
+        timeout: new anchor.BN(3600),
         isPrivate: false,
       };
 
@@ -763,7 +763,7 @@ describe("Game Types", () => {
         amount: new anchor.BN(1_000_000),
         maxTickets: 100000, // Exceeds oracle limits (oracle max is 50000)
         minTickets: 2,
-        timeout: 3600,
+        timeout: new anchor.BN(3600),
         isPrivate: false,
       };
 
@@ -819,7 +819,7 @@ describe("Game Types", () => {
         amount: new anchor.BN(1_000_000),
         maxTickets: 2,
         minTickets: 2,
-        timeout: 3600,
+        timeout: new anchor.BN(3600),
         isPrivate: true, // Private game
       };
 
@@ -863,7 +863,7 @@ describe("Game Types", () => {
         amount: new anchor.BN(1_000_000),
         maxTickets: 3,
         minTickets: 2,
-        timeout: 3600,
+        timeout: new anchor.BN(3600),
         isPrivate: true,
       };
 
