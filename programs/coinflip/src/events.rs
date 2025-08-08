@@ -17,13 +17,13 @@ pub struct OracleInitialized {
     /// Fee percentage taken from game winnings (0-100)
     pub fee_percentage: u8,
     /// Buffer time in seconds after game timeout
-    pub oracle_buffer_time: u16,
+    pub oracle_buffer_time: u64,
     /// Maximum tickets allowed in any game
     pub max_tickets: u32,
     /// Maximum timeout duration for games
-    pub max_timeout: u32,
+    pub max_timeout: u64,
     /// Minimum timeout duration for games
-    pub min_timeout: u32,
+    pub min_timeout: u64,
 }
 
 /// Emitted when oracle configuration is updated
@@ -36,13 +36,13 @@ pub struct OracleUpdated {
     /// Updated fee percentage
     pub fee_percentage: u8,
     /// Updated buffer time
-    pub oracle_buffer_time: u16,
+    pub oracle_buffer_time: u64,
     /// Updated maximum tickets
     pub max_tickets: u32,
     /// Updated maximum timeout
-    pub max_timeout: u32,
+    pub max_timeout: u64,
     /// Updated minimum timeout
-    pub min_timeout: u32,
+    pub min_timeout: u64,
 }
 
 // =============================================================================

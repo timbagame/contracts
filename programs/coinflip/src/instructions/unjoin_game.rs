@@ -16,7 +16,7 @@ pub fn handler(ctx: Context<super::UnjoinGame>, ticket_index: u32) -> Result<()>
 
     // Check if oracle buffer time has expired (emergency unjoin only)
     require!(
-        game.is_buffer_expired(oracle.oracle_buffer_time as u64, current_time),
+        game.is_buffer_expired(oracle.oracle_buffer_time, current_time),
         ErrorCode::OracleBufferNotExpired
     );
 
