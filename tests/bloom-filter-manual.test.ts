@@ -41,7 +41,7 @@ describe("Manual Bloom Filter Testing", () => {
         amount: new anchor.BN(1_000_000),
         maxTickets: 2,
         minTickets: 2,
-        timeout: 5, // 5 second timeout
+        timeout: new anchor.BN(5), // 5 second timeout
         isPrivate: false,
       };
 
@@ -65,7 +65,7 @@ describe("Manual Bloom Filter Testing", () => {
 
       // Step 2: Wait for filter switching opportunity
       const totalWaitTime =
-        shortConfig.timeout +
+        shortConfig.timeout.toNumber() +
         oracle.config.oracleBufferTime +
         oracle.config.filterCleanupBuffer +
         2;
@@ -81,7 +81,7 @@ describe("Manual Bloom Filter Testing", () => {
       // Step 3: Create new game to trigger filter switch
       console.log("\\n3. Creating new game to trigger filter switch...");
       const newGameData = testUtils.game.generateGamePDA();
-      const longConfig: GameConfig = { ...shortConfig, timeout: 3600 };
+      const longConfig: GameConfig = { ...shortConfig, timeout: new anchor.BN(3600) };
 
       await testUtils.game.initializeGame(
         newGameData,
@@ -126,7 +126,7 @@ describe("Manual Bloom Filter Testing", () => {
         amount: new anchor.BN(1_000_000),
         maxTickets: 2,
         minTickets: 2,
-        timeout: 3600,
+        timeout: new anchor.BN(3600),
         isPrivate: false,
       };
 
@@ -241,7 +241,7 @@ describe("Manual Bloom Filter Testing", () => {
         amount: new anchor.BN(1_000_000),
         maxTickets: 1,
         minTickets: 1,
-        timeout: 3600,
+        timeout: new anchor.BN(3600),
         isPrivate: false,
       };
 
@@ -264,7 +264,7 @@ describe("Manual Bloom Filter Testing", () => {
 
       // Step 3: Wait for stuck game to become unjoin-able
       const unjoinWaitTime =
-        stuckConfig.timeout + oracle.config.oracleBufferTime + 1;
+        stuckConfig.timeout.toNumber() + oracle.config.oracleBufferTime + 1;
       console.log(
         `\\n3. Waiting ${unjoinWaitTime} seconds for stuck game to become unjoin-able...`
       );

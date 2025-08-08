@@ -41,7 +41,7 @@ describe("Bloom Filter Advanced Testing", () => {
         amount: new anchor.BN(1_000_000),
         maxTickets: 2,
         minTickets: 2,
-        timeout: 3600,
+        timeout: new anchor.BN(3600),
         isPrivate: false,
       };
 
@@ -109,7 +109,7 @@ describe("Bloom Filter Advanced Testing", () => {
         amount: new anchor.BN(1_000_000),
         maxTickets: 2,
         minTickets: 2,
-        timeout: 3600, // Long timeout
+        timeout: new anchor.BN(3600), // Long timeout
         isPrivate: false,
       };
 
@@ -132,7 +132,7 @@ describe("Bloom Filter Advanced Testing", () => {
       // Wait for short games to expire + oracle buffer + filter cleanup buffer
       const totalBufferTime =
         oracle.config.oracleBufferTime + oracle.config.filterCleanupBuffer;
-      const waitTime = (shortGameConfig.timeout + totalBufferTime + 2) * 1000;
+      const waitTime = (shortGameConfig.timeout.toNumber() + totalBufferTime + 2) * 1000;
       console.log(`Waiting ${waitTime / 1000} seconds for filter switching...`);
       await new Promise((resolve) => setTimeout(resolve, waitTime));
 
@@ -216,7 +216,7 @@ describe("Bloom Filter Advanced Testing", () => {
         amount: new anchor.BN(1_000_000),
         maxTickets: 3,
         minTickets: 1,
-        timeout: 3600,
+        timeout: new anchor.BN(3600),
         isPrivate: false,
       };
 
@@ -243,7 +243,7 @@ describe("Bloom Filter Advanced Testing", () => {
       console.log("Phase 3: Waiting for stuck game to expire...");
       // Wait for stuck game to expire + oracle buffer time
       const waitTime =
-        (stuckGameConfig.timeout + oracle.config.oracleBufferTime + 2) * 1000;
+        (stuckGameConfig.timeout.toNumber() + oracle.config.oracleBufferTime + 2) * 1000;
       console.log(
         `Waiting ${
           waitTime / 1000
@@ -309,7 +309,7 @@ describe("Bloom Filter Advanced Testing", () => {
         amount: new anchor.BN(1_000_000),
         maxTickets: 2,
         minTickets: 2,
-        timeout: 3600,
+        timeout: new anchor.BN(3600),
         isPrivate: false,
       };
 
@@ -399,7 +399,7 @@ describe("Bloom Filter Advanced Testing", () => {
         amount: new anchor.BN(1_000_000),
         maxTickets: 2,
         minTickets: 2,
-        timeout: 3, // Very short for testing
+        timeout: new anchor.BN(3), // Very short for testing
         isPrivate: false,
       };
 
@@ -423,7 +423,7 @@ describe("Bloom Filter Advanced Testing", () => {
       // Wait for games to expire + buffers
       const totalBuffer =
         oracle.config.oracleBufferTime + oracle.config.filterCleanupBuffer;
-      const waitTime = (shortConfig.timeout + totalBuffer + 2) * 1000;
+      const waitTime = (shortConfig.timeout.toNumber() + totalBuffer + 2) * 1000;
       console.log(`Waiting ${waitTime / 1000} seconds for filter cleaning...`);
       await new Promise((resolve) => setTimeout(resolve, waitTime));
 
@@ -436,7 +436,7 @@ describe("Bloom Filter Advanced Testing", () => {
         amount: new anchor.BN(1_000_000),
         maxTickets: 2,
         minTickets: 2,
-        timeout: 3600, // Long timeout
+        timeout: new anchor.BN(3600), // Long timeout
         isPrivate: false,
       };
 
