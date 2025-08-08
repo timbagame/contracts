@@ -191,7 +191,7 @@ pub struct GameInitialized {
     /// Game creation timestamp
     pub created_at: u64,
     /// Game timeout duration
-    pub timeout: u32,
+    pub timeout: u64,
 }
 
 /// Emitted when a game is completed and winner is determined
