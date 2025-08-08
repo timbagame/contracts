@@ -1,5 +1,5 @@
-use crate::events::GameCompleted;
 use crate::error::ErrorCode;
+use crate::events::GameCompleted;
 use crate::utils::get_current_time;
 use anchor_lang::prelude::*;
 
@@ -27,7 +27,8 @@ pub fn handler(
     // ===============================
 
     // 1. Verify the winner index is correctly calculated from secret key
-    let calculated_winner_index = game.calculate_winner_index(secret_key)
+    let calculated_winner_index = game
+        .calculate_winner_index(secret_key)
         .ok_or(ErrorCode::RandomnessGenerationFailed)?;
     require!(
         winner_index == calculated_winner_index,
@@ -49,7 +50,9 @@ pub fn handler(
 
     // Also validate against winner's PlayerBalance filters
     require!(
-        !ctx.accounts.winner_balance.basic_can_join_game(&game.key(), game.created_at),
+        !ctx.accounts
+            .winner_balance
+            .basic_can_join_game(&game.key(), game.created_at),
         ErrorCode::UnauthorizedPlayer
     );
 

@@ -1,6 +1,6 @@
 use crate::error::ErrorCode;
 use crate::events::PlayerUnjoined;
-use crate::utils::{get_current_time, get_current_slot};
+use crate::utils::{get_current_slot, get_current_time};
 use anchor_lang::prelude::*;
 
 pub fn handler(ctx: Context<super::UnjoinGame>, ticket_index: u32) -> Result<()> {

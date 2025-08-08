@@ -52,7 +52,7 @@ export interface GameConfig {
   amount: anchor.BN;
   maxTickets: number;
   minTickets: number;
-  timeout: number;
+  timeout: anchor.BN;
   isPrivate: boolean;
 }
 
@@ -181,11 +181,13 @@ export class OracleManager {
           operatorKeypair,
           config: {
             feePercentage: existingOracle.feePercentage,
-            oracleBufferTime: existingOracle.oracleBufferTime,
+            oracleBufferTime: existingOracle.oracleBufferTime.toNumber(),
             maxTickets: existingOracle.maxTickets,
-            maxTimeout: existingOracle.maxTimeout,
-            minTimeout: existingOracle.minTimeout,
-            filterCleanupBuffer: existingOracle.filterCleanupBuffer || 2, // Default if missing
+            maxTimeout: existingOracle.maxTimeout.toNumber(),
+            minTimeout: existingOracle.minTimeout.toNumber(),
+            filterCleanupBuffer: existingOracle.filterCleanupBuffer
+              ? existingOracle.filterCleanupBuffer.toNumber()
+              : 2, // Default if missing
           },
         };
       } catch (fetchError) {
@@ -205,8 +207,17 @@ export class OracleManager {
       await this.provider.connection.confirmTransaction(providerAirdrop);
       await this.provider.connection.confirmTransaction(operatorAirdrop);
 
+      const configForProgram = {
+        feePercentage: defaultConfig.feePercentage,
+        oracleBufferTime: new anchor.BN(defaultConfig.oracleBufferTime),
+        maxTickets: defaultConfig.maxTickets,
+        maxTimeout: new anchor.BN(defaultConfig.maxTimeout),
+        minTimeout: new anchor.BN(defaultConfig.minTimeout),
+        filterCleanupBuffer: new anchor.BN(defaultConfig.filterCleanupBuffer),
+      };
+
       await this.program.methods
-        .initializeOracle(defaultConfig)
+        .initializeOracle(configForProgram)
         .accounts({
           oracleOperator: operatorKeypair.publicKey,
         })
@@ -246,11 +257,13 @@ export class OracleManager {
       operatorKeypair,
       config: {
         feePercentage: oracleAccount.feePercentage,
-        oracleBufferTime: oracleAccount.oracleBufferTime,
+        oracleBufferTime: oracleAccount.oracleBufferTime.toNumber(),
         maxTickets: oracleAccount.maxTickets,
-        maxTimeout: oracleAccount.maxTimeout,
-        minTimeout: oracleAccount.minTimeout,
-        filterCleanupBuffer: oracleAccount.filterCleanupBuffer || 2, // Default if missing
+        maxTimeout: oracleAccount.maxTimeout.toNumber(),
+        minTimeout: oracleAccount.minTimeout.toNumber(),
+        filterCleanupBuffer: (
+          oracleAccount.filterCleanupBuffer || new anchor.BN(2)
+        ).toNumber(),
       },
     };
   }
@@ -613,11 +626,7 @@ export class GameManager {
       anchor.web3.Keypair.fromSeed(new Uint8Array(32).fill(42));
 
     await this.program.methods
-      .completeGame(
-        gameData.randomHash,
-        gameData.secretKey,
-        winnerIndex
-      )
+      .completeGame(gameData.randomHash, gameData.secretKey, winnerIndex)
       .accountsPartial({
         oracleOperator,
         winner,
@@ -781,7 +790,7 @@ export class RandomUtils {
       amount: new anchor.BN(this.randomInt(100_000, 10_000_000)),
       maxTickets,
       minTickets,
-      timeout: this.randomInt(600, 7200), // 10 minutes to 2 hours
+      timeout: new anchor.BN(this.randomInt(600, 7200)), // 10 minutes to 2 hours
       isPrivate: this.randomBoolean(0.1), // 10% chance of private game
     };
   }
@@ -807,7 +816,6 @@ export class RandomUtils {
   ): anchor.BN {
     return new anchor.BN(this.randomInt(min, max));
   }
-
 }
 
 /**
@@ -824,27 +832,27 @@ export class CollisionUtils {
     gameCount: number = 25
   ): Promise<TestGame[]> {
     const games: TestGame[] = [];
-    
+
     const gameConfig: GameConfig = {
       gameType: { coinflip: {} },
       amount: new anchor.BN(1_000_000),
       maxTickets: 2,
       minTickets: 2,
-      timeout: 3600,
+      timeout: new anchor.BN(3600),
       isPrivate: false,
     };
 
     // Create many games to increase collision probability
     for (let i = 0; i < gameCount; i++) {
       const gameData = testUtils.game.generateGamePDA();
-      
+
       await testUtils.game.initializeGame(
         gameData,
         gameConfig,
         player.player,
         mint.mint
       );
-      
+
       await testUtils.game.joinGame(gameData.gamePDA, player.player);
       games.push(gameData);
     }
@@ -869,13 +877,13 @@ export class CollisionUtils {
       amount: new anchor.BN(1_000_000),
       maxTickets: 2,
       minTickets: 2,
-      timeout: 60,
+      timeout: new anchor.BN(60),
       isPrivate: false,
     };
 
     for (let i = 0; i < attemptCount; i++) {
       const gameData = testUtils.game.generateGamePDA();
-      
+
       try {
         await testUtils.game.initializeGame(
           gameData,
@@ -883,10 +891,9 @@ export class CollisionUtils {
           player.player,
           mint.mint
         );
-        
+
         await testUtils.game.joinGame(gameData.gamePDA, player.player);
         successful++;
-        
       } catch (error) {
         if (error.toString().includes("AlreadyJoined")) {
           rejected++;
@@ -914,11 +921,14 @@ export class CollisionUtils {
     filterALongestExpiry: number;
     filterBLongestExpiry: number;
   }> {
-    const playerBalance = await program.account.playerBalance.fetch(playerBalancePDA);
-    
+    const playerBalance = await program.account.playerBalance.fetch(
+      playerBalancePDA
+    );
+
     return {
       activeFilterIndex: playerBalance.activeFilterIndex,
-      filterCleaningScheduledAt: playerBalance.filterCleaningScheduledAt.toNumber(),
+      filterCleaningScheduledAt:
+        playerBalance.filterCleaningScheduledAt.toNumber(),
       emergencyUnjoinMode: playerBalance.emergencyUnjoinMode,
       filterALastUpdated: playerBalance.filterALastUpdated.toNumber(),
       filterBLastUpdated: playerBalance.filterBLastUpdated.toNumber(),
@@ -933,7 +943,7 @@ export class CollisionUtils {
    */
   static async advanceTime(seconds: number): Promise<void> {
     console.log(`⏰ Advancing time by ${seconds} seconds...`);
-    await new Promise(resolve => setTimeout(resolve, seconds * 1000));
+    await new Promise((resolve) => setTimeout(resolve, seconds * 1000));
   }
 
   /**
@@ -943,8 +953,8 @@ export class CollisionUtils {
     testUtils: TestUtils,
     player: TestPlayer,
     mint: TestMint
-  ): Promise<{ 
-    gameData: TestGame; 
+  ): Promise<{
+    gameData: TestGame;
     collisionDetected: boolean;
     filterState: any;
   }> {
@@ -955,7 +965,7 @@ export class CollisionUtils {
       amount: new anchor.BN(1_000_000),
       maxTickets: 3,
       minTickets: 2,
-      timeout: 5, // Short timeout
+      timeout: new anchor.BN(5), // Short timeout
       isPrivate: false,
     };
 
@@ -965,16 +975,11 @@ export class CollisionUtils {
       player.player,
       mint.mint
     );
-    
+
     await testUtils.game.joinGame(gameData.gamePDA, player.player);
 
     // Create many more games to trigger collision
-    await this.createCollisionScenario(
-      testUtils,
-      player,
-      mint,
-      20
-    );
+    await this.createCollisionScenario(testUtils, player, mint, 20);
 
     // Check if collision was detected
     const env = TestEnvironment.getInstance();
