@@ -1,10 +1,6 @@
 import { expect } from "chai";
 import * as anchor from "@coral-xyz/anchor";
-import {
-  TestUtils,
-  TestEnvironment,
-  GameConfig,
-} from "./test-helpers";
+import { TestUtils, TestEnvironment, GameConfig } from "./test-helpers";
 
 /**
  * Collision Detection & Recovery Test Suite
@@ -38,7 +34,7 @@ describe("Collision Detection & Recovery", () => {
     it("should detect and resolve collision by switching filters", async () => {
       const { mint, players } = await testUtils.quickSetup();
       const player = players[0];
-      
+
       // Create multiple games to saturate bloom filter and cause collision
       const games = [];
       const gameConfig: GameConfig = {
@@ -46,21 +42,21 @@ describe("Collision Detection & Recovery", () => {
         amount: new anchor.BN(1_000_000),
         maxTickets: 2,
         minTickets: 2,
-        timeout: 3600,
+        timeout: new anchor.BN(3600),
         isPrivate: false,
       };
 
       // Create and join many games to increase collision probability
       for (let i = 0; i < 20; i++) {
         const gameData = testUtils.game.generateGamePDA();
-        
+
         await testUtils.game.initializeGame(
           gameData,
           gameConfig,
           player.player,
           mint.mint
         );
-        
+
         await testUtils.game.joinGame(gameData.gamePDA, player.player);
         games.push(gameData);
       }
@@ -69,7 +65,7 @@ describe("Collision Detection & Recovery", () => {
       const playerBalanceBefore = await env.program.account.playerBalance.fetch(
         player.playerBalancePDA
       );
-      
+
       // Create one more game that should trigger collision detection
       const collisionGameData = testUtils.game.generateGamePDA();
       await testUtils.game.initializeGame(
@@ -90,24 +86,30 @@ describe("Collision Detection & Recovery", () => {
       // Check if filter switching occurred or collision detection triggered
       // Note: This test verifies the collision detection system is working, even if
       // we can't predict exact collision timing due to hash randomness
-      expect(playerBalanceAfter.amount.toNumber()).to.equal(playerBalanceBefore.amount.toNumber());
-      
+      expect(playerBalanceAfter.amount.toNumber()).to.equal(
+        playerBalanceBefore.amount.toNumber()
+      );
+
       // Collision detection may or may not trigger depending on hash randomness
       // The important thing is the system didn't crash and maintains consistency
-      console.log(`Filter state: scheduled=${playerBalanceAfter.filterCleaningScheduledAt.toNumber()}, activeFilter=${playerBalanceAfter.activeFilterIndex}`);
+      console.log(
+        `Filter state: scheduled=${playerBalanceAfter.filterCleaningScheduledAt.toNumber()}, activeFilter=${
+          playerBalanceAfter.activeFilterIndex
+        }`
+      );
       expect(playerBalanceAfter.activeFilterIndex).to.be.oneOf([0, 1]);
     });
 
     it("should maintain filter state consistency during collision", async () => {
       const { mint, players } = await testUtils.quickSetup();
       const player = players[0];
-      
+
       const gameConfig: GameConfig = {
         gameType: { coinflip: {} },
         amount: new anchor.BN(1_000_000),
         maxTickets: 2,
         minTickets: 2,
-        timeout: 3600,
+        timeout: new anchor.BN(3600),
         isPrivate: false,
       };
 
@@ -119,7 +121,7 @@ describe("Collision Detection & Recovery", () => {
         player.player,
         mint.mint
       );
-      
+
       await testUtils.game.joinGame(gameData.gamePDA, player.player);
 
       // Get player balance state
@@ -130,10 +132,12 @@ describe("Collision Detection & Recovery", () => {
       // Verify dual filter system is properly initialized
       expect(playerBalance.activeFilterIndex).to.be.oneOf([0, 1]);
       expect(playerBalance.filterALastUpdated.toNumber()).to.be.greaterThan(0);
-      
+
       // Verify collision detection fields are initialized
       expect(playerBalance.emergencyUnjoinMode).to.be.false;
-      expect(playerBalance.filterALongestExpiry.toNumber()).to.be.greaterThan(0);
+      expect(playerBalance.filterALongestExpiry.toNumber()).to.be.greaterThan(
+        0
+      );
     });
   });
 
@@ -141,13 +145,13 @@ describe("Collision Detection & Recovery", () => {
     it("should reject second collision before first cleanup completes", async () => {
       const { mint, players } = await testUtils.quickSetup();
       const player = players[0];
-      
+
       const gameConfig: GameConfig = {
         gameType: { coinflip: {} },
         amount: new anchor.BN(1_000_000),
         maxTickets: 2,
         minTickets: 2,
-        timeout: 60, // Short timeout for faster testing
+        timeout: new anchor.BN(60), // Short timeout for faster testing
         isPrivate: false,
       };
 
@@ -155,14 +159,14 @@ describe("Collision Detection & Recovery", () => {
       const games = [];
       for (let i = 0; i < 30; i++) {
         const gameData = testUtils.game.generateGamePDA();
-        
+
         await testUtils.game.initializeGame(
           gameData,
           gameConfig,
           player.player,
           mint.mint
         );
-        
+
         try {
           await testUtils.game.joinGame(gameData.gamePDA, player.player);
           games.push(gameData);
@@ -170,13 +174,15 @@ describe("Collision Detection & Recovery", () => {
           // If we get a collision rejection, that's actually what we want to test
           if (error.toString().includes("AlreadyJoined")) {
             console.log(`Collision detected and rejected at game ${i}`);
-            
+
             // Verify that the player balance state shows pending cleanup
             const playerBalance = await env.program.account.playerBalance.fetch(
               player.playerBalancePDA
             );
-            
-            expect(playerBalance.filterCleaningScheduledAt.toNumber()).to.be.greaterThan(0);
+
+            expect(
+              playerBalance.filterCleaningScheduledAt.toNumber()
+            ).to.be.greaterThan(0);
             break;
           } else {
             throw error;
@@ -188,59 +194,68 @@ describe("Collision Detection & Recovery", () => {
     it("should maintain cleanup schedule timing during rapid attempts", async () => {
       const { mint, players } = await testUtils.quickSetup();
       const player = players[0];
-      
+
       const gameConfig: GameConfig = {
         gameType: { coinflip: {} },
         amount: new anchor.BN(1_000_000),
         maxTickets: 2,
         minTickets: 2,
-        timeout: 60,
+        timeout: new anchor.BN(60),
         isPrivate: false,
       };
 
       // Create games until we trigger collision detection
       let collisionDetected = false;
       let firstCleanupTime = 0;
-      
+
       for (let i = 0; i < 25; i++) {
         const gameData = testUtils.game.generateGamePDA();
-        
+
         await testUtils.game.initializeGame(
           gameData,
           gameConfig,
           player.player,
           mint.mint
         );
-        
+
         try {
           await testUtils.game.joinGame(gameData.gamePDA, player.player);
-          
+
           // Check if collision was handled
           const playerBalance = await env.program.account.playerBalance.fetch(
             player.playerBalancePDA
           );
-          
-          if (playerBalance.filterCleaningScheduledAt.toNumber() > 0 && !collisionDetected) {
+
+          if (
+            playerBalance.filterCleaningScheduledAt.toNumber() > 0 &&
+            !collisionDetected
+          ) {
             collisionDetected = true;
-            firstCleanupTime = playerBalance.filterCleaningScheduledAt.toNumber();
-            console.log(`First collision handled, cleanup scheduled at: ${firstCleanupTime}`);
+            firstCleanupTime =
+              playerBalance.filterCleaningScheduledAt.toNumber();
+            console.log(
+              `First collision handled, cleanup scheduled at: ${firstCleanupTime}`
+            );
           }
-          
         } catch (error) {
           if (error.toString().includes("AlreadyJoined") && collisionDetected) {
             // This is a rapid successive collision attempt
             const playerBalance = await env.program.account.playerBalance.fetch(
               player.playerBalancePDA
             );
-            
+
             // Verify cleanup time wasn't overwritten
-            expect(playerBalance.filterCleaningScheduledAt.toNumber()).to.equal(firstCleanupTime);
-            console.log(`Rapid collision rejected, cleanup time preserved: ${firstCleanupTime}`);
+            expect(playerBalance.filterCleaningScheduledAt.toNumber()).to.equal(
+              firstCleanupTime
+            );
+            console.log(
+              `Rapid collision rejected, cleanup time preserved: ${firstCleanupTime}`
+            );
             break;
           }
         }
       }
-      
+
       // Collision detection depends on hash randomness, so we can't guarantee it will trigger
       // The important thing is that IF it triggers, the system behaves correctly
       if (collisionDetected) {
@@ -248,7 +263,7 @@ describe("Collision Detection & Recovery", () => {
       } else {
         console.log("ℹ️  No collision detected in this run (hash randomness)");
       }
-      expect(typeof collisionDetected).to.equal('boolean');
+      expect(typeof collisionDetected).to.equal("boolean");
     });
   });
 
@@ -256,13 +271,13 @@ describe("Collision Detection & Recovery", () => {
     it("should handle system recovery after cleanup periods", async () => {
       const { mint, players } = await testUtils.quickSetup();
       const player = players[0];
-      
+
       const gameConfig: GameConfig = {
         gameType: { coinflip: {} },
         amount: new anchor.BN(1_000_000),
         maxTickets: 2,
         minTickets: 2,
-        timeout: 10, // Short timeout for cleanup testing
+        timeout: new anchor.BN(10), // Short timeout for cleanup testing
         isPrivate: false,
       };
 
@@ -270,31 +285,30 @@ describe("Collision Detection & Recovery", () => {
       const games = [];
       for (let i = 0; i < 10; i++) {
         const gameData = testUtils.game.generateGamePDA();
-        
+
         await testUtils.game.initializeGame(
           gameData,
           gameConfig,
           player.player,
           mint.mint
         );
-        
+
         try {
           await testUtils.game.joinGame(gameData.gamePDA, player.player);
           games.push(gameData);
         } catch (error) {
           // Some joins might fail due to collisions, that's expected
-          console.log(`Game ${i} join result: ${error.message || 'success'}`);
+          console.log(`Game ${i} join result: ${error.message || "success"}`);
         }
       }
 
       // Get initial filter state
-      const playerBalanceInitial = await env.program.account.playerBalance.fetch(
-        player.playerBalancePDA
-      );
+      const playerBalanceInitial =
+        await env.program.account.playerBalance.fetch(player.playerBalancePDA);
 
       // Wait for cleanup period to expire
       console.log("Waiting for cleanup period to expire...");
-      await new Promise(resolve => setTimeout(resolve, 15000));
+      await new Promise((resolve) => setTimeout(resolve, 15000));
 
       // Create new game after cleanup period
       const postCleanupGame = testUtils.game.generateGamePDA();
@@ -304,34 +318,39 @@ describe("Collision Detection & Recovery", () => {
         player.player,
         mint.mint
       );
-      
+
       // This should work after cleanup period
       try {
         await testUtils.game.joinGame(postCleanupGame.gamePDA, player.player);
         console.log("✅ Post-cleanup game join succeeded");
       } catch (error) {
-        console.log("ℹ️ Post-cleanup game join failed (still within collision window):", error.message);
+        console.log(
+          "ℹ️ Post-cleanup game join failed (still within collision window):",
+          error.message
+        );
       }
 
       // Verify system maintains consistency
       const playerBalanceFinal = await env.program.account.playerBalance.fetch(
         player.playerBalancePDA
       );
-      
+
       expect(playerBalanceFinal.activeFilterIndex).to.be.oneOf([0, 1]);
-      expect(playerBalanceFinal.amount.toNumber()).to.equal(playerBalanceInitial.amount.toNumber());
+      expect(playerBalanceFinal.amount.toNumber()).to.equal(
+        playerBalanceInitial.amount.toNumber()
+      );
     });
 
     it("should maintain filter system integrity over time", async () => {
       const { mint, players } = await testUtils.quickSetup();
       const player = players[0];
-      
+
       const gameConfig: GameConfig = {
         gameType: { coinflip: {} },
         amount: new anchor.BN(1_000_000),
         maxTickets: 2,
         minTickets: 2,
-        timeout: 10,
+        timeout: new anchor.BN(10),
         isPrivate: false,
       };
 
@@ -343,17 +362,17 @@ describe("Collision Detection & Recovery", () => {
       // Create multiple batches of games with breaks
       for (let batch = 0; batch < 3; batch++) {
         console.log(`Creating batch ${batch + 1}/3...`);
-        
+
         for (let i = 0; i < 8; i++) {
           const gameData = testUtils.game.generateGamePDA();
-          
+
           await testUtils.game.initializeGame(
             gameData,
             gameConfig,
             player.player,
             mint.mint
           );
-          
+
           try {
             await testUtils.game.joinGame(gameData.gamePDA, player.player);
           } catch (error) {
@@ -364,7 +383,7 @@ describe("Collision Detection & Recovery", () => {
 
         // Wait between batches
         if (batch < 2) {
-          await new Promise(resolve => setTimeout(resolve, 12000));
+          await new Promise((resolve) => setTimeout(resolve, 12000));
         }
       }
 
@@ -372,9 +391,11 @@ describe("Collision Detection & Recovery", () => {
       const playerBalanceEnd = await env.program.account.playerBalance.fetch(
         player.playerBalancePDA
       );
-      
+
       expect(playerBalanceEnd.activeFilterIndex).to.be.oneOf([0, 1]);
-      expect(playerBalanceEnd.amount.toNumber()).to.equal(playerBalanceStart.amount.toNumber());
+      expect(playerBalanceEnd.amount.toNumber()).to.equal(
+        playerBalanceStart.amount.toNumber()
+      );
       console.log("✅ Filter system maintained integrity over extended period");
     });
   });
@@ -383,13 +404,13 @@ describe("Collision Detection & Recovery", () => {
     it("should handle emergency mode scenarios gracefully", async () => {
       const { mint, players } = await testUtils.quickSetup();
       const player = players[0];
-      
+
       const gameConfig: GameConfig = {
         gameType: { coinflip: {} },
         amount: new anchor.BN(1_000_000),
         maxTickets: 3,
         minTickets: 2,
-        timeout: 10,
+        timeout: new anchor.BN(10),
         isPrivate: false,
       };
 
@@ -401,23 +422,23 @@ describe("Collision Detection & Recovery", () => {
         player.player,
         mint.mint
       );
-      
+
       await testUtils.game.joinGame(gameData.gamePDA, player.player);
 
       // Create additional games to test system behavior
       let gamesCreated = 0;
       let collisionDetected = false;
-      
+
       for (let i = 0; i < 15; i++) {
         const testGame = testUtils.game.generateGamePDA();
-        
+
         await testUtils.game.initializeGame(
           testGame,
           gameConfig,
           player.player,
           mint.mint
         );
-        
+
         try {
           await testUtils.game.joinGame(testGame.gamePDA, player.player);
           gamesCreated++;
@@ -433,10 +454,12 @@ describe("Collision Detection & Recovery", () => {
       const playerBalance = await env.program.account.playerBalance.fetch(
         player.playerBalancePDA
       );
-      
-      console.log(`Emergency mode test: ${gamesCreated} games created, collision detected: ${collisionDetected}`);
+
+      console.log(
+        `Emergency mode test: ${gamesCreated} games created, collision detected: ${collisionDetected}`
+      );
       expect(playerBalance.activeFilterIndex).to.be.oneOf([0, 1]);
-      expect(typeof playerBalance.emergencyUnjoinMode).to.equal('boolean');
+      expect(typeof playerBalance.emergencyUnjoinMode).to.equal("boolean");
     });
   });
 
@@ -444,23 +467,23 @@ describe("Collision Detection & Recovery", () => {
     it("should maintain integrity during sustained collision attempts", async () => {
       const { mint, players } = await testUtils.quickSetup();
       const player = players[0];
-      
+
       const gameConfig: GameConfig = {
         gameType: { coinflip: {} },
         amount: new anchor.BN(1_000_000),
         maxTickets: 2,
         minTickets: 2,
-        timeout: 10,
+        timeout: new anchor.BN(10),
         isPrivate: false,
       };
 
       let successfulJoins = 0;
       let rejectedJoins = 0;
-      
+
       // Attempt rapid game creation and joining
       for (let i = 0; i < 40; i++) {
         const gameData = testUtils.game.generateGamePDA();
-        
+
         try {
           await testUtils.game.initializeGame(
             gameData,
@@ -468,10 +491,9 @@ describe("Collision Detection & Recovery", () => {
             player.player,
             mint.mint
           );
-          
+
           await testUtils.game.joinGame(gameData.gamePDA, player.player);
           successfulJoins++;
-          
         } catch (error) {
           if (error.toString().includes("AlreadyJoined")) {
             rejectedJoins++;
@@ -481,16 +503,18 @@ describe("Collision Detection & Recovery", () => {
         }
       }
 
-      console.log(`Stress test results: ${successfulJoins} successful, ${rejectedJoins} rejected`);
-      
+      console.log(
+        `Stress test results: ${successfulJoins} successful, ${rejectedJoins} rejected`
+      );
+
       // Verify system didn't crash and maintained some successful operations
       expect(successfulJoins).to.be.greaterThan(0);
-      
+
       // Verify player balance remains consistent
       const finalBalance = await env.program.account.playerBalance.fetch(
         player.playerBalancePDA
       );
-      
+
       expect(finalBalance.activeFilterIndex).to.be.oneOf([0, 1]);
     });
   });

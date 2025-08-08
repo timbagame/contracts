@@ -129,11 +129,11 @@ impl Oracle {
     pub fn update_config(
         &mut self,
         fee_percentage: u8,
-    oracle_buffer_time: u64,
-    max_tickets: u32,
-    max_timeout: u64,
-    min_timeout: u64,
-    filter_cleanup_buffer: u64,
+        oracle_buffer_time: u64,
+        max_tickets: u32,
+        max_timeout: u64,
+        min_timeout: u64,
+        filter_cleanup_buffer: u64,
         new_operator: Pubkey,
     ) {
         self.fee_percentage = fee_percentage;
@@ -716,7 +716,7 @@ impl PlayerBalance {
 
         // Calculate when it's safe to clean the current active filter
         let game_expiry = game.calculate_expiry_timestamp(oracle.get_total_buffer_time());
-    let safety_buffer = oracle.filter_cleanup_buffer;
+        let safety_buffer = oracle.filter_cleanup_buffer;
         let (_, _, active_longest_expiry) = self.get_active_filter();
         let cleaning_time = active_longest_expiry.max(game_expiry) + safety_buffer;
 

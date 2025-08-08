@@ -47,7 +47,7 @@ describe("Advanced Features", () => {
         amount: new anchor.BN(1_000_000),
         maxTickets: 3,
         minTickets: 3,
-        timeout: 3600,
+        timeout: new anchor.BN(3600),
         isPrivate: false,
       };
 
@@ -104,7 +104,7 @@ describe("Advanced Features", () => {
         amount: new anchor.BN(500_000),
         maxTickets: 6, // Reduce to 6 players to avoid merkle tree limits
         minTickets: 6,
-        timeout: 3600,
+        timeout: new anchor.BN(3600),
         isPrivate: false,
       };
 
@@ -165,7 +165,7 @@ describe("Advanced Features", () => {
         amount: new anchor.BN(1_000_000),
         maxTickets: 4,
         minTickets: 4,
-        timeout: 3600,
+        timeout: new anchor.BN(3600),
         isPrivate: false,
       };
 
@@ -200,7 +200,7 @@ describe("Advanced Features", () => {
         amount: new anchor.BN(1_000_000),
         maxTickets: 5,
         minTickets: 2,
-        timeout: 3600,
+        timeout: new anchor.BN(3600),
         isPrivate: false,
       };
 
@@ -241,7 +241,7 @@ describe("Advanced Features", () => {
         amount: new anchor.BN(1_000_000),
         maxTickets: 2,
         minTickets: 2,
-        timeout: 3600,
+        timeout: new anchor.BN(3600),
         isPrivate: false,
       };
 
@@ -279,7 +279,7 @@ describe("Advanced Features", () => {
         amount: new anchor.BN(1_000_000),
         maxTickets: Math.min(oracle.config.maxTickets, 6), // Limit to 6 to avoid merkle tree issues
         minTickets: 2,
-        timeout: 3600,
+        timeout: new anchor.BN(3600),
         isPrivate: false,
       };
 
@@ -328,7 +328,7 @@ describe("Advanced Features", () => {
         amount: new anchor.BN(1_000_000),
         maxTickets: 2, // Use max players for immediate completion
         minTickets: 2,
-        timeout: 3600,
+        timeout: new anchor.BN(3600),
         isPrivate: false,
       };
 
@@ -382,7 +382,7 @@ describe("Advanced Features", () => {
         amount: new anchor.BN(1_000_000),
         maxTickets: 2,
         minTickets: 2,
-        timeout: 2, // Short timeout
+        timeout: new anchor.BN(2), // Short timeout
         isPrivate: false,
       };
 
@@ -399,7 +399,8 @@ describe("Advanced Features", () => {
 
       // Wait for timeout + oracle buffer time to expire
       const totalWaitTime =
-        (gameConfig.timeout + oracle.config.oracleBufferTime + 1) * 1000;
+        (gameConfig.timeout.toNumber() + oracle.config.oracleBufferTime + 1) *
+        1000;
       await new Promise((resolve) => setTimeout(resolve, totalWaitTime));
 
       // Players can now recover their funds via emergency unjoin
@@ -449,7 +450,7 @@ describe("Advanced Features", () => {
         amount: new anchor.BN(1_000_000),
         maxTickets: 4,
         minTickets: 3,
-        timeout: 3600, // Long timeout
+        timeout: new anchor.BN(3600), // Long timeout
         isPrivate: false,
       };
 
@@ -493,7 +494,7 @@ describe("Advanced Features", () => {
           amount: new anchor.BN(1_000_000),
           maxTickets: 2,
           minTickets: 2,
-          timeout: 3600,
+          timeout: new anchor.BN(3600),
           isPrivate: false,
         };
 
@@ -572,7 +573,7 @@ describe("Advanced Features", () => {
         amount: new anchor.BN(1_000_000),
         maxTickets: 2,
         minTickets: 1,
-        timeout: 3600,
+        timeout: new anchor.BN(3600),
         isPrivate: false,
       };
 
@@ -621,7 +622,7 @@ describe("Advanced Features", () => {
           amount: new anchor.BN(1_000_000),
           maxTickets: 2,
           minTickets: 1,
-          timeout: 3600,
+          timeout: new anchor.BN(3600),
           isPrivate: false,
         };
 
@@ -654,7 +655,7 @@ describe("Advanced Features", () => {
         amount: largeAmount,
         maxTickets: 1,
         minTickets: 1,
-        timeout: 3600,
+        timeout: new anchor.BN(3600),
         isPrivate: false,
       };
 
@@ -681,13 +682,13 @@ describe("Advanced Features", () => {
     it("should handle collision detection without significant gas overhead", async () => {
       const { mint, players } = await testUtils.quickSetup();
       const player = players[0];
-      
+
       const gameConfig: GameConfig = {
         gameType: { coinflip: {} },
         amount: new anchor.BN(1_000_000),
         maxTickets: 2,
         minTickets: 2,
-        timeout: 3600,
+        timeout: new anchor.BN(3600),
         isPrivate: false,
       };
 
@@ -699,11 +700,8 @@ describe("Advanced Features", () => {
         player.player,
         mint.mint
       );
-      
-      await testUtils.game.joinGame(
-        baselineGame.gamePDA,
-        player.player
-      );
+
+      await testUtils.game.joinGame(baselineGame.gamePDA, player.player);
 
       // Create collision scenario and measure gas cost
       const collisionGames = await CollisionUtils.createCollisionScenario(
@@ -716,7 +714,9 @@ describe("Advanced Features", () => {
       // The collision system should not significantly increase gas costs
       // This test verifies the collision detection is performant
       expect(collisionGames.length).to.be.greaterThan(0);
-      console.log(`✅ Collision detection system handled ${collisionGames.length} games efficiently`);
+      console.log(
+        `✅ Collision detection system handled ${collisionGames.length} games efficiently`
+      );
     });
 
     it("should validate filter memory usage remains constant", async () => {
@@ -730,12 +730,7 @@ describe("Advanced Features", () => {
       );
 
       // Create many games to test filter memory behavior
-      await CollisionUtils.simulateRapidJoins(
-        testUtils,
-        player,
-        mint,
-        30
-      );
+      await CollisionUtils.simulateRapidJoins(testUtils, player, mint, 30);
 
       // Get final filter state
       const finalState = await CollisionUtils.validateFilterState(
@@ -745,14 +740,14 @@ describe("Advanced Features", () => {
 
       // Filter structure should remain consistent
       expect(finalState.activeFilterIndex).to.be.oneOf([0, 1]);
-      expect(typeof finalState.filterCleaningScheduledAt).to.equal('number');
-      expect(typeof finalState.emergencyUnjoinMode).to.equal('boolean');
-      
-      console.log('✅ Filter memory usage validated:', {
+      expect(typeof finalState.filterCleaningScheduledAt).to.equal("number");
+      expect(typeof finalState.emergencyUnjoinMode).to.equal("boolean");
+
+      console.log("✅ Filter memory usage validated:", {
         initialActiveFilter: initialState.activeFilterIndex,
         finalActiveFilter: finalState.activeFilterIndex,
         cleanupScheduled: finalState.filterCleaningScheduledAt > 0,
-        emergencyMode: finalState.emergencyUnjoinMode
+        emergencyMode: finalState.emergencyUnjoinMode,
       });
     });
   });

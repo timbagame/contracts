@@ -48,7 +48,7 @@ describe("Security & Edge Cases", () => {
         amount: new anchor.BN(1_000_000),
         maxTickets: 4,
         minTickets: 2,
-        timeout: 3600,
+        timeout: new anchor.BN(3600),
         isPrivate: false,
       };
 
@@ -82,7 +82,7 @@ describe("Security & Edge Cases", () => {
         amount: new anchor.BN(1_000_000),
         maxTickets: 2,
         minTickets: 2,
-        timeout: 3600,
+        timeout: new anchor.BN(3600),
         isPrivate: false,
       };
 
@@ -119,7 +119,7 @@ describe("Security & Edge Cases", () => {
         amount: new anchor.BN(1_000_000),
         maxTickets: 2,
         minTickets: 2,
-        timeout: 3600,
+        timeout: new anchor.BN(3600),
         isPrivate: false,
       };
 
@@ -187,7 +187,7 @@ describe("Security & Edge Cases", () => {
         amount: new anchor.BN(1_000_000),
         maxTickets: 2,
         minTickets: 2,
-        timeout: 3600,
+        timeout: new anchor.BN(3600),
         isPrivate: false,
       };
 
@@ -212,7 +212,6 @@ describe("Security & Edge Cases", () => {
       );
       const winner = getWinnerFromPlayers([creator, player1], winnerIndex);
 
-
       try {
         await testUtils.game.completeGame(
           gameData,
@@ -232,7 +231,7 @@ describe("Security & Edge Cases", () => {
       const { oracle, mint, players } = await testUtils.quickSetup();
       const gameData = testUtils.game.generateGamePDA();
       const [creator, player1] = players;
-      
+
       // Create a fresh player without initialized balance account
       const uninitializedPlayer = anchor.web3.Keypair.generate();
       await env.provider.connection.requestAirdrop(
@@ -260,7 +259,9 @@ describe("Security & Edge Cases", () => {
       await testUtils.game.joinGame(gameData.gamePDA, player1.player);
 
       // Calculate real winner to ensure test determinism
-      const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+      const gameAccount = await env.program.account.game.fetch(
+        gameData.gamePDA
+      );
       const winnerIndex = calculateWinnerIndex(
         gameAccount.ticketsCount,
         gameData.secretKey,
@@ -317,7 +318,6 @@ describe("Security & Edge Cases", () => {
         Number(gameAccount.lastSlot)
       );
       const winner = getWinnerFromPlayers([creator, player1], winnerIndex);
-
 
       try {
         await testUtils.game.completeGame(
@@ -380,7 +380,7 @@ describe("Security & Edge Cases", () => {
         amount: new anchor.BN(1_000_000),
         maxTickets: 2, // Max 2 players
         minTickets: 2,
-        timeout: 3600,
+        timeout: new anchor.BN(3600),
         isPrivate: false,
       };
 
@@ -413,7 +413,7 @@ describe("Security & Edge Cases", () => {
         amount: new anchor.BN(1_000_000),
         maxTickets: 4,
         minTickets: 3, // Requires 3 players
-        timeout: 3600,
+        timeout: new anchor.BN(3600),
         isPrivate: false,
       };
 
@@ -456,7 +456,7 @@ describe("Security & Edge Cases", () => {
         amount: maxAmount,
         maxTickets: 2,
         minTickets: 2,
-        timeout: 3600,
+        timeout: new anchor.BN(3600),
         isPrivate: false,
       };
 
@@ -491,7 +491,7 @@ describe("Security & Edge Cases", () => {
         amount: new anchor.BN(0), // Zero amount
         maxTickets: 2,
         minTickets: 2,
-        timeout: 3600,
+        timeout: new anchor.BN(3600),
         isPrivate: false,
       };
 
@@ -518,7 +518,7 @@ describe("Security & Edge Cases", () => {
         amount: new anchor.BN(1_000_000),
         maxTickets: 255, // Max u8
         minTickets: 2,
-        timeout: 3600,
+        timeout: new anchor.BN(3600),
         isPrivate: false,
       };
 
@@ -552,7 +552,7 @@ describe("Security & Edge Cases", () => {
         amount: new anchor.BN(1_000_000),
         maxTickets: 5, // Use all available players to trigger merkle tree structure
         minTickets: 5,
-        timeout: 3600,
+        timeout: new anchor.BN(3600),
         isPrivate: false,
       };
 
@@ -612,7 +612,7 @@ describe("Security & Edge Cases", () => {
         amount: new anchor.BN(1_000_000),
         maxTickets: 2,
         minTickets: 2,
-        timeout: 3600,
+        timeout: new anchor.BN(3600),
         isPrivate: false,
       };
 
@@ -669,7 +669,7 @@ describe("Security & Edge Cases", () => {
         amount: new anchor.BN(1_000_000),
         maxTickets: 1, // Set max to 1 so game is immediately ready
         minTickets: 1, // Allow single player
-        timeout: 3600,
+        timeout: new anchor.BN(3600),
         isPrivate: false,
       };
 
@@ -720,7 +720,7 @@ describe("Security & Edge Cases", () => {
         amount: new anchor.BN(1_000_000),
         maxTickets: 2,
         minTickets: 2,
-        timeout: 1, // Minimum timeout
+        timeout: new anchor.BN(1), // Minimum timeout
         isPrivate: false,
       };
 
@@ -750,7 +750,7 @@ describe("Security & Edge Cases", () => {
         amount: new anchor.BN(1_000_000),
         maxTickets: oracle.config.maxTickets, // Use oracle's max
         minTickets: 2,
-        timeout: 3600,
+        timeout: new anchor.BN(3600),
         isPrivate: false,
       };
 
