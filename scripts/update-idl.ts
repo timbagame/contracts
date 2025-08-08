@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, mkdirSync } from "fs";
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from "fs";
 import { resolve } from "path";
 
 /**
@@ -11,11 +11,14 @@ async function main() {
   const workspaceRoot = resolve(__dirname, "..", "..");
   const contractsRoot = resolve(__dirname, "..");
   const idlSrc = resolve(contractsRoot, "target", "idl", "coinflip.json");
+  const typesSrc = resolve(contractsRoot, "target", "types", "coinflip.ts");
   const anchorToml = resolve(contractsRoot, "Anchor.toml");
 
   // Determine current program id from Anchor.toml [provider] cluster entry in [programs.*]
   const anchorTomlStr = readFileSync(anchorToml, "utf8");
-  const programIdMatch = anchorTomlStr.match(/coinflip\s*=\s*"([1-9A-HJ-NP-Za-km-z]{32,44})"/);
+  const programIdMatch = anchorTomlStr.match(
+    /coinflip\s*=\s*"([1-9A-HJ-NP-Za-km-z]{32,44})"/
+  );
   if (!programIdMatch) {
     throw new Error("Could not find coinflip program id in Anchor.toml");
   }
@@ -44,15 +47,32 @@ async function main() {
 
   const addressRegex = /(\"address\"\s*:\s*\")[1-9A-HJ-NP-Za-km-z]{32,44}(\")/;
 
-  for (const file of idlTypeFiles) {
-    try {
-      const src = readFileSync(file, "utf8");
-      const updated = src.replace(addressRegex, `$1${programId}$2`);
-      if (updated !== src) {
-        writeFileSync(file, updated);
+  // Prefer copying fresh generated types if available, else patch existing files
+  if (existsSync(typesSrc)) {
+    const typesSrcContent = readFileSync(typesSrc, "utf8");
+    const patchedTypes = typesSrcContent.replace(
+      addressRegex,
+      `$1${programId}$2`
+    );
+    for (const file of idlTypeFiles) {
+      try {
+        mkdirSync(resolve(file, ".."), { recursive: true });
+        writeFileSync(file, patchedTypes);
+      } catch (e) {
+        // Ignore and continue to next
       }
-    } catch (e) {
-      // If idlType.ts doesn't exist yet, skip silently
+    }
+  } else {
+    for (const file of idlTypeFiles) {
+      try {
+        const src = readFileSync(file, "utf8");
+        const updated = src.replace(addressRegex, `$1${programId}$2`);
+        if (updated !== src) {
+          writeFileSync(file, updated);
+        }
+      } catch (e) {
+        // If idlType.ts doesn't exist yet, skip silently
+      }
     }
   }
 
@@ -68,7 +88,12 @@ async function main() {
     } catch (_) {}
   }
 
-  console.log(`Updated IDL and idlType.ts addresses to ${programId} in bot/ and oracle/.`);
+  const copiedTypes = existsSync(typesSrc);
+  console.log(
+    `Updated IDL${
+      copiedTypes ? " and copied types" : ""
+    } and set addresses to ${programId} in bot/ and oracle/.`
+  );
 }
 
 main().catch((err) => {
