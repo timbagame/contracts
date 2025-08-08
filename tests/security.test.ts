@@ -734,7 +734,7 @@ describe("Security & Edge Cases", () => {
       const gameAccount = await env.program.account.game.fetch(
         gameData.gamePDA
       );
-      expect(gameAccount.timeout).to.equal(1);
+      expect(gameAccount.timeout.toNumber()).to.equal(1);
     });
 
     it("should handle maximum players configuration", async () => {
