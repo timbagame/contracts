@@ -322,7 +322,7 @@ pub struct CompleteGame<'info> {
     pub winner_balance: Account<'info, PlayerBalance>,
     #[account(
         mut,
-        seeds = [b"game_token", game.token_mint.as_ref()],
+        seeds = [GAME_TOKEN_SEED, game.token_mint.as_ref()],
         bump,
     )]
     pub game_token: Account<'info, GameToken>,
@@ -359,7 +359,7 @@ pub struct CloseGame<'info> {
     pub creator: Signer<'info>,
     #[account(
         mut,
-        seeds = [b"player_balance", creator.key().as_ref(), game.token_mint.as_ref()],
+        seeds = [PLAYER_BALANCE_SEED, creator.key().as_ref(), game.token_mint.as_ref()],
         bump,
     )]
     pub creator_balance: Account<'info, PlayerBalance>,
