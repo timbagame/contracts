@@ -6,7 +6,10 @@ use anchor_spl::token::{transfer, Transfer};
 // ACCOUNT SIZE CONSTANTS
 // =============================================================================
 
-pub const ORACLE_SIZE: usize = 8 + 32 + 1 + 2 + 4 + 4 + 4 + 2;
+// discriminator (8) + operator (32) + fee_percentage (1) +
+// oracle_buffer_time (u64: 8) + max_tickets (u32: 4) +
+// max_timeout (u64: 8) + min_timeout (u64: 8) + filter_cleanup_buffer (u64: 8)
+pub const ORACLE_SIZE: usize = 8 + 32 + 1 + 8 + 4 + 8 + 8 + 8;
 
 // =============================================================================
 // BLOOM FILTER CONSTANTS
@@ -110,15 +113,15 @@ pub struct Oracle {
     /// Percentage of game amount taken as fee (0-100)
     pub fee_percentage: u8,
     /// Buffer time in seconds after game timeout before cancellation is allowed
-    pub oracle_buffer_time: u16,
+    pub oracle_buffer_time: u64,
     /// Maximum number of tickets allowed in a game
     pub max_tickets: u32,
     /// Maximum timeout duration in seconds for a game
-    pub max_timeout: u32,
+    pub max_timeout: u64,
     /// Minimum timeout duration in seconds for a game
-    pub min_timeout: u32,
+    pub min_timeout: u64,
     /// Additional buffer time for filter cleanup after oracle buffer expires
-    pub filter_cleanup_buffer: u16,
+    pub filter_cleanup_buffer: u64,
 }
 
 impl Oracle {
@@ -126,11 +129,11 @@ impl Oracle {
     pub fn update_config(
         &mut self,
         fee_percentage: u8,
-        oracle_buffer_time: u16,
-        max_tickets: u32,
-        max_timeout: u32,
-        min_timeout: u32,
-        filter_cleanup_buffer: u16,
+    oracle_buffer_time: u64,
+    max_tickets: u32,
+    max_timeout: u64,
+    min_timeout: u64,
+    filter_cleanup_buffer: u64,
         new_operator: Pubkey,
     ) {
         self.fee_percentage = fee_percentage;
@@ -148,7 +151,7 @@ impl Oracle {
     }
 
     /// Validates timeout is within oracle's allowed range
-    pub fn is_valid_timeout_range(&self, timeout: u32) -> bool {
+    pub fn is_valid_timeout_range(&self, timeout: u64) -> bool {
         timeout >= self.min_timeout && timeout <= self.max_timeout
     }
 
@@ -158,7 +161,7 @@ impl Oracle {
     }
 
     /// Validates timeout parameters are in correct order
-    pub fn is_valid_timeout(&self, max_timeout: u32, min_timeout: u32) -> bool {
+    pub fn is_valid_timeout(&self, max_timeout: u64, min_timeout: u64) -> bool {
         max_timeout >= min_timeout
     }
 
@@ -169,7 +172,7 @@ impl Oracle {
 
     /// Gets total buffer time including filter cleanup buffer
     pub fn get_total_buffer_time(&self) -> u64 {
-        self.oracle_buffer_time as u64 + self.filter_cleanup_buffer as u64
+        self.oracle_buffer_time + self.filter_cleanup_buffer
     }
 }
 
@@ -713,7 +716,7 @@ impl PlayerBalance {
 
         // Calculate when it's safe to clean the current active filter
         let game_expiry = game.calculate_expiry_timestamp(oracle.get_total_buffer_time());
-        let safety_buffer = oracle.filter_cleanup_buffer as u64;
+    let safety_buffer = oracle.filter_cleanup_buffer;
         let (_, _, active_longest_expiry) = self.get_active_filter();
         let cleaning_time = active_longest_expiry.max(game_expiry) + safety_buffer;
 
@@ -754,7 +757,7 @@ impl PlayerBalance {
         if self.emergency_unjoin_mode {
             // Use the user-configured filter cleanup buffer for deactivation timing
             let deactivation_time =
-                self.filter_cleaning_scheduled_at + oracle.filter_cleanup_buffer as u64;
+                self.filter_cleaning_scheduled_at + oracle.filter_cleanup_buffer;
 
             if current_time >= deactivation_time {
                 self.emergency_unjoin_mode = false;
@@ -824,7 +827,7 @@ pub struct Game {
     /// Timestamp when game was created
     pub created_at: u64,
     /// Timeout duration in seconds
-    pub timeout: u32,
+    pub timeout: u64,
     /// Last slot when any player action occurred
     pub last_slot: u64,
     /// Whether this is a private game requiring oracle approval
@@ -842,7 +845,7 @@ impl Game {
 
     /// Checks if the game has exceeded its timeout duration
     pub fn is_expired(&self, current_time: u64) -> bool {
-        current_time >= self.created_at + self.timeout as u64
+        current_time >= self.created_at + self.timeout
     }
 
     /// Checks if the game meets requirements to be completed by oracle
@@ -874,7 +877,7 @@ impl Game {
 
     /// Calculate when this game will expire (for bloom filter tracking)
     pub fn calculate_expiry_timestamp(&self, total_buffer_time: u64) -> u64 {
-        self.created_at + self.timeout as u64 + total_buffer_time
+        self.created_at + self.timeout + total_buffer_time
     }
 
     /// Marks the game as completed by setting total_amount to zero

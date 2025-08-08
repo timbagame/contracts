@@ -13,7 +13,7 @@ pub fn handler(ctx: Context<super::CloseGame>) -> Result<()> {
     // ===============================
 
     require!(
-        !game.waiting_for_oracle(oracle.oracle_buffer_time as u64, current_time),
+        !game.waiting_for_oracle(oracle.oracle_buffer_time, current_time),
         ErrorCode::GameWaitingForOracle
     );
 

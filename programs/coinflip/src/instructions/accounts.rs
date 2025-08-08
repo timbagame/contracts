@@ -10,7 +10,7 @@ use crate::state::*;
 // =============================================================================
 
 #[derive(Accounts)]
-#[instruction(fee_percentage: u8, oracle_buffer_time: u16, max_tickets: u32, max_timeout: u32, min_timeout: u32)]
+#[instruction(fee_percentage: u8, oracle_buffer_time: u64, max_tickets: u32, max_timeout: u64, min_timeout: u64)]
 pub struct InitializeOracle<'info> {
     #[account(
         init,
@@ -31,7 +31,7 @@ pub struct InitializeOracle<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(fee_percentage: u8, oracle_buffer_time: u16, max_tickets: u32, max_timeout: u32, min_timeout: u32)]
+#[instruction(fee_percentage: u8, oracle_buffer_time: u64, max_tickets: u32, max_timeout: u64, min_timeout: u64)]
 pub struct UpdateOracle<'info> {
     #[account(
         mut,
@@ -197,7 +197,7 @@ pub struct WithdrawPlayerBalance<'info> {
 // =============================================================================
 
 #[derive(Accounts)]
-#[instruction(game_type: GameType, amount: u64, max_tickets: u32, min_tickets: u32, timeout: u32, is_private: bool, random_hash: [u8; 32])]
+#[instruction(game_type: GameType, amount: u64, max_tickets: u32, min_tickets: u32, timeout: u64, is_private: bool, random_hash: [u8; 32])]
 pub struct InitializeGame<'info> {
     #[account(
         init,
@@ -205,9 +205,9 @@ pub struct InitializeGame<'info> {
         space = GAME_BASE_SIZE,
         seeds = [GAME_SEED, random_hash.as_ref()],
         bump,
-        constraint = game_token.is_enabled() @ ErrorCode::TokenNotEnabled,
-        constraint = game_token.meets_min_amount(amount) @ ErrorCode::InvalidAmount,
-        constraint = oracle.is_valid_timeout_range(timeout) @ ErrorCode::InvalidTimeout,
+    constraint = game_token.is_enabled() @ ErrorCode::TokenNotEnabled,
+    constraint = game_token.meets_min_amount(amount) @ ErrorCode::InvalidAmount,
+    constraint = oracle.is_valid_timeout_range(timeout) @ ErrorCode::InvalidTimeout,
         constraint = Game::is_valid_tickets_count(max_tickets, min_tickets, oracle.max_tickets) @ ErrorCode::InvalidTicketsCount,
         constraint = Game::is_valid_game_type_tickets(game_type, max_tickets, min_tickets) @ ErrorCode::InvalidTicketsCount,
     )]

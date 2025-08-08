@@ -31,15 +31,15 @@ pub struct OracleConfig {
     /// Fee percentage taken from game winnings (0-100)
     pub fee_percentage: u8,
     /// Buffer time in seconds after game timeout before cancellation
-    pub oracle_buffer_time: u16,
+    pub oracle_buffer_time: u64,
     /// Maximum number of tickets allowed in any game
     pub max_tickets: u32,
     /// Maximum timeout duration in seconds for games
-    pub max_timeout: u32,
+    pub max_timeout: u64,
     /// Minimum timeout duration in seconds for games
-    pub min_timeout: u32,
+    pub min_timeout: u64,
     /// Additional buffer time for filter cleanup after oracle buffer expires
-    pub filter_cleanup_buffer: u16,
+    pub filter_cleanup_buffer: u64,
 }
 
 /// Configuration parameters for token initialization and updates
@@ -63,7 +63,7 @@ pub struct GameConfig {
     /// Minimum number of tickets required to complete
     pub min_tickets: u32,
     /// Timeout duration in seconds
-    pub timeout: u32,
+    pub timeout: u64,
     /// Whether game requires oracle operator to join
     pub is_private: bool,
 }
