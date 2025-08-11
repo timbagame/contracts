@@ -424,7 +424,7 @@ export class PlayerManager {
     // Get player balance PDA
     const [playerBalancePDA] = PublicKey.findProgramAddressSync(
       [
-        Buffer.from("player_balance"),
+        Buffer.from("player_games"),
         player.publicKey.toBuffer(),
         mint.toBuffer(),
       ],
@@ -470,7 +470,7 @@ export class PlayerManager {
       );
 
       await this.program.methods
-        .initializePlayerBalance()
+        .initializePlayerGames()
         .accounts({
           player: player.publicKey,
           tokenMint: mint,
@@ -480,7 +480,7 @@ export class PlayerManager {
 
       const [playerBalancePDA] = PublicKey.findProgramAddressSync(
         [
-          Buffer.from("player_balance"),
+          Buffer.from("player_games"),
           player.publicKey.toBuffer(),
           mint.toBuffer(),
         ],
