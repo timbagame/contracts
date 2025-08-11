@@ -63,12 +63,24 @@ pub fn handler(
     let fee_percentage = oracle.fee_percentage as u64;
     let (winner_amount, fee_amount) = game.calculate_amounts(fee_percentage);
 
-    // Update balances
+    // Update fee amount and transfer directly to winner
     ctx.accounts.game_token.fee_amount += fee_amount;
-    ctx.accounts.winner_balance.amount += winner_amount;
 
     // Mark game as completed
     game.complete();
+
+    // ===============================
+    // TOKEN TRANSFER
+    // ===============================
+
+    // Transfer winner amount directly to winner's token account
+    ctx.accounts.game_token.handle_pda_token_transfer(
+        ctx.accounts.game_token_account.to_account_info(),
+        ctx.accounts.winner_token_account.to_account_info(),
+        ctx.accounts.game_vault.to_account_info(),
+        ctx.accounts.token_program.to_account_info(),
+        winner_amount,
+    )?;
 
     // ===============================
     // EVENT EMISSION
