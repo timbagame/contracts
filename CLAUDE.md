@@ -51,7 +51,7 @@ This is a comprehensive Solana smart contract implementing multiple gambling gam
 The coinflip program (`programs/coinflip/src/`) is organized as follows:
 
 - **lib.rs**: Main program entry point with all instruction handlers
-- **state.rs**: Account structures (Oracle, Game, GameToken, PlayerBalance) with size constants and bloom filter logic
+- **state.rs**: Account structures (Oracle, Game, GameToken, PlayerGames) with size constants and bloom filter logic
 - **instructions/**: Modular instruction handlers organized by functionality:
   - Oracle management (initialize/update oracle)
   - Token management (initialize/update token configs)
@@ -134,7 +134,7 @@ The system implements a sophisticated dual-layer safety architecture with collis
 - `filter_a` and `filter_b` with `active_filter_index` switching (0 or 1)
 - Only the **active filter** receives new participation data
 - Both filters are **always checked** during verification for maximum safety
-- **Collision Detection**: Cross-validates PlayerBalance bloom filters against Game bloom filters
+- **Collision Detection**: Cross-validates PlayerGames bloom filters against Game bloom filters
 - **Automatic Recovery**: Detected collisions trigger immediate filter switching and cleanup
 - **Emergency Unjoin Mode**: Activated during filter cleaning periods for safer unjoin operations
 
@@ -144,8 +144,8 @@ The system implements a sophisticated dual-layer safety architecture with collis
 - Games newer than filter updates can skip bloom filter checks entirely
 
 **Collision Detection Logic:**
-- **Different Game Collision**: Player not in Game filter but flagged in PlayerBalance filter
-- **Temporal Collision**: PlayerBalance filter updated before game was created
+- **Different Game Collision**: Player not in Game filter but flagged in PlayerGames filter
+- **Temporal Collision**: PlayerGames filter updated before game was created
 - **Recovery Process**: Switch to clean inactive filter, schedule old filter cleanup
 - **Safety Buffers**: Uses `oracle.filter_cleanup_buffer` for timing calculations
 
@@ -158,7 +158,7 @@ The system implements a sophisticated dual-layer safety architecture with collis
 - **Memory Alignment**: Account for Rust struct padding when calculating sizes
 
 ### Bloom Filter Structure Details
-**PlayerBalance Filters:**
+**PlayerGames Filters:**
 - `game_index_filter: [u64; 8]` - 512-bit filter for game+index participation tracking
 - `unjoin_index_filter: [u64; 8]` - 512-bit filter for game+index unjoin tracking
 - Dual filter sets (A/B) with metadata (last_updated, longest_expiry)
