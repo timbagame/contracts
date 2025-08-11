@@ -456,7 +456,7 @@ describe("Collision Detection & Recovery", () => {
         `Emergency mode test: ${gamesCreated} games created, collision detected: ${collisionDetected}`
       );
       expect(playerGames.activeFilterIndex).to.be.oneOf([0, 1]);
-      expect(typeof playerBalance.emergencyUnjoinMode).to.equal("boolean");
+      expect(typeof playerGames.emergencyUnjoinMode).to.equal("boolean");
     });
   });
 

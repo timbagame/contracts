@@ -114,7 +114,8 @@ describe("Core Game Operations", () => {
       const balanceAccount = await env.program.account.playerGames.fetch(
         player.playerGamesPDA
       );
-      expect(balanceAccount.amount.toNumber()).to.equal(0);
+      // PlayerGames no longer has amount field - only tracks game participation
+      expect(balanceAccount.activeFilterIndex).to.be.oneOf([0, 1]);
     });
 
     it("should create player pool efficiently", async () => {
