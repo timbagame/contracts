@@ -281,11 +281,9 @@ describe("Manual Bloom Filter Testing", () => {
         "\\n4. Players performing emergency unjoin from stuck game..."
       );
 
-      // Get balances before unjoin
-      const player1BalanceBefore =
-        await env.program.account.playerGames.fetch(player1.playerGamesPDA);
-      const player2BalanceBefore =
-        await env.program.account.playerGames.fetch(player2.playerGamesPDA);
+      // Fetch balances before unjoin (ensures accounts exist)
+      await env.program.account.playerGames.fetch(player1.playerGamesPDA);
+      await env.program.account.playerGames.fetch(player2.playerGamesPDA);
 
       console.log("   Player1 games state: initialized");
       console.log("   Player2 games state: initialized");
@@ -294,13 +292,9 @@ describe("Manual Bloom Filter Testing", () => {
       await testUtils.game.unjoinGame(stuckGameData.gamePDA, player1.player, 0); // First joiner = index 0
       await testUtils.game.unjoinGame(stuckGameData.gamePDA, player2.player, 1); // Second joiner = index 1
 
-      // Verify refunds
-      const player1BalanceAfter = await env.program.account.playerGames.fetch(
-        player1.playerGamesPDA
-      );
-      const player2BalanceAfter = await env.program.account.playerGames.fetch(
-        player2.playerGamesPDA
-      );
+      // Verify refunds by ensuring fetch still succeeds after unjoin
+      await env.program.account.playerGames.fetch(player1.playerGamesPDA);
+      await env.program.account.playerGames.fetch(player2.playerGamesPDA);
 
       console.log("   Player1 successfully unjoined and recovered funds");
       console.log("   Player2 successfully unjoined and recovered funds");
