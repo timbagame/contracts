@@ -307,7 +307,6 @@ pub struct CompleteGame<'info> {
     )]
     pub oracle: Account<'info, Oracle>,
     pub oracle_operator: Signer<'info>,
-    // No more winner_participation account - winner verified via merkle proof
     /// CHECK: Validated by merkle proof verification
     #[account(mut)]
     pub winner: AccountInfo<'info>,
@@ -326,7 +325,24 @@ pub struct CompleteGame<'info> {
         bump,
     )]
     pub game_token: Account<'info, GameToken>,
+    /// CHECK: PDA authority for game's token accounts
+    #[account(seeds = [GAME_VAULT_SEED, game.token_mint.as_ref()], bump = game_token.vault_bump)]
+    pub game_vault: AccountInfo<'info>,
+    #[account(
+        mut,
+        associated_token::mint = game.token_mint,
+        associated_token::authority = winner,
+    )]
+    pub winner_token_account: Account<'info, TokenAccount>,
+    #[account(
+        mut,
+        associated_token::mint = game.token_mint,
+        associated_token::authority = game_vault,
+    )]
+    pub game_token_account: Account<'info, TokenAccount>,
     pub system_program: Program<'info, System>,
+    pub token_program: Program<'info, Token>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
 }
 
 #[derive(Accounts)]
