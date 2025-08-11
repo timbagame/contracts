@@ -113,10 +113,6 @@ pub mod coinflip {
         instructions::initialize_player_balance::handler(ctx)
     }
 
-    /// Allows players to withdraw their accumulated balance for a token
-    pub fn withdraw_player_balance(ctx: Context<WithdrawPlayerBalance>) -> Result<()> {
-        instructions::withdraw_player_balance::handler(ctx)
-    }
 
     // =========================================================================
     // GAME MANAGEMENT

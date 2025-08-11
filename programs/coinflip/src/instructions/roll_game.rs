@@ -40,10 +40,7 @@ pub fn handler(ctx: Context<super::RollGame>) -> Result<()> {
     // For games that add entries, check balance requirement
     if game.game_type == GameType::Snowball || game.game_type == GameType::Dumbball {
         require!(
-            game.has_sufficient_balance_for_join(
-                ctx.accounts.player_token_account.amount,
-                player_balance.amount
-            ),
+            game.has_sufficient_balance_for_join(ctx.accounts.player_token_account.amount),
             ErrorCode::InsufficientBalance
         );
     }
@@ -80,7 +77,7 @@ pub fn handler(ctx: Context<super::RollGame>) -> Result<()> {
     // ===============================
 
     if game.game_type == GameType::Snowball || game.game_type == GameType::Dumbball {
-        player_balance.handle_token_transfer(
+        ctx.accounts.game_token.handle_player_token_transfer(
             ticket_amount,
             ctx.accounts.player_token_account.to_account_info(),
             ctx.accounts.game_token_account.to_account_info(),

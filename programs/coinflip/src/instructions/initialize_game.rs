@@ -6,7 +6,6 @@ pub fn handler(ctx: Context<super::InitializeGame>, config: GameConfig) -> Resul
     let game: &mut Account<'_, crate::state::Game> = &mut ctx.accounts.game;
     let current_time = get_current_time()?;
     let creator_key = ctx.accounts.creator.key();
-    let creator_balance = &mut ctx.accounts.creator_balance;
     let token_mint_key = ctx.accounts.token_mint.key();
 
     // ===============================
@@ -39,7 +38,7 @@ pub fn handler(ctx: Context<super::InitializeGame>, config: GameConfig) -> Resul
 
     // Transfer tokens for giveaway games
     if game.ticket_amount == 0 {
-        creator_balance.handle_token_transfer(
+        ctx.accounts.game_token.handle_player_token_transfer(
             config.amount,
             ctx.accounts.creator_token_account.to_account_info(),
             ctx.accounts.game_token_account.to_account_info(),

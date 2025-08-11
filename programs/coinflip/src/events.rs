@@ -95,16 +95,6 @@ pub struct PlayerBalanceInitialized {
     pub token_mint: Pubkey,
 }
 
-/// Emitted when a player withdraws from their balance
-#[event]
-pub struct PlayerBalanceWithdrawn {
-    /// Player who withdrew
-    pub player: Pubkey,
-    /// Token mint of the withdrawal
-    pub token_mint: Pubkey,
-    /// Amount withdrawn
-    pub amount: u64,
-}
 
 /// Emitted when a player joins a game
 #[event]
