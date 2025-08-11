@@ -61,10 +61,7 @@ describe("Collision Detection & Recovery", () => {
         games.push(gameData);
       }
 
-      // Get player balance state before potential collision
-      const playerGamesBefore = await env.program.account.playerGames.fetch(
-        player.playerGamesPDA
-      );
+      // Attempt an additional join after creating many games
 
       // Create one more game that should trigger collision detection
       const collisionGameData = testUtils.game.generateGamePDA();
@@ -86,8 +83,7 @@ describe("Collision Detection & Recovery", () => {
       // Check if filter switching occurred or collision detection triggered
       // Note: This test verifies the collision detection system is working, even if
       // we can't predict exact collision timing due to hash randomness
-      // PlayerGames no longer has amount field - this test is removed
-      );
+      // PlayerGames no longer has amount field - assertion removed
 
       // Collision detection may or may not trigger depending on hash randomness
       // The important thing is the system didn't crash and maintains consistency
@@ -301,9 +297,7 @@ describe("Collision Detection & Recovery", () => {
         }
       }
 
-      // Get initial filter state
-      const playerGamesInitial =
-        await env.program.account.playerGames.fetch(player.playerGamesPDA);
+      // Get initial filter state (not strictly needed for assertions)
 
       // Wait for cleanup period to expire
       console.log("Waiting for cleanup period to expire...");
@@ -335,8 +329,7 @@ describe("Collision Detection & Recovery", () => {
       );
 
       expect(playerGamesFinal.activeFilterIndex).to.be.oneOf([0, 1]);
-      // PlayerGames no longer has amount field - this test is removed
-      );
+      // PlayerGames no longer has amount field - assertion removed
     });
 
     it("should maintain filter system integrity over time", async () => {
@@ -352,10 +345,7 @@ describe("Collision Detection & Recovery", () => {
         isPrivate: false,
       };
 
-      // Get initial state
-      const playerGamesStart = await env.program.account.playerGames.fetch(
-        player.playerGamesPDA
-      );
+      // Capture starting state is optional for this test
 
       // Create multiple batches of games with breaks
       for (let batch = 0; batch < 3; batch++) {
@@ -391,8 +381,7 @@ describe("Collision Detection & Recovery", () => {
       );
 
       expect(playerGamesEnd.activeFilterIndex).to.be.oneOf([0, 1]);
-      // PlayerGames no longer has amount field - this test is removed
-      );
+      // PlayerGames no longer has amount field - assertion removed
       console.log("✅ Filter system maintained integrity over extended period");
     });
   });

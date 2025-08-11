@@ -156,7 +156,7 @@ describe("Core Game Operations", () => {
         amount: new anchor.BN(1_000_000),
         maxTickets: 2,
         minTickets: 2,
-        timeout: 3600,
+        timeout: new anchor.BN(3600),
         isPrivate: false,
       };
 
@@ -187,7 +187,7 @@ describe("Core Game Operations", () => {
         amount: new anchor.BN(1_000_000),
         maxTickets: 1, // Invalid: coinflip needs at least 2 players
         minTickets: 2, // Invalid: min > max
-        timeout: 3600,
+        timeout: new anchor.BN(3600),
         isPrivate: false,
       };
 
@@ -214,7 +214,7 @@ describe("Core Game Operations", () => {
         amount: new anchor.BN(2_000_000),
         maxTickets: 5,
         minTickets: 1,
-        timeout: 1800,
+        timeout: new anchor.BN(1800),
         isPrivate: false,
       };
 
@@ -247,7 +247,7 @@ describe("Core Game Operations", () => {
         amount: new anchor.BN(1_000_000),
         maxTickets: 2,
         minTickets: 2,
-        timeout: 3600,
+        timeout: new anchor.BN(3600),
         isPrivate: false,
       };
 
@@ -283,7 +283,7 @@ describe("Core Game Operations", () => {
         amount: new anchor.BN(1_000_000),
         maxTickets: 2,
         minTickets: 2,
-        timeout: 3600,
+        timeout: new anchor.BN(3600),
         isPrivate: true, // Private game
       };
 
@@ -323,7 +323,7 @@ describe("Core Game Operations", () => {
         amount: new anchor.BN(1_000_000),
         maxTickets: 2,
         minTickets: 2,
-        timeout: 3600,
+        timeout: new anchor.BN(3600),
         isPrivate: true,
       };
 
@@ -354,7 +354,7 @@ describe("Core Game Operations", () => {
         amount: new anchor.BN(1_000_000),
         maxTickets: 2,
         minTickets: 2,
-        timeout: 3600,
+        timeout: new anchor.BN(3600),
         isPrivate: true,
       };
 
@@ -387,7 +387,7 @@ describe("Core Game Operations", () => {
         amount: new anchor.BN(1_000_000),
         maxTickets: 2,
         minTickets: 2,
-        timeout: 3600,
+        timeout: new anchor.BN(3600),
         isPrivate: false,
       };
 
@@ -426,7 +426,7 @@ describe("Core Game Operations", () => {
         amount: new anchor.BN(1_000_000),
         maxTickets: 2,
         minTickets: 2,
-        timeout: 3600,
+        timeout: new anchor.BN(3600),
         isPrivate: false,
       };
 
@@ -457,7 +457,7 @@ describe("Core Game Operations", () => {
         amount: new anchor.BN(1_000_000),
         maxTickets: 2,
         minTickets: 2,
-        timeout: 3600,
+        timeout: new anchor.BN(3600),
         isPrivate: false,
       };
 
@@ -510,7 +510,7 @@ describe("Core Game Operations", () => {
         amount: new anchor.BN(1_000_000),
         maxTickets: 2,
         minTickets: 2,
-        timeout: 3600,
+        timeout: new anchor.BN(3600),
         isPrivate: false,
       };
 
@@ -560,7 +560,7 @@ describe("Core Game Operations", () => {
         amount: new anchor.BN(1_000_000),
         maxTickets: 2,
         minTickets: 2,
-        timeout: 3600,
+        timeout: new anchor.BN(3600),
         isPrivate: false,
       };
 
