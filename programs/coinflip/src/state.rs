@@ -318,7 +318,6 @@ pub struct PlayerGames {
 }
 
 impl PlayerGames {
-
     /// Get reference to the active filter set
     fn get_active_filter(&self) -> (&BloomFilters, u64, u64) {
         if self.active_filter_index == 0 {
@@ -530,8 +529,6 @@ impl PlayerGames {
         }
     }
 
-
-
     /// Mark game + index as joined in active bloom filter
     pub fn mark_game_index_joined(
         &mut self,
@@ -650,7 +647,7 @@ impl PlayerGames {
         oracle: &crate::state::Oracle,
         current_time: u64,
     ) -> bool {
-    // Cross-validate PlayerGames filter against Game filter
+        // Cross-validate PlayerGames filter against Game filter
         let collision_detected = self.detect_filter_collision(player_key, game);
 
         if collision_detected {
@@ -669,7 +666,7 @@ impl PlayerGames {
 
         // Collision detected if:
         // 1. Player NOT in Game filter (different game collision), OR
-    // 2. PlayerGames filter was updated BEFORE this game was created (temporal collision)
+        // 2. PlayerGames filter was updated BEFORE this game was created (temporal collision)
         !in_game_filter || filter_older_than_game
     }
 
@@ -768,7 +765,7 @@ impl PlayerGames {
             return in_game_filter;
         }
 
-    // Normal mode: use standard PlayerGames filter validation
+        // Normal mode: use standard PlayerGames filter validation
         let already_joined = !self.can_join_with_index(game_key, ticket_index, game.created_at);
         let not_already_unjoined =
             !self.has_unjoined_game_index(game_key, ticket_index, game.created_at);
