@@ -608,52 +608,6 @@ describe("Core Game Operations", () => {
     });
   });
 
-  describe("Player Balance Operations", () => {
-    it("should withdraw player balance successfully", async () => {
-      const { mint, players } = await testUtils.quickSetup();
-      const player = players[0];
-
-      // First, we need to add some balance to the player's account
-      // This would normally happen through game winnings
-      // For this test, we'll need to simulate having a balance
-
-      try {
-        await env.program.methods
-          .withdrawPlayerBalance()
-          .accounts({
-            player: player.player.publicKey,
-            tokenMint: mint.mint,
-          })
-          .signers([player.player])
-          .rpc();
-
-        // If there's no balance, it should fail
-        expect.fail("Should have failed with no balance to withdraw");
-      } catch (error) {
-        expect(error.toString()).to.include("InsufficientBalance");
-      }
-    });
-
-    it("should fail to withdraw with insufficient balance", async () => {
-      const { mint, players } = await testUtils.quickSetup();
-      const player = players[0];
-
-      try {
-        await env.program.methods
-          .withdrawPlayerBalance()
-          .accounts({
-            player: player.player.publicKey,
-            tokenMint: mint.mint,
-          })
-          .signers([player.player])
-          .rpc();
-
-        expect.fail("Should have failed with insufficient balance");
-      } catch (error) {
-        expect(error.toString()).to.include("InsufficientBalance");
-      }
-    });
-  });
 
   describe("Winner Calculation", () => {
     it("should calculate winner correctly for 2 players", async () => {

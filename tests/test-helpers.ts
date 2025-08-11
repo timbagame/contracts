@@ -413,7 +413,7 @@ export class PlayerManager {
 
     // Initialize player balance
     await this.program.methods
-      .initializePlayerBalance()
+      .initializePlayerGames()
       .accounts({
         player: player.publicKey,
         tokenMint: mint,
@@ -924,7 +924,7 @@ export class CollisionUtils {
   }
 
   /**
-   * Validate PlayerBalance filter state for testing
+   * Validate PlayerGames filter state for testing
    */
   static async validateFilterState(
     program: anchor.Program<Coinflip>,
