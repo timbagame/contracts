@@ -108,9 +108,9 @@ pub mod coinflip {
     // PLAYER MANAGEMENT
     // =========================================================================
 
-    /// Initializes a player's balance account for a specific token
-    pub fn initialize_player_balance(ctx: Context<InitializePlayerBalance>) -> Result<()> {
-        instructions::initialize_player_balance::handler(ctx)
+    /// Initializes a player's games tracking account for a specific token
+    pub fn initialize_player_games(ctx: Context<InitializePlayerGames>) -> Result<()> {
+        instructions::initialize_player_games::handler(ctx)
     }
 
 

@@ -9,7 +9,7 @@ pub fn handler(ctx: Context<super::RollGame>) -> Result<()> {
     let oracle = &ctx.accounts.oracle;
     let current_time = get_current_time()?;
     let _player_key = ctx.accounts.player.key();
-    let player_balance = &mut ctx.accounts.player_balance;
+    let player_games = &mut ctx.accounts.player_games;
 
     // ===============================
     // VALIDATION
@@ -27,7 +27,7 @@ pub fn handler(ctx: Context<super::RollGame>) -> Result<()> {
 
     // Verify player has already joined this game using basic validation (roll doesn't need collision detection)
     require!(
-        !player_balance.basic_can_join_game(&game.key(), game.created_at),
+        !player_games.basic_can_join_game(&game.key(), game.created_at),
         ErrorCode::UnauthorizedPlayer
     );
 
@@ -57,7 +57,7 @@ pub fn handler(ctx: Context<super::RollGame>) -> Result<()> {
         
         // Mark this specific game + index combination in player's filter
         let game_expiry = game.calculate_expiry_timestamp(oracle.get_total_buffer_time());
-        player_balance.mark_game_index_joined(&game.key(), new_index, game_expiry, current_time);
+        player_games.mark_game_index_joined(&game.key(), new_index, game_expiry, current_time);
         
         // SAFETY: Update Game's participants filter to reflect the additional participation
         // Note: Player is already in the filter from initial join, but we update timestamp
