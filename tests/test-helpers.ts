@@ -49,10 +49,10 @@ export interface OracleConfig {
 
 export interface GameConfig {
   gameType: any;
-  amount: anchor.BN;
+  amount: anchor.BN | number;
   maxTickets: number;
   minTickets: number;
-  timeout: anchor.BN;
+  timeout: anchor.BN | number;
   isPrivate: boolean;
 }
 
