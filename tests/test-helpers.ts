@@ -50,8 +50,8 @@ export interface OracleConfig {
 export interface GameConfig {
   gameType: any;
   amount: anchor.BN;
-  maxTickets: number;
-  minTickets: number;
+  maxTickets: anchor.BN;
+  minTickets: anchor.BN;
   timeout: anchor.BN;
   isPrivate: boolean;
 }
@@ -805,8 +805,8 @@ export class RandomUtils {
     return {
       gameType,
       amount: new anchor.BN(this.randomInt(100_000, 10_000_000)),
-      maxTickets,
-      minTickets,
+      maxTickets: new anchor.BN(maxTickets),
+      minTickets: new anchor.BN(minTickets),
       timeout: new anchor.BN(this.randomInt(600, 7200)), // 10 minutes to 2 hours
       isPrivate: this.randomBoolean(0.1), // 10% chance of private game
     };
@@ -853,8 +853,8 @@ export class CollisionUtils {
     const gameConfig: GameConfig = {
       gameType: { coinflip: {} },
       amount: new anchor.BN(1_000_000),
-      maxTickets: 2,
-      minTickets: 2,
+      maxTickets: new anchor.BN(2),
+      minTickets: new anchor.BN(2),
       timeout: new anchor.BN(3600),
       isPrivate: false,
     };
@@ -892,8 +892,8 @@ export class CollisionUtils {
     const gameConfig: GameConfig = {
       gameType: { coinflip: {} },
       amount: new anchor.BN(1_000_000),
-      maxTickets: 2,
-      minTickets: 2,
+      maxTickets: new anchor.BN(2),
+      minTickets: new anchor.BN(2),
       timeout: new anchor.BN(60),
       isPrivate: false,
     };
@@ -980,8 +980,8 @@ export class CollisionUtils {
     const gameConfig: GameConfig = {
       gameType: { coinflip: {} },
       amount: new anchor.BN(1_000_000),
-      maxTickets: 3,
-      minTickets: 2,
+      maxTickets: new anchor.BN(3),
+      minTickets: new anchor.BN(2),
       timeout: new anchor.BN(5), // Short timeout
       isPrivate: false,
     };
