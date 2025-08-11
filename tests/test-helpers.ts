@@ -15,7 +15,7 @@ import { createHash } from "crypto";
 export interface TestPlayer {
   player: anchor.web3.Keypair;
   playerTokenAccount: any;
-  playerBalancePDA: PublicKey;
+  playerGamesPDA: PublicKey;
 }
 
 export interface TestMint {
@@ -422,7 +422,7 @@ export class PlayerManager {
       .rpc();
 
     // Get player balance PDA
-    const [playerBalancePDA] = PublicKey.findProgramAddressSync(
+    const [playerGamesPDA] = PublicKey.findProgramAddressSync(
       [
         Buffer.from("player_games"),
         player.publicKey.toBuffer(),
@@ -434,7 +434,7 @@ export class PlayerManager {
     return {
       player,
       playerTokenAccount,
-      playerBalancePDA,
+      playerGamesPDA,
     };
   }
 
@@ -478,7 +478,7 @@ export class PlayerManager {
         .signers([player])
         .rpc();
 
-      const [playerBalancePDA] = PublicKey.findProgramAddressSync(
+      const [playerGamesPDA] = PublicKey.findProgramAddressSync(
         [
           Buffer.from("player_games"),
           player.publicKey.toBuffer(),
@@ -487,7 +487,7 @@ export class PlayerManager {
         this.program.programId
       );
 
-      return { player, playerTokenAccount, playerBalancePDA };
+      return { player, playerTokenAccount, playerGamesPDA };
     });
 
     return Promise.all(playerPromises);
@@ -928,7 +928,7 @@ export class CollisionUtils {
    */
   static async validateFilterState(
     program: anchor.Program<Coinflip>,
-    playerBalancePDA: anchor.web3.PublicKey
+    playerGamesPDA: anchor.web3.PublicKey
   ): Promise<{
     activeFilterIndex: number;
     filterCleaningScheduledAt: number;
@@ -938,19 +938,19 @@ export class CollisionUtils {
     filterALongestExpiry: number;
     filterBLongestExpiry: number;
   }> {
-    const playerBalance = await program.account.playerBalance.fetch(
-      playerBalancePDA
+    const playerGames = await program.account.playerGames.fetch(
+      playerGamesPDA
     );
 
     return {
-      activeFilterIndex: playerBalance.activeFilterIndex,
+      activeFilterIndex: playerGames.activeFilterIndex,
       filterCleaningScheduledAt:
-        playerBalance.filterCleaningScheduledAt.toNumber(),
-      emergencyUnjoinMode: playerBalance.emergencyUnjoinMode,
-      filterALastUpdated: playerBalance.filterALastUpdated.toNumber(),
-      filterBLastUpdated: playerBalance.filterBLastUpdated.toNumber(),
-      filterALongestExpiry: playerBalance.filterALongestExpiry.toNumber(),
-      filterBLongestExpiry: playerBalance.filterBLongestExpiry.toNumber(),
+        playerGames.filterCleaningScheduledAt.toNumber(),
+      emergencyUnjoinMode: playerGames.emergencyUnjoinMode,
+      filterALastUpdated: playerGames.filterALastUpdated.toNumber(),
+      filterBLastUpdated: playerGames.filterBLastUpdated.toNumber(),
+      filterALongestExpiry: playerGames.filterALongestExpiry.toNumber(),
+      filterBLongestExpiry: playerGames.filterBLongestExpiry.toNumber(),
     };
   }
 
@@ -1002,7 +1002,7 @@ export class CollisionUtils {
     const env = TestEnvironment.getInstance();
     const filterState = await this.validateFilterState(
       env.program,
-      player.playerBalancePDA
+      player.playerGamesPDA
     );
 
     const collisionDetected = filterState.filterCleaningScheduledAt > 0;

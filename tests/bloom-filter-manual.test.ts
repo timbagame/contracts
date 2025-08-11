@@ -283,9 +283,9 @@ describe("Manual Bloom Filter Testing", () => {
 
       // Get balances before unjoin
       const player1BalanceBefore =
-        await env.program.account.playerBalance.fetch(player1.playerBalancePDA);
+        await env.program.account.playerGames.fetch(player1.playerGamesPDA);
       const player2BalanceBefore =
-        await env.program.account.playerBalance.fetch(player2.playerBalancePDA);
+        await env.program.account.playerGames.fetch(player2.playerGamesPDA);
 
       console.log(
         `   Player1 balance before: ${player1BalanceBefore.amount.toString()}`
@@ -299,8 +299,8 @@ describe("Manual Bloom Filter Testing", () => {
       await testUtils.game.unjoinGame(stuckGameData.gamePDA, player2.player, 1); // Second joiner = index 1
 
       // Verify refunds
-      const player1BalanceAfter = await env.program.account.playerBalance.fetch(
-        player1.playerBalancePDA
+      const player1BalanceAfter = await env.program.account.playerGames.fetch(
+        player1.playerGamesPDA
       );
       const player2BalanceAfter = await env.program.account.playerBalance.fetch(
         player2.playerBalancePDA

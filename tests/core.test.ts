@@ -108,11 +108,11 @@ describe("Core Game Operations", () => {
 
       expect(player.player.publicKey).to.not.be.undefined;
       expect(player.playerTokenAccount).to.not.be.undefined;
-      expect(player.playerBalancePDA).to.not.be.undefined;
+      expect(player.playerGamesPDA).to.not.be.undefined;
 
       // Verify player balance account exists
-      const balanceAccount = await env.program.account.playerBalance.fetch(
-        player.playerBalancePDA
+      const balanceAccount = await env.program.account.playerGames.fetch(
+        player.playerGamesPDA
       );
       expect(balanceAccount.amount.toNumber()).to.equal(0);
     });
@@ -126,7 +126,7 @@ describe("Core Game Operations", () => {
       for (const player of players) {
         expect(player.player.publicKey).to.not.be.undefined;
         expect(player.playerTokenAccount).to.not.be.undefined;
-        expect(player.playerBalancePDA).to.not.be.undefined;
+        expect(player.playerGamesPDA).to.not.be.undefined;
       }
     });
 
