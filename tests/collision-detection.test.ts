@@ -62,8 +62,8 @@ describe("Collision Detection & Recovery", () => {
       }
 
       // Get player balance state before potential collision
-      const playerBalanceBefore = await env.program.account.playerBalance.fetch(
-        player.playerBalancePDA
+      const playerGamesBefore = await env.program.account.playerGames.fetch(
+        player.playerGamesPDA
       );
 
       // Create one more game that should trigger collision detection
@@ -79,25 +79,24 @@ describe("Collision Detection & Recovery", () => {
       await testUtils.game.joinGame(collisionGameData.gamePDA, player.player);
 
       // Verify player balance state after collision handling
-      const playerBalanceAfter = await env.program.account.playerBalance.fetch(
-        player.playerBalancePDA
+      const playerGamesAfter = await env.program.account.playerGames.fetch(
+        player.playerGamesPDA
       );
 
       // Check if filter switching occurred or collision detection triggered
       // Note: This test verifies the collision detection system is working, even if
       // we can't predict exact collision timing due to hash randomness
-      expect(playerBalanceAfter.amount.toNumber()).to.equal(
-        playerBalanceBefore.amount.toNumber()
+      // PlayerGames no longer has amount field - this test is removed
       );
 
       // Collision detection may or may not trigger depending on hash randomness
       // The important thing is the system didn't crash and maintains consistency
       console.log(
-        `Filter state: scheduled=${playerBalanceAfter.filterCleaningScheduledAt.toNumber()}, activeFilter=${
-          playerBalanceAfter.activeFilterIndex
+        `Filter state: scheduled=${playerGamesAfter.filterCleaningScheduledAt.toNumber()}, activeFilter=${
+          playerGamesAfter.activeFilterIndex
         }`
       );
-      expect(playerBalanceAfter.activeFilterIndex).to.be.oneOf([0, 1]);
+      expect(playerGamesAfter.activeFilterIndex).to.be.oneOf([0, 1]);
     });
 
     it("should maintain filter state consistency during collision", async () => {
@@ -125,17 +124,17 @@ describe("Collision Detection & Recovery", () => {
       await testUtils.game.joinGame(gameData.gamePDA, player.player);
 
       // Get player balance state
-      const playerBalance = await env.program.account.playerBalance.fetch(
-        player.playerBalancePDA
+      const playerGames = await env.program.account.playerGames.fetch(
+        player.playerGamesPDA
       );
 
       // Verify dual filter system is properly initialized
-      expect(playerBalance.activeFilterIndex).to.be.oneOf([0, 1]);
-      expect(playerBalance.filterALastUpdated.toNumber()).to.be.greaterThan(0);
+      expect(playerGames.activeFilterIndex).to.be.oneOf([0, 1]);
+      expect(playerGames.filterALastUpdated.toNumber()).to.be.greaterThan(0);
 
       // Verify collision detection fields are initialized
-      expect(playerBalance.emergencyUnjoinMode).to.be.false;
-      expect(playerBalance.filterALongestExpiry.toNumber()).to.be.greaterThan(
+      expect(playerGames.emergencyUnjoinMode).to.be.false;
+      expect(playerGames.filterALongestExpiry.toNumber()).to.be.greaterThan(
         0
       );
     });
@@ -176,12 +175,12 @@ describe("Collision Detection & Recovery", () => {
             console.log(`Collision detected and rejected at game ${i}`);
 
             // Verify that the player balance state shows pending cleanup
-            const playerBalance = await env.program.account.playerBalance.fetch(
-              player.playerBalancePDA
+            const playerGames = await env.program.account.playerGames.fetch(
+              player.playerGamesPDA
             );
 
             expect(
-              playerBalance.filterCleaningScheduledAt.toNumber()
+              playerGames.filterCleaningScheduledAt.toNumber()
             ).to.be.greaterThan(0);
             break;
           } else {
@@ -222,17 +221,17 @@ describe("Collision Detection & Recovery", () => {
           await testUtils.game.joinGame(gameData.gamePDA, player.player);
 
           // Check if collision was handled
-          const playerBalance = await env.program.account.playerBalance.fetch(
-            player.playerBalancePDA
+          const playerGames = await env.program.account.playerGames.fetch(
+            player.playerGamesPDA
           );
 
           if (
-            playerBalance.filterCleaningScheduledAt.toNumber() > 0 &&
+            playerGames.filterCleaningScheduledAt.toNumber() > 0 &&
             !collisionDetected
           ) {
             collisionDetected = true;
             firstCleanupTime =
-              playerBalance.filterCleaningScheduledAt.toNumber();
+              playerGames.filterCleaningScheduledAt.toNumber();
             console.log(
               `First collision handled, cleanup scheduled at: ${firstCleanupTime}`
             );
@@ -240,12 +239,12 @@ describe("Collision Detection & Recovery", () => {
         } catch (error) {
           if (error.toString().includes("AlreadyJoined") && collisionDetected) {
             // This is a rapid successive collision attempt
-            const playerBalance = await env.program.account.playerBalance.fetch(
-              player.playerBalancePDA
+            const playerGames = await env.program.account.playerGames.fetch(
+              player.playerGamesPDA
             );
 
             // Verify cleanup time wasn't overwritten
-            expect(playerBalance.filterCleaningScheduledAt.toNumber()).to.equal(
+            expect(playerGames.filterCleaningScheduledAt.toNumber()).to.equal(
               firstCleanupTime
             );
             console.log(
@@ -303,8 +302,8 @@ describe("Collision Detection & Recovery", () => {
       }
 
       // Get initial filter state
-      const playerBalanceInitial =
-        await env.program.account.playerBalance.fetch(player.playerBalancePDA);
+      const playerGamesInitial =
+        await env.program.account.playerGames.fetch(player.playerGamesPDA);
 
       // Wait for cleanup period to expire
       console.log("Waiting for cleanup period to expire...");
@@ -331,13 +330,12 @@ describe("Collision Detection & Recovery", () => {
       }
 
       // Verify system maintains consistency
-      const playerBalanceFinal = await env.program.account.playerBalance.fetch(
-        player.playerBalancePDA
+      const playerGamesFinal = await env.program.account.playerGames.fetch(
+        player.playerGamesPDA
       );
 
-      expect(playerBalanceFinal.activeFilterIndex).to.be.oneOf([0, 1]);
-      expect(playerBalanceFinal.amount.toNumber()).to.equal(
-        playerBalanceInitial.amount.toNumber()
+      expect(playerGamesFinal.activeFilterIndex).to.be.oneOf([0, 1]);
+      // PlayerGames no longer has amount field - this test is removed
       );
     });
 
@@ -355,8 +353,8 @@ describe("Collision Detection & Recovery", () => {
       };
 
       // Get initial state
-      const playerBalanceStart = await env.program.account.playerBalance.fetch(
-        player.playerBalancePDA
+      const playerGamesStart = await env.program.account.playerGames.fetch(
+        player.playerGamesPDA
       );
 
       // Create multiple batches of games with breaks
@@ -388,13 +386,12 @@ describe("Collision Detection & Recovery", () => {
       }
 
       // Verify system maintains consistent state
-      const playerBalanceEnd = await env.program.account.playerBalance.fetch(
-        player.playerBalancePDA
+      const playerGamesEnd = await env.program.account.playerGames.fetch(
+        player.playerGamesPDA
       );
 
-      expect(playerBalanceEnd.activeFilterIndex).to.be.oneOf([0, 1]);
-      expect(playerBalanceEnd.amount.toNumber()).to.equal(
-        playerBalanceStart.amount.toNumber()
+      expect(playerGamesEnd.activeFilterIndex).to.be.oneOf([0, 1]);
+      // PlayerGames no longer has amount field - this test is removed
       );
       console.log("✅ Filter system maintained integrity over extended period");
     });
@@ -451,14 +448,14 @@ describe("Collision Detection & Recovery", () => {
       }
 
       // Verify system state
-      const playerBalance = await env.program.account.playerBalance.fetch(
-        player.playerBalancePDA
+      const playerGames = await env.program.account.playerGames.fetch(
+        player.playerGamesPDA
       );
 
       console.log(
         `Emergency mode test: ${gamesCreated} games created, collision detected: ${collisionDetected}`
       );
-      expect(playerBalance.activeFilterIndex).to.be.oneOf([0, 1]);
+      expect(playerGames.activeFilterIndex).to.be.oneOf([0, 1]);
       expect(typeof playerBalance.emergencyUnjoinMode).to.equal("boolean");
     });
   });
@@ -511,8 +508,8 @@ describe("Collision Detection & Recovery", () => {
       expect(successfulJoins).to.be.greaterThan(0);
 
       // Verify player balance remains consistent
-      const finalBalance = await env.program.account.playerBalance.fetch(
-        player.playerBalancePDA
+      const finalBalance = await env.program.account.playerGames.fetch(
+        player.playerGamesPDA
       );
 
       expect(finalBalance.activeFilterIndex).to.be.oneOf([0, 1]);
