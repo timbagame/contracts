@@ -41,14 +41,14 @@ pub fn handler(
         ErrorCode::InvalidWinnerIndex
     );
 
-    // Cross-validate winner in both Game and PlayerBalance filters
+    // Cross-validate winner in both Game and PlayerGames filters
     let winner_key = ctx.accounts.winner.key();
     require!(
         game.check_participant_in_filter(&winner_key),
         ErrorCode::UnauthorizedPlayer
     );
 
-    // Also validate against winner's PlayerBalance filters
+    // Also validate against winner's PlayerGames filters
     require!(
         !ctx.accounts
             .winner_games

@@ -650,7 +650,7 @@ impl PlayerGames {
         oracle: &crate::state::Oracle,
         current_time: u64,
     ) -> bool {
-        // Cross-validate PlayerBalance filter against Game filter
+    // Cross-validate PlayerGames filter against Game filter
         let collision_detected = self.detect_filter_collision(player_key, game);
 
         if collision_detected {
@@ -661,7 +661,7 @@ impl PlayerGames {
         }
     }
 
-    /// Detect if there's a collision between PlayerBalance and Game filters
+    /// Detect if there's a collision between PlayerGames and Game filters
     fn detect_filter_collision(&self, player_key: &Pubkey, game: &crate::state::Game) -> bool {
         let in_game_filter = game.check_participant_in_filter(player_key);
         let (_, active_last_updated, _) = self.get_active_filter();
@@ -669,7 +669,7 @@ impl PlayerGames {
 
         // Collision detected if:
         // 1. Player NOT in Game filter (different game collision), OR
-        // 2. PlayerBalance filter was updated BEFORE this game was created (temporal collision)
+    // 2. PlayerGames filter was updated BEFORE this game was created (temporal collision)
         !in_game_filter || filter_older_than_game
     }
 
@@ -768,7 +768,7 @@ impl PlayerGames {
             return in_game_filter;
         }
 
-        // Normal mode: use standard PlayerBalance filter validation
+    // Normal mode: use standard PlayerGames filter validation
         let already_joined = !self.can_join_with_index(game_key, ticket_index, game.created_at);
         let not_already_unjoined =
             !self.has_unjoined_game_index(game_key, ticket_index, game.created_at);
@@ -807,7 +807,7 @@ pub struct Game {
     pub is_private: bool,
     /// Total accumulated prize
     pub total_amount: u64,
-    /// 512-bit bloom filter for this game's participants (safety redundancy) - same size as PlayerBalance filters
+    /// 512-bit bloom filter for this game's participants (safety redundancy) - same size as PlayerGames filters
     pub participants_filter: [u64; 8],
 }
 
