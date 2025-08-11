@@ -36,8 +36,8 @@ pub const GAME_SEED: &[u8] = b"game";
 pub const GAME_TOKEN_SEED: &[u8] = b"game_token";
 /// Seed for Game Vault PDA
 pub const GAME_VAULT_SEED: &[u8] = b"game_vault";
-/// Seed for PlayerBalance PDA
-pub const PLAYER_BALANCE_SEED: &[u8] = b"player_balance";
+/// Seed for PlayerGames PDA
+pub const PLAYER_GAMES_SEED: &[u8] = b"player_games";
 
 // =============================================================================
 // GAME CONSTANTS
@@ -48,7 +48,7 @@ pub const MIN_COMPETITIVE_PLAYERS: u32 = 2;
 /// Minimum players required for giveaway games (Giveaway/Dumbaway)
 pub const MIN_GIVEAWAY_PLAYERS: u32 = 1;
 pub const GAME_TOKEN_SIZE: usize = 8 + 32 + 1 + 8 + 8 + 1;
-pub const PLAYER_BALANCE_SIZE: usize = 8        // discriminator
+pub const PLAYER_GAMES_SIZE: usize = 8        // discriminator
     + 1     // active_filter_index (u8)
     + 128   // filter_a (BloomFilters: 2 x [u64; 8] = 2 x 64 bytes)
     + 8     // filter_a_last_updated (u64)
@@ -292,11 +292,11 @@ pub struct BloomFilters {
 }
 
 // =============================================================================
-// PLAYER BALANCE ACCOUNT
+// PLAYER GAMES ACCOUNT
 // =============================================================================
 #[account]
 #[derive(Default)]
-pub struct PlayerBalance {
+pub struct PlayerGames {
     /// Dual bloom filter system - 0 means filter_a is active, 1 means filter_b is active
     pub active_filter_index: u8,
 
@@ -317,7 +317,7 @@ pub struct PlayerBalance {
     pub emergency_unjoin_mode: bool,
 }
 
-impl PlayerBalance {
+impl PlayerGames {
 
     /// Get reference to the active filter set
     fn get_active_filter(&self) -> (&BloomFilters, u64, u64) {

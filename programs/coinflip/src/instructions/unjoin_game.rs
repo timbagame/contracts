@@ -5,7 +5,7 @@ use anchor_lang::prelude::*;
 
 pub fn handler(ctx: Context<super::UnjoinGame>, ticket_index: u32) -> Result<()> {
     let game = &mut ctx.accounts.game;
-    let player_balance = &mut ctx.accounts.player_balance;
+    let player_games = &mut ctx.accounts.player_games;
     let oracle = &ctx.accounts.oracle;
     let current_time = get_current_time()?;
     let player_key = ctx.accounts.player.key();
@@ -23,18 +23,18 @@ pub fn handler(ctx: Context<super::UnjoinGame>, ticket_index: u32) -> Result<()>
     require!(game.tickets_count > 0, ErrorCode::InvalidTicketsCount);
 
     // Check if emergency mode should be activated (timer-based)
-    player_balance.maybe_activate_emergency_mode(current_time);
+    player_games.maybe_activate_emergency_mode(current_time);
 
     // Unjoin validation with emergency mode support
     require!(
-        player_balance.can_unjoin_game(&game.key(), &player_key, ticket_index, &game),
+        player_games.can_unjoin_game(&game.key(), &player_key, ticket_index, &game),
         ErrorCode::UnauthorizedPlayer
     );
 
     // Prevent double unjoining (only in normal mode - emergency mode is more permissive)
-    if !player_balance.emergency_unjoin_mode {
+    if !player_games.emergency_unjoin_mode {
         require!(
-            !player_balance.has_unjoined_game_index(&game.key(), ticket_index, game.created_at),
+            !player_games.has_unjoined_game_index(&game.key(), ticket_index, game.created_at),
             ErrorCode::AlreadyJoined // Reusing error - player already processed this unjoin
         );
     }
@@ -62,7 +62,7 @@ pub fn handler(ctx: Context<super::UnjoinGame>, ticket_index: u32) -> Result<()>
     }
 
     // Track this unjoin in bloom filter to prevent double unjoining
-    player_balance.mark_game_index_unjoined(&game.key(), ticket_index, current_time);
+    player_games.mark_game_index_unjoined(&game.key(), ticket_index, current_time);
 
     // ===============================
     // EVENT EMISSION

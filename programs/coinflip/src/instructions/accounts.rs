@@ -118,16 +118,16 @@ pub struct UpdateToken<'info> {
 // =============================================================================
 
 #[derive(Accounts)]
-pub struct InitializePlayerBalance<'info> {
+pub struct InitializePlayerGames<'info> {
     #[account(
         init,
         payer = player,
-        space = PLAYER_BALANCE_SIZE,
-        seeds = [PLAYER_BALANCE_SEED, player.key().as_ref(), token_mint.key().as_ref()],
+        space = PLAYER_GAMES_SIZE,
+        seeds = [PLAYER_GAMES_SEED, player.key().as_ref(), token_mint.key().as_ref()],
         bump,
         constraint = game_token.is_enabled() @ ErrorCode::TokenNotEnabled,
     )]
-    pub player_balance: Account<'info, PlayerBalance>,
+    pub player_games: Account<'info, PlayerGames>,
 
     #[account(
         mut,
@@ -177,10 +177,10 @@ pub struct InitializeGame<'info> {
     pub creator: Signer<'info>,
     #[account(
         mut,
-        seeds = [PLAYER_BALANCE_SEED, creator.key().as_ref(), token_mint.key().as_ref()],
+        seeds = [PLAYER_GAMES_SEED, creator.key().as_ref(), token_mint.key().as_ref()],
         bump,
     )]
-    pub creator_balance: Account<'info, PlayerBalance>,
+    pub creator_games: Account<'info, PlayerGames>,
     #[account(mut, seeds = [b"oracle"], bump)]
     pub oracle: Account<'info, Oracle>,
     pub token_mint: Account<'info, Mint>,
@@ -220,10 +220,10 @@ pub struct JoinGame<'info> {
     pub player: Signer<'info>,
     #[account(
         mut,
-        seeds = [PLAYER_BALANCE_SEED, player.key().as_ref(), game.token_mint.as_ref()],
+        seeds = [PLAYER_GAMES_SEED, player.key().as_ref(), game.token_mint.as_ref()],
         bump,
     )]
-    pub player_balance: Account<'info, PlayerBalance>,
+    pub player_games: Account<'info, PlayerGames>,
     pub oracle_operator: Option<Signer<'info>>,
     #[account(seeds = [GAME_TOKEN_SEED, game.token_mint.as_ref()], bump)]
     pub game_token: Account<'info, GameToken>,
@@ -276,10 +276,10 @@ pub struct CompleteGame<'info> {
     pub creator: AccountInfo<'info>,
     #[account(
         mut,
-        seeds = [PLAYER_BALANCE_SEED, winner.key().as_ref(), game.token_mint.as_ref()],
+        seeds = [PLAYER_GAMES_SEED, winner.key().as_ref(), game.token_mint.as_ref()],
         bump,
     )]
-    pub winner_balance: Account<'info, PlayerBalance>,
+    pub winner_games: Account<'info, PlayerGames>,
     #[account(
         mut,
         seeds = [GAME_TOKEN_SEED, game.token_mint.as_ref()],
@@ -314,10 +314,10 @@ pub struct UnjoinGame<'info> {
     pub player: Signer<'info>,
     #[account(
         mut,
-        seeds = [PLAYER_BALANCE_SEED, player.key().as_ref(), game.token_mint.as_ref()],
+        seeds = [PLAYER_GAMES_SEED, player.key().as_ref(), game.token_mint.as_ref()],
         bump,
     )]
-    pub player_balance: Account<'info, PlayerBalance>,
+    pub player_games: Account<'info, PlayerGames>,
     #[account(seeds = [ORACLE_SEED], bump)]
     pub oracle: Account<'info, Oracle>,
     #[account(
@@ -359,10 +359,10 @@ pub struct CloseGame<'info> {
     pub creator: Signer<'info>,
     #[account(
         mut,
-        seeds = [PLAYER_BALANCE_SEED, creator.key().as_ref(), game.token_mint.as_ref()],
+        seeds = [PLAYER_GAMES_SEED, creator.key().as_ref(), game.token_mint.as_ref()],
         bump,
     )]
-    pub creator_balance: Account<'info, PlayerBalance>,
+    pub creator_games: Account<'info, PlayerGames>,
     #[account(seeds = [ORACLE_SEED], bump)]
     pub oracle: Account<'info, Oracle>,
     #[account(
@@ -404,10 +404,10 @@ pub struct RollGame<'info> {
     pub player: Signer<'info>,
     #[account(
         mut,
-        seeds = [PLAYER_BALANCE_SEED, player.key().as_ref(), game.token_mint.as_ref()],
+        seeds = [PLAYER_GAMES_SEED, player.key().as_ref(), game.token_mint.as_ref()],
         bump,
     )]
-    pub player_balance: Account<'info, PlayerBalance>,
+    pub player_games: Account<'info, PlayerGames>,
     pub oracle_operator: Option<Signer<'info>>,
     #[account(seeds = [GAME_TOKEN_SEED, game.token_mint.as_ref()], bump)]
     pub game_token: Account<'info, GameToken>,

@@ -86,12 +86,12 @@ pub struct TokenFeeWithdrawn {
 // PLAYER EVENTS
 // =============================================================================
 
-/// Emitted when a player's balance account is initialized
+/// Emitted when a player's games tracking account is initialized
 #[event]
-pub struct PlayerBalanceInitialized {
-    /// Player who initialized the balance
+pub struct PlayerGamesInitialized {
+    /// Player who initialized the games tracking
     pub player: Pubkey,
-    /// Token mint for this balance
+    /// Token mint for this games tracking
     pub token_mint: Pubkey,
 }
 

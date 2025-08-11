@@ -51,7 +51,7 @@ pub fn handler(
     // Also validate against winner's PlayerBalance filters
     require!(
         !ctx.accounts
-            .winner_balance
+            .winner_games
             .basic_can_join_game(&game.key(), game.created_at),
         ErrorCode::UnauthorizedPlayer
     );
