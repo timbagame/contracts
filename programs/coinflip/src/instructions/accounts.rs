@@ -152,45 +152,6 @@ pub struct InitializePlayerBalance<'info> {
     pub system_program: Program<'info, System>,
 }
 
-#[derive(Accounts)]
-pub struct WithdrawPlayerBalance<'info> {
-    #[account(
-        mut,
-        seeds = [PLAYER_BALANCE_SEED, player.key().as_ref(), token_mint.key().as_ref()],
-        bump,
-        constraint = player_balance.has_sufficient_balance() @ ErrorCode::InsufficientBalance,
-        constraint = game_token.is_enabled() @ ErrorCode::TokenNotEnabled,
-    )]
-    pub player_balance: Account<'info, PlayerBalance>,
-
-    pub player: Signer<'info>,
-    pub token_mint: Account<'info, Mint>,
-
-    #[account(seeds = [GAME_TOKEN_SEED, token_mint.key().as_ref()], bump)]
-    pub game_token: Account<'info, GameToken>,
-
-    #[account(
-        mut,
-        associated_token::mint = token_mint,
-        associated_token::authority = player,
-    )]
-    pub player_token_account: Account<'info, TokenAccount>,
-
-    #[account(
-        mut,
-        associated_token::mint = token_mint,
-        associated_token::authority = game_vault,
-    )]
-    pub game_token_account: Account<'info, TokenAccount>,
-
-    /// CHECK: PDA authority for game's token accounts
-    #[account(seeds = [GAME_VAULT_SEED, token_mint.key().as_ref()], bump = game_token.vault_bump)]
-    pub game_vault: AccountInfo<'info>,
-
-    pub system_program: Program<'info, System>,
-    pub token_program: Program<'info, Token>,
-    pub associated_token_program: Program<'info, AssociatedToken>,
-}
 
 // =============================================================================
 // GAME MANAGEMENT
@@ -251,7 +212,7 @@ pub struct JoinGame<'info> {
         mut,
         constraint = game.is_not_full() @ ErrorCode::GameFull,
         constraint = game.can_join_private(oracle_operator.as_ref(), &oracle.operator) @ ErrorCode::PrivateGameAccessDenied,
-        constraint = game.has_sufficient_balance_for_join(player_token_account.amount, player_balance.amount) @ ErrorCode::InsufficientBalance,
+        constraint = game.has_sufficient_balance_for_join(player_token_account.amount) @ ErrorCode::InsufficientBalance,
         constraint = game_token.is_enabled() @ ErrorCode::TokenNotEnabled,
     )]
     pub game: Account<'info, Game>,
@@ -359,7 +320,30 @@ pub struct UnjoinGame<'info> {
     pub player_balance: Account<'info, PlayerBalance>,
     #[account(seeds = [ORACLE_SEED], bump)]
     pub oracle: Account<'info, Oracle>,
+    #[account(
+        mut,
+        seeds = [GAME_TOKEN_SEED, game.token_mint.as_ref()],
+        bump,
+    )]
+    pub game_token: Account<'info, GameToken>,
+    /// CHECK: PDA authority for game's token accounts
+    #[account(seeds = [GAME_VAULT_SEED, game.token_mint.as_ref()], bump = game_token.vault_bump)]
+    pub game_vault: AccountInfo<'info>,
+    #[account(
+        mut,
+        associated_token::mint = game.token_mint,
+        associated_token::authority = player,
+    )]
+    pub player_token_account: Account<'info, TokenAccount>,
+    #[account(
+        mut,
+        associated_token::mint = game.token_mint,
+        associated_token::authority = game_vault,
+    )]
+    pub game_token_account: Account<'info, TokenAccount>,
     pub system_program: Program<'info, System>,
+    pub token_program: Program<'info, Token>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
 }
 
 #[derive(Accounts)]
@@ -381,7 +365,30 @@ pub struct CloseGame<'info> {
     pub creator_balance: Account<'info, PlayerBalance>,
     #[account(seeds = [ORACLE_SEED], bump)]
     pub oracle: Account<'info, Oracle>,
+    #[account(
+        mut,
+        seeds = [GAME_TOKEN_SEED, game.token_mint.as_ref()],
+        bump,
+    )]
+    pub game_token: Account<'info, GameToken>,
+    /// CHECK: PDA authority for game's token accounts
+    #[account(seeds = [GAME_VAULT_SEED, game.token_mint.as_ref()], bump = game_token.vault_bump)]
+    pub game_vault: AccountInfo<'info>,
+    #[account(
+        mut,
+        associated_token::mint = game.token_mint,
+        associated_token::authority = creator,
+    )]
+    pub creator_token_account: Account<'info, TokenAccount>,
+    #[account(
+        mut,
+        associated_token::mint = game.token_mint,
+        associated_token::authority = game_vault,
+    )]
+    pub game_token_account: Account<'info, TokenAccount>,
     pub system_program: Program<'info, System>,
+    pub token_program: Program<'info, Token>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
 }
 
 #[derive(Accounts)]

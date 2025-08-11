@@ -49,7 +49,6 @@ pub const MIN_COMPETITIVE_PLAYERS: u32 = 2;
 pub const MIN_GIVEAWAY_PLAYERS: u32 = 1;
 pub const GAME_TOKEN_SIZE: usize = 8 + 32 + 1 + 8 + 8 + 1;
 pub const PLAYER_BALANCE_SIZE: usize = 8        // discriminator
-    + 8     // amount (u64)
     + 1     // active_filter_index (u8)
     + 128   // filter_a (BloomFilters: 2 x [u64; 8] = 2 x 64 bytes)
     + 8     // filter_a_last_updated (u64)
@@ -59,7 +58,7 @@ pub const PLAYER_BALANCE_SIZE: usize = 8        // discriminator
     + 8     // filter_b_longest_expiry (u64)
     + 8     // filter_cleaning_scheduled_at (u64)
     + 1     // emergency_unjoin_mode (bool)
-    + 79; // padding for memory alignment (Rust struct alignment)
+    + 87; // padding for memory alignment (Rust struct alignment)
 pub const GAME_BASE_SIZE: usize = 8
     + 32  // creator
     + 1   // game_type
@@ -253,6 +252,30 @@ impl GameToken {
 
         Ok(())
     }
+
+    /// Handles direct token transfer from player wallet to game vault
+    pub fn handle_player_token_transfer<'info>(
+        &self,
+        amount: u64,
+        player_token_account: AccountInfo<'info>,
+        game_token_account: AccountInfo<'info>,
+        player: AccountInfo<'info>,
+        token_program: AccountInfo<'info>,
+    ) -> Result<()> {
+        transfer(
+            CpiContext::new(
+                token_program,
+                Transfer {
+                    from: player_token_account,
+                    to: game_token_account,
+                    authority: player,
+                },
+            ),
+            amount,
+        )?;
+
+        Ok(())
+    }
 }
 
 // =============================================================================
@@ -274,9 +297,6 @@ pub struct BloomFilters {
 #[account]
 #[derive(Default)]
 pub struct PlayerBalance {
-    /// Current balance amount
-    pub amount: u64,
-
     /// Dual bloom filter system - 0 means filter_a is active, 1 means filter_b is active
     pub active_filter_index: u8,
 
@@ -298,10 +318,6 @@ pub struct PlayerBalance {
 }
 
 impl PlayerBalance {
-    /// Adds refund amount to player balance
-    pub fn refund(&mut self, amount: u64) {
-        self.amount += amount;
-    }
 
     /// Get reference to the active filter set
     fn get_active_filter(&self) -> (&BloomFilters, u64, u64) {
@@ -514,50 +530,7 @@ impl PlayerBalance {
         }
     }
 
-    /// Checks if player has sufficient balance for withdrawal
-    pub fn has_sufficient_balance(&self) -> bool {
-        self.amount > 0
-    }
 
-    /// Calculates contribution from balance, returns amount needed from wallet
-    pub fn calculate_contribution(&mut self, required_amount: u64) -> u64 {
-        if self.amount >= required_amount {
-            self.amount -= required_amount;
-            0
-        } else {
-            let tokens_needed = required_amount - self.amount;
-            self.amount = 0;
-            tokens_needed
-        }
-    }
-
-    /// Handles token transfer from player balance and wallet to game vault
-    pub fn handle_token_transfer<'info>(
-        &mut self,
-        game_amount: u64,
-        player_token_account: AccountInfo<'info>,
-        game_token_account: AccountInfo<'info>,
-        player: AccountInfo<'info>,
-        token_program: AccountInfo<'info>,
-    ) -> Result<()> {
-        let needed_amount = self.calculate_contribution(game_amount);
-
-        if needed_amount > 0 {
-            transfer(
-                CpiContext::new(
-                    token_program,
-                    Transfer {
-                        from: player_token_account,
-                        to: game_token_account,
-                        authority: player,
-                    },
-                ),
-                needed_amount,
-            )?;
-        }
-
-        Ok(())
-    }
 
     /// Mark game + index as joined in active bloom filter
     pub fn mark_game_index_joined(
@@ -1037,9 +1010,9 @@ impl Game {
         !self.is_private || passed_operator.map_or(false, |signer| signer.key() == *oracle_operator)
     }
 
-    pub fn has_sufficient_balance_for_join(&self, token_balance: u64, player_balance: u64) -> bool {
+    pub fn has_sufficient_balance_for_join(&self, token_balance: u64) -> bool {
         self.game_type == GameType::Giveaway
             || self.game_type == GameType::Dumbaway
-            || token_balance + player_balance >= self.ticket_amount
+            || token_balance >= self.ticket_amount
     }
 }

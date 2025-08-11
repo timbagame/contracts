@@ -50,8 +50,16 @@ pub fn handler(ctx: Context<super::UnjoinGame>, ticket_index: u32) -> Result<()>
     game.total_amount -= game.ticket_amount;
     game.last_slot = get_current_slot()?;
 
-    // Refund player
-    player_balance.refund(game.ticket_amount);
+    // Refund player directly
+    if game.ticket_amount > 0 {
+        ctx.accounts.game_token.handle_pda_token_transfer(
+            ctx.accounts.game_token_account.to_account_info(),
+            ctx.accounts.player_token_account.to_account_info(),
+            ctx.accounts.game_vault.to_account_info(),
+            ctx.accounts.token_program.to_account_info(),
+            game.ticket_amount,
+        )?;
+    }
 
     // Track this unjoin in bloom filter to prevent double unjoining
     player_balance.mark_game_index_unjoined(&game.key(), ticket_index, current_time);

@@ -10,9 +10,6 @@ pub fn handler(ctx: Context<super::InitializePlayerBalance>) -> Result<()> {
     // STATE INITIALIZATION
     // ===============================
 
-    // Initialize basic fields
-    player_balance.amount = 0;
-    
     // Initialize dual filter system (filter_a is active by default)
     player_balance.active_filter_index = 0;
     

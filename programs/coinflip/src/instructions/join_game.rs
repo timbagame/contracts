@@ -46,7 +46,7 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
     // ===============================
 
     if game.ticket_amount > 0 {
-        player_balance.handle_token_transfer(
+        ctx.accounts.game_token.handle_player_token_transfer(
             game.ticket_amount,
             ctx.accounts.player_token_account.to_account_info(),
             ctx.accounts.game_token_account.to_account_info(),

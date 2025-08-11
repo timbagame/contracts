@@ -11,7 +11,6 @@ pub mod update_token;
 
 // Player management
 pub mod initialize_player_balance;
-pub mod withdraw_player_balance;
 
 // Game management
 pub mod close_game;
