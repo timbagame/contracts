@@ -302,8 +302,8 @@ describe("Manual Bloom Filter Testing", () => {
       const player1BalanceAfter = await env.program.account.playerGames.fetch(
         player1.playerGamesPDA
       );
-      const player2BalanceAfter = await env.program.account.playerBalance.fetch(
-        player2.playerBalancePDA
+      const player2BalanceAfter = await env.program.account.playerGames.fetch(
+        player2.playerGamesPDA
       );
 
       console.log(

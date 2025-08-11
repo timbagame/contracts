@@ -726,7 +726,7 @@ describe("Advanced Features", () => {
       // Get initial filter state
       const initialState = await CollisionUtils.validateFilterState(
         env.program,
-        player.playerBalancePDA
+        player.playerGamesPDA
       );
 
       // Create many games to test filter memory behavior
@@ -735,7 +735,7 @@ describe("Advanced Features", () => {
       // Get final filter state
       const finalState = await CollisionUtils.validateFilterState(
         env.program,
-        player.playerBalancePDA
+        player.playerGamesPDA
       );
 
       // Filter structure should remain consistent
