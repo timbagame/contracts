@@ -40,8 +40,8 @@ describe("Collision Detection & Recovery", () => {
       const gameConfig: GameConfig = {
         gameType: { coinflip: {} },
         amount: new anchor.BN(1_000_000),
-        maxTickets: 2,
-        minTickets: 2,
+        maxTickets: new anchor.BN(2),
+        minTickets: new anchor.BN(2),
         timeout: new anchor.BN(3600),
         isPrivate: false,
       };
@@ -60,8 +60,6 @@ describe("Collision Detection & Recovery", () => {
         await testUtils.game.joinGame(gameData.gamePDA, player.player);
         games.push(gameData);
       }
-
-      // Attempt an additional join after creating many games
 
       // Create one more game that should trigger collision detection
       const collisionGameData = testUtils.game.generateGamePDA();
@@ -83,8 +81,6 @@ describe("Collision Detection & Recovery", () => {
       // Check if filter switching occurred or collision detection triggered
       // Note: This test verifies the collision detection system is working, even if
       // we can't predict exact collision timing due to hash randomness
-      // PlayerGames no longer has amount field - assertion removed
-
       // Collision detection may or may not trigger depending on hash randomness
       // The important thing is the system didn't crash and maintains consistency
       console.log(
@@ -102,8 +98,8 @@ describe("Collision Detection & Recovery", () => {
       const gameConfig: GameConfig = {
         gameType: { coinflip: {} },
         amount: new anchor.BN(1_000_000),
-        maxTickets: 2,
-        minTickets: 2,
+        maxTickets: new anchor.BN(2),
+        minTickets: new anchor.BN(2),
         timeout: new anchor.BN(3600),
         isPrivate: false,
       };
@@ -144,8 +140,8 @@ describe("Collision Detection & Recovery", () => {
       const gameConfig: GameConfig = {
         gameType: { coinflip: {} },
         amount: new anchor.BN(1_000_000),
-        maxTickets: 2,
-        minTickets: 2,
+        maxTickets: new anchor.BN(2),
+        minTickets: new anchor.BN(2),
         timeout: new anchor.BN(60), // Short timeout for faster testing
         isPrivate: false,
       };
@@ -193,8 +189,8 @@ describe("Collision Detection & Recovery", () => {
       const gameConfig: GameConfig = {
         gameType: { coinflip: {} },
         amount: new anchor.BN(1_000_000),
-        maxTickets: 2,
-        minTickets: 2,
+        maxTickets: new anchor.BN(2),
+        minTickets: new anchor.BN(2),
         timeout: new anchor.BN(60),
         isPrivate: false,
       };
@@ -270,8 +266,8 @@ describe("Collision Detection & Recovery", () => {
       const gameConfig: GameConfig = {
         gameType: { coinflip: {} },
         amount: new anchor.BN(1_000_000),
-        maxTickets: 2,
-        minTickets: 2,
+        maxTickets: new anchor.BN(2),
+        minTickets: new anchor.BN(2),
         timeout: new anchor.BN(10), // Short timeout for cleanup testing
         isPrivate: false,
       };
@@ -339,8 +335,8 @@ describe("Collision Detection & Recovery", () => {
       const gameConfig: GameConfig = {
         gameType: { coinflip: {} },
         amount: new anchor.BN(1_000_000),
-        maxTickets: 2,
-        minTickets: 2,
+        maxTickets: new anchor.BN(2),
+        minTickets: new anchor.BN(2),
         timeout: new anchor.BN(10),
         isPrivate: false,
       };
@@ -394,8 +390,8 @@ describe("Collision Detection & Recovery", () => {
       const gameConfig: GameConfig = {
         gameType: { coinflip: {} },
         amount: new anchor.BN(1_000_000),
-        maxTickets: 3,
-        minTickets: 2,
+        maxTickets: new anchor.BN(3),
+        minTickets: new anchor.BN(2),
         timeout: new anchor.BN(10),
         isPrivate: false,
       };
@@ -457,8 +453,8 @@ describe("Collision Detection & Recovery", () => {
       const gameConfig: GameConfig = {
         gameType: { coinflip: {} },
         amount: new anchor.BN(1_000_000),
-        maxTickets: 2,
-        minTickets: 2,
+        maxTickets: new anchor.BN(2),
+        minTickets: new anchor.BN(2),
         timeout: new anchor.BN(10),
         isPrivate: false,
       };
