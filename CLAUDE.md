@@ -142,7 +142,7 @@ The project includes devcontainer configuration for VS Code/Cursor and GitHub Co
 
 ## Program ID
 
-- Devnet/Localnet: `GLAicVgkhvVtAbcf9aF4iLqAXZ9GSrsfexoDUN2fBPCG`
+- Devnet/Localnet: `BpdzqWdNJfgeVCsFHppS4WgeRZSRxt5iSj6xH4QdeR7t`
 
 ## Important Development Notes
 
