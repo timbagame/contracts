@@ -24,6 +24,9 @@ The program implements a secure commit-reveal scheme for provably fair randomnes
 - **Commit-Reveal Scheme** - Cryptographically secure randomness
 - **Bloom Filter Tracking** - Efficient player participation tracking
 - **Oracle Buffer Time** - Prevents games from being stuck in limbo
+- **Emergency Fund Recovery** - Players can recover funds if oracle fails
+
+For detailed security information, see [SECURITY.md](./SECURITY.md).
 
 ## Development Environment
 
@@ -117,7 +120,7 @@ This creates a local test environment with:
 
 ## Deployment
 
-**Program ID**: `GLAicVgkhvVtAbcf9aF4iLqAXZ9GSrsfexoDUN2fBPCG` (devnet/localnet)
+**Program ID**: `BpdzqWdNJfgeVCsFHppS4WgeRZSRxt5iSj6xH4QdeR7t` (devnet/localnet)
 
 Deploy to your desired Solana cluster:
 ```bash

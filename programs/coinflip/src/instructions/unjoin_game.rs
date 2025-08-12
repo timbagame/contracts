@@ -35,7 +35,7 @@ pub fn handler(ctx: Context<super::UnjoinGame>, ticket_index: u32) -> Result<()>
     if !player_games.emergency_unjoin_mode {
         require!(
             !player_games.has_unjoined_game_index(&game.key(), ticket_index, game.created_at),
-            ErrorCode::AlreadyJoined // Reusing error - player already processed this unjoin
+            ErrorCode::AlreadyUnjoined
         );
     }
 
