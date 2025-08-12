@@ -52,12 +52,13 @@ pub fn handler(ctx: Context<super::UnjoinGame>, ticket_index: u32) -> Result<()>
 
     // Refund player directly
     if game.ticket_amount > 0 {
-        ctx.accounts.game_token.handle_pda_token_transfer(
+        ctx.accounts.game_token.handle_token_transfer(
             ctx.accounts.game_token_account.to_account_info(),
             ctx.accounts.player_token_account.to_account_info(),
             ctx.accounts.game_vault.to_account_info(),
             ctx.accounts.token_program.to_account_info(),
             game.ticket_amount,
+            true,
         )?;
     }
 

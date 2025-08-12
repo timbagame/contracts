@@ -38,12 +38,13 @@ pub fn handler(ctx: Context<super::InitializeGame>, config: GameConfig) -> Resul
 
     // Transfer tokens for giveaway games
     if game.ticket_amount == 0 {
-        ctx.accounts.game_token.handle_player_token_transfer(
-            config.amount,
+        ctx.accounts.game_token.handle_token_transfer(
             ctx.accounts.creator_token_account.to_account_info(),
             ctx.accounts.game_token_account.to_account_info(),
             ctx.accounts.creator.to_account_info(),
             ctx.accounts.token_program.to_account_info(),
+            config.amount,
+            false,
         )?;
     }
 

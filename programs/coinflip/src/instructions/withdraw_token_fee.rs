@@ -17,12 +17,13 @@ pub fn handler(ctx: Context<super::WithdrawTokenFee>) -> Result<()> {
     // TOKEN TRANSFER
     // ===============================
 
-    game_token.handle_pda_token_transfer(
+    game_token.handle_token_transfer(
         ctx.accounts.game_token_account.to_account_info(),
         ctx.accounts.oracle_operator_token_account.to_account_info(),
         ctx.accounts.game_vault.to_account_info(),
         ctx.accounts.token_program.to_account_info(),
         withdrawal_amount,
+        true,
     )?;
 
     // ===============================

@@ -74,12 +74,13 @@ pub fn handler(
     // ===============================
 
     // Transfer winner amount directly to winner's token account
-    ctx.accounts.game_token.handle_pda_token_transfer(
+    ctx.accounts.game_token.handle_token_transfer(
         ctx.accounts.game_token_account.to_account_info(),
         ctx.accounts.winner_token_account.to_account_info(),
         ctx.accounts.game_vault.to_account_info(),
         ctx.accounts.token_program.to_account_info(),
         winner_amount,
+        true,
     )?;
 
     // ===============================

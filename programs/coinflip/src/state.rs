@@ -57,8 +57,7 @@ pub const PLAYER_GAMES_SIZE: usize = 8        // discriminator
     + 8     // filter_b_last_updated (u64)
     + 8     // filter_b_longest_expiry (u64)
     + 8     // filter_cleaning_scheduled_at (u64)
-    + 1     // emergency_unjoin_mode (bool)
-    + 87; // padding for memory alignment (Rust struct alignment)
+    + 1;    // emergency_unjoin_mode (bool)
 pub const GAME_BASE_SIZE: usize = 8
     + 32  // creator
     + 1   // game_type
@@ -80,6 +79,7 @@ pub const GAME_BASE_SIZE: usize = 8
 // =============================================================================
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Copy)]
+#[repr(u8)]
 pub enum GameType {
     /// Two or more players compete for the pot
     Coinflip,
@@ -226,54 +226,36 @@ impl GameToken {
         amount >= self.min_amount
     }
 
-    /// Handles PDA-signed token transfers from game vault
-    pub fn handle_pda_token_transfer<'info>(
+    /// Generalized token transfer helper (reduces duplication of PDA vs player authority logic)
+    /// If `use_pda_signer` is true, signs the CPI with the game vault PDA seeds.
+    pub fn handle_token_transfer<'info>(
         &self,
-        from_account: AccountInfo<'info>,
-        to_account: AccountInfo<'info>,
-        authority: AccountInfo<'info>,
+        from: AccountInfo<'info>,
+        to: AccountInfo<'info>,
+        authority: AccountInfo<'info>, // player or PDA
         token_program: AccountInfo<'info>,
         amount: u64,
+        use_pda_signer: bool,
     ) -> Result<()> {
-        let signer_seeds = &[b"game_vault", self.token_mint.as_ref(), &[self.vault_bump]];
-
-        transfer(
-            CpiContext::new_with_signer(
-                token_program,
-                Transfer {
-                    from: from_account,
-                    to: to_account,
-                    authority,
-                },
-                &[signer_seeds],
-            ),
-            amount,
-        )?;
-
-        Ok(())
-    }
-
-    /// Handles direct token transfer from player wallet to game vault
-    pub fn handle_player_token_transfer<'info>(
-        &self,
-        amount: u64,
-        player_token_account: AccountInfo<'info>,
-        game_token_account: AccountInfo<'info>,
-        player: AccountInfo<'info>,
-        token_program: AccountInfo<'info>,
-    ) -> Result<()> {
-        transfer(
-            CpiContext::new(
-                token_program,
-                Transfer {
-                    from: player_token_account,
-                    to: game_token_account,
-                    authority: player,
-                },
-            ),
-            amount,
-        )?;
-
+        if use_pda_signer {
+            let signer_seeds = &[b"game_vault", self.token_mint.as_ref(), &[self.vault_bump]];
+            transfer(
+                CpiContext::new_with_signer(
+                    token_program,
+                    Transfer { from, to, authority },
+                    &[signer_seeds],
+                ),
+                amount,
+            )?;
+        } else {
+            transfer(
+                CpiContext::new(
+                    token_program,
+                    Transfer { from, to, authority },
+                ),
+                amount,
+            )?;
+        }
         Ok(())
     }
 }
@@ -398,41 +380,24 @@ impl PlayerGames {
     // =============================================================================
 
     /// Generate hash values for basic game participation (no index)
-    fn hash_game_participation(game_key: &Pubkey) -> (usize, usize, usize) {
-        // Use single hash operation with offset-based position calculation for efficiency
-        let game_data = game_key.to_bytes();
-        let hash_result = hash(&game_data).to_bytes();
-
-        // Extract three positions from single hash (more efficient than multiple hash operations)
-        let pos1 = (u64::from_le_bytes(hash_result[0..8].try_into().unwrap())
-            % BLOOM_FILTER_BITS as u64) as usize;
-        let pos2 = (u64::from_le_bytes(hash_result[8..16].try_into().unwrap())
-            % BLOOM_FILTER_BITS as u64) as usize;
-        let pos3 = (u64::from_le_bytes(hash_result[16..24].try_into().unwrap())
-            % BLOOM_FILTER_BITS as u64) as usize;
-
+    #[inline(always)]
+    fn hash_to_positions(data: &[u8]) -> (usize, usize, usize) {
+        let hash_result = hash(data).to_bytes();
+        let pos1 = (u64::from_le_bytes(hash_result[0..8].try_into().unwrap()) % BLOOM_FILTER_BITS as u64) as usize;
+        let pos2 = (u64::from_le_bytes(hash_result[8..16].try_into().unwrap()) % BLOOM_FILTER_BITS as u64) as usize;
+        let pos3 = (u64::from_le_bytes(hash_result[16..24].try_into().unwrap()) % BLOOM_FILTER_BITS as u64) as usize;
         (pos1, pos2, pos3)
     }
 
-    /// Generate hash values for game key + index bloom filter
+    fn hash_game_participation(game_key: &Pubkey) -> (usize, usize, usize) {
+        Self::hash_to_positions(&game_key.to_bytes())
+    }
+
     fn hash_game_index(game_key: &Pubkey, ticket_index: u32) -> (usize, usize, usize) {
-        // Use stack-allocated array instead of Vec allocation for better performance
-        let mut combined_data = [0u8; 36]; // 32 bytes (Pubkey) + 4 bytes (u32)
+        let mut combined_data = [0u8; 36];
         combined_data[..32].copy_from_slice(&game_key.to_bytes());
         combined_data[32..].copy_from_slice(&ticket_index.to_le_bytes());
-
-        // Single hash operation with offset-based position calculation
-        let hash_result = hash(&combined_data).to_bytes();
-
-        // Extract three positions from single hash (more efficient)
-        let pos1 = (u64::from_le_bytes(hash_result[0..8].try_into().unwrap())
-            % BLOOM_FILTER_BITS as u64) as usize;
-        let pos2 = (u64::from_le_bytes(hash_result[8..16].try_into().unwrap())
-            % BLOOM_FILTER_BITS as u64) as usize;
-        let pos3 = (u64::from_le_bytes(hash_result[16..24].try_into().unwrap())
-            % BLOOM_FILTER_BITS as u64) as usize;
-
-        (pos1, pos2, pos3)
+        Self::hash_to_positions(&combined_data)
     }
 
     /// Set bits in bloom filter for a game key (writes to active filter set)
