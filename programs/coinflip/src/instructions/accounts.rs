@@ -254,6 +254,7 @@ pub struct JoinGame<'info> {
 pub struct CompleteGame<'info> {
     #[account(
         mut,
+        close = creator,
         seeds = [GAME_SEED, random_hash.as_ref()],
         bump,
         constraint = game.is_creator(&creator.key()) @ ErrorCode::InvalidCreator,
