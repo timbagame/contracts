@@ -292,7 +292,10 @@ describe("Advanced Features", () => {
       );
 
       // Fill to capacity
-      const maxTickets = Math.min(gameConfig.maxTickets, players.length);
+      const maxTickets = Math.min(
+        Number(gameConfig.maxTickets as any),
+        players.length
+      );
       for (let i = 0; i < maxTickets; i++) {
         await testUtils.game.joinGame(gameData.gamePDA, players[i].player);
       }
