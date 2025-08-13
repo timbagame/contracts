@@ -33,6 +33,8 @@ export interface TestGame {
 
 export interface TestOracle {
   oraclePDA: PublicKey;
+  // Backwards compatibility alias: some tests expect `oracle`
+  oracle?: PublicKey;
   operator: PublicKey;
   operatorKeypair: anchor.web3.Keypair;
   config: OracleConfig;
@@ -50,8 +52,9 @@ export interface OracleConfig {
 export interface GameConfig {
   gameType: any;
   amount: anchor.BN;
-  maxTickets: anchor.BN;
-  minTickets: anchor.BN;
+  // Permit raw numbers in tests (we'll coerce to BN where needed)
+  maxTickets: anchor.BN | number;
+  minTickets: anchor.BN | number;
   timeout: anchor.BN;
   isPrivate: boolean;
 }
@@ -67,6 +70,9 @@ export class TestEnvironment {
   public oracle?: TestOracle;
   public globalMint?: TestMint;
   public playerPool: TestPlayer[] = [];
+  // Additional compatibility aliases expected by some tests
+  public mint?: TestMint;
+  public testUtils?: TestUtils;
 
   private constructor() {
     this.provider = anchor.AnchorProvider.env();
@@ -92,6 +98,7 @@ export class TestEnvironment {
     // Create global mint
     const mintManager = new MintManager(this.program, this.provider);
     this.globalMint = await mintManager.createMint();
+    this.mint = this.globalMint; // alias for tests referencing env.mint
 
     // Create player pool
     const playerManager = new PlayerManager(this.program, this.provider);
@@ -109,7 +116,17 @@ export class TestEnvironment {
       );
     }
 
+    // Create test utilities after base environment is established
+    this.testUtils = new TestUtils();
+
     // Test environment initialized
+  }
+
+  // Backwards-compatible helper (some tests call env.createPlayer())
+  public async createPlayer(): Promise<TestPlayer> {
+    if (!this.globalMint) throw new Error("Environment not initialized");
+    const pm = new PlayerManager(this.program, this.provider);
+    return pm.createPlayer(this.globalMint.mint);
   }
 
   /**
@@ -177,6 +194,7 @@ export class OracleManager {
         // Oracle already initialized
         return {
           oraclePDA,
+          oracle: oraclePDA,
           operator: existingOracle.operator,
           operatorKeypair,
           config: {
@@ -204,8 +222,14 @@ export class OracleManager {
         5 * anchor.web3.LAMPORTS_PER_SOL
       );
 
-      await this.provider.connection.confirmTransaction(providerAirdrop, "confirmed");
-      await this.provider.connection.confirmTransaction(operatorAirdrop, "confirmed");
+      await this.provider.connection.confirmTransaction(
+        providerAirdrop,
+        "confirmed"
+      );
+      await this.provider.connection.confirmTransaction(
+        operatorAirdrop,
+        "confirmed"
+      );
 
       const configForProgram = {
         feePercentage: defaultConfig.feePercentage,
@@ -232,6 +256,7 @@ export class OracleManager {
 
     return {
       oraclePDA,
+      oracle: oraclePDA,
       operator: operatorKeypair.publicKey,
       operatorKeypair,
       config: defaultConfig,
@@ -253,6 +278,7 @@ export class OracleManager {
 
     return {
       oraclePDA,
+      oracle: oraclePDA,
       operator: oracleAccount.operator,
       operatorKeypair,
       config: {
@@ -358,6 +384,22 @@ export class MintManager {
       gameVaultPDA,
       gameTokenPDA,
     };
+  }
+
+  // Helper getters used in some tests
+  getGameTokenPDA(mint: PublicKey): PublicKey {
+    const [pda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("game_token"), mint.toBuffer()],
+      this.program.programId
+    );
+    return pda;
+  }
+  getGameVaultPDA(mint: PublicKey): PublicKey {
+    const [pda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("game_vault"), mint.toBuffer()],
+      this.program.programId
+    );
+    return pda;
   }
 
   async mintTokensToAccount(
@@ -540,17 +582,23 @@ export class GameManager {
     tokenMint: PublicKey
   ): Promise<void> {
     // Normalize config fields to Anchor-compatible types (u64 -> BN)
+    const toBN = (v: any) =>
+      v && typeof v === "object" && "toArrayLike" in v ? v : new anchor.BN(v);
     const cfg: any = {
       gameType: config.gameType,
       amount:
         // Allow tests to pass either BN or number
-        (anchor.BN.isBN && (config as any).amount && (config as any).amount.isZero !== undefined)
+        anchor.BN.isBN &&
+        (config as any).amount &&
+        (config as any).amount.isZero !== undefined
           ? (config as any).amount
           : new anchor.BN((config as any).amount),
-      maxTickets: config.maxTickets,
-      minTickets: config.minTickets,
+      maxTickets: toBN(config.maxTickets as any),
+      minTickets: toBN(config.minTickets as any),
       timeout:
-        (anchor.BN.isBN && (config as any).timeout && (config as any).timeout.isZero !== undefined)
+        anchor.BN.isBN &&
+        (config as any).timeout &&
+        (config as any).timeout.isZero !== undefined
           ? (config as any).timeout
           : new anchor.BN((config as any).timeout),
       isPrivate: config.isPrivate,
@@ -651,6 +699,36 @@ export class GameManager {
       })
       .signers([operatorKeypair])
       .rpc();
+  }
+
+  // Convenience wrapper for tests expecting createGame()
+  async createGame(
+    config: GameConfig,
+    creator: anchor.web3.Keypair,
+    tokenMint: PublicKey
+  ): Promise<TestGame> {
+    const gameData = this.generateGamePDA();
+    await this.initializeGame(gameData, config, creator, tokenMint);
+    return gameData;
+  }
+
+  // Expose calculation helper for backward compatibility
+  calculateWinnerIndex(
+    ticketsCount: number,
+    secretKey: number[],
+    lastSlot: number,
+    gameType?: any,
+    totalAmount?: number,
+    ticketAmount?: number
+  ): number {
+    return calculateWinnerIndex(
+      ticketsCount,
+      secretKey,
+      lastSlot,
+      gameType,
+      totalAmount,
+      ticketAmount
+    );
   }
 }
 
@@ -938,9 +1016,7 @@ export class CollisionUtils {
     filterALongestExpiry: number;
     filterBLongestExpiry: number;
   }> {
-    const playerGames = await program.account.playerGames.fetch(
-      playerGamesPDA
-    );
+    const playerGames = await program.account.playerGames.fetch(playerGamesPDA);
 
     return {
       activeFilterIndex: playerGames.activeFilterIndex,

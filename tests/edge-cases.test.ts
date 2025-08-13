@@ -1,14 +1,16 @@
 import * as anchor from "@coral-xyz/anchor";
 import { expect } from "chai";
-import { TestEnvironment } from "./test-helpers";
+import { TestEnvironment, TestUtils } from "./test-helpers";
 
 describe("Edge Case Testing", () => {
   let env: TestEnvironment;
+  let testUtils: TestUtils;
 
   before(async () => {
     console.log("🔬 Setting up edge case test environment...");
-    env = new TestEnvironment();
-    await env.setup();
+    env = TestEnvironment.getInstance();
+    testUtils = new TestUtils();
+    await env.initialize();
     console.log("✅ Edge case test environment ready");
   });
 
@@ -16,19 +18,24 @@ describe("Edge Case Testing", () => {
     it("should handle maximum fee percentage (100%)", async () => {
       // Test fee percentage at maximum allowed value
       const maxFee = 100;
-      
+
       // Update oracle with maximum fee
       await env.program.methods
         .updateOracle({
           feePercentage: maxFee,
-          oracleBufferTime: env.oracle.config.oracleBufferTime,
-          filterCleanupBuffer: env.oracle.config.filterCleanupBuffer,
+          oracleBufferTime: new anchor.BN(env.oracle!.config.oracleBufferTime),
+          maxTickets: env.oracle!.config.maxTickets,
+          maxTimeout: new anchor.BN(env.oracle!.config.maxTimeout),
+          minTimeout: new anchor.BN(env.oracle!.config.minTimeout),
+          filterCleanupBuffer: new anchor.BN(
+            env.oracle!.config.filterCleanupBuffer
+          ),
         })
         .accounts({
-          oracle: env.oracle.oracle,
-          oracleOperator: env.oracle.operator,
+          oldOracleOperator: env.oracle!.operator,
+          newOracleOperator: env.oracle!.operator,
         })
-        .signers([env.oracle.operatorKeypair])
+        .signers([env.oracle!.operatorKeypair])
         .rpc();
 
       // Create and test game with 100% fee
@@ -42,29 +49,32 @@ describe("Edge Case Testing", () => {
         gameType: { coinflip: {} },
       };
 
-      const gameData = await env.testUtils.game.createGame(
+      const gameData = await testUtils.game.createGame(
+        gameConfig as any,
         creator.player,
-        env.mint.mint,
-        gameConfig
+        env.mint!.mint
       );
 
       // Players join
       const player2 = await env.createPlayer();
-      await env.testUtils.game.joinGame(gameData.gamePDA, creator.player);
-      await env.testUtils.game.joinGame(gameData.gamePDA, player2.player);
+      await testUtils.game.joinGame(gameData.gamePDA, creator.player);
+      await testUtils.game.joinGame(gameData.gamePDA, player2.player);
 
       // Wait for completion readiness
       await new Promise((resolve) => setTimeout(resolve, 11000));
 
       // Complete game
-      const winnerIndex = env.testUtils.game.calculateWinnerIndex(
+      const gameAccount = await env.program.account.game.fetch(
+        gameData.gamePDA
+      );
+      const winnerIndex = testUtils.game.calculateWinnerIndex(
+        gameAccount.ticketsCount,
         gameData.secretKey,
-        2,
-        0
+        Number(gameAccount.lastSlot)
       );
       const winner = winnerIndex === 0 ? creator : player2;
 
-      await env.testUtils.game.completeGame(
+      await testUtils.game.completeGame(
         gameData,
         winner.player.publicKey,
         creator.player.publicKey,
@@ -73,23 +83,27 @@ describe("Edge Case Testing", () => {
       );
 
       // Verify all funds went to fees (100% fee)
-      const gameToken = await env.program.account.gameToken.fetch(
-        env.testUtils.token.getGameTokenPDA(env.mint.mint)
-      );
+      const gameTokenPDA = testUtils.mint.getGameTokenPDA(env.mint!.mint);
+      const gameToken = await env.program.account.gameToken.fetch(gameTokenPDA);
       expect(gameToken.feeAmount.toNumber()).to.equal(2000); // All 2000 tokens as fee
 
       // Reset oracle fee for other tests
       await env.program.methods
         .updateOracle({
-          feePercentage: 5, // Reset to 5%
-          oracleBufferTime: env.oracle.config.oracleBufferTime,
-          filterCleanupBuffer: env.oracle.config.filterCleanupBuffer,
+          feePercentage: 5,
+          oracleBufferTime: new anchor.BN(env.oracle!.config.oracleBufferTime),
+          maxTickets: env.oracle!.config.maxTickets,
+          maxTimeout: new anchor.BN(env.oracle!.config.maxTimeout),
+          minTimeout: new anchor.BN(env.oracle!.config.minTimeout),
+          filterCleanupBuffer: new anchor.BN(
+            env.oracle!.config.filterCleanupBuffer
+          ),
         })
         .accounts({
-          oracle: env.oracle.oracle,
-          oracleOperator: env.oracle.operator,
+          oldOracleOperator: env.oracle!.operator,
+          newOracleOperator: env.oracle!.operator,
         })
-        .signers([env.oracle.operatorKeypair])
+        .signers([env.oracle!.operatorKeypair])
         .rpc();
     });
 
@@ -106,19 +120,19 @@ describe("Edge Case Testing", () => {
         gameType: { coinflip: {} },
       };
 
-      const gameData = await env.testUtils.game.createGame(
+      const gameData = await testUtils.game.createGame(
+        gameConfig as any,
         creator.player,
-        env.mint.mint,
-        gameConfig
+        env.mint!.mint
       );
 
-      await env.testUtils.game.joinGame(gameData.gamePDA, creator.player);
+      await testUtils.game.joinGame(gameData.gamePDA, creator.player);
 
       // Wait minimal time for timeout
       await new Promise((resolve) => setTimeout(resolve, 2000));
 
       const winnerIndex = 0;
-      await env.testUtils.game.completeGame(
+      await testUtils.game.completeGame(
         gameData,
         creator.player.publicKey,
         creator.player.publicKey,
@@ -143,13 +157,13 @@ describe("Edge Case Testing", () => {
       };
 
       // Should create successfully
-      const gameData = await env.testUtils.game.createGame(
+      const gameData = await testUtils.game.createGame(
+        gameConfig as any,
         creator.player,
-        env.mint.mint,
-        gameConfig
+        env.mint!.mint
       );
 
-      await env.testUtils.game.joinGame(gameData.gamePDA, creator.player);
+      await testUtils.game.joinGame(gameData.gamePDA, creator.player);
 
       // Verify game created with max timeout
       const game = await env.program.account.game.fetch(gameData.gamePDA);
@@ -173,16 +187,18 @@ describe("Edge Case Testing", () => {
       };
 
       try {
-        await env.testUtils.game.createGame(
+        await testUtils.game.createGame(
+          gameConfig as any,
           creator.player,
-          env.mint.mint,
-          gameConfig
+          env.mint!.mint
         );
         console.log("✅ Maximum amount handled successfully");
       } catch (error) {
         // Expected to fail due to insufficient tokens
         expect(error.toString()).to.include("InsufficientBalance");
-        console.log("✅ Maximum amount correctly rejected due to insufficient balance");
+        console.log(
+          "✅ Maximum amount correctly rejected due to insufficient balance"
+        );
       }
     });
 
@@ -198,17 +214,17 @@ describe("Edge Case Testing", () => {
         gameType: { coinflip: {} },
       };
 
-      const gameData = await env.testUtils.game.createGame(
+      const gameData = await testUtils.game.createGame(
+        gameConfig as any,
         creator.player,
-        env.mint.mint,
-        gameConfig
+        env.mint!.mint
       );
 
-      await env.testUtils.game.joinGame(gameData.gamePDA, creator.player);
+      await testUtils.game.joinGame(gameData.gamePDA, creator.player);
 
       // Should be immediately ready for completion
       const winnerIndex = 0;
-      await env.testUtils.game.completeGame(
+      await testUtils.game.completeGame(
         gameData,
         creator.player.publicKey,
         creator.player.publicKey,
@@ -234,25 +250,29 @@ describe("Edge Case Testing", () => {
         gameType: { coinflip: {} },
       };
 
-      const gameData = await env.testUtils.game.createGame(
+      const gameData = await testUtils.game.createGame(
+        gameConfig as any,
         creator.player,
-        env.mint.mint,
-        gameConfig
+        env.mint!.mint
       );
 
-      await env.testUtils.game.joinGame(gameData.gamePDA, creator.player);
-      await env.testUtils.game.joinGame(gameData.gamePDA, player2.player);
+      await testUtils.game.joinGame(gameData.gamePDA, creator.player);
+      await testUtils.game.joinGame(gameData.gamePDA, player2.player);
 
       // Wait for emergency unjoin period
-      const totalWaitTime = (gameConfig.timeout.toNumber() + env.oracle.config.oracleBufferTime + 1) * 1000;
+      const totalWaitTime =
+        (gameConfig.timeout.toNumber() +
+          env.oracle.config.oracleBufferTime +
+          1) *
+        1000;
       await new Promise((resolve) => setTimeout(resolve, totalWaitTime));
 
       // First unjoin should succeed
-      await env.testUtils.game.unjoinGame(gameData.gamePDA, creator.player, 0);
+      await testUtils.game.unjoinGame(gameData.gamePDA, creator.player, 0);
 
       // Second unjoin should fail
       try {
-        await env.testUtils.game.unjoinGame(gameData.gamePDA, creator.player, 0);
+        await testUtils.game.unjoinGame(gameData.gamePDA, creator.player, 0);
         expect.fail("Should have prevented double unjoin");
       } catch (error) {
         expect(error.toString()).to.include("AlreadyUnjoined");
@@ -274,18 +294,18 @@ describe("Edge Case Testing", () => {
         gameType: { coinflip: {} },
       };
 
-      const gameData = await env.testUtils.game.createGame(
+      const gameData = await testUtils.game.createGame(
+        gameConfig as any,
         creator.player,
-        env.mint.mint,
-        gameConfig
+        env.mint!.mint
       );
 
-      await env.testUtils.game.joinGame(gameData.gamePDA, creator.player);
-      await env.testUtils.game.joinGame(gameData.gamePDA, player2.player);
+      await testUtils.game.joinGame(gameData.gamePDA, creator.player);
+      await testUtils.game.joinGame(gameData.gamePDA, player2.player);
 
       // Third join should fail
       try {
-        await env.testUtils.game.joinGame(gameData.gamePDA, player3.player);
+        await testUtils.game.joinGame(gameData.gamePDA, player3.player);
         expect.fail("Should have prevented joining full game");
       } catch (error) {
         expect(error.toString()).to.include("GameFull");
@@ -309,10 +329,10 @@ describe("Edge Case Testing", () => {
       };
 
       try {
-        await env.testUtils.game.createGame(
+        await testUtils.game.createGame(
+          invalidConfig as any,
           creator.player,
-          env.mint.mint,
-          invalidConfig
+          env.mint!.mint
         );
         expect.fail("Should have rejected invalid ticket count ratio");
       } catch (error) {
@@ -334,10 +354,10 @@ describe("Edge Case Testing", () => {
       };
 
       try {
-        await env.testUtils.game.createGame(
+        await testUtils.game.createGame(
+          invalidConfig as any,
           creator.player,
-          env.mint.mint,
-          invalidConfig
+          env.mint!.mint
         );
         expect.fail("Should have rejected zero timeout");
       } catch (error) {
@@ -353,14 +373,21 @@ describe("Edge Case Testing", () => {
         await env.program.methods
           .updateOracle({
             feePercentage: invalidFee,
-            oracleBufferTime: env.oracle.config.oracleBufferTime,
-            filterCleanupBuffer: env.oracle.config.filterCleanupBuffer,
+            oracleBufferTime: new anchor.BN(
+              env.oracle!.config.oracleBufferTime
+            ),
+            maxTickets: env.oracle!.config.maxTickets,
+            maxTimeout: new anchor.BN(env.oracle!.config.maxTimeout),
+            minTimeout: new anchor.BN(env.oracle!.config.minTimeout),
+            filterCleanupBuffer: new anchor.BN(
+              env.oracle!.config.filterCleanupBuffer
+            ),
           })
           .accounts({
-            oracle: env.oracle.oracle,
-            oracleOperator: env.oracle.operator,
+            oldOracleOperator: env.oracle!.operator,
+            newOracleOperator: env.oracle!.operator,
           })
-          .signers([env.oracle.operatorKeypair])
+          .signers([env.oracle!.operatorKeypair])
           .rpc();
         expect.fail("Should have rejected fee > 100%");
       } catch (error) {
@@ -373,7 +400,7 @@ describe("Edge Case Testing", () => {
   describe("Arithmetic Edge Cases", () => {
     it("should handle fee calculations without overflow", async () => {
       const creator = await env.createPlayer();
-      
+
       // Large amount that could cause overflow in fee calculation
       const largeAmount = new anchor.BN("9223372036854775"); // Large but not max
 
@@ -387,16 +414,18 @@ describe("Edge Case Testing", () => {
       };
 
       try {
-        const gameData = await env.testUtils.game.createGame(
+        await testUtils.game.createGame(
+          gameConfig as any,
           creator.player,
-          env.mint.mint,
-          gameConfig
+          env.mint!.mint
         );
         console.log("✅ Large amount fee calculation handled successfully");
       } catch (error) {
         // Expected to fail due to insufficient balance, not overflow
         expect(error.toString()).to.include("InsufficientBalance");
-        console.log("✅ Large amount correctly rejected due to balance, not overflow");
+        console.log(
+          "✅ Large amount correctly rejected due to balance, not overflow"
+        );
       }
     });
 
@@ -412,27 +441,30 @@ describe("Edge Case Testing", () => {
         gameType: { giveaway: {} },
       };
 
-      const gameData = await env.testUtils.game.createGame(
+      const gameData = await testUtils.game.createGame(
+        gameConfig as any,
         creator.player,
-        env.mint.mint,
-        gameConfig
+        env.mint!.mint
       );
 
       const player2 = await env.createPlayer();
-      await env.testUtils.game.joinGame(gameData.gamePDA, creator.player);
-      await env.testUtils.game.joinGame(gameData.gamePDA, player2.player);
+      await testUtils.game.joinGame(gameData.gamePDA, creator.player);
+      await testUtils.game.joinGame(gameData.gamePDA, player2.player);
 
       // Wait for completion readiness
       await new Promise((resolve) => setTimeout(resolve, 6000));
 
-      const winnerIndex = env.testUtils.game.calculateWinnerIndex(
+      const gameAccount = await env.program.account.game.fetch(
+        gameData.gamePDA
+      );
+      const winnerIndex = testUtils.game.calculateWinnerIndex(
+        gameAccount.ticketsCount,
         gameData.secretKey,
-        2,
-        0
+        Number(gameAccount.lastSlot)
       );
       const winner = winnerIndex === 0 ? creator : player2;
 
-      await env.testUtils.game.completeGame(
+      await testUtils.game.completeGame(
         gameData,
         winner.player.publicKey,
         creator.player.publicKey,
