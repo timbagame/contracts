@@ -116,7 +116,7 @@ pub struct PlayerUnjoined {
     pub total_amount: u64,
     /// Remaining total tickets count
     pub tickets_count: u32,
-    /// Ticket index that was removed
+    /// Ticket index associated with this unjoin operation
     pub ticket_index: u32,
     /// Last slot for entropy
     pub last_slot: u64,
@@ -124,7 +124,7 @@ pub struct PlayerUnjoined {
     pub timestamp: u64,
 }
 
-// PlayerRolled event removed with roll instruction
+// PlayerRolled event intentionally not included in current architecture
 
 // =============================================================================
 // GAME EVENTS

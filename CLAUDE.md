@@ -79,11 +79,10 @@ The coinflip program (`programs/coinflip/src/`) is organized as follows:
 
 1. Oracle initialization sets global game parameters and buffer timings
 2. Token configuration defines min amounts and fees per supported SPL token
-3. (Removed) No separate player balance account – participation tracked per game
-4. Game creation with configurable parameters (amount, max/min players, timeout, game type)
-5. Players join games updating the game-level bloom filter + hash list
-6. Game completion uses commit-reveal scheme with cryptographically secure winner selection
-7. Automatic fee collection and prize distribution
+3. Game creation with configurable parameters (amount, max/min players, timeout, game type)
+4. Players join games updating the game-level bloom filter + hash list
+5. Game completion uses commit-reveal scheme with cryptographically secure winner selection
+6. Automatic fee collection and prize distribution
 
 ### Critical Game Security Patterns
 
@@ -147,7 +146,7 @@ The project includes devcontainer configuration for VS Code/Cursor and GitHub Co
 
 ### Bloom Filter Participation (Simplified)
 
-Previous dual A/B filter rotation, player-specific filter accounts, and emergency unjoin mode were removed. Current approach:
+Current approach:
 
 - Each Game stores: a 512-bit `participants_filter` and an exact `participant_hashes` vector (first 8 bytes of SHA256(pubkey)).
 - Joining sets bloom bits + appends hash; completion relies on the exact hash list (eliminates false positives).
@@ -163,8 +162,6 @@ Previous dual A/B filter rotation, player-specific filter accounts, and emergenc
 - **Account Sizes**: Recalculate if adding fields (follow Anchor padding rules).
 
 ### Bloom Filter Structure Details
-
-**Removed Components:** Player-level dual filters, A/B rotation metadata, cleanup buffers.
 
 **Game Filter:**
 

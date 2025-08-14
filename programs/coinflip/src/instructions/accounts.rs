@@ -324,7 +324,7 @@ pub struct CloseGame<'info> {
     pub associated_token_program: Program<'info, AssociatedToken>,
 }
 
-// RollGame removed
+// RollGame instruction not part of current design
 
 // =============================================================================
 // FEE MANAGEMENT

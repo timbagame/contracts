@@ -97,7 +97,6 @@ pub struct Oracle {
     pub max_timeout: u64,
     /// Minimum timeout duration in seconds for a game
     pub min_timeout: u64,
-
 }
 
 impl Oracle {
@@ -145,8 +144,6 @@ impl Oracle {
     pub fn is_valid_tickets_count(&self, max_tickets: u32) -> bool {
         max_tickets > 0
     }
-
-
 }
 
 // =============================================================================
@@ -246,7 +243,7 @@ impl GameToken {
 // BLOOM FILTER STRUCTURES
 // =============================================================================
 
-/// Simplified bloom filter structure (removed redundant game_filter)
+/// Simplified bloom filter structure
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Default)]
 pub struct BloomFilters {
     /// 512-bit bloom filter for game + ticket index tracking
