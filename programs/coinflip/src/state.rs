@@ -79,10 +79,6 @@ pub enum GameType {
     Giveaway,
     /// One or more players compete for a giveaway from the creator, reveal winner in real-time
     Dumbaway,
-    /// Multi-join, no unjoin, accumulating pot
-    Snowball,
-    /// Multi-join, no unjoin, accumulating pot, reveal winner in real-time
-    Dumbball,
 }
 
 impl Default for GameType {
@@ -480,7 +476,7 @@ impl Game {
         max_tickets: u32,
         min_tickets: u32,
     ) -> bool {
-        if game_type == GameType::Giveaway || game_type == GameType::Dumbaway {
+        if matches!(game_type, GameType::Giveaway | GameType::Dumbaway) {
             max_tickets >= MIN_GIVEAWAY_PLAYERS && min_tickets >= MIN_GIVEAWAY_PLAYERS
         } else {
             max_tickets >= MIN_COMPETITIVE_PLAYERS && min_tickets >= MIN_COMPETITIVE_PLAYERS
