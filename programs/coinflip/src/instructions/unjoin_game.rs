@@ -3,7 +3,7 @@ use crate::events::PlayerUnjoined;
 use crate::utils::{get_current_slot, get_current_time};
 use anchor_lang::prelude::*;
 
-pub fn handler(ctx: Context<super::UnjoinGame>, ticket_index: u32) -> Result<()> {
+pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
     let game = &mut ctx.accounts.game;
 
     let oracle = &ctx.accounts.oracle;
@@ -31,11 +31,11 @@ pub fn handler(ctx: Context<super::UnjoinGame>, ticket_index: u32) -> Result<()>
     // Find participant hash and remove if present (single ticket per player)
     let hash_bytes = anchor_lang::solana_program::hash::hash(player_key.as_ref()).to_bytes();
     let participant_hash = u64::from_le_bytes(hash_bytes[0..8].try_into().unwrap());
-    if let Some(pos) = game
+    let removed_index_opt = game
         .participant_hashes
         .iter()
-        .position(|h| *h == participant_hash)
-    {
+        .position(|h| *h == participant_hash);
+    if let Some(pos) = removed_index_opt {
         game.participant_hashes.swap_remove(pos);
         // Decrement counters and refund
         game.tickets_count -= 1;
@@ -66,7 +66,7 @@ pub fn handler(ctx: Context<super::UnjoinGame>, ticket_index: u32) -> Result<()>
         player: player_key,
         total_amount: game.total_amount,
         tickets_count: game.tickets_count,
-        ticket_index, // Actual ticket index being unjoined
+        ticket_index: removed_index_opt.unwrap() as u32,
         last_slot: game.last_slot,
         timestamp: current_time,
     });

@@ -41,7 +41,7 @@ describe("Unjoin After Buffer", () => {
 
     // Attempt unjoin before timeout+buffer
     try {
-      await testUtils.game.unjoinGame(gameData.gamePDA, creator.player, 0);
+      await testUtils.game.unjoinGame(gameData.gamePDA, creator.player);
       expect.fail("Should have failed before buffer expiry");
     } catch (e) {
       expect(e.toString()).to.include("OracleBufferNotExpired");
@@ -58,7 +58,7 @@ describe("Unjoin After Buffer", () => {
     await new Promise((r) => setTimeout(r, waitMs));
 
     // Now unjoin should succeed
-    await testUtils.game.unjoinGame(gameData.gamePDA, creator.player, 0);
+    await testUtils.game.unjoinGame(gameData.gamePDA, creator.player);
     const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
     expect(gameAccount.ticketsCount).to.equal(0);
   }).timeout(60000);
