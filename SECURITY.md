@@ -87,7 +87,7 @@ assert(calculatedHash === originalCommittedHash);
 
 - Efficient tracking of player participation without storing full lists
 - Collision mitigation via explicit participant hash list (first 8 bytes of SHA256)
-- Simplified design (dedicated "emergency mode" state removed)
+- Simplified single-mode design (no special alternate states)
 
 ## Game Types and Risk Profiles
 

@@ -587,7 +587,7 @@ export class GameManager {
       .rpc();
   }
 
-  // rollGame helper removed (multi-participation disabled)
+  // rollGame helper not included (multi-participation disabled)
 
   async unjoinGame(
     gamePDA: PublicKey,
