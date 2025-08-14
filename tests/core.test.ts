@@ -462,11 +462,20 @@ describe("Core Game Operations", () => {
         winnerIndex
       );
 
-      // Verify completion
-      const completedGame = await env.program.account.game.fetch(
-        gameData.gamePDA
+      // Verify completion by checking winner token balance increase & that account is closed
+      // Game account uses `close = creator` in CompleteGame accounts, so fetching now should fail
+      const winnerBalance = await env.provider.connection.getTokenAccountBalance(
+        winner.playerTokenAccount.address
       );
-      expect(completedGame.totalAmount.toNumber()).to.equal(0);
+      expect(parseInt(winnerBalance.value.amount)).to.be.greaterThan(100_000_000); // initial 100m + winnings
+      let fetchFailed = false;
+      try {
+        await env.program.account.game.fetch(gameData.gamePDA);
+      } catch (e) {
+        fetchFailed = true;
+        expect(e.toString()).to.include("Account does not exist");
+      }
+      expect(fetchFailed).to.be.true;
     });
 
     it("should fail to complete game with wrong operator", async () => {
