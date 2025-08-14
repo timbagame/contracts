@@ -15,8 +15,10 @@ pub const ORACLE_SIZE: usize = 8 + 32 + 1 + 8 + 4 + 8 + 8;
 // BLOOM FILTER CONSTANTS
 // =============================================================================
 
-/// Number of bits in each bloom filter (512 bits = 64 bytes)
-pub const BLOOM_FILTER_BITS: usize = 512;
+/// Bits per entry for dynamic bloom sizing (tuned for ~1% FPR)
+pub const BLOOM_BITS_PER_ENTRY: u32 = 10; // m = b * n
+/// Number of hash functions (approx b * ln2)
+pub const BLOOM_K: u8 = 7; // for b=10
 /// Size of entropy window for winner calculation (8 bytes for u64)
 pub const ENTROPY_WINDOW_SIZE: usize = 8;
 /// Maximum number of entropy windows that fit in a 32-byte hash
@@ -44,21 +46,24 @@ pub const MIN_COMPETITIVE_PLAYERS: u32 = 2;
 /// Minimum players required for giveaway games
 pub const MIN_GIVEAWAY_PLAYERS: u32 = 1;
 pub const GAME_TOKEN_SIZE: usize = 8 + 32 + 1 + 8 + 8 + 1;
-pub const GAME_FIXED_SIZE: usize = 8
-    + 32  // creator
-    + 1   // game_type
-    + 8   // ticket_amount
-    + 4   // max_tickets
-    + 4   // min_tickets
-    + 4   // tickets_count
-    + 32  // token_mint
-    + 8   // created_at
-    + 8   // timeout (u64)
-    + 8   // last_slot
-    + 1   // is_private
-    + 8   // total_amount
-    + 64  // participants_filter (8 * u64)
-    + 4; // participant_hashes vec length prefix
+/// Base size of Game excluding variable-length Vec data
+pub const GAME_BASE_SIZE: usize = 8
+    + 32 // creator
+    + 1  // game_type
+    + 8  // ticket_amount
+    + 4  // max_tickets
+    + 4  // min_tickets
+    + 4  // tickets_count
+    + 32 // token_mint
+    + 8  // created_at
+    + 8  // timeout (u64)
+    + 8  // last_slot
+    + 1  // is_private
+    + 8  // total_amount
+    // Vec<u64> participants_filter: length prefix (4) accounted at allocation time
+    // Vec<u64> participant_hashes: length prefix (4) accounted at allocation time
+    + 4  // bloom_m_bits (u32)
+    + 1; // bloom_k (u8)
 
 // =============================================================================
 // GAME TYPES
@@ -282,10 +287,14 @@ pub struct Game {
     pub is_private: bool,
     /// Total accumulated prize
     pub total_amount: u64,
-    /// 512-bit bloom filter for this game's participants (probabilistic)
-    pub participants_filter: [u64; 8],
+    /// Dynamic bloom filter bitset (probabilistic membership)
+    pub participants_filter: Vec<u64>,
     /// Exact participant hash list (first 8 bytes of SHA256(pubkey)) to eliminate false positives
     pub participant_hashes: Vec<u64>,
+    /// Bloom filter size in bits
+    pub bloom_m_bits: u32,
+    /// Number of hash functions used in bloom
+    pub bloom_k: u8,
 }
 
 impl Game {
@@ -409,50 +418,42 @@ impl Game {
     // GAME-LEVEL BLOOM FILTER METHODS (SAFETY REDUNDANCY)
     // =============================================================================
 
-    /// Generate hash values for player participation in this game's bloom filter
-    pub fn hash_participant(player_key: &Pubkey) -> (usize, usize, usize) {
-        // Single hash operation with offset-based position calculation for efficiency
-        let player_data = player_key.to_bytes();
-        let hash_result = hash(&player_data).to_bytes();
-
-        // Extract three positions from single hash (more efficient than multiple hash operations)
-        let pos1 = (u64::from_le_bytes(hash_result[0..8].try_into().unwrap())
-            % BLOOM_FILTER_BITS as u64) as usize;
-        let pos2 = (u64::from_le_bytes(hash_result[8..16].try_into().unwrap())
-            % BLOOM_FILTER_BITS as u64) as usize;
-        let pos3 = (u64::from_le_bytes(hash_result[16..24].try_into().unwrap())
-            % BLOOM_FILTER_BITS as u64) as usize;
-
-        (pos1, pos2, pos3)
+    /// Compute two 64-bit hashes from SHA-256(pubkey); ensure h2 is odd for better distribution
+    fn bloom_hashes(player_key: &Pubkey) -> (u64, u64) {
+        let hash_result = hash(player_key.as_ref()).to_bytes();
+        let h1 = u64::from_le_bytes(hash_result[0..8].try_into().unwrap());
+        let mut h2 = u64::from_le_bytes(hash_result[8..16].try_into().unwrap());
+        if h2 % 2 == 0 { h2 |= 1; }
+        (h1, h2)
     }
 
-    /// Helper to set bits in this game's participants filter
-    pub fn set_participant_bits(&mut self, positions: (usize, usize, usize)) {
-        let (pos1, pos2, pos3) = positions;
-        self.participants_filter[pos1 / 64] |= 1u64 << (pos1 % 64);
-        self.participants_filter[pos2 / 64] |= 1u64 << (pos2 % 64);
-        self.participants_filter[pos3 / 64] |= 1u64 << (pos3 % 64);
+    fn bloom_m(&self) -> u64 { self.bloom_m_bits as u64 }
+
+    /// Set all k bloom bits for a participant
+    pub fn add_participant_to_bloom(&mut self, player_key: &Pubkey) {
+        let (h1, h2) = Self::bloom_hashes(player_key);
+        let m = self.bloom_m();
+        let k = self.bloom_k as u64;
+        for i in 0..k {
+            let pos = (h1.wrapping_add(h2.wrapping_mul(i))) % m;
+            let idx = (pos / 64) as usize;
+            let off = (pos % 64) as u32;
+            self.participants_filter[idx] |= 1u64 << off;
+        }
     }
 
-    /// Add participant to this game's bloom filter (safety redundancy)
-    pub fn add_participant_to_filter(&mut self, player_key: &Pubkey) {
-        let positions = Self::hash_participant(player_key);
-        self.set_participant_bits(positions);
-    }
-
-    /// Helper to check bits in this game's participants filter
-    pub fn check_participant_bits(&self, positions: (usize, usize, usize)) -> bool {
-        let (pos1, pos2, pos3) = positions;
-        let bit1_set = (self.participants_filter[pos1 / 64] & (1u64 << (pos1 % 64))) != 0;
-        let bit2_set = (self.participants_filter[pos2 / 64] & (1u64 << (pos2 % 64))) != 0;
-        let bit3_set = (self.participants_filter[pos3 / 64] & (1u64 << (pos3 % 64))) != 0;
-        bit1_set && bit2_set && bit3_set
-    }
-
-    /// Check if participant is likely in this game's bloom filter (safety check)
-    pub fn check_participant_in_filter(&self, player_key: &Pubkey) -> bool {
-        let positions = Self::hash_participant(player_key);
-        self.check_participant_bits(positions)
+    /// Check if all k bloom bits are set for a participant
+    pub fn check_participant_in_bloom(&self, player_key: &Pubkey) -> bool {
+        let (h1, h2) = Self::bloom_hashes(player_key);
+        let m = self.bloom_m();
+        let k = self.bloom_k as u64;
+        for i in 0..k {
+            let pos = (h1.wrapping_add(h2.wrapping_mul(i))) % m;
+            let idx = (pos / 64) as usize;
+            let off = (pos % 64) as u32;
+            if (self.participants_filter[idx] & (1u64 << off)) == 0 { return false; }
+        }
+        true
     }
 
     // =============================================================================

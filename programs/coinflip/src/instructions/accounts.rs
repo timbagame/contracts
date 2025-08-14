@@ -123,8 +123,14 @@ pub struct InitializeGame<'info> {
     #[account(
         init,
         payer = creator,
-        // Dynamic size: fixed + (max_tickets * 8 bytes per hash)
-        space = GAME_FIXED_SIZE + (max_tickets as usize * 8),
+        // Dynamic size:
+        // base + bloom_vec(4 + words*8) + hashes_vec(4 + max_tickets*8)
+        // words = ceil((BLOOM_BITS_PER_ENTRY * max_tickets)/64)
+        space = GAME_BASE_SIZE
+            + 4
+            + ((((BLOOM_BITS_PER_ENTRY * max_tickets) as usize + 63) / 64) * 8)
+            + 4
+            + (max_tickets as usize * 8),
         seeds = [GAME_SEED, random_hash.as_ref()],
         bump,
         constraint = game_token.is_enabled() @ ErrorCode::TokenNotEnabled,
