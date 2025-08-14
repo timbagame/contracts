@@ -29,11 +29,17 @@ pub fn handler(ctx: Context<super::UnjoinGame>, ticket_index: u32) -> Result<()>
     // STATE UPDATES
     // ===============================
 
-    // Simple unjoin - just decrement counters and refund
-    // Note: We cannot remove from bloom filter without causing false negatives
-    // for other players, so we just decrement counters
-    game.tickets_count -= 1;
-    game.total_amount -= game.ticket_amount;
+    // Find participant hash and remove if present (single ticket per player)
+    let hash_bytes = anchor_lang::solana_program::hash::hash(player_key.as_ref()).to_bytes();
+    let participant_hash = u64::from_le_bytes(hash_bytes[0..8].try_into().unwrap());
+    if let Some(pos) = game.participant_hashes.iter().position(|h| *h == participant_hash) {
+        game.participant_hashes.swap_remove(pos);
+        // Decrement counters and refund
+        game.tickets_count -= 1;
+        game.total_amount -= game.ticket_amount;
+    } else {
+        return err!(ErrorCode::UnauthorizedPlayer);
+    }
     game.last_slot = get_current_slot()?;
 
     // Refund player directly

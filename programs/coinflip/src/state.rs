@@ -47,7 +47,7 @@ pub const MIN_COMPETITIVE_PLAYERS: u32 = 2;
 pub const MIN_GIVEAWAY_PLAYERS: u32 = 1;
 pub const GAME_TOKEN_SIZE: usize = 8 + 32 + 1 + 8 + 8 + 1;
 // PLAYER_GAMES_SIZE removed along with PlayerGames account
-pub const GAME_BASE_SIZE: usize = 8
+pub const GAME_FIXED_SIZE: usize = 8
     + 32  // creator
     + 1   // game_type
     + 8   // ticket_amount
@@ -61,7 +61,8 @@ pub const GAME_BASE_SIZE: usize = 8
     + 1   // is_private
     + 8   // total_amount
     + 64  // participants_filter (8 * u64)
-;
+    + 4;  // participant_hashes vec length prefix
+
 
 // =============================================================================
 // GAME TYPES
@@ -293,8 +294,10 @@ pub struct Game {
     pub is_private: bool,
     /// Total accumulated prize
     pub total_amount: u64,
-    /// 512-bit bloom filter for this game's participants
+    /// 512-bit bloom filter for this game's participants (probabilistic)
     pub participants_filter: [u64; 8],
+    /// Exact participant hash list (first 8 bytes of SHA256(pubkey)) to eliminate false positives
+    pub participant_hashes: Vec<u64>,
 }
 
 impl Game {
@@ -419,7 +422,7 @@ impl Game {
     // =============================================================================
 
     /// Generate hash values for player participation in this game's bloom filter
-    fn hash_participant(player_key: &Pubkey) -> (usize, usize, usize) {
+    pub fn hash_participant(player_key: &Pubkey) -> (usize, usize, usize) {
         // Single hash operation with offset-based position calculation for efficiency
         let player_data = player_key.to_bytes();
         let hash_result = hash(&player_data).to_bytes();
@@ -436,7 +439,7 @@ impl Game {
     }
 
     /// Helper to set bits in this game's participants filter
-    fn set_participant_bits(&mut self, positions: (usize, usize, usize)) {
+    pub fn set_participant_bits(&mut self, positions: (usize, usize, usize)) {
         let (pos1, pos2, pos3) = positions;
         self.participants_filter[pos1 / 64] |= 1u64 << (pos1 % 64);
         self.participants_filter[pos2 / 64] |= 1u64 << (pos2 % 64);
@@ -450,7 +453,7 @@ impl Game {
     }
 
     /// Helper to check bits in this game's participants filter
-    fn check_participant_bits(&self, positions: (usize, usize, usize)) -> bool {
+    pub fn check_participant_bits(&self, positions: (usize, usize, usize)) -> bool {
         let (pos1, pos2, pos3) = positions;
         let bit1_set = (self.participants_filter[pos1 / 64] & (1u64 << (pos1 % 64))) != 0;
         let bit2_set = (self.participants_filter[pos2 / 64] & (1u64 << (pos2 % 64))) != 0;

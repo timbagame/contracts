@@ -75,9 +75,9 @@ pub enum ErrorCode {
     #[msg("Player already joined")]
     AlreadyJoined = 1200,
 
-    /// Player has already unjoined this game/ticket
-    #[msg("Player already unjoined")]
-    AlreadyUnjoined = 1201,
+    // Removed AlreadyUnjoined error (single ticket model)
+    // #[msg("Player already unjoined")]
+    // AlreadyUnjoined = 1201,
 
     /// Player does not have sufficient balance for this operation
     #[msg("Insufficient balance")]
