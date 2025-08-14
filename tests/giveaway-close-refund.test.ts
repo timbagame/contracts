@@ -57,7 +57,13 @@ describe("Giveaway Close Refund", () => {
       .accounts({
         creator: creator.player.publicKey,
         game: gameData.gamePDA,
+        oracle: (await env.program.account.oracle.all())[0].publicKey,
+        gameToken: mint.gameTokenPDA,
+        gameVault: testUtils.mint.getGameVaultPDA(mint.mint),
+        creatorTokenAccount: creator.playerTokenAccount.address,
+        gameTokenAccount: await anchor.utils.token.associatedAddress({ owner: testUtils.mint.getGameVaultPDA(mint.mint), mint: mint.mint }),
       })
+      .signers([creator.player])
       .rpc();
 
     // Creator should be refunded full prize

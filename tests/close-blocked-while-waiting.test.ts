@@ -32,13 +32,19 @@ describe("Close Blocked While Waiting", () => {
     await testUtils.game.joinGame(gameData.gamePDA, creator.player);
     await testUtils.game.joinGame(gameData.gamePDA, p1.player);
 
-    try {
+    try { // expect custom error, ensure creator signs and all accounts passed
       await env.program.methods
         .closeGame()
         .accounts({
           creator: creator.player.publicKey,
           game: gameData.gamePDA,
+          oracle: (await env.program.account.oracle.all())[0].publicKey,
+          gameToken: mint.gameTokenPDA,
+          gameVault: testUtils.mint.getGameVaultPDA(mint.mint),
+          creatorTokenAccount: creator.playerTokenAccount.address,
+          gameTokenAccount: await anchor.utils.token.associatedAddress({ owner: testUtils.mint.getGameVaultPDA(mint.mint), mint: mint.mint }),
         })
+        .signers([creator.player])
         .rpc();
       expect.fail("Should have failed with GameWaitingForOracle");
     } catch (e: any) {
