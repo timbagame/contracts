@@ -146,55 +146,31 @@ The project includes devcontainer configuration for VS Code/Cursor and GitHub Co
 
 ## Important Development Notes
 
-### Advanced Bloom Filter System (V2)
+### Bloom Filter Participation (Simplified)
 
-The system implements a sophisticated dual-layer safety architecture with collision detection for player participation tracking:
+Previous dual A/B filter rotation, player-specific filter accounts, and emergency unjoin mode were removed. Current approach:
 
-**Layer 1: Dual A/B Bloom Filter System with Collision Detection**
-
-- `filter_a` and `filter_b` with `active_filter_index` switching (0 or 1)
-- Only the **active filter** receives new participation data
-- Both filters are **always checked** during verification for maximum safety
-- **Collision Detection**: Cross-validates PlayerGames bloom filters against Game bloom filters
-- **Automatic Recovery**: Detected collisions trigger immediate filter switching and cleanup
-- **Emergency Unjoin Mode**: Activated during filter cleaning periods for safer unjoin operations
-
-**Layer 2: Timestamp Protection**
-
-- Mathematical guarantee: if game created after both filters' last update, cannot be in either filter
-- Prevents impossible false positives through temporal logic
-- Games newer than filter updates can skip bloom filter checks entirely
-
-**Collision Detection Logic:**
-
-- **Different Game Collision**: Player not in Game filter but flagged in PlayerGames filter
-- **Temporal Collision**: PlayerGames filter updated before game was created
-- **Recovery Process**: Switch to clean inactive filter, schedule old filter cleanup
-- **Safety Buffers**: Uses `oracle.filter_cleanup_buffer` for timing calculations
+- Each Game stores: a 512-bit `participants_filter` and an exact `participant_hashes` vector (first 8 bytes of SHA256(pubkey)).
+- Joining sets bloom bits + appends hash; completion relies on the exact hash list (eliminates false positives).
+- No player-level bloom filters, no rotation, no cleanup scheduling buffers.
+- Late unjoin depends only on `(timeout + oracle_buffer_time)` and does not rely on special modes.
 
 ### Critical Implementation Rules
 
-- **Account Space**: `PLAYER_BALANCE_SIZE = 704 bytes` (includes discriminator + padding)
-- **No Normal Cleanup**: Removed time-based filter cleanup - only collision-triggered cleanup
-- **Emergency Mode Timing**: Uses `oracle.filter_cleanup_buffer` for deactivation timing
-- **Winner Calculation Sync**: Must stay synchronized across Rust contract, TypeScript tests, and Oracle service
-- **No Individual Test Execution**: Always use full `anchor test` suite (8+ minute runtime)
-- **Memory Alignment**: Account for Rust struct padding when calculating sizes
+- **Participant Tracking**: Trust core is hash list; bloom filter is advisory (fast membership hint). Keep them consistent.
+- **Winner Calculation Sync**: Keep algorithms identical across Rust, tests, and oracle service.
+- **Late Unjoin**: Enforce only after timeout + buffer; never reintroduce mode flags.
+- **Test Execution**: Always full `anchor test` runs (8+ minutes); no per-file shortcuts.
+- **Account Sizes**: Recalculate if adding fields (follow Anchor padding rules).
 
 ### Bloom Filter Structure Details
 
-**PlayerGames Filters:**
+**Removed Components:** Player-level dual filters, A/B rotation metadata, cleanup buffers.
 
-- `game_index_filter: [u64; 8]` - 512-bit filter for game+index participation tracking
-- `unjoin_index_filter: [u64; 8]` - 512-bit filter for game+index unjoin tracking
-- Dual filter sets (A/B) with metadata (last_updated, longest_expiry)
-- **No recent_games buffer** - pure probabilistic tracking
+**Game Filter:**
 
-**Game Filter (Safety Redundancy):**
-
-- `participants_filter: [u64; 8]` - 512-bit filter for basic player participation
-- Used for collision detection cross-validation
-- Single filter per game (no A/B system needed)
+- `participants_filter: [u64; 8]` - 512-bit bitset for coarse membership.
+- `participant_hashes: Vec<u64>` - canonical order (ticket order) ensures deterministic winner verification.
 
 **Hash Functions:**
 
