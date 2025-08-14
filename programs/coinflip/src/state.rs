@@ -12,13 +12,8 @@ use anchor_spl::token::{transfer, Transfer};
 pub const ORACLE_SIZE: usize = 8 + 32 + 1 + 8 + 4 + 8 + 8;
 
 // =============================================================================
-// BLOOM FILTER CONSTANTS
+// ENTROPY CONSTANTS
 // =============================================================================
-
-/// Bits per entry for dynamic bloom sizing (tuned for ~1% FPR)
-pub const BLOOM_BITS_PER_ENTRY: u32 = 10; // m = b * n
-/// Number of hash functions (approx b * ln2)
-pub const BLOOM_K: u8 = 7; // for b=10
 /// Size of entropy window for winner calculation (8 bytes for u64)
 pub const ENTROPY_WINDOW_SIZE: usize = 8;
 /// Maximum number of entropy windows that fit in a 32-byte hash
@@ -59,11 +54,7 @@ pub const GAME_BASE_SIZE: usize = 8
     + 8  // timeout (u64)
     + 8  // last_slot
     + 1  // is_private
-    + 8  // total_amount
-    // Vec<u64> participants_filter: length prefix (4) accounted at allocation time
-    // Vec<u64> participant_hashes: length prefix (4) accounted at allocation time
-    + 4  // bloom_m_bits (u32)
-    + 1; // bloom_k (u8)
+    + 8; // total_amount
 
 // =============================================================================
 // GAME TYPES
@@ -273,14 +264,8 @@ pub struct Game {
     pub is_private: bool,
     /// Total accumulated prize
     pub total_amount: u64,
-    /// Dynamic bloom filter bitset (probabilistic membership)
-    pub participants_filter: Vec<u64>,
     /// Exact participant hash list (first 8 bytes of SHA256(pubkey)) to eliminate false positives
     pub participant_hashes: Vec<u64>,
-    /// Bloom filter size in bits
-    pub bloom_m_bits: u32,
-    /// Number of hash functions used in bloom
-    pub bloom_k: u8,
 }
 
 impl Game {
@@ -320,7 +305,7 @@ impl Game {
             && !self.is_buffer_expired(oracle_buffer_time, current_time)
     }
 
-    /// Calculate when this game will expire (for bloom filter tracking)
+    /// Calculate when this game will expire
     pub fn calculate_expiry_timestamp(&self, total_buffer_time: u64) -> u64 {
         self.created_at + self.timeout + total_buffer_time
     }
@@ -391,61 +376,13 @@ impl Game {
     // PLAYER PARTICIPATION TRACKING
     // =============================================================================
 
-    /// Add player to the game and update counters (no bloom filter)
+    /// Add player to the game and update counters
     pub fn add_player_to_game(&mut self) -> Result<()> {
         // Update counters only
         self.tickets_count += 1;
         self.total_amount += self.ticket_amount;
 
         Ok(())
-    }
-
-    // =============================================================================
-    // GAME-LEVEL BLOOM FILTER METHODS (SAFETY REDUNDANCY)
-    // =============================================================================
-
-    /// Compute two 64-bit hashes from SHA-256(pubkey); ensure h2 is odd for better distribution
-    fn bloom_hashes(player_key: &Pubkey) -> (u64, u64) {
-        let hash_result = hash(player_key.as_ref()).to_bytes();
-        let h1 = u64::from_le_bytes(hash_result[0..8].try_into().unwrap());
-        let mut h2 = u64::from_le_bytes(hash_result[8..16].try_into().unwrap());
-        if h2 % 2 == 0 {
-            h2 |= 1;
-        }
-        (h1, h2)
-    }
-
-    fn bloom_m(&self) -> u64 {
-        self.bloom_m_bits as u64
-    }
-
-    /// Set all k bloom bits for a participant
-    pub fn add_participant_to_bloom(&mut self, player_key: &Pubkey) {
-        let (h1, h2) = Self::bloom_hashes(player_key);
-        let m = self.bloom_m();
-        let k = self.bloom_k as u64;
-        for i in 0..k {
-            let pos = (h1.wrapping_add(h2.wrapping_mul(i))) % m;
-            let idx = (pos / 64) as usize;
-            let off = (pos % 64) as u32;
-            self.participants_filter[idx] |= 1u64 << off;
-        }
-    }
-
-    /// Check if all k bloom bits are set for a participant
-    pub fn check_participant_in_bloom(&self, player_key: &Pubkey) -> bool {
-        let (h1, h2) = Self::bloom_hashes(player_key);
-        let m = self.bloom_m();
-        let k = self.bloom_k as u64;
-        for i in 0..k {
-            let pos = (h1.wrapping_add(h2.wrapping_mul(i))) % m;
-            let idx = (pos / 64) as usize;
-            let off = (pos % 64) as u32;
-            if (self.participants_filter[idx] & (1u64 << off)) == 0 {
-                return false;
-            }
-        }
-        true
     }
 
     // =============================================================================

@@ -123,12 +123,8 @@ pub struct InitializeGame<'info> {
     #[account(
         init,
         payer = creator,
-        // Dynamic size:
-        // base + bloom_vec(4 + words*8) + hashes_vec(4 + max_tickets*8)
-        // words = ceil((BLOOM_BITS_PER_ENTRY * max_tickets)/64)
+        // Base + participant_hashes vec prefix + 8 bytes per ticket
         space = GAME_BASE_SIZE
-            + 4
-            + ((((BLOOM_BITS_PER_ENTRY * max_tickets) as usize + 63) / 64) * 8)
             + 4
             + (max_tickets as usize * 8),
         seeds = [GAME_SEED, random_hash.as_ref()],
