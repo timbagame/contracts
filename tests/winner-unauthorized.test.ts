@@ -22,7 +22,7 @@ describe("Winner Authorization", () => {
   it("should fail completion if winner not a participant", async () => {
     const { oracle, mint, players } = await testUtils.quickSetup();
     const gameData = testUtils.game.generateGamePDA();
-    const [creator, player1] = players;
+    const [creator, player1, fakeWinner] = players;
 
     const gameConfig: GameConfig = {
       gameType: { coinflip: {} },
@@ -50,9 +50,7 @@ describe("Winner Authorization", () => {
       Number(gameAccount.lastSlot)
     );
 
-    // Use another player from the pool who did NOT join (players[2])
-    const fakeWinner = players[2];
-
+    // fakeWinner did not join, should produce mismatch
     try {
       await testUtils.game.completeGame(
         gameData,
@@ -63,17 +61,7 @@ describe("Winner Authorization", () => {
       );
       expect.fail("Completion should fail for unauthorized winner");
     } catch (e: any) {
-      console.log("RAW ERROR OBJECT:", e);
-      try { console.log("RAW ERROR JSON:", JSON.stringify(e, null, 2)); } catch {}
-      console.log("RAW ERROR toString:", e.toString());
-      if (e.logs) {
-        console.log("PROGRAM LOGS:\n" + e.logs.join("\n"));
-      }
-      const code = e.error?.errorCode?.code;
-      const human = e.error?.errorMessage;
-      console.log("Parsed code=", code, "human=", human);
-      const msg = e.toString();
-      expect(msg).to.include("Winner pubkey hash mismatch");
+      expect(e.toString()).to.include("Winner pubkey hash mismatch");
     }
   });
 });
