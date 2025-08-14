@@ -86,15 +86,6 @@ pub struct TokenFeeWithdrawn {
 // PLAYER EVENTS
 // =============================================================================
 
-/// Emitted when a player's games tracking account is initialized
-#[event]
-pub struct PlayerGamesInitialized {
-    /// Player who initialized the games tracking
-    pub player: Pubkey,
-    /// Token mint for this games tracking
-    pub token_mint: Pubkey,
-}
-
 
 /// Emitted when a player joins a game
 #[event]

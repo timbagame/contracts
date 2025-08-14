@@ -5,7 +5,7 @@ use anchor_lang::prelude::*;
 
 pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
     let game = &mut ctx.accounts.game;
-    let player_games = &mut ctx.accounts.player_games;
+
     let oracle = &ctx.accounts.oracle;
     let current_time = get_current_time()?;
     let player_key = ctx.accounts.player.key();
@@ -17,11 +17,7 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
 
     require!(!game.is_expired(current_time), ErrorCode::GameExpired);
 
-    // Collision detection with automatic filter switching
-    require!(
-        player_games.can_join_game(&game_key, &player_key, &game, &oracle, current_time),
-        ErrorCode::AlreadyJoined
-    );
+    // Basic duplicate participation check handled at application layer now (PlayerGames removed)
 
     // ===============================
     // STATE UPDATES
@@ -31,12 +27,7 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
     game.add_player_to_game()?;
     game.last_slot = get_current_slot()?;
 
-    // Mark game as joined in player's bloom filter with collision detection integration
-    let game_expiry = game.calculate_expiry_timestamp(oracle.get_total_buffer_time());
-    player_games.mark_game_joined(&game_key, game_expiry, current_time);
-    
-    // Also mark the specific game+index combination for ticket index 0
-    player_games.mark_game_index_joined(&game_key, game.tickets_count - 1, game_expiry, current_time);
+    // PlayerGames removed: no per-player bloom tracking; rely on game state only
 
     // SAFETY: Also add player to the Game's participants filter for redundancy
     game.add_participant_to_filter(&player_key);

@@ -9,8 +9,6 @@ pub mod update_oracle;
 pub mod initialize_token;
 pub mod update_token;
 
-// Player management
-pub mod initialize_player_games;
 
 // Game management
 pub mod close_game;
