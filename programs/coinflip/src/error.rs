@@ -64,7 +64,7 @@ pub enum ErrorCode {
     #[msg("Game already completed")]
     GameAlreadyCompleted = 1107,
 
-    /// Oracle buffer time has not expired yet - emergency operations not allowed
+    /// Oracle buffer time has not expired yet for late unjoin / close operations
     #[msg("Oracle buffer time not expired")]
     OracleBufferNotExpired = 1108,
 

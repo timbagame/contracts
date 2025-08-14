@@ -14,11 +14,13 @@ pub fn handler(ctx: Context<super::UnjoinGame>, ticket_index: u32) -> Result<()>
     // VALIDATION
     // ===============================
 
-    // Check if oracle buffer time has expired (emergency unjoin only)
+    // Late unjoin only allowed after: (timeout + oracle buffer). Prevents strategic exits.
     require!(
         game.is_buffer_expired(oracle.oracle_buffer_time, current_time),
         ErrorCode::OracleBufferNotExpired
     );
+
+    // No need to check completion explicitly: completed games are closed (see CompleteGame: close = creator)
 
     require!(game.tickets_count > 0, ErrorCode::InvalidTicketsCount);
 
