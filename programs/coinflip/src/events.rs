@@ -124,8 +124,6 @@ pub struct PlayerUnjoined {
     pub timestamp: u64,
 }
 
-// PlayerRolled event intentionally not included in current architecture
-
 // =============================================================================
 // GAME EVENTS
 // =============================================================================
