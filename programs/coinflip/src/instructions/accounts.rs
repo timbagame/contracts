@@ -113,7 +113,6 @@ pub struct UpdateToken<'info> {
     pub oracle_operator: Signer<'info>,
 }
 
-// Player management: PlayerGames initialization removed
 
 // =============================================================================
 // GAME MANAGEMENT

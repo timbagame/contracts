@@ -1,17 +1,14 @@
 use crate::error::ErrorCode;
 use crate::events::PlayerJoined;
-use crate::utils::{get_current_time, get_current_slot};
 use crate::state::Game;
-use anchor_lang::solana_program::hash::hash;
+use crate::utils::{get_current_slot, get_current_time};
 use anchor_lang::prelude::*;
+use anchor_lang::solana_program::hash::hash;
 
 pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
     let game = &mut ctx.accounts.game;
-
-    let oracle = &ctx.accounts.oracle;
     let current_time = get_current_time()?;
     let player_key = ctx.accounts.player.key();
-    let game_key = game.key();
 
     // ===============================
     // VALIDATION
@@ -25,12 +22,15 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
         // All bits set; verify hash list
         let hash_bytes = hash(player_key.as_ref()).to_bytes();
         let participant_hash = u64::from_le_bytes(hash_bytes[0..8].try_into().unwrap());
-        if game.participant_hashes.iter().any(|h| *h == participant_hash) {
+        if game
+            .participant_hashes
+            .iter()
+            .any(|h| *h == participant_hash)
+        {
             return err!(ErrorCode::AlreadyJoined);
         }
         // False positive: allow join, will append hash below
     }
-
 
     // ===============================
     // STATE UPDATES
