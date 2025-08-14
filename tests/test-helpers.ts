@@ -45,7 +45,6 @@ export interface OracleConfig {
   maxTickets: number;
   maxTimeout: number;
   minTimeout: number;
-
 }
 
 export interface GameConfig {
@@ -202,7 +201,6 @@ export class OracleManager {
             maxTickets: existingOracle.maxTickets,
             maxTimeout: existingOracle.maxTimeout.toNumber(),
             minTimeout: existingOracle.minTimeout.toNumber(),
-
           },
         };
       } catch (fetchError) {
@@ -234,7 +232,6 @@ export class OracleManager {
         maxTickets: defaultConfig.maxTickets,
         maxTimeout: new anchor.BN(defaultConfig.maxTimeout),
         minTimeout: new anchor.BN(defaultConfig.minTimeout),
-
       };
 
       await this.program.methods
@@ -284,7 +281,6 @@ export class OracleManager {
         maxTickets: oracleAccount.maxTickets,
         maxTimeout: oracleAccount.maxTimeout.toNumber(),
         minTimeout: oracleAccount.minTimeout.toNumber(),
-
       },
     };
   }
@@ -932,12 +928,5 @@ export class CollisionUtils {
   static async advanceTime(seconds: number): Promise<void> {
     console.log(`⏰ Advancing time by ${seconds} seconds...`);
     await new Promise((resolve) => setTimeout(resolve, seconds * 1000));
-  }
-
-  /**
-   * Create test scenario for emergency mode activation
-   */
-  static async createEmergencyModeScenario(): Promise<any> {
-    return {};
   }
 }
