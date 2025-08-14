@@ -127,9 +127,9 @@ pub struct InitializeGame<'info> {
         space = GAME_FIXED_SIZE + (max_tickets as usize * 8),
         seeds = [GAME_SEED, random_hash.as_ref()],
         bump,
-    constraint = game_token.is_enabled() @ ErrorCode::TokenNotEnabled,
-    constraint = game_token.meets_min_amount(amount) @ ErrorCode::InvalidAmount,
-    constraint = oracle.is_valid_timeout_range(timeout) @ ErrorCode::InvalidTimeout,
+        constraint = game_token.is_enabled() @ ErrorCode::TokenNotEnabled,
+        constraint = game_token.meets_min_amount(amount) @ ErrorCode::InvalidAmount,
+        constraint = oracle.is_valid_timeout_range(timeout) @ ErrorCode::InvalidTimeout,
         constraint = Game::is_valid_tickets_count(max_tickets, min_tickets, oracle.max_tickets) @ ErrorCode::InvalidTicketsCount,
         constraint = Game::is_valid_game_type_tickets(game_type, max_tickets, min_tickets) @ ErrorCode::InvalidTicketsCount,
     )]
