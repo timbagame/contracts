@@ -79,21 +79,25 @@ pub enum ErrorCode {
     #[msg("Insufficient balance")]
     InsufficientBalance = 1201,
 
-    /// Winner index does not match calculated winner from secret key
-    #[msg("Invalid winner index")]
-    InvalidWinnerIndex = 1202,
+    /// Winner index provided by oracle does not match on-chain recomputation using secret key
+    #[msg("Winner index mismatch")]
+    WinnerIndexMismatch = 1202,
 
-    /// Winner pubkey does not match participation entry
-    #[msg("Winner pubkey mismatch")]
-    WinnerPubkeyMismatch = 1203,
+    /// Provided winner index is outside current tickets count range
+    #[msg("Winner index out of range")]
+    WinnerIndexOutOfRange = 1203,
+
+    /// Winner pubkey hash at provided index does not match participant_hashes entry
+    #[msg("Winner pubkey hash mismatch")]
+    WinnerPubkeyHashMismatch = 1204,
 
     /// Player not authorized for private game
     #[msg("Private game access denied")]
-    PrivateGameAccessDenied = 1204,
+    PrivateGameAccessDenied = 1205,
 
     /// Failed to generate unbiased random number for winner selection
     #[msg("Randomness generation failed")]
-    RandomnessGenerationFailed = 1205,
+    RandomnessGenerationFailed = 1206,
 
     // =========================================================================
     // CONFIGURATION ERRORS (1300-1399)
