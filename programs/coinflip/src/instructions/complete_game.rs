@@ -48,7 +48,7 @@ pub fn handler(
         game.participant_hashes
             .iter()
             .any(|h| *h == participant_hash),
-        ErrorCode::UnauthorizedPlayer
+        ErrorCode::WinnerPubkeyMismatch
     );
 
     // ===============================
