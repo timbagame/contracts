@@ -45,7 +45,7 @@ describe("Incomplete Game Close", () => {
 
     // Unjoin all players
     for (const pl of [creator, p1, p2]) {
-      await testUtils.game.unjoinGame(gameData.gamePDA, pl.player, 0);
+      await testUtils.game.unjoinGame(gameData.gamePDA, pl.player);
     }
 
     const gameAfterUnjoins = await env.program.account.game.fetch(

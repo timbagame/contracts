@@ -40,7 +40,7 @@ describe("Unjoin Refund Precision", () => {
     const bufferSecs = oracle.config.oracleBufferTime as number;
     await new Promise((r) => setTimeout(r, (5 + bufferSecs + 2) * 1000));
 
-    await testUtils.game.unjoinGame(gameData.gamePDA, creator.player, 0);
+    await testUtils.game.unjoinGame(gameData.gamePDA, creator.player);
 
     const postBalance = await env.provider.connection.getTokenAccountBalance(creator.playerTokenAccount.address);
 
