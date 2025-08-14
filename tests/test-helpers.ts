@@ -441,8 +441,6 @@ export class PlayerManager {
       player.publicKey
     );
 
-    // PlayerGames removed: no initialization required
-
     return {
       player,
       playerTokenAccount,
@@ -480,7 +478,6 @@ export class PlayerManager {
         player.publicKey
       );
 
-      // PlayerGames removed - no initialization
       return { player, playerTokenAccount };
     });
 
@@ -912,13 +909,6 @@ export class CollisionUtils {
     }
 
     return { successful, rejected };
-  }
-
-  /**
-   * Validate PlayerGames filter state for testing
-   */
-  static async validateFilterState(): Promise<any> {
-    return {};
   }
 
   /**

@@ -59,12 +59,11 @@ This is a comprehensive Solana smart contract implementing multiple gambling gam
 The coinflip program (`programs/coinflip/src/`) is organized as follows:
 
 - **lib.rs**: Main program entry point with all instruction handlers
-- **state.rs**: Account structures (Oracle, Game, GameToken, PlayerGames) with size constants and bloom filter logic
+- **state.rs**: Account structures (Oracle, Game, GameToken) with size constants and bloom filter logic
 - **instructions/**: Modular instruction handlers organized by functionality:
   - Oracle management (initialize/update oracle)
   - Token management (initialize/update token configs)
-  - Player management (balance initialization/withdrawal)
-  - Game lifecycle (initialize/join/roll/unjoin/complete/close)
+  - Game lifecycle & participation (initialize/join/unjoin/complete/close)
   - Fee management (withdraw token fees)
 - **error.rs**: Custom error definitions
 - **events.rs**: Event definitions for program logging
@@ -80,9 +79,9 @@ The coinflip program (`programs/coinflip/src/`) is organized as follows:
 
 1. Oracle initialization sets global game parameters and buffer timings
 2. Token configuration defines min amounts and fees per supported SPL token
-3. Players initialize balance accounts for deposits and participation tracking
+3. (Removed) No separate player balance account – participation tracked per game
 4. Game creation with configurable parameters (amount, max/min players, timeout, game type)
-5. Players join games tracked via dual bloom filter system in player balance accounts
+5. Players join games updating the game-level bloom filter + hash list
 6. Game completion uses commit-reveal scheme with cryptographically secure winner selection
 7. Automatic fee collection and prize distribution
 
@@ -107,7 +106,7 @@ The codebase implements several security patterns that must be preserved:
 
 ### Account Architecture Patterns
 
-- **PDA Seeds**: All PDAs use consistent seed patterns (`b"game"`, `b"oracle"`, `b"player_balance"`, etc.)
+- **PDA Seeds**: All PDAs use consistent seed patterns (`b"game"`, `b"oracle"`, `b"game_token"`, `b"game_vault"`)
 - **Account Validation**: Heavy use of constraints in `accounts.rs` for security validation
 - **State Management**: Account states are designed for minimal rent and optimal serialization
 
