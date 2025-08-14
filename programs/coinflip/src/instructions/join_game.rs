@@ -1,6 +1,5 @@
 use crate::error::ErrorCode;
 use crate::events::PlayerJoined;
-use crate::state::Game;
 use crate::utils::{get_current_slot, get_current_time};
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::hash::hash;
@@ -17,16 +16,11 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
     require!(!game.is_expired(current_time), ErrorCode::GameExpired);
 
     // Duplicate prevention: check bloom + exact hash list
-    let positions = Game::hash_participant(&player_key);
-    if game.check_participant_bits(positions) {
+    if game.check_participant_in_bloom(&player_key) {
         // All bits set; verify hash list
         let hash_bytes = hash(player_key.as_ref()).to_bytes();
         let participant_hash = u64::from_le_bytes(hash_bytes[0..8].try_into().unwrap());
-        if game
-            .participant_hashes
-            .iter()
-            .any(|h| *h == participant_hash)
-        {
+        if game.participant_hashes.iter().any(|h| *h == participant_hash) {
             return err!(ErrorCode::AlreadyJoined);
         }
         // False positive: allow join, will append hash below
@@ -41,7 +35,7 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
     game.last_slot = get_current_slot()?;
 
     // Set bloom bits & append hash
-    game.set_participant_bits(positions);
+    game.add_participant_to_bloom(&player_key);
     let hash_bytes = hash(player_key.as_ref()).to_bytes();
     let participant_hash = u64::from_le_bytes(hash_bytes[0..8].try_into().unwrap());
     game.participant_hashes.push(participant_hash);

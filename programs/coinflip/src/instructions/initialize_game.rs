@@ -1,5 +1,10 @@
 use crate::utils::{get_current_slot, get_current_time};
-use crate::{events::GameInitialized, state::GameType, GameConfig};
+use crate::{
+    error::ErrorCode,
+    events::GameInitialized,
+    state::{GameType, BLOOM_BITS_PER_ENTRY, BLOOM_K},
+    GameConfig,
+};
 use anchor_lang::prelude::*;
 
 pub fn handler(ctx: Context<super::InitializeGame>, config: GameConfig) -> Result<()> {
@@ -31,6 +36,17 @@ pub fn handler(ctx: Context<super::InitializeGame>, config: GameConfig) -> Resul
         game.total_amount = 0;
         game.ticket_amount = config.amount;
     }
+
+    // ===============================
+    // BLOOM FILTER INITIALIZATION (dynamic sizing)
+    // ===============================
+    let m_bits: u32 = BLOOM_BITS_PER_ENTRY
+        .checked_mul(config.max_tickets)
+        .ok_or(ErrorCode::InvalidTicketsCount)?;
+    let words: usize = (((m_bits as usize) + 63) / 64).max(1);
+    game.bloom_m_bits = m_bits;
+    game.bloom_k = BLOOM_K;
+    game.participants_filter = vec![0u64; words];
 
     // ===============================
     // TOKEN TRANSFER
