@@ -113,45 +113,7 @@ pub struct UpdateToken<'info> {
     pub oracle_operator: Signer<'info>,
 }
 
-// =============================================================================
-// PLAYER MANAGEMENT
-// =============================================================================
-
-#[derive(Accounts)]
-pub struct InitializePlayerGames<'info> {
-    #[account(
-        init,
-        payer = player,
-        space = PLAYER_GAMES_SIZE,
-        seeds = [PLAYER_GAMES_SEED, player.key().as_ref(), token_mint.key().as_ref()],
-        bump,
-        constraint = game_token.is_enabled() @ ErrorCode::TokenNotEnabled,
-    )]
-    pub player_games: Account<'info, PlayerGames>,
-
-    #[account(
-        mut,
-        seeds = [GAME_TOKEN_SEED, token_mint.key().as_ref()],
-        bump,
-    )]
-    pub game_token: Account<'info, GameToken>,
-
-    pub token_mint: Account<'info, Mint>,
-
-    #[account(
-        associated_token::mint = token_mint,
-        associated_token::authority = player,
-    )]
-    pub player_token_account: Account<'info, TokenAccount>,
-
-    #[account(mut)]
-    pub player: Signer<'info>,
-
-    pub token_program: Program<'info, Token>,
-    pub associated_token_program: Program<'info, AssociatedToken>,
-    pub system_program: Program<'info, System>,
-}
-
+// Player management: PlayerGames initialization removed
 
 // =============================================================================
 // GAME MANAGEMENT
@@ -175,12 +137,7 @@ pub struct InitializeGame<'info> {
     pub game: Account<'info, Game>,
     #[account(mut)]
     pub creator: Signer<'info>,
-    #[account(
-        mut,
-        seeds = [PLAYER_GAMES_SEED, creator.key().as_ref(), token_mint.key().as_ref()],
-        bump,
-    )]
-    pub creator_games: Account<'info, PlayerGames>,
+
     #[account(mut, seeds = [b"oracle"], bump)]
     pub oracle: Account<'info, Oracle>,
     pub token_mint: Account<'info, Mint>,
@@ -277,12 +234,6 @@ pub struct CompleteGame<'info> {
     pub creator: AccountInfo<'info>,
     #[account(
         mut,
-        seeds = [PLAYER_GAMES_SEED, winner.key().as_ref(), game.token_mint.as_ref()],
-        bump,
-    )]
-    pub winner_games: Account<'info, PlayerGames>,
-    #[account(
-        mut,
         seeds = [GAME_TOKEN_SEED, game.token_mint.as_ref()],
         bump,
     )]
@@ -358,12 +309,6 @@ pub struct CloseGame<'info> {
     pub game: Account<'info, Game>,
     #[account(mut)]
     pub creator: Signer<'info>,
-    #[account(
-        mut,
-        seeds = [PLAYER_GAMES_SEED, creator.key().as_ref(), game.token_mint.as_ref()],
-        bump,
-    )]
-    pub creator_games: Account<'info, PlayerGames>,
     #[account(seeds = [ORACLE_SEED], bump)]
     pub oracle: Account<'info, Oracle>,
     #[account(
