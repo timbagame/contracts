@@ -32,7 +32,7 @@ pub fn update_oracle_configuration(
         config.max_tickets,
         config.max_timeout,
         config.min_timeout,
-        config.filter_cleanup_buffer,
+
         operator_key,
     );
 }

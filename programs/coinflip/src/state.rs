@@ -8,8 +8,8 @@ use anchor_spl::token::{transfer, Transfer};
 
 // discriminator (8) + operator (32) + fee_percentage (1) +
 // oracle_buffer_time (u64: 8) + max_tickets (u32: 4) +
-// max_timeout (u64: 8) + min_timeout (u64: 8) + filter_cleanup_buffer (u64: 8)
-pub const ORACLE_SIZE: usize = 8 + 32 + 1 + 8 + 4 + 8 + 8 + 8;
+// max_timeout (u64: 8) + min_timeout (u64: 8)
+pub const ORACLE_SIZE: usize = 8 + 32 + 1 + 8 + 4 + 8 + 8;
 
 // =============================================================================
 // BLOOM FILTER CONSTANTS
@@ -97,8 +97,7 @@ pub struct Oracle {
     pub max_timeout: u64,
     /// Minimum timeout duration in seconds for a game
     pub min_timeout: u64,
-    /// Additional buffer time for filter cleanup after oracle buffer expires
-    pub filter_cleanup_buffer: u64,
+
 }
 
 impl Oracle {
@@ -110,7 +109,7 @@ impl Oracle {
         max_tickets: u32,
         max_timeout: u64,
         min_timeout: u64,
-        filter_cleanup_buffer: u64,
+
         new_operator: Pubkey,
     ) {
         self.fee_percentage = fee_percentage;
@@ -118,7 +117,7 @@ impl Oracle {
         self.max_tickets = max_tickets;
         self.max_timeout = max_timeout;
         self.min_timeout = min_timeout;
-        self.filter_cleanup_buffer = filter_cleanup_buffer;
+
         self.operator = new_operator;
     }
 
@@ -147,10 +146,7 @@ impl Oracle {
         max_tickets > 0
     }
 
-    /// Gets total buffer time including filter cleanup buffer
-    pub fn get_total_buffer_time(&self) -> u64 {
-        self.oracle_buffer_time + self.filter_cleanup_buffer
-    }
+
 }
 
 // =============================================================================
