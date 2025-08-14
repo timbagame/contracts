@@ -15,7 +15,7 @@ pub mod close_game;
 pub mod complete_game;
 pub mod initialize_game;
 pub mod join_game;
-// roll_game removed
+
 pub mod unjoin_game; // updated for single-ticket model
 
 // Fee management
