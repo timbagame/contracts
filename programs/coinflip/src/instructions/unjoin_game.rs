@@ -22,8 +22,6 @@ pub fn handler(ctx: Context<super::UnjoinGame>, ticket_index: u32) -> Result<()>
 
     require!(game.tickets_count > 0, ErrorCode::InvalidTicketsCount);
 
-    // PlayerGames removed: basic permission check now ensures game had participants
-    // Without per-player tracking we cannot validate specific ticket ownership on-chain here.
 
     // ===============================
     // STATE UPDATES
@@ -54,7 +52,6 @@ pub fn handler(ctx: Context<super::UnjoinGame>, ticket_index: u32) -> Result<()>
         )?;
     }
 
-    // PlayerGames removed: no unjoin index tracking
 
     // ===============================
     // EVENT EMISSION

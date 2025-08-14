@@ -75,29 +75,25 @@ pub enum ErrorCode {
     #[msg("Player already joined")]
     AlreadyJoined = 1200,
 
-    // Removed AlreadyUnjoined error (single ticket model)
-    // #[msg("Player already unjoined")]
-    // AlreadyUnjoined = 1201,
-
     /// Player does not have sufficient balance for this operation
     #[msg("Insufficient balance")]
-    InsufficientBalance = 1202,
+    InsufficientBalance = 1201,
 
     /// Winner index does not match calculated winner from secret key
     #[msg("Invalid winner index")]
-    InvalidWinnerIndex = 1203,
+    InvalidWinnerIndex = 1202,
 
     /// Winner pubkey does not match participation entry
     #[msg("Winner pubkey mismatch")]
-    WinnerPubkeyMismatch = 1204,
+    WinnerPubkeyMismatch = 1203,
 
     /// Player not authorized for private game
     #[msg("Private game access denied")]
-    PrivateGameAccessDenied = 1205,
+    PrivateGameAccessDenied = 1204,
 
     /// Failed to generate unbiased random number for winner selection
     #[msg("Randomness generation failed")]
-    RandomnessGenerationFailed = 1206,
+    RandomnessGenerationFailed = 1205,
 
     // =========================================================================
     // CONFIGURATION ERRORS (1300-1399)

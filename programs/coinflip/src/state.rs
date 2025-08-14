@@ -17,8 +17,6 @@ pub const ORACLE_SIZE: usize = 8 + 32 + 1 + 8 + 4 + 8 + 8 + 8;
 
 /// Number of bits in each bloom filter (512 bits = 64 bytes)
 pub const BLOOM_FILTER_BITS: usize = 512;
-/// Number of u64 words in each bloom filter (512 bits / 64 bits per word)
-pub const BLOOM_FILTER_WORDS: usize = 8;
 /// Size of entropy window for winner calculation (8 bytes for u64)
 pub const ENTROPY_WINDOW_SIZE: usize = 8;
 /// Maximum number of entropy windows that fit in a 32-byte hash
@@ -46,7 +44,6 @@ pub const MIN_COMPETITIVE_PLAYERS: u32 = 2;
 /// Minimum players required for giveaway games
 pub const MIN_GIVEAWAY_PLAYERS: u32 = 1;
 pub const GAME_TOKEN_SIZE: usize = 8 + 32 + 1 + 8 + 8 + 1;
-// PLAYER_GAMES_SIZE removed along with PlayerGames account
 pub const GAME_FIXED_SIZE: usize = 8
     + 32  // creator
     + 1   // game_type
@@ -61,8 +58,7 @@ pub const GAME_FIXED_SIZE: usize = 8
     + 1   // is_private
     + 8   // total_amount
     + 64  // participants_filter (8 * u64)
-    + 4;  // participant_hashes vec length prefix
-
+    + 4; // participant_hashes vec length prefix
 
 // =============================================================================
 // GAME TYPES
@@ -224,7 +220,11 @@ impl GameToken {
             transfer(
                 CpiContext::new_with_signer(
                     token_program,
-                    Transfer { from, to, authority },
+                    Transfer {
+                        from,
+                        to,
+                        authority,
+                    },
                     &[signer_seeds],
                 ),
                 amount,
@@ -233,7 +233,11 @@ impl GameToken {
             transfer(
                 CpiContext::new(
                     token_program,
-                    Transfer { from, to, authority },
+                    Transfer {
+                        from,
+                        to,
+                        authority,
+                    },
                 ),
                 amount,
             )?;
@@ -255,7 +259,6 @@ pub struct BloomFilters {
     pub unjoin_index_filter: [u64; 8],
 }
 
-// PlayerGames account removed in simplified version
 // =============================================================================
 // GAME ACCOUNT
 // =============================================================================
