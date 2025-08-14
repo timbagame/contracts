@@ -15,15 +15,15 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
 
     require!(!game.is_expired(current_time), ErrorCode::GameExpired);
 
-    // Duplicate prevention: check bloom + exact hash list
-    if game.check_participant_in_bloom(&player_key) {
-        // All bits set; verify hash list
-        let hash_bytes = hash(player_key.as_ref()).to_bytes();
-        let participant_hash = u64::from_le_bytes(hash_bytes[0..8].try_into().unwrap());
-        if game.participant_hashes.iter().any(|h| *h == participant_hash) {
-            return err!(ErrorCode::AlreadyJoined);
-        }
-        // False positive: allow join, will append hash below
+    // Duplicate prevention: scan exact hash list
+    let hash_bytes = hash(player_key.as_ref()).to_bytes();
+    let participant_hash = u64::from_le_bytes(hash_bytes[0..8].try_into().unwrap());
+    if game
+        .participant_hashes
+        .iter()
+        .any(|h| *h == participant_hash)
+    {
+        return err!(ErrorCode::AlreadyJoined);
     }
 
     // ===============================
@@ -34,10 +34,7 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
     game.add_player_to_game()?;
     game.last_slot = get_current_slot()?;
 
-    // Set bloom bits & append hash
-    game.add_participant_to_bloom(&player_key);
-    let hash_bytes = hash(player_key.as_ref()).to_bytes();
-    let participant_hash = u64::from_le_bytes(hash_bytes[0..8].try_into().unwrap());
+    // Append hash
     game.participant_hashes.push(participant_hash);
 
     // ===============================
