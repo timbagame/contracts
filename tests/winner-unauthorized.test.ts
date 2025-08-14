@@ -50,22 +50,30 @@ describe("Winner Authorization", () => {
       Number(gameAccount.lastSlot)
     );
 
-    // Use a random unrelated key as fake winner
-    const fakeWinner = anchor.web3.Keypair.generate();
+    // Use another player from the pool who did NOT join (players[2])
+    const fakeWinner = players[2];
 
     try {
       await testUtils.game.completeGame(
         gameData,
-        fakeWinner.publicKey, // unauthorized
+        fakeWinner.player.publicKey, // unauthorized (not in participant list)
         creator.player.publicKey,
         oracle.operator,
         winnerIndex
       );
       expect.fail("Completion should fail for unauthorized winner");
-    } catch (e) {
-      // Program error message is human-readable ("Unauthorized player") not enum variant
+    } catch (e: any) {
+      console.log("RAW ERROR OBJECT:", e);
+      try { console.log("RAW ERROR JSON:", JSON.stringify(e, null, 2)); } catch {}
+      console.log("RAW ERROR toString:", e.toString());
+      if (e.logs) {
+        console.log("PROGRAM LOGS:\n" + e.logs.join("\n"));
+      }
+      const code = e.error?.errorCode?.code;
+      const human = e.error?.errorMessage;
+      console.log("Parsed code=", code, "human=", human);
       const msg = e.toString();
-      expect(msg).to.include("WinnerPubkeyHashMismatch");
+      expect(msg).to.include("Winner pubkey hash mismatch");
     }
   });
 });
