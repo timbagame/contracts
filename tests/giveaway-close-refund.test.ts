@@ -46,7 +46,11 @@ describe("Giveaway Close Refund", () => {
     const midBal = await env.provider.connection.getTokenAccountBalance(
       creator.playerTokenAccount.address
     );
-    expect(new anchor.BN(beforeBal.value.amount).sub(new anchor.BN(midBal.value.amount)).eq(prizeAmount)).to.be.true;
+    expect(
+      new anchor.BN(beforeBal.value.amount)
+        .sub(new anchor.BN(midBal.value.amount))
+        .eq(prizeAmount)
+    ).to.be.true;
 
     // Wait until timeout + small buffer so waiting_for_oracle becomes false
     await new Promise((r) => setTimeout(r, 4000));
@@ -57,11 +61,6 @@ describe("Giveaway Close Refund", () => {
       .accounts({
         creator: creator.player.publicKey,
         game: gameData.gamePDA,
-        oracle: (await env.program.account.oracle.all())[0].publicKey,
-        gameToken: mint.gameTokenPDA,
-        gameVault: testUtils.mint.getGameVaultPDA(mint.mint),
-        creatorTokenAccount: creator.playerTokenAccount.address,
-        gameTokenAccount: await anchor.utils.token.associatedAddress({ owner: testUtils.mint.getGameVaultPDA(mint.mint), mint: mint.mint }),
       })
       .signers([creator.player])
       .rpc();
@@ -71,6 +70,10 @@ describe("Giveaway Close Refund", () => {
       creator.playerTokenAccount.address
     );
 
-    expect(new anchor.BN(afterBal.value.amount).eq(new anchor.BN(beforeBal.value.amount))).to.be.true;
+    expect(
+      new anchor.BN(afterBal.value.amount).eq(
+        new anchor.BN(beforeBal.value.amount)
+      )
+    ).to.be.true;
   }).timeout(45000);
 });

@@ -28,7 +28,12 @@ describe("Incomplete Game Close", () => {
       isPrivate: false,
     };
 
-    await testUtils.game.initializeGame(gameData, gameConfig, creator.player, mint.mint);
+    await testUtils.game.initializeGame(
+      gameData,
+      gameConfig,
+      creator.player,
+      mint.mint
+    );
 
     await testUtils.game.joinGame(gameData.gamePDA, creator.player);
     await testUtils.game.joinGame(gameData.gamePDA, p1.player);
@@ -43,7 +48,9 @@ describe("Incomplete Game Close", () => {
       await testUtils.game.unjoinGame(gameData.gamePDA, pl.player, 0);
     }
 
-    const gameAfterUnjoins = await env.program.account.game.fetch(gameData.gamePDA);
+    const gameAfterUnjoins = await env.program.account.game.fetch(
+      gameData.gamePDA
+    );
     expect(gameAfterUnjoins.ticketsCount).to.equal(0);
     expect(gameAfterUnjoins.totalAmount.toNumber()).to.equal(0);
 
@@ -53,11 +60,6 @@ describe("Incomplete Game Close", () => {
       .accounts({
         creator: creator.player.publicKey,
         game: gameData.gamePDA,
-        oracle: (await env.program.account.oracle.all())[0].publicKey,
-        gameToken: mint.gameTokenPDA,
-        gameVault: testUtils.mint.getGameVaultPDA(mint.mint),
-        creatorTokenAccount: creator.playerTokenAccount.address,
-        gameTokenAccount: await anchor.utils.token.associatedAddress({ owner: testUtils.mint.getGameVaultPDA(mint.mint), mint: mint.mint }),
       })
       .signers([creator.player])
       .rpc();
