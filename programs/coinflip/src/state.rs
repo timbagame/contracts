@@ -73,12 +73,8 @@ pub const GAME_FIXED_SIZE: usize = 8
 pub enum GameType {
     /// Two or more players compete for the pot
     Coinflip,
-    /// Two or more players compete for the pot, reveal winner in real-time
-    // Removed other variants - only Coinflip and Giveaway remain
-    /// One or more players compete for a giveaway from the creator
+    /// One or more players compete for a giveaway prize provided by the creator
     Giveaway,
-    /// One or more players compete for a giveaway from the creator, reveal winner in real-time
-
 }
 
 impl Default for GameType {
