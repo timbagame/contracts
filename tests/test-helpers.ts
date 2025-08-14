@@ -453,30 +453,12 @@ export class PlayerManager {
       player.publicKey
     );
 
-    // Initialize player balance
-    await this.program.methods
-      .initializePlayerGames()
-      .accounts({
-        player: player.publicKey,
-        tokenMint: mint,
-      })
-      .signers([player])
-      .rpc();
-
-    // Get player balance PDA
-    const [playerGamesPDA] = PublicKey.findProgramAddressSync(
-      [
-        Buffer.from("player_games"),
-        player.publicKey.toBuffer(),
-        mint.toBuffer(),
-      ],
-      this.program.programId
-    );
+    // PlayerGames removed: no initialization required
 
     return {
       player,
       playerTokenAccount,
-      playerGamesPDA,
+      playerGamesPDA: PublicKey.default, // placeholder unused
     };
   }
 
@@ -511,25 +493,8 @@ export class PlayerManager {
         player.publicKey
       );
 
-      await this.program.methods
-        .initializePlayerGames()
-        .accounts({
-          player: player.publicKey,
-          tokenMint: mint,
-        })
-        .signers([player])
-        .rpc();
-
-      const [playerGamesPDA] = PublicKey.findProgramAddressSync(
-        [
-          Buffer.from("player_games"),
-          player.publicKey.toBuffer(),
-          mint.toBuffer(),
-        ],
-        this.program.programId
-      );
-
-      return { player, playerTokenAccount, playerGamesPDA };
+      // PlayerGames removed - no initialization
+      return { player, playerTokenAccount, playerGamesPDA: PublicKey.default };
     });
 
     return Promise.all(playerPromises);
@@ -638,29 +603,7 @@ export class GameManager {
       .rpc();
   }
 
-  async rollGame(
-    gamePDA: PublicKey,
-    player: anchor.web3.Keypair,
-    oracleOperator?: anchor.web3.Keypair
-  ): Promise<void> {
-    const accounts: any = {
-      game: gamePDA,
-      player: player.publicKey,
-    };
-
-    const signers = [player];
-
-    if (oracleOperator) {
-      accounts.oracleOperator = oracleOperator.publicKey;
-      signers.push(oracleOperator);
-    }
-
-    await this.program.methods
-      .rollGame()
-      .accountsPartial(accounts)
-      .signers(signers)
-      .rpc();
-  }
+  // rollGame helper removed (multi-participation disabled)
 
   async unjoinGame(
     gamePDA: PublicKey,
