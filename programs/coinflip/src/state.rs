@@ -409,11 +409,15 @@ impl Game {
         let hash_result = hash(player_key.as_ref()).to_bytes();
         let h1 = u64::from_le_bytes(hash_result[0..8].try_into().unwrap());
         let mut h2 = u64::from_le_bytes(hash_result[8..16].try_into().unwrap());
-        if h2 % 2 == 0 { h2 |= 1; }
+        if h2 % 2 == 0 {
+            h2 |= 1;
+        }
         (h1, h2)
     }
 
-    fn bloom_m(&self) -> u64 { self.bloom_m_bits as u64 }
+    fn bloom_m(&self) -> u64 {
+        self.bloom_m_bits as u64
+    }
 
     /// Set all k bloom bits for a participant
     pub fn add_participant_to_bloom(&mut self, player_key: &Pubkey) {
@@ -437,7 +441,9 @@ impl Game {
             let pos = (h1.wrapping_add(h2.wrapping_mul(i))) % m;
             let idx = (pos / 64) as usize;
             let off = (pos % 64) as u32;
-            if (self.participants_filter[idx] & (1u64 << off)) == 0 { return false; }
+            if (self.participants_filter[idx] & (1u64 << off)) == 0 {
+                return false;
+            }
         }
         true
     }
