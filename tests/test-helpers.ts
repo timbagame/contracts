@@ -657,18 +657,12 @@ export class GameManager {
   calculateWinnerIndex(
     ticketsCount: number,
     secretKey: number[],
-    lastSlot: number,
-    gameType?: any,
-    totalAmount?: number,
-    ticketAmount?: number
+    lastSlot: number
   ): number {
     return calculateWinnerIndex(
       ticketsCount,
       secretKey,
-      lastSlot,
-      gameType,
-      totalAmount,
-      ticketAmount
+      lastSlot
     );
   }
 }
@@ -679,10 +673,7 @@ export class GameManager {
 export function calculateWinnerIndex(
   ticketsCount: number,
   secretKey: number[],
-  lastSlot: number,
-  gameType?: any,
-  totalAmount?: number,
-  ticketAmount?: number
+  lastSlot: number
 ): number {
   // Calculate entries: for Snowball games use total_amount/ticket_amount, for others use player count
   let nEntries: number;
