@@ -128,10 +128,7 @@ pub mod coinflip {
         instructions::join_game::handler(ctx)
     }
 
-    /// Allows a player to roll in Snowball/Dumbflip games (multiple participation)
-    pub fn roll_game(ctx: Context<RollGame>) -> Result<()> {
-        instructions::roll_game::handler(ctx)
-    }
+    // roll_game removed (multi-participation disabled)
 
     /// Allows a player to leave a game before completion (with refund)
     pub fn unjoin_game(ctx: Context<UnjoinGame>, ticket_index: u32) -> Result<()> {

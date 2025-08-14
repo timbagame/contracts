@@ -125,24 +125,8 @@ pub struct PlayerUnjoined {
     pub timestamp: u64,
 }
 
-/// Emitted when a player rolls in Snowball/Dumbflip games
-#[event]
-pub struct PlayerRolled {
-    /// Game where the roll occurred
-    pub game_key: Pubkey,
-    /// Player who rolled
-    pub player: Pubkey,
-    /// Total amount after roll
-    pub total_amount: u64,
-    /// Total number of tickets after roll
-    pub tickets_count: u32,
-    /// Ticket index for this roll
-    pub ticket_index: u32,
-    /// Last slot for entropy
-    pub last_slot: u64,
-    /// Timestamp of the roll
-    pub timestamp: u64,
-}
+// PlayerRolled event removed with roll instruction
+
 
 // =============================================================================
 // GAME EVENTS

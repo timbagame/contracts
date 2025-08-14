@@ -1,6 +1,8 @@
 use crate::error::ErrorCode;
 use crate::events::PlayerJoined;
 use crate::utils::{get_current_time, get_current_slot};
+use crate::state::Game;
+use anchor_lang::solana_program::hash::hash;
 use anchor_lang::prelude::*;
 
 pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
@@ -17,7 +19,18 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
 
     require!(!game.is_expired(current_time), ErrorCode::GameExpired);
 
-    // Basic duplicate participation check handled at application layer now (PlayerGames removed)
+    // Duplicate prevention: check bloom + exact hash list
+    let positions = Game::hash_participant(&player_key);
+    if game.check_participant_bits(positions) {
+        // All bits set; verify hash list
+        let hash_bytes = hash(player_key.as_ref()).to_bytes();
+        let participant_hash = u64::from_le_bytes(hash_bytes[0..8].try_into().unwrap());
+        if game.participant_hashes.iter().any(|h| *h == participant_hash) {
+            return err!(ErrorCode::AlreadyJoined);
+        }
+        // False positive: allow join, will append hash below
+    }
+
 
     // ===============================
     // STATE UPDATES
@@ -27,10 +40,11 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
     game.add_player_to_game()?;
     game.last_slot = get_current_slot()?;
 
-    // PlayerGames removed: no per-player bloom tracking; rely on game state only
-
-    // SAFETY: Also add player to the Game's participants filter for redundancy
-    game.add_participant_to_filter(&player_key);
+    // Set bloom bits & append hash
+    game.set_participant_bits(positions);
+    let hash_bytes = hash(player_key.as_ref()).to_bytes();
+    let participant_hash = u64::from_le_bytes(hash_bytes[0..8].try_into().unwrap());
+    game.participant_hashes.push(participant_hash);
 
     // ===============================
     // TOKEN TRANSFER

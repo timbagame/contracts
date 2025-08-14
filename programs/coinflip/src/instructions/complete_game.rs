@@ -41,10 +41,12 @@ pub fn handler(
         ErrorCode::InvalidWinnerIndex
     );
 
-    // Validate winner presence in game participants filter
+    // Validate winner presence via exact hash list (after bloom removal of PlayerGames)
     let winner_key = ctx.accounts.winner.key();
+    let hash_bytes = anchor_lang::solana_program::hash::hash(winner_key.as_ref()).to_bytes();
+    let participant_hash = u64::from_le_bytes(hash_bytes[0..8].try_into().unwrap());
     require!(
-        game.check_participant_in_filter(&winner_key),
+        game.participant_hashes.iter().any(|h| *h == participant_hash),
         ErrorCode::UnauthorizedPlayer
     );
 

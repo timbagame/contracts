@@ -125,7 +125,8 @@ pub struct InitializeGame<'info> {
     #[account(
         init,
         payer = creator,
-        space = GAME_BASE_SIZE,
+        // Dynamic size: fixed + (max_tickets * 8 bytes per hash)
+        space = GAME_FIXED_SIZE + (max_tickets as usize * 8),
         seeds = [GAME_SEED, random_hash.as_ref()],
         bump,
     constraint = game_token.is_enabled() @ ErrorCode::TokenNotEnabled,
@@ -175,12 +176,6 @@ pub struct JoinGame<'info> {
     pub game: Account<'info, Game>,
     #[account(mut)]
     pub player: Signer<'info>,
-    #[account(
-        mut,
-        seeds = [PLAYER_GAMES_SEED, player.key().as_ref(), game.token_mint.as_ref()],
-        bump,
-    )]
-    pub player_games: Account<'info, PlayerGames>,
     pub oracle_operator: Option<Signer<'info>>,
     #[account(seeds = [GAME_TOKEN_SEED, game.token_mint.as_ref()], bump)]
     pub game_token: Account<'info, GameToken>,
@@ -264,12 +259,6 @@ pub struct UnjoinGame<'info> {
     pub game: Account<'info, Game>,
     #[account(mut)]
     pub player: Signer<'info>,
-    #[account(
-        mut,
-        seeds = [PLAYER_GAMES_SEED, player.key().as_ref(), game.token_mint.as_ref()],
-        bump,
-    )]
-    pub player_games: Account<'info, PlayerGames>,
     #[account(seeds = [ORACLE_SEED], bump)]
     pub oracle: Account<'info, Oracle>,
     #[account(
@@ -337,47 +326,7 @@ pub struct CloseGame<'info> {
     pub associated_token_program: Program<'info, AssociatedToken>,
 }
 
-#[derive(Accounts)]
-pub struct RollGame<'info> {
-    #[account(
-        mut,
-        constraint = game.can_join_private(oracle_operator.as_ref(), &oracle.operator) @ ErrorCode::PrivateGameAccessDenied,
-        constraint = game_token.is_enabled() @ ErrorCode::TokenNotEnabled,
-        constraint = game.game_type == GameType::Snowball || game.game_type == GameType::Dumbflip || game.game_type == GameType::Dumbball || game.game_type == GameType::Dumbaway @ ErrorCode::InvalidGameType,
-    )]
-    pub game: Account<'info, Game>,
-    #[account(mut)]
-    pub player: Signer<'info>,
-    #[account(
-        mut,
-        seeds = [PLAYER_GAMES_SEED, player.key().as_ref(), game.token_mint.as_ref()],
-        bump,
-    )]
-    pub player_games: Account<'info, PlayerGames>,
-    pub oracle_operator: Option<Signer<'info>>,
-    #[account(seeds = [GAME_TOKEN_SEED, game.token_mint.as_ref()], bump)]
-    pub game_token: Account<'info, GameToken>,
-    /// CHECK: PDA authority for game's token accounts
-    #[account(seeds = [GAME_VAULT_SEED, game.token_mint.as_ref()], bump = game_token.vault_bump)]
-    pub game_vault: AccountInfo<'info>,
-    #[account(
-        mut,
-        associated_token::mint = game.token_mint,
-        associated_token::authority = player,
-    )]
-    pub player_token_account: Account<'info, TokenAccount>,
-    #[account(
-        mut,
-        associated_token::mint = game.token_mint,
-        associated_token::authority = game_vault,
-    )]
-    pub game_token_account: Account<'info, TokenAccount>,
-    #[account(seeds = [ORACLE_SEED], bump)]
-    pub oracle: Account<'info, Oracle>,
-    pub system_program: Program<'info, System>,
-    pub token_program: Program<'info, Token>,
-    pub associated_token_program: Program<'info, AssociatedToken>,
-}
+// RollGame removed
 
 // =============================================================================
 // FEE MANAGEMENT
