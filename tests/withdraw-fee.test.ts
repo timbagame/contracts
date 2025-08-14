@@ -57,10 +57,22 @@ describe("Withdraw Fee", () => {
     // Operator balance before
     const operatorAta = await anchor.utils.token.associatedAddress({ owner: oracle.operator, mint: mint.mint });
     // Ensure operator ATA exists (was not guaranteed to be created earlier)
+    // Ensure operator ATA exists; create if missing using associated token program via airdrop trick
+    let needCreate = false;
     try {
       await env.provider.connection.getTokenAccountBalance(operatorAta);
     } catch {
-      // create ATA by sending a zero balance instruction via spl ata program (simpler: perform a no-op transfer by minting 0 not allowed; instead rely on associated token creation during withdraw via constraint, so skip)
+      needCreate = true;
+    }
+    if (needCreate) {
+      const ix = await (await import("@solana/spl-token")).createAssociatedTokenAccountInstruction(
+        oracle.operatorKeypair.publicKey,
+        operatorAta,
+        oracle.operator,
+        mint.mint
+      );
+      const tx = new anchor.web3.Transaction().add(ix);
+      await env.provider.sendAndConfirm(tx, [oracle.operatorKeypair]);
     }
     const operatorPre = await env.provider.connection.getTokenAccountBalance(operatorAta).catch(() => ({ value: { amount: "0" } }));
 
