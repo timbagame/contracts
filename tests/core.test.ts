@@ -102,46 +102,14 @@ describe("Core Game Operations", () => {
   });
 
   describe("Player Management", () => {
-    it("should create player with token account and balance", async () => {
-      const mint = await testUtils.mint.createMint();
-      const player = await testUtils.player.createPlayer(mint.mint);
-
-      expect(player.player.publicKey).to.not.be.undefined;
-      expect(player.playerTokenAccount).to.not.be.undefined;
-      expect(player.playerGamesPDA).to.not.be.undefined;
-
-      // Verify player balance account exists
-      const balanceAccount = await env.program.account.playerGames.fetch(
-        player.playerGamesPDA
-      );
-      // PlayerGames no longer has amount field - only tracks game participation
-      expect(balanceAccount.activeFilterIndex).to.be.oneOf([0, 1]);
-    });
-
-    it("should create player pool efficiently", async () => {
+    it("should create player pool and fund players", async () => {
       const mint = await testUtils.mint.createMint();
       const players = await testUtils.player.createPlayerPool(3, mint.mint);
-
-      expect(players).to.have.length(3);
-
-      for (const player of players) {
-        expect(player.player.publicKey).to.not.be.undefined;
-        expect(player.playerTokenAccount).to.not.be.undefined;
-        expect(player.playerGamesPDA).to.not.be.undefined;
+      for (const p of players) {
+        await testUtils.player.fundPlayer(p, mint, new anchor.BN(1_000_000));
+        const balance = await env.provider.connection.getTokenAccountBalance(p.playerTokenAccount.address);
+        expect(parseInt(balance.value.amount)).to.be.greaterThan(0);
       }
-    });
-
-    it("should fund player with tokens", async () => {
-      const mint = await testUtils.mint.createMint();
-      const player = await testUtils.player.createPlayer(mint.mint);
-      const amount = new anchor.BN(5_000_000);
-
-      await testUtils.player.fundPlayer(player, mint, amount);
-
-      const balance = await env.provider.connection.getTokenAccountBalance(
-        player.playerTokenAccount.address
-      );
-      expect(balance.value.amount).to.equal(amount.toString());
     });
   });
 

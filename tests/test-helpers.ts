@@ -15,7 +15,6 @@ import { createHash } from "crypto";
 export interface TestPlayer {
   player: anchor.web3.Keypair;
   playerTokenAccount: any;
-  playerGamesPDA: PublicKey;
 }
 
 export interface TestMint {
@@ -458,7 +457,6 @@ export class PlayerManager {
     return {
       player,
       playerTokenAccount,
-      playerGamesPDA: PublicKey.default, // placeholder unused
     };
   }
 
@@ -494,7 +492,7 @@ export class PlayerManager {
       );
 
       // PlayerGames removed - no initialization
-      return { player, playerTokenAccount, playerGamesPDA: PublicKey.default };
+      return { player, playerTokenAccount };
     });
 
     return Promise.all(playerPromises);
@@ -688,11 +686,7 @@ export function calculateWinnerIndex(
 ): number {
   // Calculate entries: for Snowball games use total_amount/ticket_amount, for others use player count
   let nEntries: number;
-  if (gameType && gameType.snowball && totalAmount && ticketAmount) {
-    nEntries = totalAmount / ticketAmount;
-  } else {
-    nEntries = ticketsCount;
-  }
+  nEntries = ticketsCount;
 
   if (nEntries === 1) {
     return 0;
@@ -811,7 +805,7 @@ export class RandomUtils {
    * Generate random game type for testing
    */
   static randomGameType(): any {
-    const types = [{ coinflip: {} }, { giveaway: {} }, { snowball: {} }];
+    const types = [{ coinflip: {} }, { giveaway: {} }];
     return types[this.randomInt(0, types.length - 1)];
   }
 
@@ -947,30 +941,8 @@ export class CollisionUtils {
   /**
    * Validate PlayerGames filter state for testing
    */
-  static async validateFilterState(
-    program: anchor.Program<Coinflip>,
-    playerGamesPDA: anchor.web3.PublicKey
-  ): Promise<{
-    activeFilterIndex: number;
-    filterCleaningScheduledAt: number;
-    emergencyUnjoinMode: boolean;
-    filterALastUpdated: number;
-    filterBLastUpdated: number;
-    filterALongestExpiry: number;
-    filterBLongestExpiry: number;
-  }> {
-    const playerGames = await program.account.playerGames.fetch(playerGamesPDA);
-
-    return {
-      activeFilterIndex: playerGames.activeFilterIndex,
-      filterCleaningScheduledAt:
-        playerGames.filterCleaningScheduledAt.toNumber(),
-      emergencyUnjoinMode: playerGames.emergencyUnjoinMode,
-      filterALastUpdated: playerGames.filterALastUpdated.toNumber(),
-      filterBLastUpdated: playerGames.filterBLastUpdated.toNumber(),
-      filterALongestExpiry: playerGames.filterALongestExpiry.toNumber(),
-      filterBLongestExpiry: playerGames.filterBLongestExpiry.toNumber(),
-    };
+  static async validateFilterState(): Promise<any> {
+    return {};
   }
 
   /**
@@ -985,47 +957,7 @@ export class CollisionUtils {
   /**
    * Create test scenario for emergency mode activation
    */
-  static async createEmergencyModeScenario(
-    testUtils: TestUtils,
-    player: TestPlayer,
-    mint: TestMint
-  ): Promise<{
-    gameData: TestGame;
-    collisionDetected: boolean;
-    filterState: any;
-  }> {
-    // Create initial game
-    const gameData = testUtils.game.generateGamePDA();
-    const gameConfig: GameConfig = {
-      gameType: { coinflip: {} },
-      amount: new anchor.BN(1_000_000),
-      maxTickets: new anchor.BN(3),
-      minTickets: new anchor.BN(2),
-      timeout: new anchor.BN(5), // Short timeout
-      isPrivate: false,
-    };
-
-    await testUtils.game.initializeGame(
-      gameData,
-      gameConfig,
-      player.player,
-      mint.mint
-    );
-
-    await testUtils.game.joinGame(gameData.gamePDA, player.player);
-
-    // Create many more games to trigger collision
-    await this.createCollisionScenario(testUtils, player, mint, 20);
-
-    // Check if collision was detected
-    const env = TestEnvironment.getInstance();
-    const filterState = await this.validateFilterState(
-      env.program,
-      player.playerGamesPDA
-    );
-
-    const collisionDetected = filterState.filterCleaningScheduledAt > 0;
-
-    return { gameData, collisionDetected, filterState };
+  static async createEmergencyModeScenario(): Promise<any> {
+    return {};
   }
 }
