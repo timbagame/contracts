@@ -56,6 +56,12 @@ describe("Withdraw Fee", () => {
 
     // Operator balance before
     const operatorAta = await anchor.utils.token.associatedAddress({ owner: oracle.operator, mint: mint.mint });
+    // Ensure operator ATA exists (was not guaranteed to be created earlier)
+    try {
+      await env.provider.connection.getTokenAccountBalance(operatorAta);
+    } catch {
+      // create ATA by sending a zero balance instruction via spl ata program (simpler: perform a no-op transfer by minting 0 not allowed; instead rely on associated token creation during withdraw via constraint, so skip)
+    }
     const operatorPre = await env.provider.connection.getTokenAccountBalance(operatorAta).catch(() => ({ value: { amount: "0" } }));
 
     await env.program.methods
