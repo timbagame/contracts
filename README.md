@@ -14,7 +14,7 @@ A comprehensive Solana smart contract implementation of various gambling games u
 The program implements a secure commit-reveal scheme for provably fair randomness:
 
 1. **Game Creation** - Creator commits to a random hash
-2. **Player Participation** - Players join with token stakes  
+2. **Player Participation** - Players join with token stakes
 3. **Game Completion** - Oracle reveals secret key for unbiased winner selection
 4. **Settlement** - Automatic distribution of winnings
 
@@ -24,7 +24,7 @@ The program implements a secure commit-reveal scheme for provably fair randomnes
 - **Commit-Reveal Scheme** - Cryptographically secure randomness
 - **Bloom Filter Tracking** - Efficient player participation tracking
 - **Oracle Buffer Time** - Prevents games from being stuck in limbo
-- **Emergency Fund Recovery** - Players can recover funds if oracle fails
+- **Buffer Timeout Unjoin** - Players can reclaim funds after buffer if oracle fails
 
 For detailed security information, see [SECURITY.md](./SECURITY.md).
 
@@ -35,6 +35,7 @@ This project includes a devcontainer configuration for VS Code/Cursor and GitHub
 ### Using Devcontainer (Recommended)
 
 1. Prerequisites:
+
    - VS Code/Cursor
    - Docker
 
@@ -57,11 +58,13 @@ If you prefer not to use devcontainers, you'll need to install the following pre
 #### Manual Installation Steps
 
 1. Install Solana and Anchor:
+
 ```bash
 curl --proto '=https' --tlsv1.2 -sSfL https://solana-install.solana.workers.dev | bash
 ```
 
 2. Install dependencies:
+
 ```bash
 yarn install
 ```
@@ -69,6 +72,7 @@ yarn install
 ## Building
 
 Build the program:
+
 ```bash
 anchor build
 ```
@@ -78,12 +82,13 @@ anchor build
 The project features a comprehensive, modular test suite organized by functionality:
 
 - **`tests/core.test.ts`** - Basic game operations and lifecycle
-- **`tests/security.test.ts`** - Security validation and edge cases  
+- **`tests/security.test.ts`** - Security validation and edge cases
 - **`tests/game-types.test.ts`** - Different game variants (Coinflip, Giveaway, Snowball)
 - **`tests/advanced.test.ts`** - Complex functionality and performance tests
 - **`tests/test-helpers.ts`** - Shared utilities and test infrastructure
 
 Run the complete test suite:
+
 ```bash
 anchor test
 ```
@@ -109,13 +114,15 @@ programs/coinflip/src/
 ## Local Development
 
 Set up local development environment:
+
 ```bash
 yarn run setup-local
 ```
 
 This creates a local test environment with:
+
 - Funded test accounts
-- Token mints and configurations  
+- Token mints and configurations
 - Oracle initialization
 
 ## Deployment
@@ -123,6 +130,7 @@ This creates a local test environment with:
 **Program ID**: `BpdzqWdNJfgeVCsFHppS4WgeRZSRxt5iSj6xH4QdeR7t` (devnet/localnet)
 
 Deploy to your desired Solana cluster:
+
 ```bash
 anchor deploy
 ```
@@ -130,6 +138,7 @@ anchor deploy
 ## Code Quality
 
 Check and fix code formatting:
+
 ```bash
 yarn run lint        # Check formatting
 yarn run lint:fix    # Fix formatting issues
