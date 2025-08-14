@@ -464,10 +464,13 @@ describe("Core Game Operations", () => {
 
       // Verify completion by checking winner token balance increase & that account is closed
       // Game account uses `close = creator` in CompleteGame accounts, so fetching now should fail
-      const winnerBalance = await env.provider.connection.getTokenAccountBalance(
-        winner.playerTokenAccount.address
-      );
-      expect(parseInt(winnerBalance.value.amount)).to.be.greaterThan(100_000_000); // initial 100m + winnings
+      const winnerBalance =
+        await env.provider.connection.getTokenAccountBalance(
+          winner.playerTokenAccount.address
+        );
+      expect(parseInt(winnerBalance.value.amount)).to.be.greaterThan(
+        100_000_000
+      ); // initial 100m + winnings
       let fetchFailed = false;
       try {
         await env.program.account.game.fetch(gameData.gamePDA);
