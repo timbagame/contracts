@@ -425,9 +425,7 @@ export class PlayerManager {
   private provider: anchor.AnchorProvider;
   private mintManager: MintManager;
 
-  constructor(
-    provider: anchor.AnchorProvider
-  ) {
+  constructor(provider: anchor.AnchorProvider) {
     this.program = anchor.workspace.Coinflip as anchor.Program<Coinflip>;
     this.provider = provider;
     this.mintManager = new MintManager(this.program, provider);
@@ -658,11 +656,7 @@ export class GameManager {
     secretKey: number[],
     lastSlot: number
   ): number {
-    return calculateWinnerIndex(
-      ticketsCount,
-      secretKey,
-      lastSlot
-    );
+    return calculateWinnerIndex(ticketsCount, secretKey, lastSlot);
   }
 }
 

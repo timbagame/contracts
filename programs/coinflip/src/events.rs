@@ -86,7 +86,6 @@ pub struct TokenFeeWithdrawn {
 // PLAYER EVENTS
 // =============================================================================
 
-
 /// Emitted when a player joins a game
 #[event]
 pub struct PlayerJoined {
@@ -126,7 +125,6 @@ pub struct PlayerUnjoined {
 }
 
 // PlayerRolled event removed with roll instruction
-
 
 // =============================================================================
 // GAME EVENTS

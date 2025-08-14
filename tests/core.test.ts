@@ -107,7 +107,9 @@ describe("Core Game Operations", () => {
       const players = await testUtils.player.createPlayerPool(3, mint.mint);
       for (const p of players) {
         await testUtils.player.fundPlayer(p, mint, new anchor.BN(1_000_000));
-        const balance = await env.provider.connection.getTokenAccountBalance(p.playerTokenAccount.address);
+        const balance = await env.provider.connection.getTokenAccountBalance(
+          p.playerTokenAccount.address
+        );
         expect(parseInt(balance.value.amount)).to.be.greaterThan(0);
       }
     });
@@ -576,7 +578,6 @@ describe("Core Game Operations", () => {
       }
     });
   });
-
 
   describe("Winner Calculation", () => {
     it("should calculate winner correctly for 2 players", async () => {

@@ -108,8 +108,6 @@ pub mod coinflip {
     // PLAYER MANAGEMENT
     // =========================================================================
 
-
-
     // =========================================================================
     // GAME MANAGEMENT
     // =========================================================================
@@ -127,7 +125,6 @@ pub mod coinflip {
     pub fn join_game(ctx: Context<JoinGame>) -> Result<()> {
         instructions::join_game::handler(ctx)
     }
-
 
     /// Allows a player to leave a game before completion (with refund)
     pub fn unjoin_game(ctx: Context<UnjoinGame>, ticket_index: u32) -> Result<()> {
