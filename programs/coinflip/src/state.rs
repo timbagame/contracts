@@ -243,20 +243,6 @@ impl GameToken {
         Ok(())
     }
 }
-
-// =============================================================================
-// BLOOM FILTER STRUCTURES
-// =============================================================================
-
-/// Simplified bloom filter structure
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Default)]
-pub struct BloomFilters {
-    /// 512-bit bloom filter for game + ticket index tracking
-    pub game_index_filter: [u64; 8],
-    /// 512-bit bloom filter for game + ticket index unjoin tracking
-    pub unjoin_index_filter: [u64; 8],
-}
-
 // =============================================================================
 // GAME ACCOUNT
 // =============================================================================
