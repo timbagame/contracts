@@ -1,5 +1,5 @@
-use crate::{events::OracleUpdated, OracleConfig};
 use crate::utils::update_oracle_configuration;
+use crate::{events::OracleUpdated, OracleConfig};
 use anchor_lang::prelude::*;
 
 pub fn handler(ctx: Context<super::UpdateOracle>, config: OracleConfig) -> Result<()> {

@@ -1,6 +1,11 @@
 import { expect } from "chai";
 import * as anchor from "@coral-xyz/anchor";
-import { TestUtils, TestEnvironment, GameConfig, calculateWinnerIndex } from "./test-helpers";
+import {
+  TestUtils,
+  TestEnvironment,
+  GameConfig,
+  calculateWinnerIndex,
+} from "./test-helpers";
 
 // Tests that completion rejects winner pubkey not in participant list
 

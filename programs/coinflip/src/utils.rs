@@ -1,6 +1,6 @@
-use anchor_lang::prelude::*;
 use crate::state::Oracle;
 use crate::OracleConfig;
+use anchor_lang::prelude::*;
 
 // =============================================================================
 // COMMON UTILITIES

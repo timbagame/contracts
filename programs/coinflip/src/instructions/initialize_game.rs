@@ -1,5 +1,5 @@
+use crate::utils::{get_current_slot, get_current_time};
 use crate::{events::GameInitialized, state::GameType, GameConfig};
-use crate::utils::{get_current_time, get_current_slot};
 use anchor_lang::prelude::*;
 
 pub fn handler(ctx: Context<super::InitializeGame>, config: GameConfig) -> Result<()> {
@@ -47,7 +47,6 @@ pub fn handler(ctx: Context<super::InitializeGame>, config: GameConfig) -> Resul
             false,
         )?;
     }
-
 
     // ===============================
     // EVENT EMISSION
