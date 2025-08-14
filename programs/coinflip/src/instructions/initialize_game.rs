@@ -24,7 +24,7 @@ pub fn handler(ctx: Context<super::InitializeGame>, config: GameConfig) -> Resul
     game.is_private = config.is_private;
 
     // Set amounts based on game type
-    if config.game_type == GameType::Giveaway || config.game_type == GameType::Dumbaway {
+    if config.game_type == GameType::Giveaway {
         game.total_amount = config.amount;
         game.ticket_amount = 0;
     } else {

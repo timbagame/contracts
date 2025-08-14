@@ -41,9 +41,9 @@ pub const GAME_VAULT_SEED: &[u8] = b"game_vault";
 // GAME CONSTANTS
 // =============================================================================
 
-/// Minimum players required for competitive games (Coinflip/Dumbflip)
+/// Minimum players required for competitive games
 pub const MIN_COMPETITIVE_PLAYERS: u32 = 2;
-/// Minimum players required for giveaway games (Giveaway/Dumbaway)
+/// Minimum players required for giveaway games
 pub const MIN_GIVEAWAY_PLAYERS: u32 = 1;
 pub const GAME_TOKEN_SIZE: usize = 8 + 32 + 1 + 8 + 8 + 1;
 // PLAYER_GAMES_SIZE removed along with PlayerGames account
@@ -74,11 +74,11 @@ pub enum GameType {
     /// Two or more players compete for the pot
     Coinflip,
     /// Two or more players compete for the pot, reveal winner in real-time
-    Dumbflip,
+    // Removed other variants - only Coinflip and Giveaway remain
     /// One or more players compete for a giveaway from the creator
     Giveaway,
     /// One or more players compete for a giveaway from the creator, reveal winner in real-time
-    Dumbaway,
+
 }
 
 impl Default for GameType {
@@ -476,7 +476,7 @@ impl Game {
         max_tickets: u32,
         min_tickets: u32,
     ) -> bool {
-        if matches!(game_type, GameType::Giveaway | GameType::Dumbaway) {
+        if matches!(game_type, GameType::Giveaway) {
             max_tickets >= MIN_GIVEAWAY_PLAYERS && min_tickets >= MIN_GIVEAWAY_PLAYERS
         } else {
             max_tickets >= MIN_COMPETITIVE_PLAYERS && min_tickets >= MIN_COMPETITIVE_PLAYERS
@@ -496,8 +496,6 @@ impl Game {
     }
 
     pub fn has_sufficient_balance_for_join(&self, token_balance: u64) -> bool {
-        self.game_type == GameType::Giveaway
-            || self.game_type == GameType::Dumbaway
-            || token_balance >= self.ticket_amount
+        self.game_type == GameType::Giveaway || token_balance >= self.ticket_amount
     }
 }
