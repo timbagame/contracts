@@ -65,7 +65,7 @@ describe("Winner Authorization", () => {
     } catch (e) {
       // Program error message is human-readable ("Unauthorized player") not enum variant
       const msg = e.toString();
-      expect(msg).to.include("WinnerPubkeyMismatch");
+      expect(msg).to.include("WinnerPubkeyHashMismatch");
     }
   });
 });

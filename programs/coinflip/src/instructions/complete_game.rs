@@ -26,29 +26,31 @@ pub fn handler(
     // WINNER VERIFICATION
     // ===============================
 
-    // 1. Verify the winner index is correctly calculated from secret key
+    // 1. Recompute winner index deterministically from secret key + game state (append order canonical)
     let calculated_winner_index = game
         .calculate_winner_index(secret_key)
         .ok_or(ErrorCode::RandomnessGenerationFailed)?;
     require!(
         winner_index == calculated_winner_index,
-        ErrorCode::InvalidWinnerIndex
+        ErrorCode::WinnerIndexMismatch
     );
 
-    // 2. Verify the winner index is within valid range
+    // 2. Bounds check: ensure index < tickets_count
     require!(
         winner_index < game.tickets_count,
-        ErrorCode::InvalidWinnerIndex
+        ErrorCode::WinnerIndexOutOfRange
     );
 
+    // 3. Direct positional hash check: append order is canonical participant ordering
     let winner_key = ctx.accounts.winner.key();
     let hash_bytes = anchor_lang::solana_program::hash::hash(winner_key.as_ref()).to_bytes();
-    let participant_hash = u64::from_le_bytes(hash_bytes[0..8].try_into().unwrap());
+    let supplied_hash = u64::from_le_bytes(hash_bytes[0..8].try_into().unwrap());
+
+    // Safety: participant_hashes length should equal tickets_count; rely on index already checked
+    let expected_hash = game.participant_hashes[winner_index as usize];
     require!(
-        game.participant_hashes
-            .iter()
-            .any(|h| *h == participant_hash),
-        ErrorCode::WinnerPubkeyMismatch
+        expected_hash == supplied_hash,
+        ErrorCode::WinnerPubkeyHashMismatch
     );
 
     // ===============================
