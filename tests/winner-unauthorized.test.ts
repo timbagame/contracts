@@ -63,7 +63,9 @@ describe("Winner Authorization", () => {
       );
       expect.fail("Completion should fail for unauthorized winner");
     } catch (e) {
-      expect(e.toString()).to.include("UnauthorizedPlayer");
+      // Program error message is human-readable ("Unauthorized player") not enum variant
+      const msg = e.toString();
+      expect(msg).to.satisfy((s: string) => s.includes("Unauthorized player") || s.includes("UnauthorizedPlayer"));
     }
   });
 });
