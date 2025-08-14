@@ -100,7 +100,7 @@ export class TestEnvironment {
     this.mint = this.globalMint; // alias for tests referencing env.mint
 
     // Create player pool
-    const playerManager = new PlayerManager(this.program, this.provider);
+    const playerManager = new PlayerManager(this.provider);
     this.playerPool = await playerManager.createPlayerPool(
       8,
       this.globalMint.mint
@@ -124,7 +124,7 @@ export class TestEnvironment {
   // Backwards-compatible helper (some tests call env.createPlayer())
   public async createPlayer(): Promise<TestPlayer> {
     if (!this.globalMint) throw new Error("Environment not initialized");
-    const pm = new PlayerManager(this.program, this.provider);
+    const pm = new PlayerManager(this.provider);
     return pm.createPlayer(this.globalMint.mint);
   }
 
@@ -426,12 +426,11 @@ export class PlayerManager {
   private mintManager: MintManager;
 
   constructor(
-    program: anchor.Program<Coinflip>,
     provider: anchor.AnchorProvider
   ) {
-    this.program = program;
+    this.program = anchor.workspace.Coinflip as anchor.Program<Coinflip>;
     this.provider = provider;
-    this.mintManager = new MintManager(program, provider);
+    this.mintManager = new MintManager(this.program, provider);
   }
 
   async createPlayer(mint: PublicKey): Promise<TestPlayer> {
@@ -749,7 +748,7 @@ export class TestUtils {
     this.env = TestEnvironment.getInstance();
     this.oracle = new OracleManager(this.env.program, this.env.provider);
     this.mint = new MintManager(this.env.program, this.env.provider);
-    this.player = new PlayerManager(this.env.program, this.env.provider);
+    this.player = new PlayerManager(this.env.provider);
     this.game = new GameManager(this.env.program);
   }
 

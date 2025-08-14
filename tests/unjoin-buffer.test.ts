@@ -48,8 +48,9 @@ describe("Unjoin After Buffer", () => {
     }
 
     // Fast-forward time by manipulating Clock via sleep to exceed timeout + buffer
-    const bufferSecs = oracle.config.oracleBufferTime.toNumber();
-    const waitMs = (shortTimeout.toNumber() + bufferSecs + 2) * 1000; // extra 2s margin
+    const bufferSecs = (typeof oracle.config.oracleBufferTime === 'number' ? oracle.config.oracleBufferTime : oracle.config.oracleBufferTime);
+    const shortTimeoutSecs = (typeof shortTimeout === 'number' ? shortTimeout : shortTimeout.toNumber());
+    const waitMs = (shortTimeoutSecs + bufferSecs + 2) * 1000; // extra 2s margin
     await new Promise((r) => setTimeout(r, waitMs));
 
     // Now unjoin should succeed
