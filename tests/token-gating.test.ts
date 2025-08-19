@@ -1,0 +1,100 @@
+import { expect } from "chai";
+import * as anchor from "@coral-xyz/anchor";
+import { TestUtils, TestEnvironment, GameConfig } from "./test-helpers";
+
+// Token gating tests: enabled flag and minAmount enforcement
+
+describe("Token Gating", () => {
+  let testUtils: TestUtils;
+  let env: TestEnvironment;
+
+  before(async () => {
+    env = TestEnvironment.getInstance();
+    testUtils = new TestUtils();
+    if (!env.oracle) await env.initialize();
+  });
+
+  it("should block game initialization when token disabled via update_token", async () => {
+    const { oracle, mint, players } = await testUtils.quickSetup();
+    const [creator] = players;
+
+    // Disable token via update_token
+    await env.program.methods
+      .updateToken({ minAmount: new anchor.BN(1000), enabled: false })
+      .accounts({ tokenMint: mint.mint, oracleOperator: oracle.operator })
+      .signers([oracle.operatorKeypair])
+      .rpc();
+
+    const gameData = testUtils.game.generateGamePDA();
+    const gameConfig: GameConfig = {
+      gameType: { coinflip: {} },
+      amount: new anchor.BN(1_000_000),
+      maxTickets: new anchor.BN(2),
+      minTickets: new anchor.BN(2),
+      timeout: new anchor.BN(60),
+      isPrivate: false,
+    };
+
+    try {
+      await testUtils.game.initializeGame(gameData, gameConfig, creator.player, mint.mint);
+      expect.fail("Expected initializeGame to fail when token disabled");
+    } catch (e: any) {
+      expect(e.toString()).to.include("TokenNotEnabled");
+    }
+  });
+
+  it("should enforce minAmount on initialize and join after raising via update_token", async () => {
+    const { oracle, mint, players } = await testUtils.quickSetup();
+    const [creator, p1] = players;
+
+    // Raise minAmount above planned game amount
+    const raisedMin = new anchor.BN(10_000_000);
+    await env.program.methods
+      .updateToken({ minAmount: raisedMin, enabled: true })
+      .accounts({ tokenMint: mint.mint, oracleOperator: oracle.operator })
+      .signers([oracle.operatorKeypair])
+      .rpc();
+
+    const gameData = testUtils.game.generateGamePDA();
+    const lowAmount = new anchor.BN(1_000_000);
+    const gameConfig: GameConfig = {
+      gameType: { coinflip: {} },
+      amount: lowAmount,
+      maxTickets: new anchor.BN(2),
+      minTickets: new anchor.BN(2),
+      timeout: new anchor.BN(60),
+      isPrivate: false,
+    };
+
+    // initialize should fail due to amount < minAmount
+    try {
+      await testUtils.game.initializeGame(gameData, gameConfig, creator.player, mint.mint);
+      expect.fail("Expected initializeGame to fail when amount < minAmount");
+    } catch (e: any) {
+      expect(e.toString()).to.include("InvalidAmount");
+    }
+
+    // Lower minAmount back and init; then raise and ensure join blocked
+    await env.program.methods
+      .updateToken({ minAmount: new anchor.BN(1000), enabled: true })
+      .accounts({ tokenMint: mint.mint, oracleOperator: oracle.operator })
+      .signers([oracle.operatorKeypair])
+      .rpc();
+
+    await testUtils.game.initializeGame(gameData, gameConfig, creator.player, mint.mint);
+
+    // Raise minAmount after init; join should now fail
+    await env.program.methods
+      .updateToken({ minAmount: raisedMin, enabled: true })
+      .accounts({ tokenMint: mint.mint, oracleOperator: oracle.operator })
+      .signers([oracle.operatorKeypair])
+      .rpc();
+
+    try {
+      await testUtils.game.joinGame(gameData.gamePDA, p1.player);
+      expect.fail("Expected join to fail when amount < raised minAmount");
+    } catch (e: any) {
+      expect(e.toString()).to.include("InvalidAmount");
+    }
+  });
+});
