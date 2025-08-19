@@ -264,7 +264,7 @@ pub struct Game {
     pub is_private: bool,
     /// Total accumulated prize
     pub total_amount: u64,
-    /// Exact participant hash list (first 8 bytes of SHA256(pubkey)) to eliminate false positives
+    /// Exact participant hash list (first 8 bytes of SHA256("timba:part:v1" || game_key || pubkey))
     pub participant_hashes: Vec<u64>,
 }
 

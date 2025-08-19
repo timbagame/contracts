@@ -1,6 +1,7 @@
 use crate::state::Oracle;
 use crate::OracleConfig;
 use anchor_lang::prelude::*;
+use anchor_lang::solana_program::hash::hash;
 
 // =============================================================================
 // COMMON UTILITIES
@@ -35,4 +36,24 @@ pub fn update_oracle_configuration(
 
         operator_key,
     );
+}
+
+// =============================================================================
+// PARTICIPANT HASHING
+// =============================================================================
+
+/// Domain tag for participant hash computation (versioned for future evolution)
+const PARTICIPANT_HASH_DOMAIN: &[u8] = b"timba:part:v1";
+
+/// Computes the per-game salted participant hash as the first 8 bytes of
+/// SHA256("timba:part:v1" || game_key || player_pubkey)
+pub fn participant_hash(game_key: &Pubkey, player_key: &Pubkey) -> u64 {
+    let mut data = Vec::with_capacity(
+        PARTICIPANT_HASH_DOMAIN.len() + 32 /* game */ + 32 /* player */,
+    );
+    data.extend_from_slice(PARTICIPANT_HASH_DOMAIN);
+    data.extend_from_slice(game_key.as_ref());
+    data.extend_from_slice(player_key.as_ref());
+    let digest = hash(&data).to_bytes();
+    u64::from_le_bytes(digest[0..8].try_into().unwrap())
 }

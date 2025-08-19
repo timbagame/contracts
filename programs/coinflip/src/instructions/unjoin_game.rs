@@ -1,6 +1,6 @@
 use crate::error::ErrorCode;
 use crate::events::PlayerUnjoined;
-use crate::utils::{get_current_slot, get_current_time};
+use crate::utils::{get_current_slot, get_current_time, participant_hash};
 use anchor_lang::prelude::*;
 
 pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
@@ -28,13 +28,12 @@ pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
     // STATE UPDATES
     // ===============================
 
-    // Find participant hash and remove if present (single ticket per player)
-    let hash_bytes = anchor_lang::solana_program::hash::hash(player_key.as_ref()).to_bytes();
-    let participant_hash = u64::from_le_bytes(hash_bytes[0..8].try_into().unwrap());
+    // Find salted participant hash and remove if present (single ticket per player)
+    let player_hash = participant_hash(&game.key(), &player_key);
     let removed_index_opt = game
         .participant_hashes
         .iter()
-        .position(|h| *h == participant_hash);
+        .position(|h| *h == player_hash);
     if let Some(pos) = removed_index_opt {
         game.participant_hashes.swap_remove(pos);
         // Decrement counters and refund
