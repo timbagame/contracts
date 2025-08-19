@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use anchor_lang::solana_program::hash::hash;
+use anchor_lang::solana_program::hash::hashv;
 use anchor_spl::token::{transfer, Transfer};
 
 // =============================================================================
@@ -317,7 +317,7 @@ impl Game {
 
     /// Verifies the secret key matches the random hash using SHA256
     pub fn verify_secret_key(random_hash: [u8; 32], secret_key: [u8; 32]) -> bool {
-        let random_hash_calculated = hash(secret_key.as_ref()).to_bytes();
+        let random_hash_calculated = hashv(&[secret_key.as_ref()]).to_bytes();
         random_hash_calculated == random_hash
     }
 
@@ -330,11 +330,9 @@ impl Game {
             return Some(0);
         }
 
-        // Use stack-allocated array instead of Vec for better performance
-        let mut combined_data = [0u8; 40]; // 32 bytes (secret) + 8 bytes (slot)
-        combined_data[..32].copy_from_slice(&secret_key);
-        combined_data[32..].copy_from_slice(&self.last_slot.to_le_bytes());
-        let entropy_hash = hash(&combined_data).to_bytes();
+        // Hash secret and slot together without allocation
+        let slot_bytes = self.last_slot.to_le_bytes();
+        let entropy_hash = hashv(&[secret_key.as_ref(), &slot_bytes]).to_bytes();
 
         // Try sliding entropy windows through the hashed entropy using constants
         let max_valid = u64::MAX - (u64::MAX % n_entries);
