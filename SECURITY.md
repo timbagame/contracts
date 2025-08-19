@@ -83,10 +83,11 @@ assert(calculatedHash === originalCommittedHash);
 - Prevents blockchain bloat and reduces ongoing costs
 - Makes post-completion attacks impossible (no account to attack)
 
-**Bloom Filter Participation Tracking:**
+**Participation Tracking:**
 
 - Efficient tracking of player participation without storing full lists
-- Collision mitigation via explicit participant hash list (first 8 bytes of SHA256)
+- Collision mitigation via explicit participant hash list (first 8 bytes of SHA256("timba:part:v1" || game_key || pubkey))
+- Per-game salting prevents cross-game precomputation against player keys
 - Simplified single-mode design (no special alternate states)
 
 ## Game Types and Risk Profiles

@@ -1,6 +1,7 @@
 use crate::error::ErrorCode;
 use crate::events::GameCompleted;
 use crate::utils::get_current_time;
+use crate::utils::participant_hash;
 use anchor_lang::prelude::*;
 
 pub fn handler(
@@ -43,8 +44,7 @@ pub fn handler(
 
     // 3. Direct positional hash check: append order is canonical participant ordering
     let winner_key = ctx.accounts.winner.key();
-    let hash_bytes = anchor_lang::solana_program::hash::hash(winner_key.as_ref()).to_bytes();
-    let supplied_hash = u64::from_le_bytes(hash_bytes[0..8].try_into().unwrap());
+    let supplied_hash = participant_hash(&game.key(), &winner_key);
 
     // Safety: participant_hashes length should equal tickets_count; rely on index already checked
     let expected_hash = game.participant_hashes[winner_index as usize];

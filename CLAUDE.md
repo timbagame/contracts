@@ -148,7 +148,7 @@ The project includes devcontainer configuration for VS Code/Cursor and GitHub Co
 
 Current approach:
 
-- Each Game stores: a 512-bit `participants_filter` and an exact `participant_hashes` vector (first 8 bytes of SHA256(pubkey)).
+- Each Game stores: a 512-bit `participants_filter` and an exact `participant_hashes` vector (first 8 bytes of SHA256("timba:part:v1" || game_key || pubkey)).
 - Joining sets bloom bits + appends hash; completion relies on the exact hash list (eliminates false positives).
 - No player-level bloom filters, no rotation, no cleanup scheduling buffers.
 - Late unjoin depends only on `(timeout + oracle_buffer_time)` and does not rely on special modes.

@@ -1,8 +1,7 @@
 use crate::error::ErrorCode;
 use crate::events::PlayerJoined;
-use crate::utils::{get_current_slot, get_current_time};
+use crate::utils::{get_current_slot, get_current_time, participant_hash};
 use anchor_lang::prelude::*;
-use anchor_lang::solana_program::hash::hash;
 
 pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
     let game = &mut ctx.accounts.game;
@@ -15,13 +14,12 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
 
     require!(!game.is_expired(current_time), ErrorCode::GameExpired);
 
-    // Duplicate prevention: scan exact hash list
-    let hash_bytes = hash(player_key.as_ref()).to_bytes();
-    let participant_hash = u64::from_le_bytes(hash_bytes[0..8].try_into().unwrap());
+    // Duplicate prevention: scan exact salted hash list (per-game uniqueness)
+    let player_hash = participant_hash(&game.key(), &player_key);
     if game
         .participant_hashes
         .iter()
-        .any(|h| *h == participant_hash)
+        .any(|h| *h == player_hash)
     {
         return err!(ErrorCode::AlreadyJoined);
     }
@@ -34,8 +32,8 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
     game.add_player_to_game()?;
     game.last_slot = get_current_slot()?;
 
-    // Append hash
-    game.participant_hashes.push(participant_hash);
+    // Append salted hash
+    game.participant_hashes.push(player_hash);
 
     // ===============================
     // TOKEN TRANSFER
