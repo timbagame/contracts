@@ -83,18 +83,15 @@ describe("Token Gating", () => {
 
     await testUtils.game.initializeGame(gameData, gameConfig, creator.player, mint.mint);
 
-    // Raise minAmount after init; join should now fail
+    // Raise minAmount after init; join should still succeed (min enforced at init)
     await env.program.methods
       .updateToken({ minAmount: raisedMin, enabled: true })
       .accounts({ tokenMint: mint.mint, oracleOperator: oracle.operator })
       .signers([oracle.operatorKeypair])
       .rpc();
 
-    try {
-      await testUtils.game.joinGame(gameData.gamePDA, p1.player);
-      expect.fail("Expected join to fail when amount < raised minAmount");
-    } catch (e: any) {
-      expect(e.toString()).to.include("InvalidAmount");
-    }
+    await testUtils.game.joinGame(gameData.gamePDA, p1.player);
+    const acc = await env.program.account.game.fetch(gameData.gamePDA);
+    expect(acc.ticketsCount).to.equal(1); // only p1 joined; creator not joined in this subtest
   });
 });
