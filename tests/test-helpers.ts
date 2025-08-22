@@ -591,7 +591,7 @@ export class GameManager {
 
   async unjoinGame(
     gamePDA: PublicKey,
-    player: anchor.web3.Keypair,
+    player: anchor.web3.Keypair
   ): Promise<void> {
     await this.program.methods
       .unjoinGame()
@@ -827,6 +827,20 @@ export class RandomUtils {
  */
 export class CollisionUtils {
   /**
+   * Generate a standard game configuration used for collision tests
+   */
+  private static gameConfig(timeout: number): GameConfig {
+    return {
+      gameType: { coinflip: {} },
+      amount: new anchor.BN(1_000_000),
+      maxTickets: new anchor.BN(2),
+      minTickets: new anchor.BN(2),
+      timeout: new anchor.BN(timeout),
+      isPrivate: false,
+    };
+  }
+
+  /**
    * Create collision scenario by generating games that hash to similar bloom filter positions
    */
   static async createCollisionScenario(
@@ -836,15 +850,7 @@ export class CollisionUtils {
     gameCount: number = 25
   ): Promise<TestGame[]> {
     const games: TestGame[] = [];
-
-    const gameConfig: GameConfig = {
-      gameType: { coinflip: {} },
-      amount: new anchor.BN(1_000_000),
-      maxTickets: new anchor.BN(2),
-      minTickets: new anchor.BN(2),
-      timeout: new anchor.BN(3600),
-      isPrivate: false,
-    };
+    const gameConfig = this.gameConfig(3600);
 
     // Create many games to increase collision probability
     for (let i = 0; i < gameCount; i++) {
@@ -876,14 +882,7 @@ export class CollisionUtils {
     let successful = 0;
     let rejected = 0;
 
-    const gameConfig: GameConfig = {
-      gameType: { coinflip: {} },
-      amount: new anchor.BN(1_000_000),
-      maxTickets: new anchor.BN(2),
-      minTickets: new anchor.BN(2),
-      timeout: new anchor.BN(60),
-      isPrivate: false,
-    };
+    const gameConfig = this.gameConfig(60);
 
     for (let i = 0; i < attemptCount; i++) {
       const gameData = testUtils.game.generateGamePDA();

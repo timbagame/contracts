@@ -7,14 +7,19 @@ use anchor_lang::solana_program::hash::hashv;
 // COMMON UTILITIES
 // =============================================================================
 
-/// Get current timestamp from Solana clock - eliminates repeated Clock::get() calls
+/// Retrieve the current [`Clock`] account
+pub fn get_clock() -> Result<Clock> {
+    Clock::get()
+}
+
+/// Get current timestamp from Solana clock - eliminates repeated `Clock::get()` calls
 pub fn get_current_time() -> Result<u64> {
-    Ok(Clock::get()?.unix_timestamp as u64)
+    Ok(get_clock()?.unix_timestamp as u64)
 }
 
 /// Get current slot from Solana clock
 pub fn get_current_slot() -> Result<u64> {
-    Ok(Clock::get()?.slot)
+    Ok(get_clock()?.slot)
 }
 
 // =============================================================================
@@ -33,7 +38,6 @@ pub fn update_oracle_configuration(
         config.max_tickets,
         config.max_timeout,
         config.min_timeout,
-
         operator_key,
     );
 }
