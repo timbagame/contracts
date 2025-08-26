@@ -9,7 +9,8 @@ use anchor_lang::solana_program::hash::hashv;
 
 /// Retrieve the current [`Clock`] account
 pub fn get_clock() -> Result<Clock> {
-    Clock::get()
+    // Clock::get returns Result<Clock, ProgramError>; coerce to Anchor Error
+    Ok(Clock::get()?)
 }
 
 /// Get current timestamp from Solana clock - eliminates repeated `Clock::get()` calls
