@@ -86,6 +86,13 @@ export class TestEnvironment {
   }
 
   /**
+   * Utility: shuffle an array (compat with tests expecting TestEnvironment.shuffle)
+   */
+  static shuffle<T>(array: T[]): T[] {
+    return RandomUtils.shuffle(array);
+  }
+
+  /**
    * Initialize the test environment with oracle and global mint
    */
   async initialize(): Promise<void> {
