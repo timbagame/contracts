@@ -1,6 +1,13 @@
 .anchor
 .DS_Store
-target
+
+# Ignore all of target, but allow committing just the IDL and types for CI
+target/**
+!target/idl/
+!target/types/
+!target/idl/coinflip.json
+!target/types/coinflip.ts
+
 **/*.rs.bk
 node_modules
 test-ledger
