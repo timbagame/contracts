@@ -139,7 +139,7 @@ pub struct InitializeGame<'info> {
     #[account(mut)]
     pub creator: Signer<'info>,
 
-    #[account(mut, seeds = [b"oracle"], bump)]
+    #[account(mut, seeds = [ORACLE_SEED], bump)]
     pub oracle: Account<'info, Oracle>,
     pub token_mint: Account<'info, Mint>,
     #[account(seeds = [GAME_TOKEN_SEED, token_mint.key().as_ref()], bump)]
