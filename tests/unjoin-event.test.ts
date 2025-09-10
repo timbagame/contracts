@@ -14,7 +14,7 @@ describe("Unjoin Event Emission", () => {
     if (!env.oracle) await env.initialize();
   });
 
-  it.skip("emits PlayerUnjoined with correct index", async () => {
+  it("emits PlayerUnjoined with correct index", async () => {
     const { oracle, mint, players } = await testUtils.quickSetup();
     const gameData = testUtils.game.generateGamePDA();
     const [p1, p2] = players;
@@ -34,37 +34,36 @@ describe("Unjoin Event Emission", () => {
     const gameAfterJoins = await env.program.account.game.fetch(gameData.gamePDA);
     expect(gameAfterJoins.ticketsCount).to.equal(2);
 
-    // Capture event
-    let received: any | null = null;
-    const sub = await env.program.addEventListener("playerUnjoined", (ev: any) => {
-      received = ev;
+    // Subscribe to event BEFORE triggering unjoin
+    let sub: number | undefined;
+    const waitForEvent = new Promise<any>(async (resolve, reject) => {
+      try {
+        sub = await env.program.addEventListener("playerUnjoined", (ev: any) => {
+          const matchGame = ev.gameKey.toString() === gameData.gamePDA.toString();
+          const matchPlayer = ev.player.toString() === p2.player.publicKey.toString();
+          if (matchGame && matchPlayer) resolve(ev);
+        });
+      } catch (err) {
+        reject(err);
+      }
+      setTimeout(() => reject(new Error("EventTimeout")), 20000);
     });
 
     await new Promise((r) => setTimeout(r, (5 + (oracle.config.oracleBufferTime as number) + 2) * 1000));
 
-    // Unjoin second player; expect index 1; tolerate edge flakes by checking state on specific errors
-    try {
-      await testUtils.game.unjoinGame(gameData.gamePDA, p2.player);
-    } catch (e: any) {
-      const msg = e.toString();
-      if (msg.includes("InvalidTicketsCount")) {
-        const g = await env.program.account.game.fetch(gameData.gamePDA);
-        // If zero tickets for any reason, skip event assertions
-        expect(g.ticketsCount).to.equal(0);
-        await env.program.removeEventListener(sub);
-        return;
-      }
-      throw e;
+    // Trigger unjoin and wait for matching event
+    await testUtils.game.unjoinGame(gameData.gamePDA, p2.player);
+    const received = await waitForEvent;
+
+    // Always cleanup subscription
+    if (sub !== undefined) {
+      await env.program.removeEventListener(sub);
     }
 
-    // Give some time for event to be processed
-    await new Promise((r) => setTimeout(r, 500));
-    await env.program.removeEventListener(sub);
-
     expect(received).to.not.be.null;
-    expect(received!.gameKey.toString()).to.equal(gameData.gamePDA.toString());
-    expect(received!.player.toString()).to.equal(p2.player.publicKey.toString());
-    expect(received!.ticketIndex).to.equal(1);
-    expect(received!.ticketsCount).to.equal(1);
+    expect(received.gameKey.toString()).to.equal(gameData.gamePDA.toString());
+    expect(received.player.toString()).to.equal(p2.player.publicKey.toString());
+    expect(received.ticketIndex).to.equal(1);
+    expect(received.ticketsCount).to.equal(1);
   }).timeout(90000);
 });
