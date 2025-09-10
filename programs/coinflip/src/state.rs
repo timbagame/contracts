@@ -205,7 +205,7 @@ impl GameToken {
         use_pda_signer: bool,
     ) -> Result<()> {
         if use_pda_signer {
-            let signer_seeds = &[b"game_vault", self.token_mint.as_ref(), &[self.vault_bump]];
+            let signer_seeds = &[GAME_VAULT_SEED, self.token_mint.as_ref(), &[self.vault_bump]];
             transfer(
                 CpiContext::new_with_signer(
                     token_program,
