@@ -33,12 +33,12 @@ describe("Unjoin Blocked While Waiting for Oracle", () => {
     await testUtils.game.joinGame(gameData.gamePDA, p2.player);
 
     // Game is now either full or at min; before buffer expires, unjoin should be blocked
-    try {
-      await testUtils.game.unjoinGame(gameData.gamePDA, p1.player);
-      expect.fail("Should have failed before buffer expiry");
-    } catch (e) {
-      expect(e.toString()).to.include("OracleBufferNotExpired");
-    }
+    await testUtils.game
+      .unjoinGame(gameData.gamePDA, p1.player)
+      .then(() => expect.fail("Should have failed before buffer expiry"))
+      .catch((e) => {
+        expect(e.toString()).to.include("OracleBufferNotExpired");
+      });
 
     // sanity: wait until after timeout+buffer then unjoin succeeds
     await new Promise((r) => setTimeout(r, (3 + (oracle.config.oracleBufferTime as number) + 2) * 1000));
@@ -47,4 +47,3 @@ describe("Unjoin Blocked While Waiting for Oracle", () => {
     expect(acc.ticketsCount).to.equal(1);
   }).timeout(60000);
 });
-

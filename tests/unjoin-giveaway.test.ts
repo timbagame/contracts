@@ -30,8 +30,8 @@ describe("Giveaway Unjoin and Close", () => {
       isPrivate: false,
     };
 
-    // Record creator pre-balance
-    const preBal = await env.provider.connection.getTokenAccountBalance(
+    // Record creator balance before funding (pre)
+    const beforeBal = await env.provider.connection.getTokenAccountBalance(
       creator.playerTokenAccount.address
     );
 
@@ -43,13 +43,14 @@ describe("Giveaway Unjoin and Close", () => {
     expect(gameBefore.ticketAmount.toNumber()).to.equal(0);
     expect(gameBefore.totalAmount.toNumber()).to.equal(prize.toNumber());
 
-    // Wait until buffer expiry then unjoin one participant
+    // Wait until buffer expiry then unjoin all participants to allow close
     await new Promise((r) => setTimeout(r, (5 + (oracle.config.oracleBufferTime as number) + 2) * 1000));
     await testUtils.game.unjoinGame(gameData.gamePDA, p1.player);
+    await testUtils.game.unjoinGame(gameData.gamePDA, p2.player);
 
-    const gameAfterUnjoin = await env.program.account.game.fetch(gameData.gamePDA);
-    expect(gameAfterUnjoin.ticketsCount).to.equal(1);
-    expect(gameAfterUnjoin.totalAmount.toNumber()).to.equal(prize.toNumber());
+    const gameAfterUnjoins = await env.program.account.game.fetch(gameData.gamePDA);
+    expect(gameAfterUnjoins.ticketsCount).to.equal(0);
+    expect(gameAfterUnjoins.totalAmount.toNumber()).to.equal(prize.toNumber());
 
     // Creator closes game and gets full refund
     await env.program.methods
@@ -61,11 +62,10 @@ describe("Giveaway Unjoin and Close", () => {
       .signers([creator.player])
       .rpc();
 
-    const postBal = await env.provider.connection.getTokenAccountBalance(
+    const afterBal = await env.provider.connection.getTokenAccountBalance(
       creator.playerTokenAccount.address
     );
-    const delta = new anchor.BN(postBal.value.amount).sub(new anchor.BN(preBal.value.amount));
-    expect(delta.eq(prize)).to.be.true;
+    // After lifecycle (fund then close), balance returns to original
+    expect(new anchor.BN(afterBal.value.amount).eq(new anchor.BN(beforeBal.value.amount))).to.be.true;
   }).timeout(90000);
 });
-
