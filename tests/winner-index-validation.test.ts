@@ -1,6 +1,12 @@
 import { expect } from "chai";
 import * as anchor from "@coral-xyz/anchor";
-import { TestUtils, TestEnvironment, GameConfig, calculateWinnerIndex } from "./test-helpers";
+import {
+  TestUtils,
+  TestEnvironment,
+  GameConfig,
+  calculateWinnerIndex,
+  getWinnerFromPlayers,
+} from "./test-helpers";
 
 // Tests covering winner index validation errors
 
@@ -93,6 +99,42 @@ describe("Winner Index Validation", () => {
       const msg = e.toString();
       // Because program checks mismatch before bounds, out-of-range is unreachable.
       expect(msg).to.include("Winner index mismatch");
+    }
+  });
+
+  it("should fail with WinnerPubkeyHashMismatch when winner pubkey does not match stored hash", async () => {
+    const { oracle, gameData, creator, player1 } = await setupTwoPlayerGame();
+
+    const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+    const winnerIndex = calculateWinnerIndex(
+      gameAccount.ticketsCount,
+      gameData.secretKey,
+      Number(gameAccount.lastSlot)
+    );
+
+    const players = [creator, player1];
+    const actualWinner = getWinnerFromPlayers(players, winnerIndex);
+    const wrongWinner = actualWinner.player.publicKey.equals(
+      creator.player.publicKey
+    )
+      ? player1
+      : creator;
+
+    try {
+      await testUtils.game.completeGame(
+        gameData,
+        wrongWinner.player.publicKey,
+        creator.player.publicKey,
+        oracle.operator,
+        winnerIndex
+      );
+      expect.fail("Should throw WinnerPubkeyHashMismatch");
+    } catch (e: any) {
+      const msg = e.toString();
+      expect(
+        msg.includes("Winner pubkey hash mismatch") ||
+          msg.includes("WinnerPubkeyHashMismatch")
+      ).to.be.true;
     }
   });
 });
