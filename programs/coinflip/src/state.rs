@@ -127,17 +127,17 @@ impl Oracle {
     }
 
     /// Validates fee percentage is within valid range (0-100)
-    pub fn is_valid_fee_percentage(&self, fee_percentage: u8) -> bool {
+    pub fn is_valid_fee_percentage(fee_percentage: u8) -> bool {
         fee_percentage <= 100
     }
 
     /// Validates timeout parameters are in correct order
-    pub fn is_valid_timeout(&self, max_timeout: u64, min_timeout: u64) -> bool {
+    pub fn is_valid_timeout(max_timeout: u64, min_timeout: u64) -> bool {
         max_timeout >= min_timeout
     }
 
     /// Validates ticket count is positive
-    pub fn is_valid_tickets_count(&self, max_tickets: u32) -> bool {
+    pub fn is_valid_tickets_count(max_tickets: u32) -> bool {
         max_tickets > 0
     }
 }
@@ -205,7 +205,11 @@ impl GameToken {
         use_pda_signer: bool,
     ) -> Result<()> {
         if use_pda_signer {
-            let signer_seeds = &[GAME_VAULT_SEED, self.token_mint.as_ref(), &[self.vault_bump]];
+            let signer_seeds = &[
+                GAME_VAULT_SEED,
+                self.token_mint.as_ref(),
+                &[self.vault_bump],
+            ];
             transfer(
                 CpiContext::new_with_signer(
                     token_program,
@@ -275,7 +279,8 @@ impl Game {
 
     /// Checks if the game has exceeded its timeout duration
     pub fn is_expired(&self, current_time: u64) -> bool {
-        current_time >= self.created_at + self.timeout
+        let expiry = self.created_at.saturating_add(self.timeout);
+        current_time >= expiry
     }
 
     /// Checks if the game meets requirements to be completed by oracle
@@ -290,8 +295,9 @@ impl Game {
 
     /// Checks if oracle buffer time has expired (game is no longer completable)
     pub fn is_buffer_expired(&self, oracle_buffer_time: u64, current_time: u64) -> bool {
-        let expires_at = self.created_at + self.timeout as u64;
-        current_time >= expires_at + oracle_buffer_time
+        let timeout_at = self.created_at.saturating_add(self.timeout);
+        let expires_at = timeout_at.saturating_add(oracle_buffer_time);
+        current_time >= expires_at
     }
 
     /// Checks if the game is waiting for oracle to complete it
@@ -303,11 +309,6 @@ impl Game {
 
         self.is_ready_for_completion(current_time)
             && !self.is_buffer_expired(oracle_buffer_time, current_time)
-    }
-
-    /// Calculate when this game will expire
-    pub fn calculate_expiry_timestamp(&self, total_buffer_time: u64) -> u64 {
-        self.created_at + self.timeout + total_buffer_time
     }
 
     /// Marks the game as completed by setting total_amount to zero
@@ -375,12 +376,10 @@ impl Game {
     // =============================================================================
 
     /// Add player to the game and update counters
-    pub fn add_player_to_game(&mut self) -> Result<()> {
+    pub fn add_player_to_game(&mut self) {
         // Update counters only
         self.tickets_count += 1;
         self.total_amount += self.ticket_amount;
-
-        Ok(())
     }
 
     // =============================================================================

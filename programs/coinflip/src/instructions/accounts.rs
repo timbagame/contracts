@@ -18,9 +18,9 @@ pub struct InitializeOracle<'info> {
         space = ORACLE_SIZE,
         seeds = [ORACLE_SEED],
         bump,
-        constraint = Oracle::default().is_valid_fee_percentage(fee_percentage) @ ErrorCode::InvalidAmount,
-        constraint = Oracle::default().is_valid_timeout(max_timeout, min_timeout) @ ErrorCode::InvalidTimeout,
-        constraint = Oracle::default().is_valid_tickets_count(max_tickets) @ ErrorCode::InvalidTicketsCount,
+        constraint = Oracle::is_valid_fee_percentage(fee_percentage) @ ErrorCode::InvalidAmount,
+        constraint = Oracle::is_valid_timeout(max_timeout, min_timeout) @ ErrorCode::InvalidTimeout,
+        constraint = Oracle::is_valid_tickets_count(max_tickets) @ ErrorCode::InvalidTicketsCount,
     )]
     pub oracle: Account<'info, Oracle>,
 
@@ -38,9 +38,9 @@ pub struct UpdateOracle<'info> {
         seeds = [ORACLE_SEED],
         bump,
         constraint = oracle.is_authorized_operator(&old_oracle_operator.key()) @ ErrorCode::UnauthorizedOperator,
-        constraint = Oracle::default().is_valid_fee_percentage(fee_percentage) @ ErrorCode::InvalidAmount,
-        constraint = Oracle::default().is_valid_timeout(max_timeout, min_timeout) @ ErrorCode::InvalidTimeout,
-        constraint = Oracle::default().is_valid_tickets_count(max_tickets) @ ErrorCode::InvalidTicketsCount,
+        constraint = Oracle::is_valid_fee_percentage(fee_percentage) @ ErrorCode::InvalidAmount,
+        constraint = Oracle::is_valid_timeout(max_timeout, min_timeout) @ ErrorCode::InvalidTimeout,
+        constraint = Oracle::is_valid_tickets_count(max_tickets) @ ErrorCode::InvalidTicketsCount,
     )]
     pub oracle: Account<'info, Oracle>,
 

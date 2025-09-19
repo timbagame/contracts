@@ -18,11 +18,6 @@ pub fn get_current_time() -> Result<u64> {
     Ok(get_clock()?.unix_timestamp as u64)
 }
 
-/// Get current slot from Solana clock
-pub fn get_current_slot() -> Result<u64> {
-    Ok(get_clock()?.slot)
-}
-
 // =============================================================================
 // ORACLE CONFIGURATION UTILITIES
 // =============================================================================

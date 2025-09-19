@@ -1,13 +1,15 @@
 use crate::error::ErrorCode;
 use crate::events::PlayerUnjoined;
-use crate::utils::{get_current_slot, get_current_time, participant_hash};
+use crate::utils::{get_clock, participant_hash};
 use anchor_lang::prelude::*;
 
 pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
     let game = &mut ctx.accounts.game;
 
     let oracle = &ctx.accounts.oracle;
-    let current_time = get_current_time()?;
+    let clock = get_clock()?;
+    let current_time = clock.unix_timestamp as u64;
+    let current_slot = clock.slot;
     let player_key = ctx.accounts.player.key();
 
     // ===============================
@@ -42,7 +44,7 @@ pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
     } else {
         return err!(ErrorCode::UnauthorizedPlayer);
     }
-    game.last_slot = get_current_slot()?;
+    game.last_slot = current_slot;
 
     // Refund player directly
     if game.ticket_amount > 0 {
@@ -66,7 +68,7 @@ pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
         total_amount: game.total_amount,
         tickets_count: game.tickets_count,
         ticket_index: removed_index_opt.unwrap() as u32,
-        last_slot: game.last_slot,
+        last_slot: current_slot,
         timestamp: current_time,
     });
 
