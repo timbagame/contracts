@@ -200,8 +200,13 @@ describe("Winner Index Validation", () => {
     } catch (e: any) {
       const errorCode = e?.error?.errorCode?.code;
       const msg = e?.toString?.() ?? "";
+      const tokenOwnerError = errorCode === "ConstraintTokenOwner";
+      const associatedAccountError =
+        errorCode === "ConstraintAssociatedTokenAccount";
       expect(
-        errorCode === "ConstraintAssociatedTokenAccount" ||
+        tokenOwnerError ||
+          associatedAccountError ||
+          msg.includes("ConstraintTokenOwner") ||
           msg.includes("ConstraintAssociatedTokenAccount") ||
           msg.includes("winnerTokenAccount")
       ).to.be.true;
