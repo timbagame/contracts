@@ -247,7 +247,7 @@ describe("Winner Index Validation", () => {
     const { oracle, mint, gameData, creator, player1 } = await setupTwoPlayerGame();
 
     const participants = [creator, player1];
-    const { gameAccount, winnerIndex, winner, pot } = await computeGameOutcome(
+    const { winnerIndex, winner, pot } = await computeGameOutcome(
       env,
       gameData,
       participants
