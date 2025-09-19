@@ -4,8 +4,10 @@ import {
   TestUtils,
   TestEnvironment,
   GameConfig,
-  calculateWinnerIndex,
-  getWinnerFromPlayers,
+  computeGameOutcome,
+  calculatePayoutBreakdown,
+  getErrorCode,
+  getErrorMessage,
 } from "./test-helpers";
 
 // Tests covering winner index validation errors
@@ -49,76 +51,61 @@ describe("Winner Index Validation", () => {
     return { oracle, mint, gameData, creator, player1 };
   }
 
+  function expectAnchorError(
+    error: unknown,
+    code: string,
+    fallbackSubstring: string
+  ) {
+    const actualCode = getErrorCode(error);
+    if (actualCode) {
+      expect(actualCode).to.equal(code);
+    } else {
+      expect(getErrorMessage(error)).to.include(fallbackSubstring);
+    }
+  }
+
   it("should fail with WinnerIndexMismatch when provided index differs from recomputed", async () => {
     const { oracle, gameData, creator, player1 } = await setupTwoPlayerGame();
 
-    const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
-    const correctIndex = calculateWinnerIndex(
-      gameAccount.ticketsCount,
-      gameData.secretKey,
-      Number(gameAccount.lastSlot)
+    const participants = [creator, player1];
+    const { gameAccount, winnerIndex, winner } = await computeGameOutcome(
+      env,
+      gameData,
+      participants
     );
-    const wrongIndex = (correctIndex + 1) % gameAccount.ticketsCount; // ensure different but in range
+    const wrongIndex = (winnerIndex + 1) % gameAccount.ticketsCount; // ensure different but in range
 
     try {
       await testUtils.game.completeGame(
         gameData,
-        correctIndex === 0 ? creator.player.publicKey : player1.player.publicKey,
+        winner.player.publicKey,
         creator.player.publicKey,
         oracle.operator,
         wrongIndex
       );
       expect.fail("Should throw WinnerIndexMismatch");
     } catch (e: any) {
-      expect(e.toString()).to.include("Winner index mismatch");
-    }
-  });
-
-  it("should fail with WinnerIndexOutOfRange when index >= tickets_count", async () => {
-    const { oracle, gameData, creator, player1 } = await setupTwoPlayerGame();
-
-    const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
-    const correctIndex = calculateWinnerIndex(
-      gameAccount.ticketsCount,
-      gameData.secretKey,
-      Number(gameAccount.lastSlot)
-    );
-    const outOfRangeIndex = gameAccount.ticketsCount; // equal to count => out of range
-
-    try {
-      await testUtils.game.completeGame(
-        gameData,
-        correctIndex === 0 ? creator.player.publicKey : player1.player.publicKey,
-        creator.player.publicKey,
-        oracle.operator,
-        outOfRangeIndex
-      );
-      expect.fail("Should throw WinnerIndexOutOfRange");
-    } catch (e: any) {
-      // If mismatch occurs first, test cannot reach out-of-range; verify design
-      const msg = e.toString();
-      // Because program checks mismatch before bounds, out-of-range is unreachable.
-      expect(msg).to.include("Winner index mismatch");
+      expectAnchorError(e, "WinnerIndexMismatch", "Winner index mismatch");
     }
   });
 
   it("should fail with WinnerPubkeyHashMismatch when winner pubkey does not match stored hash", async () => {
     const { oracle, gameData, creator, player1 } = await setupTwoPlayerGame();
 
-    const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
-    const winnerIndex = calculateWinnerIndex(
-      gameAccount.ticketsCount,
-      gameData.secretKey,
-      Number(gameAccount.lastSlot)
+    const participants = [creator, player1];
+    const { winnerIndex, winner } = await computeGameOutcome(
+      env,
+      gameData,
+      participants
     );
 
-    const players = [creator, player1];
-    const actualWinner = getWinnerFromPlayers(players, winnerIndex);
-    const wrongWinner = actualWinner.player.publicKey.equals(
-      creator.player.publicKey
-    )
-      ? player1
-      : creator;
+    const wrongWinner = participants.find((candidate) =>
+      !candidate.player.publicKey.equals(winner.player.publicKey)
+    );
+
+    if (!wrongWinner) {
+      throw new Error("Expected to find a non-winning participant");
+    }
 
     try {
       await testUtils.game.completeGame(
@@ -130,25 +117,23 @@ describe("Winner Index Validation", () => {
       );
       expect.fail("Should throw WinnerPubkeyHashMismatch");
     } catch (e: any) {
-      const msg = e.toString();
-      expect(
-        msg.includes("Winner pubkey hash mismatch") ||
-          msg.includes("WinnerPubkeyHashMismatch")
-      ).to.be.true;
+      expectAnchorError(
+        e,
+        "WinnerPubkeyHashMismatch",
+        "Winner pubkey hash mismatch"
+      );
     }
   });
 
   it("should fail with InvalidSecretKey when oracle submits mismatched secret", async () => {
     const { oracle, gameData, creator, player1 } = await setupTwoPlayerGame();
 
-    const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
-    const winnerIndex = calculateWinnerIndex(
-      gameAccount.ticketsCount,
-      gameData.secretKey,
-      Number(gameAccount.lastSlot)
+    const participants = [creator, player1];
+    const { winnerIndex, winner } = await computeGameOutcome(
+      env,
+      gameData,
+      participants
     );
-    const players = [creator, player1];
-    const actualWinner = getWinnerFromPlayers(players, winnerIndex);
 
     const tamperedSecret = [...gameData.secretKey];
     tamperedSecret[0] = (tamperedSecret[0] + 1) % 256;
@@ -156,34 +141,34 @@ describe("Winner Index Validation", () => {
     try {
       await testUtils.game.completeGame(
         { ...gameData, secretKey: tamperedSecret },
-        actualWinner.player.publicKey,
+        winner.player.publicKey,
         creator.player.publicKey,
         oracle.operator,
         winnerIndex
       );
       expect.fail("Should throw InvalidSecretKey");
     } catch (e: any) {
-      expect(e.toString()).to.include("Invalid secret key");
+      expectAnchorError(e, "InvalidSecretKey", "Invalid secret key");
     }
   });
 
   it("should fail when winner token account does not belong to supplied winner", async () => {
     const { oracle, gameData, creator, player1 } = await setupTwoPlayerGame();
 
-    const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
-    const winnerIndex = calculateWinnerIndex(
-      gameAccount.ticketsCount,
-      gameData.secretKey,
-      Number(gameAccount.lastSlot)
+    const participants = [creator, player1];
+    const { winnerIndex, winner } = await computeGameOutcome(
+      env,
+      gameData,
+      participants
     );
 
-    const contenders = [creator, player1];
-    const winner = getWinnerFromPlayers(contenders, winnerIndex);
-    const wrongAccountOwner = winner.player.publicKey.equals(
-      creator.player.publicKey
-    )
-      ? player1
-      : creator;
+    const wrongAccountOwner = participants.find((candidate) =>
+      !candidate.player.publicKey.equals(winner.player.publicKey)
+    );
+
+    if (!wrongAccountOwner) {
+      throw new Error("Expected a non-winning participant");
+    }
 
     try {
       await env.program.methods
@@ -198,8 +183,8 @@ describe("Winner Index Validation", () => {
         .rpc();
       expect.fail("Should reject mismatched winner token account");
     } catch (e: any) {
-      const errorCode = e?.error?.errorCode?.code;
-      const msg = e?.toString?.() ?? "";
+      const errorCode = getErrorCode(e);
+      const msg = getErrorMessage(e);
       const tokenOwnerError = errorCode === "ConstraintTokenOwner";
       const associatedAccountError =
         errorCode === "ConstraintAssociatedTokenAccount";
@@ -237,47 +222,39 @@ describe("Winner Index Validation", () => {
     await testUtils.game.joinGame(gameData.gamePDA, creator.player);
     await testUtils.game.joinGame(gameData.gamePDA, player1.player);
 
-    const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
-    const winnerIndex = calculateWinnerIndex(
-      gameAccount.ticketsCount,
-      gameData.secretKey,
-      Number(gameAccount.lastSlot)
+    const participants = [creator, player1];
+    const { winnerIndex, winner } = await computeGameOutcome(
+      env,
+      gameData,
+      participants
     );
-
-    const playersInOrder = [creator, player1];
-    const expectedWinner = getWinnerFromPlayers(playersInOrder, winnerIndex);
 
     try {
       await testUtils.game.completeGame(
         gameData,
-        expectedWinner.player.publicKey,
+        winner.player.publicKey,
         creator.player.publicKey,
         oracle.operator,
         winnerIndex
       );
       expect.fail("Should throw GameNotReadyForOracle");
     } catch (e: any) {
-      expect(e.toString()).to.include("Game not ready for oracle");
+      expectAnchorError(e, "GameNotReadyForOracle", "Game not ready for oracle");
     }
   });
 
   it("should complete successfully and distribute winnings when inputs are consistent", async () => {
     const { oracle, mint, gameData, creator, player1 } = await setupTwoPlayerGame();
 
-    const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
-    const winnerIndex = calculateWinnerIndex(
-      gameAccount.ticketsCount,
-      gameData.secretKey,
-      Number(gameAccount.lastSlot)
+    const participants = [creator, player1];
+    const { gameAccount, winnerIndex, winner, pot } = await computeGameOutcome(
+      env,
+      gameData,
+      participants
     );
 
-    const participants = [creator, player1];
-    const winner = getWinnerFromPlayers(participants, winnerIndex);
-
-    const pot = new anchor.BN(gameAccount.totalAmount.toString());
-    const feePct = new anchor.BN(oracle.config.feePercentage);
-    const expectedFee = pot.mul(feePct).div(new anchor.BN(100));
-    const expectedWinnerAmount = pot.sub(expectedFee);
+    const { fee: expectedFee, winnerAmount: expectedWinnerAmount } =
+      calculatePayoutBreakdown(pot, oracle.config.feePercentage);
 
     const preWinnerBalance = await env.provider.connection.getTokenAccountBalance(
       winner.playerTokenAccount.address
@@ -318,20 +295,15 @@ describe("Winner Index Validation", () => {
   it("should emit GameCompleted event with expected payload", async () => {
     const { oracle, mint, gameData, creator, player1 } = await setupTwoPlayerGame();
 
-    const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
-    const winnerIndex = calculateWinnerIndex(
-      gameAccount.ticketsCount,
-      gameData.secretKey,
-      Number(gameAccount.lastSlot)
+    const participants = [creator, player1];
+    const { gameAccount, winnerIndex, winner, pot } = await computeGameOutcome(
+      env,
+      gameData,
+      participants
     );
 
-    const players = [creator, player1];
-    const winner = getWinnerFromPlayers(players, winnerIndex);
-
-    const pot = new anchor.BN(gameAccount.totalAmount.toString());
-    const feePct = new anchor.BN(oracle.config.feePercentage);
-    const expectedFee = pot.mul(feePct).div(new anchor.BN(100));
-    const expectedWinnerAmount = pot.sub(expectedFee);
+    const { fee: expectedFee, winnerAmount: expectedWinnerAmount } =
+      calculatePayoutBreakdown(pot, oracle.config.feePercentage);
 
     let resolveEvent: ((event: any) => void) | undefined;
     let rejectEvent: ((error: Error) => void) | undefined;
