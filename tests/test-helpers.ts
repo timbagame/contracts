@@ -716,6 +716,51 @@ export function getWinnerFromPlayers(
   return players[winnerIndex];
 }
 
+export interface GameOutcomeContext {
+  gameAccount: any;
+  winnerIndex: number;
+  winner: TestPlayer;
+  participants: TestPlayer[];
+  pot: anchor.BN;
+}
+
+export async function computeGameOutcome(
+  env: TestEnvironment,
+  gameData: TestGame,
+  participants: TestPlayer[]
+): Promise<GameOutcomeContext> {
+  const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+  const winnerIndex = calculateWinnerIndex(
+    gameAccount.ticketsCount,
+    gameData.secretKey,
+    Number(gameAccount.lastSlot)
+  );
+  const winner = getWinnerFromPlayers(participants, winnerIndex);
+  const pot = new anchor.BN(gameAccount.totalAmount.toString());
+
+  return { gameAccount, winnerIndex, winner, participants, pot };
+}
+
+export function calculatePayoutBreakdown(
+  pot: anchor.BN,
+  feePercentage: number
+): { fee: anchor.BN; winnerAmount: anchor.BN } {
+  const fee = pot.mul(new anchor.BN(feePercentage)).div(new anchor.BN(100));
+  const winnerAmount = pot.sub(fee);
+  return { fee, winnerAmount };
+}
+
+export function getErrorCode(error: unknown): string | undefined {
+  return (error as any)?.error?.errorCode?.code;
+}
+
+export function getErrorMessage(error: unknown): string {
+  const err = error as any;
+  return (
+    err?.error?.errorMessage ?? err?.message ?? err?.toString?.() ?? "Unknown error"
+  );
+}
+
 /**
  * Hashes a buffer using SHA-256 and returns the digest as a Buffer
  */
