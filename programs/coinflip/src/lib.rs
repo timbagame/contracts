@@ -38,7 +38,6 @@ pub struct OracleConfig {
     pub max_timeout: u64,
     /// Minimum timeout duration in seconds for games
     pub min_timeout: u64,
-
 }
 
 /// Configuration parameters for token initialization and updates
