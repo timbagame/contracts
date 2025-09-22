@@ -2,21 +2,28 @@ import { expect } from "chai";
 import * as anchor from "@coral-xyz/anchor";
 import { createHash } from "crypto";
 import { getOrCreateAssociatedTokenAccount } from "@solana/spl-token";
+import type { Coinflip } from "../target/types/coinflip";
 import { TestEnvironment, TestUtils, GameConfig, calculateWinnerIndex, getWinnerFromPlayers } from "./test-helpers";
 
 // Instruction coverage: ensure lifecycle events emit and state updates match expectations
+
+const toNumber = (value: anchor.BN | number): number =>
+  typeof value === "number" ? value : value.toNumber();
+
+type CoinflipEvents = anchor.IdlEvents<Coinflip>;
+type CoinflipEventName = keyof CoinflipEvents;
 
 describe("Game Lifecycle Instruction Events", () => {
   let env: TestEnvironment;
   let testUtils: TestUtils;
 
-  const subscribeEvent = async (eventName: string) => {
-    let listenerId: number;
+  const subscribeEvent = async <TEvent extends CoinflipEventName>(eventName: TEvent) => {
+    let listenerId: number | undefined;
     let settled = false;
-    let resolveEvent: (value: any) => void;
+    let resolveEvent: (value: CoinflipEvents[TEvent]) => void;
     let rejectEvent: (reason?: unknown) => void;
 
-    const wait = new Promise<any>((resolve, reject) => {
+    const wait = new Promise<CoinflipEvents[TEvent]>((resolve, reject) => {
       resolveEvent = resolve;
       rejectEvent = reject;
     });
@@ -28,7 +35,7 @@ describe("Game Lifecycle Instruction Events", () => {
       }
     }, 10000);
 
-    listenerId = await env.program.addEventListener(eventName, (event) => {
+    listenerId = await env.program.addEventListener(eventName, (event: CoinflipEvents[TEvent]) => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
@@ -78,15 +85,15 @@ describe("Game Lifecycle Instruction Events", () => {
       expect(event.gameKey).to.deep.equal(gameData.gamePDA);
       expect(event.creator).to.deep.equal(creator.player.publicKey);
       expect(Number(event.ticketAmount)).to.equal(cfg.amount.toNumber());
-      expect(event.maxTickets).to.equal(cfg.maxTickets.toNumber());
-      expect(event.minTickets).to.equal(cfg.minTickets.toNumber());
+      expect(event.maxTickets).to.equal(toNumber(cfg.maxTickets));
+      expect(event.minTickets).to.equal(toNumber(cfg.minTickets));
       expect(event.isPrivate).to.equal(false);
 
       const account = await env.program.account.game.fetch(gameData.gamePDA);
       expect(account.creator.equals(creator.player.publicKey)).to.be.true;
       expect(account.ticketAmount.toNumber()).to.equal(cfg.amount.toNumber());
-      expect(account.maxTickets).to.equal(cfg.maxTickets.toNumber());
-      expect(account.minTickets).to.equal(cfg.minTickets.toNumber());
+      expect(account.maxTickets).to.equal(toNumber(cfg.maxTickets));
+      expect(account.minTickets).to.equal(toNumber(cfg.minTickets));
       expect(account.timeout.toNumber()).to.equal(cfg.timeout.toNumber());
       expect(account.ticketsCount).to.equal(0);
     } finally {
