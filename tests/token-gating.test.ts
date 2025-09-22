@@ -94,4 +94,47 @@ describe("Token Gating", () => {
     const acc = await env.program.account.game.fetch(gameData.gamePDA);
     expect(acc.ticketsCount).to.equal(1); // only p1 joined; creator not joined in this subtest
   });
+
+  it("should block additional joins when token disabled after game start", async () => {
+    const { oracle, mint, players } = await testUtils.quickSetup();
+    const [creator, p1, p2] = players;
+
+    const gameData = testUtils.game.generateGamePDA();
+    const gameConfig: GameConfig = {
+      gameType: { coinflip: {} },
+      amount: new anchor.BN(2_000_000),
+      maxTickets: new anchor.BN(3),
+      minTickets: new anchor.BN(2),
+      timeout: new anchor.BN(120),
+      isPrivate: false,
+    };
+
+    await testUtils.game.initializeGame(gameData, gameConfig, creator.player, mint.mint);
+    await testUtils.game.joinGame(gameData.gamePDA, creator.player);
+    await testUtils.game.joinGame(gameData.gamePDA, p1.player);
+
+    const gameTokenAccount = await env.program.account.gameToken.fetch(mint.gameTokenPDA);
+    const originalMinAmount = new anchor.BN(gameTokenAccount.minAmount.toString());
+
+    // Disable the token mid-game
+    await env.program.methods
+      .updateToken({ minAmount: originalMinAmount, enabled: false })
+      .accounts({ tokenMint: mint.mint, oracleOperator: oracle.operator })
+      .signers([oracle.operatorKeypair])
+      .rpc();
+
+    try {
+      await testUtils.game.joinGame(gameData.gamePDA, p2.player);
+      expect.fail("Expected join to fail when token disabled mid-game");
+    } catch (e: any) {
+      expect(e.toString()).to.include("TokenNotEnabled");
+    }
+
+    // Re-enable token to avoid leaking state to other tests that reuse this mint
+    await env.program.methods
+      .updateToken({ minAmount: originalMinAmount, enabled: true })
+      .accounts({ tokenMint: mint.mint, oracleOperator: oracle.operator })
+      .signers([oracle.operatorKeypair])
+      .rpc();
+  });
 });

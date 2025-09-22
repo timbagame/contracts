@@ -140,4 +140,53 @@ describe("Config Constraints", () => {
       .signers([oracle.operatorKeypair, oracle.operatorKeypair])
       .rpc();
   });
+
+  it("should reject oracle updates with inverted timeouts or zero maxTickets", async () => {
+    const { oracle } = await testUtils.quickSetup();
+
+    const smallerMaxTimeout = Math.max(oracle.config.minTimeout - 1, 0);
+    const largerMinTimeout = oracle.config.minTimeout + 10;
+
+    // maxTimeout < minTimeout should be rejected
+    try {
+      await env.program.methods
+        .updateOracle({
+          feePercentage: oracle.config.feePercentage,
+          oracleBufferTime: new anchor.BN(oracle.config.oracleBufferTime),
+          maxTickets: oracle.config.maxTickets,
+          maxTimeout: new anchor.BN(smallerMaxTimeout),
+          minTimeout: new anchor.BN(largerMinTimeout),
+        })
+        .accounts({
+          oldOracleOperator: oracle.operator,
+          newOracleOperator: oracle.operator,
+        })
+        .signers([oracle.operatorKeypair, oracle.operatorKeypair])
+        .rpc();
+      expect.fail("Should reject oracle update when maxTimeout < minTimeout");
+    } catch (e: any) {
+      expect(e.toString()).to.include("InvalidTimeout");
+    }
+
+    // maxTickets must be > 0
+    try {
+      await env.program.methods
+        .updateOracle({
+          feePercentage: oracle.config.feePercentage,
+          oracleBufferTime: new anchor.BN(oracle.config.oracleBufferTime),
+          maxTickets: 0,
+          maxTimeout: new anchor.BN(oracle.config.maxTimeout),
+          minTimeout: new anchor.BN(oracle.config.minTimeout),
+        })
+        .accounts({
+          oldOracleOperator: oracle.operator,
+          newOracleOperator: oracle.operator,
+        })
+        .signers([oracle.operatorKeypair, oracle.operatorKeypair])
+        .rpc();
+      expect.fail("Should reject oracle update when maxTickets is zero");
+    } catch (e: any) {
+      expect(e.toString()).to.include("InvalidTicketsCount");
+    }
+  });
 });
