@@ -7,21 +7,25 @@ import {
   getOrCreateAssociatedTokenAccount,
 } from "@solana/spl-token";
 import { PublicKey, SystemProgram } from "@solana/web3.js";
+import type { Coinflip } from "../target/types/coinflip";
 import { MintManager, TestEnvironment } from "./test-helpers";
 
 // Instruction coverage for initialize_token and update_token flows
+
+type CoinflipEvents = anchor.IdlEvents<Coinflip>;
+type CoinflipEventName = keyof CoinflipEvents;
 
 describe("Token Administration Instructions", () => {
   let env: TestEnvironment;
   let mintManager: MintManager;
 
-  const subscribeEvent = async (eventName: string) => {
-    let listenerId: number;
+  const subscribeEvent = async <TEvent extends CoinflipEventName>(eventName: TEvent) => {
+    let listenerId: number | undefined;
     let settled = false;
-    let resolveEvent: (value: any) => void;
+    let resolveEvent: (value: CoinflipEvents[TEvent]) => void;
     let rejectEvent: (reason?: unknown) => void;
 
-    const wait = new Promise<any>((resolve, reject) => {
+    const wait = new Promise<CoinflipEvents[TEvent]>((resolve, reject) => {
       resolveEvent = resolve;
       rejectEvent = reject;
     });
@@ -33,7 +37,7 @@ describe("Token Administration Instructions", () => {
       }
     }, 10000);
 
-    listenerId = await env.program.addEventListener(eventName, (event) => {
+    listenerId = await env.program.addEventListener(eventName, (event: CoinflipEvents[TEvent]) => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
@@ -130,7 +134,7 @@ describe("Token Administration Instructions", () => {
     try {
       await env.program.methods
         .initializeToken({ minAmount: new anchor.BN(10_000), enabled: true })
-        .accounts({
+        .accountsStrict({
           gameToken: gameTokenPDA,
           tokenMint: mint,
           gameVault: gameVaultPDA,
@@ -163,7 +167,7 @@ describe("Token Administration Instructions", () => {
     try {
       await env.program.methods
         .updateToken({ minAmount: new anchor.BN(99_999), enabled: false })
-        .accounts({
+        .accountsStrict({
           gameToken: mint.gameTokenPDA,
           tokenMint: mint.mint,
           oracle: env.oracle!.oraclePDA,
