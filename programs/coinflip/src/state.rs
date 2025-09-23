@@ -297,7 +297,7 @@ impl Game {
     pub fn is_buffer_expired(&self, oracle_buffer_time: u64, current_time: u64) -> bool {
         let timeout_at = self.created_at.saturating_add(self.timeout);
         let expires_at = timeout_at.saturating_add(oracle_buffer_time);
-        current_time >= expires_at
+        current_time > expires_at
     }
 
     /// Checks if the game is waiting for oracle to complete it
