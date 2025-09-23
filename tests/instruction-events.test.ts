@@ -13,33 +13,6 @@ const toNumber = (value: anchor.BN | number): number =>
 type CoinflipEvents = anchor.IdlEvents<Coinflip>;
 type CoinflipEventName = keyof CoinflipEvents;
 
-const waitForClusterTime = async (
-  connection: anchor.web3.Connection,
-  targetTimestamp: number,
-  {
-    timeoutMs = 30_000,
-    pollIntervalMs = 500,
-  }: { timeoutMs?: number; pollIntervalMs?: number } = {}
-) => {
-  const deadline = Date.now() + timeoutMs;
-
-  while (Date.now() < deadline) {
-    const clockAccount = await connection.getAccountInfo(anchor.web3.SYSVAR_CLOCK_PUBKEY);
-    if (!clockAccount) {
-      throw new Error("Clock sysvar account not available");
-    }
-
-    const currentTimestamp = Number(clockAccount.data.readBigInt64LE(32));
-    if (currentTimestamp >= targetTimestamp) {
-      return;
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
-  }
-
-  throw new Error(`Timeout waiting for cluster time to reach ${targetTimestamp}`);
-};
-
 describe("Game Lifecycle Instruction Events", () => {
   let env: TestEnvironment;
   let testUtils: TestUtils;
@@ -187,15 +160,13 @@ describe("Game Lifecycle Instruction Events", () => {
     await testUtils.game.initializeGame(gameData, cfg, creator.player, mint.mint);
     await testUtils.game.joinGame(gameData.gamePDA, p1.player);
 
-    const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
-    const createdAt =
-      typeof gameAccount.createdAt === "number"
-        ? gameAccount.createdAt
-        : gameAccount.createdAt.toNumber();
-    const expiryTimestamp =
-      createdAt + cfg.timeout.toNumber() + oracle.config.oracleBufferTime;
+    const bufferSeconds =
+      typeof oracle.config.oracleBufferTime === "number"
+        ? oracle.config.oracleBufferTime
+        : Number(oracle.config.oracleBufferTime);
+    const waitSeconds = cfg.timeout.toNumber() + bufferSeconds + 2;
 
-    await waitForClusterTime(env.provider.connection, expiryTimestamp);
+    await new Promise((resolve) => setTimeout(resolve, waitSeconds * 1000));
 
     const subscription = await subscribeEvent("playerUnjoined");
     try {
