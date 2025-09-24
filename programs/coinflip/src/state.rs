@@ -302,7 +302,10 @@ impl Game {
     /// Checks if oracle buffer time has expired (game is no longer completable)
     pub fn is_buffer_expired(&self, oracle_buffer_time: u64, current_time: u64) -> bool {
         let expires_at = self.buffer_expires_at(oracle_buffer_time);
-        current_time > expires_at
+        // `Clock::unix_timestamp` is second-resolution, so callers frequently hit the
+        // exact expiry moment. Treat the equality case as expired; otherwise players
+        // cannot unjoin until the next whole second elapses.
+        current_time >= expires_at
     }
 
     /// Checks if the game is waiting for oracle to complete it
@@ -314,7 +317,9 @@ impl Game {
 
         let expires_at = self.buffer_expires_at(oracle_buffer_time);
 
-        self.is_ready_for_completion(current_time) && current_time <= expires_at
+        // Mirror `is_buffer_expired` so the two helpers are complementary. Once the
+        // buffer expiry second is reached we should stop reporting "waiting".
+        self.is_ready_for_completion(current_time) && current_time < expires_at
     }
 
     /// Marks the game as completed by setting total_amount to zero
