@@ -293,10 +293,15 @@ impl Game {
         has_max_tickets || (has_min_tickets && timeout_reached)
     }
 
+    /// Returns the timestamp when the oracle buffer window ends
+    fn buffer_expires_at(&self, oracle_buffer_time: u64) -> u64 {
+        let timeout_at = self.created_at.saturating_add(self.timeout);
+        timeout_at.saturating_add(oracle_buffer_time)
+    }
+
     /// Checks if oracle buffer time has expired (game is no longer completable)
     pub fn is_buffer_expired(&self, oracle_buffer_time: u64, current_time: u64) -> bool {
-        let timeout_at = self.created_at.saturating_add(self.timeout);
-        let expires_at = timeout_at.saturating_add(oracle_buffer_time);
+        let expires_at = self.buffer_expires_at(oracle_buffer_time);
         current_time > expires_at
     }
 
@@ -307,8 +312,9 @@ impl Game {
             return false;
         }
 
-        self.is_ready_for_completion(current_time)
-            && !self.is_buffer_expired(oracle_buffer_time, current_time)
+        let expires_at = self.buffer_expires_at(oracle_buffer_time);
+
+        self.is_ready_for_completion(current_time) && current_time <= expires_at
     }
 
     /// Marks the game as completed by setting total_amount to zero
