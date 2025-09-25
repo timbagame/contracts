@@ -180,4 +180,36 @@ describe("Token Administration Instructions", () => {
       expect(e.toString()).to.include("UnauthorizedOperator");
     }
   });
+
+  it("should emit TokenUpdated when configuration changes", async () => {
+    const mint = await mintManager.createMint();
+    const subscription = await subscribeEvent("tokenUpdated");
+
+    const newMinAmount = new anchor.BN(42_000);
+
+    try {
+      await env.program.methods
+        .updateToken({ minAmount: newMinAmount, enabled: false })
+        .accounts({ tokenMint: mint.mint, oracleOperator: env.oracle!.operator })
+        .signers([env.oracle!.operatorKeypair])
+        .rpc();
+
+      const event = await subscription.wait;
+      expect(event.tokenMint).to.deep.equal(mint.mint);
+      expect(Number(event.minAmount)).to.equal(newMinAmount.toNumber());
+      expect(event.enabled).to.equal(false);
+
+      const onChain = await env.program.account.gameToken.fetch(mint.gameTokenPDA);
+      expect(onChain.minAmount.toNumber()).to.equal(newMinAmount.toNumber());
+      expect(onChain.enabled).to.equal(false);
+    } finally {
+      await subscription.dispose().catch(() => {});
+
+      await env.program.methods
+        .updateToken({ minAmount: new anchor.BN(1000), enabled: true })
+        .accounts({ tokenMint: mint.mint, oracleOperator: env.oracle!.operator })
+        .signers([env.oracle!.operatorKeypair])
+        .rpc();
+    }
+  });
 });
