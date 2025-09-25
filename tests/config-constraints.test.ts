@@ -141,6 +141,28 @@ describe("Config Constraints", () => {
       .rpc();
   });
 
+  it("should reject timeout below oracle minimum", async () => {
+    const { mint, players } = await testUtils.quickSetup();
+    const [creator] = players;
+    const gameData = testUtils.game.generateGamePDA();
+
+    const tooShort: GameConfig = {
+      gameType: { coinflip: {} },
+      amount: new anchor.BN(1_000_000),
+      maxTickets: new anchor.BN(2),
+      minTickets: new anchor.BN(2),
+      timeout: new anchor.BN(0),
+      isPrivate: false,
+    };
+
+    try {
+      await testUtils.game.initializeGame(gameData, tooShort, creator.player, mint.mint);
+      expect.fail("Should reject timeout below oracle minimum");
+    } catch (e: any) {
+      expect(e.toString()).to.include("InvalidTimeout");
+    }
+  });
+
   it("should reject oracle updates with inverted timeouts or zero maxTickets", async () => {
     const { oracle } = await testUtils.quickSetup();
 
