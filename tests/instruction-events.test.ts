@@ -3,7 +3,14 @@ import * as anchor from "@coral-xyz/anchor";
 import { createHash } from "crypto";
 import { getOrCreateAssociatedTokenAccount } from "@solana/spl-token";
 import type { Coinflip } from "../target/types/coinflip";
-import { TestEnvironment, TestUtils, GameConfig, calculateWinnerIndex, getWinnerFromPlayers } from "./test-helpers";
+import {
+  TestEnvironment,
+  TestUtils,
+  GameConfig,
+  calculateWinnerIndex,
+  getWinnerFromPlayers,
+  getErrorMessage,
+} from "./test-helpers";
 
 // Instruction coverage: ensure lifecycle events emit and state updates match expectations
 
@@ -54,6 +61,83 @@ describe("Game Lifecycle Instruction Events", () => {
     });
 
     return { wait, dispose };
+  };
+
+  const getClockUnixTimestamp = async (): Promise<number> => {
+    const clockInfo = await env.provider.connection.getAccountInfo(
+      anchor.web3.SYSVAR_CLOCK_PUBKEY
+    );
+    if (!clockInfo) {
+      throw new Error("Clock sysvar account unavailable");
+    }
+
+    return Number(clockInfo.data.readBigInt64LE(32));
+  };
+
+  const waitForLateUnjoinReady = async (
+    readyAtTimestamp: number,
+    extraSlackSeconds: number
+  ): Promise<void> => {
+    const pollIntervalMs = 750;
+    const maxWaitMs = 120_000;
+    const adjustedTarget = readyAtTimestamp + extraSlackSeconds;
+    const start = Date.now();
+
+    while (true) {
+      const clockTimestamp = await getClockUnixTimestamp();
+
+      if (clockTimestamp >= adjustedTarget) {
+        return;
+      }
+
+      if (Date.now() - start > maxWaitMs) {
+        throw new Error(
+          `Timed out waiting for oracle buffer expiry (target=${adjustedTarget}, clock=${clockTimestamp}).`
+        );
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+    }
+  };
+
+  const unjoinWithRetry = async (
+    gamePDA: anchor.web3.PublicKey,
+    player: anchor.web3.Keypair,
+    readyAtTimestamp: number
+  ): Promise<void> => {
+    const maxAttempts = 12;
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const slackSeconds = 3 + attempt;
+      await waitForLateUnjoinReady(readyAtTimestamp, slackSeconds);
+
+      try {
+        await testUtils.game.unjoinGame(gamePDA, player);
+        return;
+      } catch (error) {
+        const message = getErrorMessage(error);
+        const isBufferError = message.includes("Oracle buffer time not expired");
+
+        if (!isBufferError) {
+          console.error(
+            `[PlayerUnjoined] unjoin failed (attempt ${attempt + 1}/${maxAttempts})`,
+            message,
+            (error as any)?.error?.errorLogs ?? []
+          );
+          throw error;
+        }
+
+        console.warn(
+          `[PlayerUnjoined] buffer not expired yet after waiting ${slackSeconds}s, retrying...`
+        );
+
+        if (attempt === maxAttempts - 1) {
+          throw new Error(
+            `Oracle buffer still active after waiting ${slackSeconds} seconds past readyAt (${message}).`
+          );
+        }
+      }
+    }
   };
 
   before(async () => {
@@ -164,13 +248,14 @@ describe("Game Lifecycle Instruction Events", () => {
       typeof oracle.config.oracleBufferTime === "number"
         ? oracle.config.oracleBufferTime
         : Number(oracle.config.oracleBufferTime);
-    const waitSeconds = cfg.timeout.toNumber() + bufferSeconds + 2;
 
-    await new Promise((resolve) => setTimeout(resolve, waitSeconds * 1000));
+    const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+    const readyAtTimestamp =
+      gameAccount.createdAt.toNumber() + cfg.timeout.toNumber() + bufferSeconds;
 
     const subscription = await subscribeEvent("playerUnjoined");
     try {
-      await testUtils.game.unjoinGame(gameData.gamePDA, p1.player);
+      await unjoinWithRetry(gameData.gamePDA, p1.player, readyAtTimestamp);
 
       const event = await subscription.wait;
       expect(event.player).to.deep.equal(p1.player.publicKey);
@@ -180,6 +265,13 @@ describe("Game Lifecycle Instruction Events", () => {
       const account = await env.program.account.game.fetch(gameData.gamePDA);
       expect(account.ticketsCount).to.equal(0);
       expect(account.totalAmount.toNumber()).to.equal(0);
+    } catch (err) {
+      console.error(
+        "[PlayerUnjoined] test failed",
+        getErrorMessage(err),
+        (err as any)?.error?.errorLogs ?? []
+      );
+      throw err;
     } finally {
       await subscription.dispose().catch(() => {});
     }
