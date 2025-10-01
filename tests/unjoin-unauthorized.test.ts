@@ -48,6 +48,39 @@ describe("Unjoin Unauthorized Scenarios", () => {
     expect(g.ticketsCount).to.equal(1);
   }).timeout(60000);
 
+  it("should reject unjoin when no participants have joined the game", async () => {
+    const { oracle, mint, players } = await testUtils.quickSetup();
+    const [creator] = players;
+    const gameData = testUtils.game.generateGamePDA();
+
+    const config: GameConfig = {
+      gameType: { coinflip: {} },
+      amount: new anchor.BN(1_000_000),
+      maxTickets: new anchor.BN(3),
+      minTickets: new anchor.BN(2),
+      timeout: new anchor.BN(1),
+      isPrivate: false,
+    };
+
+    await testUtils.game.initializeGame(gameData, config, creator.player, mint.mint);
+
+    const waitSeconds =
+      Number(config.timeout.toNumber()) +
+      Number(oracle.config.oracleBufferTime) +
+      2;
+    await new Promise((resolve) => setTimeout(resolve, waitSeconds * 1000));
+
+    try {
+      await testUtils.game.unjoinGame(gameData.gamePDA, creator.player);
+      expect.fail("Expected InvalidTicketsCount when no participants joined");
+    } catch (e) {
+      expect(e.toString()).to.include("InvalidTicketsCount");
+    }
+
+    const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+    expect(gameAccount.ticketsCount).to.equal(0);
+  }).timeout(60000);
+
   // Note: a second unjoin attempt after a successful unjoin will fail,
   // but exact error code may vary depending on current tickets_count/value.
 });
