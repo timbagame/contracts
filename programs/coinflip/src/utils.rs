@@ -56,3 +56,35 @@ pub fn participant_hash(game_key: &Pubkey, player_key: &Pubkey) -> u64 {
     .to_bytes();
     u64::from_le_bytes(digest[0..8].try_into().unwrap())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn participant_hash_matches_expected_digest_prefix() {
+        let game = Pubkey::new_unique();
+        let player = Pubkey::new_unique();
+
+        let digest = hashv(&[
+            super::PARTICIPANT_HASH_DOMAIN,
+            game.as_ref(),
+            player.as_ref(),
+        ])
+        .to_bytes();
+        let expected = u64::from_le_bytes(digest[0..8].try_into().unwrap());
+
+        assert_eq!(participant_hash(&game, &player), expected);
+    }
+
+    #[test]
+    fn participant_hash_is_domain_separated() {
+        let game = Pubkey::new_unique();
+        let player = Pubkey::new_unique();
+
+        let alternate_digest = hashv(&[game.as_ref(), player.as_ref()]).to_bytes();
+        let without_domain = u64::from_le_bytes(alternate_digest[0..8].try_into().unwrap());
+
+        assert_ne!(participant_hash(&game, &player), without_domain);
+    }
+}

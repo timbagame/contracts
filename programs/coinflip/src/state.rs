@@ -429,3 +429,222 @@ impl Game {
         self.game_type == GameType::Giveaway || token_balance >= self.ticket_amount
     }
 }
+
+// =============================================================================
+// UNIT TESTS
+// =============================================================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn sample_game() -> Game {
+        Game {
+            creator: Pubkey::new_unique(),
+            game_type: GameType::Coinflip,
+            ticket_amount: 10,
+            max_tickets: 3,
+            min_tickets: 2,
+            tickets_count: 0,
+            token_mint: Pubkey::new_unique(),
+            created_at: 0,
+            timeout: 100,
+            last_slot: 42,
+            is_private: false,
+            total_amount: 0,
+            participant_hashes: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn game_is_not_waiting_when_pot_empty() {
+        let game = sample_game();
+        assert!(!game.waiting_for_oracle(5, 1));
+    }
+
+    #[test]
+    fn game_waits_for_oracle_until_buffer_expires() {
+        let mut game = sample_game();
+        game.tickets_count = game.max_tickets;
+        game.total_amount = game.ticket_amount * game.max_tickets as u64;
+
+        // Ready for completion because max tickets reached, still within buffer.
+        assert!(game.waiting_for_oracle(30, 50));
+        // Once buffer expires, the helper reports false.
+        assert!(!game.waiting_for_oracle(30, 130));
+    }
+
+    #[test]
+    fn buffer_expiry_treats_equality_as_expired() {
+        let game = sample_game();
+        assert!(game.is_buffer_expired(30, 130));
+    }
+
+    #[test]
+    fn ready_for_completion_with_timeout_and_min_players() {
+        let mut game = sample_game();
+        game.tickets_count = game.min_tickets;
+        game.total_amount = game.ticket_amount * game.tickets_count as u64;
+
+        assert!(game.is_ready_for_completion(120));
+    }
+
+    #[test]
+    fn ready_for_completion_immediately_at_max_tickets() {
+        let mut game = sample_game();
+        game.tickets_count = game.max_tickets;
+        game.total_amount = game.ticket_amount * game.tickets_count as u64;
+
+        assert!(game.is_ready_for_completion(0));
+    }
+
+    #[test]
+    fn game_completion_zeroes_total_amount() {
+        let mut game = sample_game();
+        game.total_amount = 500;
+        game.complete();
+        assert_eq!(game.total_amount, 0);
+    }
+
+    #[test]
+    fn calculate_amounts_splits_fee_and_prize() {
+        let mut game = sample_game();
+        game.total_amount = 1_000;
+        let (winner, fee) = game.calculate_amounts(5);
+        assert_eq!(winner, 950);
+        assert_eq!(fee, 50);
+    }
+
+    #[test]
+    fn calculate_winner_index_with_entropy_window() {
+        let mut game = sample_game();
+        game.tickets_count = 5;
+        game.last_slot = 777;
+        let secret_key = [7u8; 32];
+
+        let first = game.calculate_winner_index(secret_key).unwrap();
+        let second = game.calculate_winner_index(secret_key).unwrap();
+        assert!(first < game.tickets_count);
+        assert_eq!(
+            first, second,
+            "winner index should be deterministic for same inputs"
+        );
+    }
+
+    #[test]
+    fn verify_secret_key_matches_hash() {
+        let secret_key = [3u8; 32];
+        let random_hash = hashv(&[secret_key.as_ref()]).to_bytes();
+        assert!(Game::verify_secret_key(random_hash, secret_key));
+    }
+
+    #[test]
+    fn game_is_expired_once_timeout_passes() {
+        let mut game = sample_game();
+        game.created_at = 10;
+        game.timeout = 5;
+        assert!(game.is_expired(16));
+        assert!(!game.is_expired(14));
+    }
+
+    #[test]
+    fn game_creator_and_capacity_helpers() {
+        let game = sample_game();
+        assert!(game.is_creator(&game.creator));
+        assert!(game.is_not_full());
+    }
+
+    #[test]
+    fn add_player_updates_counters() {
+        let mut game = sample_game();
+        game.add_player_to_game();
+        assert_eq!(game.tickets_count, 1);
+        assert_eq!(game.total_amount, game.ticket_amount);
+    }
+
+    #[test]
+    fn giveaway_allows_zero_balance_for_join() {
+        let mut game = sample_game();
+        game.game_type = GameType::Giveaway;
+        assert!(game.has_sufficient_balance_for_join(0));
+    }
+
+    #[test]
+    fn competitive_game_requires_sufficient_balance() {
+        let game = sample_game();
+        assert!(game.has_sufficient_balance_for_join(game.ticket_amount));
+        assert!(!game.has_sufficient_balance_for_join(game.ticket_amount - 1));
+    }
+
+    #[test]
+    fn public_games_allow_join_without_operator() {
+        let game = sample_game();
+        assert!(game.can_join_private(None, &Pubkey::new_unique()));
+    }
+
+    #[test]
+    fn private_games_reject_without_operator() {
+        let mut game = sample_game();
+        game.is_private = true;
+        assert!(!game.can_join_private(None, &Pubkey::new_unique()));
+    }
+
+    #[test]
+    fn game_ticket_validation_respects_game_type_thresholds() {
+        assert!(Game::is_valid_game_type_tickets(
+            GameType::Coinflip,
+            MIN_COMPETITIVE_PLAYERS,
+            MIN_COMPETITIVE_PLAYERS
+        ));
+        assert!(Game::is_valid_game_type_tickets(
+            GameType::Giveaway,
+            MIN_GIVEAWAY_PLAYERS,
+            MIN_GIVEAWAY_PLAYERS
+        ));
+        assert!(!Game::is_valid_game_type_tickets(
+            GameType::Coinflip,
+            MIN_COMPETITIVE_PLAYERS - 1,
+            MIN_COMPETITIVE_PLAYERS - 1
+        ));
+    }
+
+    #[test]
+    fn ticket_validation_checks_against_oracle_limits() {
+        assert!(Game::is_valid_tickets_count(10, 2, 10));
+        assert!(!Game::is_valid_tickets_count(11, 2, 10));
+        assert!(!Game::is_valid_tickets_count(10, 11, 10));
+    }
+
+    #[test]
+    fn oracle_configuration_helpers_cover_all_branches() {
+        let mut oracle = Oracle::default();
+        let new_operator = Pubkey::new_unique();
+        oracle.update_config(5, 10, 500, 60, 5, new_operator);
+
+        assert!(oracle.is_authorized_operator(&new_operator));
+        assert!(oracle.is_valid_timeout_range(30));
+        assert!(Oracle::is_valid_fee_percentage(0));
+        assert!(Oracle::is_valid_fee_percentage(100));
+        assert!(!Oracle::is_valid_fee_percentage(101));
+        assert!(Oracle::is_valid_timeout(60, 5));
+        assert!(!Oracle::is_valid_timeout(4, 5));
+        assert!(Oracle::is_valid_tickets_count(1));
+        assert!(!Oracle::is_valid_tickets_count(0));
+    }
+
+    #[test]
+    fn game_token_configuration_helpers() {
+        let mut token = GameToken::default();
+        let token_mint = Pubkey::new_unique();
+        token.initialize(token_mint, 255, 50, true);
+
+        assert_eq!(token.token_mint, token_mint);
+        assert!(token.is_enabled());
+        assert!(token.meets_min_amount(50));
+        assert!(!token.meets_min_amount(49));
+
+        token.update_config(25, false);
+        assert_eq!(token.min_amount, 25);
+        assert!(!token.is_enabled());
+    }
+}
