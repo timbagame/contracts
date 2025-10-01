@@ -152,6 +152,34 @@ describe("Winner Index Validation", () => {
     }
   });
 
+  it("should reject complete_game when creator account does not match", async () => {
+    const { oracle, gameData, creator, player1 } = await setupTwoPlayerGame();
+
+    const participants = [creator, player1];
+    const { winnerIndex, winner } = await computeGameOutcome(
+      env,
+      gameData,
+      participants
+    );
+
+    const impostorCreator = anchor.web3.Keypair.generate();
+
+    try {
+      await env.program.methods
+        .completeGame(gameData.randomHash, gameData.secretKey, winnerIndex)
+        .accountsPartial({
+          oracleOperator: oracle.operator,
+          winner: winner.player.publicKey,
+          creator: impostorCreator.publicKey,
+        })
+        .signers([oracle.operatorKeypair])
+        .rpc();
+      expect.fail("Should throw InvalidCreator when creator account mismatches");
+    } catch (e: any) {
+      expectAnchorError(e, "InvalidCreator", "Invalid creator");
+    }
+  });
+
   it("should fail when winner token account does not belong to supplied winner", async () => {
     const { oracle, gameData, creator, player1 } = await setupTwoPlayerGame();
 
