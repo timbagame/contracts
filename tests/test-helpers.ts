@@ -1,9 +1,12 @@
 import * as anchor from "@coral-xyz/anchor";
 import { Coinflip } from "../target/types/coinflip";
 import {
+  ASSOCIATED_TOKEN_PROGRAM_ID,
+  TOKEN_PROGRAM_ID,
   createMint,
-  mintTo,
+  getAssociatedTokenAddressSync,
   getOrCreateAssociatedTokenAccount,
+  mintTo,
 } from "@solana/spl-token";
 import { PublicKey } from "@solana/web3.js";
 import { createHash } from "crypto";
@@ -600,11 +603,45 @@ export class GameManager {
     gamePDA: PublicKey,
     player: anchor.web3.Keypair
   ): Promise<void> {
+    const gameAccount = await this.program.account.game.fetch(gamePDA);
+    const tokenMint = new PublicKey(gameAccount.tokenMint);
+
+    const [oraclePDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("oracle")],
+      this.program.programId
+    );
+    const [gameTokenPDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("game_token"), tokenMint.toBuffer()],
+      this.program.programId
+    );
+    const [gameVaultPDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("game_vault"), tokenMint.toBuffer()],
+      this.program.programId
+    );
+
+    const playerTokenAccount = getAssociatedTokenAddressSync(
+      tokenMint,
+      player.publicKey
+    );
+    const gameTokenAccount = getAssociatedTokenAddressSync(
+      tokenMint,
+      gameVaultPDA,
+      true
+    );
+
     await this.program.methods
       .unjoinGame()
-      .accountsPartial({
+      .accounts({
         game: gamePDA,
         player: player.publicKey,
+        oracle: oraclePDA,
+        gameToken: gameTokenPDA,
+        gameVault: gameVaultPDA,
+        playerTokenAccount,
+        gameTokenAccount,
+        systemProgram: anchor.web3.SystemProgram.programId,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
       })
       .signers([player])
       .rpc();
