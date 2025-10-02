@@ -27,7 +27,7 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
     // ===============================
 
     // Add player to game and update counters
-    game.add_player_to_game();
+    game.add_player_to_game()?;
     game.last_slot = current_slot;
 
     // Append salted hash

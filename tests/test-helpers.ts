@@ -408,13 +408,14 @@ export class MintManager {
     tokenAccount: PublicKey,
     amount: anchor.BN
   ): Promise<void> {
+    const amountBigInt = BigInt(amount.toString());
     await mintTo(
       this.provider.connection,
       mint.mintAuthority,
       mint.mint,
       tokenAccount,
       mint.mintAuthority,
-      amount.toNumber()
+      amountBigInt
     );
   }
 }
