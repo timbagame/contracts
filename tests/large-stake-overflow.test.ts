@@ -61,7 +61,7 @@ describe("Large stake overflow regression", () => {
       await testUtils.game.joinGame(gameData.gamePDA, players[3].player);
       expect.fail("expected overflow join to fail");
     } catch (error) {
-      expect(getErrorCode(error)).to.equal("InvalidAmount");
+      expect(getErrorCode(error)).to.equal("InsufficientBalance");
     }
   });
 });
