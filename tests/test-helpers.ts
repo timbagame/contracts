@@ -596,9 +596,43 @@ export class GameManager {
     player: anchor.web3.Keypair,
     oracleOperator?: anchor.web3.Keypair
   ): Promise<void> {
-    const accounts: any = {
+    const gameAccount = await this.program.account.game.fetch(gamePDA);
+    const tokenMint = new PublicKey(gameAccount.tokenMint);
+
+    const [oraclePDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("oracle")],
+      this.program.programId
+    );
+    const [gameTokenPDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("game_token"), tokenMint.toBuffer()],
+      this.program.programId
+    );
+    const [gameVaultPDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("game_vault"), tokenMint.toBuffer()],
+      this.program.programId
+    );
+
+    const playerTokenAccount = getAssociatedTokenAddressSync(
+      tokenMint,
+      player.publicKey
+    );
+    const gameTokenAccount = getAssociatedTokenAddressSync(
+      tokenMint,
+      gameVaultPDA,
+      true
+    );
+
+    const accounts: Record<string, PublicKey> = {
       game: gamePDA,
       player: player.publicKey,
+      gameToken: gameTokenPDA,
+      gameVault: gameVaultPDA,
+      playerTokenAccount,
+      gameTokenAccount,
+      oracle: oraclePDA,
+      systemProgram: anchor.web3.SystemProgram.programId,
+      tokenProgram: TOKEN_PROGRAM_ID,
+      associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
     };
 
     const signers = [player];
