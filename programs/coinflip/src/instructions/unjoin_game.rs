@@ -39,8 +39,16 @@ pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
     if let Some(pos) = removed_index_opt {
         game.participant_hashes.swap_remove(pos);
         // Decrement counters and refund
-        game.tickets_count -= 1;
-        game.total_amount -= game.ticket_amount;
+        let new_tickets_count = game
+            .tickets_count
+            .checked_sub(1)
+            .ok_or(ErrorCode::InvalidAmount)?;
+        let new_total_amount = game
+            .total_amount
+            .checked_sub(game.ticket_amount)
+            .ok_or(ErrorCode::InvalidAmount)?;
+        game.tickets_count = new_tickets_count;
+        game.total_amount = new_total_amount;
     } else {
         return err!(ErrorCode::UnauthorizedPlayer);
     }

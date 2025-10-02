@@ -1,3 +1,4 @@
+use crate::error::ErrorCode;
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::hash::hashv;
 use anchor_spl::token::{transfer, Transfer};
@@ -387,10 +388,25 @@ impl Game {
     // =============================================================================
 
     /// Add player to the game and update counters
-    pub fn add_player_to_game(&mut self) {
-        // Update counters only
-        self.tickets_count += 1;
-        self.total_amount += self.ticket_amount;
+    pub fn add_player_to_game(&mut self) -> Result<()> {
+        if self.participant_hashes.len() >= self.max_tickets as usize {
+            return err!(ErrorCode::InvalidAmount);
+        }
+
+        let new_tickets_count = self
+            .tickets_count
+            .checked_add(1)
+            .ok_or(ErrorCode::InvalidAmount)?;
+
+        let new_total_amount = self
+            .total_amount
+            .checked_add(self.ticket_amount)
+            .ok_or(ErrorCode::InvalidAmount)?;
+
+        self.tickets_count = new_tickets_count;
+        self.total_amount = new_total_amount;
+
+        Ok(())
     }
 
     // =============================================================================
