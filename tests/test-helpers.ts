@@ -631,7 +631,7 @@ export class GameManager {
 
     await this.program.methods
       .unjoinGame()
-      .accounts({
+      .accountsStrict({
         game: gamePDA,
         player: player.publicKey,
         oracle: oraclePDA,
