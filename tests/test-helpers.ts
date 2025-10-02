@@ -5,6 +5,7 @@ import {
   TOKEN_PROGRAM_ID,
   createMint,
   getAssociatedTokenAddressSync,
+  getMint,
   getOrCreateAssociatedTokenAccount,
   mintTo,
 } from "@solana/spl-token";
@@ -409,13 +410,29 @@ export class MintManager {
     amount: anchor.BN
   ): Promise<void> {
     const amountBigInt = BigInt(amount.toString());
+    if (amountBigInt === 0n) {
+      return;
+    }
+
+    const mintInfo = await getMint(this.provider.connection, mint.mint);
+    const currentSupply = BigInt(mintInfo.supply.toString());
+    const maxSupply = 0xffff_ffff_ffff_ffffn; // SPL Token total supply is u64::MAX
+    const availableToMint =
+      maxSupply > currentSupply ? maxSupply - currentSupply : 0n;
+    const mintAmount =
+      amountBigInt <= availableToMint ? amountBigInt : availableToMint;
+
+    if (mintAmount === 0n) {
+      return;
+    }
+
     await mintTo(
       this.provider.connection,
       mint.mintAuthority,
       mint.mint,
       tokenAccount,
       mint.mintAuthority,
-      amountBigInt
+      mintAmount
     );
   }
 }
@@ -794,9 +811,25 @@ export function getErrorCode(error: unknown): string | undefined {
 
 export function getErrorMessage(error: unknown): string {
   const err = error as any;
-  return (
-    err?.error?.errorMessage ?? err?.message ?? err?.toString?.() ?? "Unknown error"
-  );
+  const directMessage =
+    err?.error?.errorMessage ?? err?.message ?? err?.toString?.();
+
+  const shouldInspectLogs =
+    !directMessage || directMessage === "Unknown action 'undefined'";
+  if (shouldInspectLogs) {
+    const logs =
+      err?.transactionLogs ?? err?.logs ?? err?.error?.errorLogs ?? undefined;
+    if (Array.isArray(logs)) {
+      for (const log of logs) {
+        const match = /Error Message: (?<msg>[^.]+)/.exec(log);
+        if (match?.groups?.msg) {
+          return match.groups.msg;
+        }
+      }
+    }
+  }
+
+  return directMessage ?? "Unknown error";
 }
 
 /**
