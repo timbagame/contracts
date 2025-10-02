@@ -25,7 +25,8 @@ describe("Game Lifecycle Instruction Events", () => {
   let testUtils: TestUtils;
 
   const subscribeEvent = async <TEvent extends CoinflipEventName>(
-    eventName: TEvent
+    eventName: TEvent,
+    timeoutMs = 10_000
   ) => {
     let listenerId: number | undefined;
     let settled = false;
@@ -42,7 +43,7 @@ describe("Game Lifecycle Instruction Events", () => {
         settled = true;
         rejectEvent(new Error(`${eventName} timeout`));
       }
-    }, 10000);
+    }, timeoutMs);
 
     listenerId = await env.program.addEventListener(
       eventName,
@@ -256,7 +257,7 @@ describe("Game Lifecycle Instruction Events", () => {
       amount: new anchor.BN(2_000_000),
       maxTickets: new anchor.BN(3),
       minTickets: new anchor.BN(2),
-      timeout: new anchor.BN(1),
+      timeout: new anchor.BN(10),
       isPrivate: false,
     };
 
@@ -277,7 +278,7 @@ describe("Game Lifecycle Instruction Events", () => {
     const readyAtTimestamp =
       gameAccount.createdAt.toNumber() + cfg.timeout.toNumber() + bufferSeconds;
 
-    const subscription = await subscribeEvent("playerUnjoined");
+    const subscription = await subscribeEvent("playerUnjoined", 20_000);
     try {
       await unjoinWithRetry(gameData.gamePDA, p1.player, readyAtTimestamp);
 
