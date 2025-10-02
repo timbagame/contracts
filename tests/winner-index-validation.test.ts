@@ -99,8 +99,8 @@ describe("Winner Index Validation", () => {
       participants
     );
 
-    const wrongWinner = participants.find((candidate) =>
-      !candidate.player.publicKey.equals(winner.player.publicKey)
+    const wrongWinner = participants.find(
+      (candidate) => !candidate.player.publicKey.equals(winner.player.publicKey)
     );
 
     if (!wrongWinner) {
@@ -174,7 +174,9 @@ describe("Winner Index Validation", () => {
         })
         .signers([oracle.operatorKeypair])
         .rpc();
-      expect.fail("Should throw InvalidCreator when creator account mismatches");
+      expect.fail(
+        "Should throw InvalidCreator when creator account mismatches"
+      );
     } catch (e: any) {
       expectAnchorError(e, "InvalidCreator", "Invalid creator");
     }
@@ -190,8 +192,8 @@ describe("Winner Index Validation", () => {
       participants
     );
 
-    const wrongAccountOwner = participants.find((candidate) =>
-      !candidate.player.publicKey.equals(winner.player.publicKey)
+    const wrongAccountOwner = participants.find(
+      (candidate) => !candidate.player.publicKey.equals(winner.player.publicKey)
     );
 
     if (!wrongAccountOwner) {
@@ -267,12 +269,17 @@ describe("Winner Index Validation", () => {
       );
       expect.fail("Should throw GameNotReadyForOracle");
     } catch (e: any) {
-      expectAnchorError(e, "GameNotReadyForOracle", "Game not ready for oracle");
+      expectAnchorError(
+        e,
+        "GameNotReadyForOracle",
+        "Game not ready for oracle"
+      );
     }
   });
 
   it("should complete successfully and distribute winnings when inputs are consistent", async () => {
-    const { oracle, mint, gameData, creator, player1 } = await setupTwoPlayerGame();
+    const { oracle, mint, gameData, creator, player1 } =
+      await setupTwoPlayerGame();
 
     const participants = [creator, player1];
     const { winnerIndex, winner, pot } = await computeGameOutcome(
@@ -284,9 +291,10 @@ describe("Winner Index Validation", () => {
     const { fee: expectedFee, winnerAmount: expectedWinnerAmount } =
       calculatePayoutBreakdown(pot, oracle.config.feePercentage);
 
-    const preWinnerBalance = await env.provider.connection.getTokenAccountBalance(
-      winner.playerTokenAccount.address
-    );
+    const preWinnerBalance =
+      await env.provider.connection.getTokenAccountBalance(
+        winner.playerTokenAccount.address
+      );
     const winnerBefore = new anchor.BN(preWinnerBalance.value.amount);
 
     const gameTokenBefore = await env.program.account.gameToken.fetch(
@@ -302,9 +310,10 @@ describe("Winner Index Validation", () => {
       winnerIndex
     );
 
-    const postWinnerBalance = await env.provider.connection.getTokenAccountBalance(
-      winner.playerTokenAccount.address
-    );
+    const postWinnerBalance =
+      await env.provider.connection.getTokenAccountBalance(
+        winner.playerTokenAccount.address
+      );
     const winnerAfter = new anchor.BN(postWinnerBalance.value.amount);
     expect(winnerAfter.sub(winnerBefore).eq(expectedWinnerAmount)).to.be.true;
 
@@ -321,7 +330,8 @@ describe("Winner Index Validation", () => {
   });
 
   it("should emit GameCompleted event with expected payload", async () => {
-    const { oracle, mint, gameData, creator, player1 } = await setupTwoPlayerGame();
+    const { oracle, mint, gameData, creator, player1 } =
+      await setupTwoPlayerGame();
 
     const participants = [creator, player1];
     const { gameAccount, winnerIndex, winner, pot } = await computeGameOutcome(
@@ -336,7 +346,10 @@ describe("Winner Index Validation", () => {
     let resolveEvent: ((event: any) => void) | undefined;
     let rejectEvent: ((error: Error) => void) | undefined;
     const eventPromise = new Promise<any>((resolve, reject) => {
-      const timeout = setTimeout(() => reject(new Error("Event not emitted")), 5000);
+      const timeout = setTimeout(
+        () => reject(new Error("Event not emitted")),
+        5000
+      );
       resolveEvent = (event: any) => {
         clearTimeout(timeout);
         resolve(event);
@@ -369,22 +382,30 @@ describe("Winner Index Validation", () => {
       await env.program.removeEventListener(listener);
     }
 
-    expect(emittedEvent.gameKey.toBase58()).to.equal(gameData.gamePDA.toBase58());
+    expect(emittedEvent.gameKey.toBase58()).to.equal(
+      gameData.gamePDA.toBase58()
+    );
     expect(emittedEvent.winner.toBase58()).to.equal(
       winner.player.publicKey.toBase58()
     );
     expect(emittedEvent.ticketsCount).to.equal(gameAccount.ticketsCount);
     expect(
-      new anchor.BN(emittedEvent.winnerAmount.toString()).eq(expectedWinnerAmount)
+      new anchor.BN(emittedEvent.winnerAmount.toString()).eq(
+        expectedWinnerAmount
+      )
     ).to.be.true;
-    expect(new anchor.BN(emittedEvent.feeAmount.toString()).eq(expectedFee)).to.be.true;
+    expect(new anchor.BN(emittedEvent.feeAmount.toString()).eq(expectedFee)).to
+      .be.true;
     expect(
       new anchor.BN(emittedEvent.timestamp.toString()).gte(
         new anchor.BN(gameAccount.createdAt.toString())
       )
     ).to.be.true;
 
-    const gameTokenAccount = await env.program.account.gameToken.fetch(mint.gameTokenPDA);
-    expect(new anchor.BN(gameTokenAccount.feeAmount.toString()).eq(expectedFee)).to.be.true;
+    const gameTokenAccount = await env.program.account.gameToken.fetch(
+      mint.gameTokenPDA
+    );
+    expect(new anchor.BN(gameTokenAccount.feeAmount.toString()).eq(expectedFee))
+      .to.be.true;
   });
 });

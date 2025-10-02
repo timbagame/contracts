@@ -36,7 +36,12 @@ describe("Token Gating", () => {
     };
 
     try {
-      await testUtils.game.initializeGame(gameData, gameConfig, creator.player, mint.mint);
+      await testUtils.game.initializeGame(
+        gameData,
+        gameConfig,
+        creator.player,
+        mint.mint
+      );
       expect.fail("Expected initializeGame to fail when token disabled");
     } catch (e: any) {
       expect(e.toString()).to.include("TokenNotEnabled");
@@ -68,7 +73,12 @@ describe("Token Gating", () => {
 
     // initialize should fail due to amount < minAmount
     try {
-      await testUtils.game.initializeGame(gameData, gameConfig, creator.player, mint.mint);
+      await testUtils.game.initializeGame(
+        gameData,
+        gameConfig,
+        creator.player,
+        mint.mint
+      );
       expect.fail("Expected initializeGame to fail when amount < minAmount");
     } catch (e: any) {
       expect(e.toString()).to.include("InvalidAmount");
@@ -81,7 +91,12 @@ describe("Token Gating", () => {
       .signers([oracle.operatorKeypair])
       .rpc();
 
-    await testUtils.game.initializeGame(gameData, gameConfig, creator.player, mint.mint);
+    await testUtils.game.initializeGame(
+      gameData,
+      gameConfig,
+      creator.player,
+      mint.mint
+    );
 
     // Raise minAmount after init; join should still succeed (min enforced at init)
     await env.program.methods
@@ -109,12 +124,21 @@ describe("Token Gating", () => {
       isPrivate: false,
     };
 
-    await testUtils.game.initializeGame(gameData, gameConfig, creator.player, mint.mint);
+    await testUtils.game.initializeGame(
+      gameData,
+      gameConfig,
+      creator.player,
+      mint.mint
+    );
     await testUtils.game.joinGame(gameData.gamePDA, creator.player);
     await testUtils.game.joinGame(gameData.gamePDA, p1.player);
 
-    const gameTokenAccount = await env.program.account.gameToken.fetch(mint.gameTokenPDA);
-    const originalMinAmount = new anchor.BN(gameTokenAccount.minAmount.toString());
+    const gameTokenAccount = await env.program.account.gameToken.fetch(
+      mint.gameTokenPDA
+    );
+    const originalMinAmount = new anchor.BN(
+      gameTokenAccount.minAmount.toString()
+    );
 
     // Disable the token mid-game
     await env.program.methods

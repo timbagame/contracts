@@ -28,7 +28,12 @@ describe("Completion Readiness Guard", () => {
       isPrivate: false,
     };
 
-    await testUtils.game.initializeGame(gameData, gameConfig, creator.player, mint.mint);
+    await testUtils.game.initializeGame(
+      gameData,
+      gameConfig,
+      creator.player,
+      mint.mint
+    );
     await testUtils.game.joinGame(gameData.gamePDA, creator.player);
     await testUtils.game.joinGame(gameData.gamePDA, p1.player);
 

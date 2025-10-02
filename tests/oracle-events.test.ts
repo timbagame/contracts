@@ -10,7 +10,9 @@ describe("Oracle Events", () => {
   let env: TestEnvironment;
   let testUtils: TestUtils;
 
-  const subscribeEvent = async <TEvent extends CoinflipEventName>(eventName: TEvent) => {
+  const subscribeEvent = async <TEvent extends CoinflipEventName>(
+    eventName: TEvent
+  ) => {
     let listenerId: number | undefined;
     let settled = false;
     let resolveEvent: (value: CoinflipEvents[TEvent]) => void;
@@ -28,12 +30,15 @@ describe("Oracle Events", () => {
       }
     }, 10000);
 
-    listenerId = await env.program.addEventListener(eventName, (event: CoinflipEvents[TEvent]) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      resolveEvent(event);
-    });
+    listenerId = await env.program.addEventListener(
+      eventName,
+      (event: CoinflipEvents[TEvent]) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        resolveEvent(event);
+      }
+    );
 
     const dispose = async () => {
       clearTimeout(timer);
@@ -62,7 +67,10 @@ describe("Oracle Events", () => {
 
     const newOperator = anchor.web3.Keypair.generate();
     const connection = env.provider.connection;
-    const airdropSig = await connection.requestAirdrop(newOperator.publicKey, 2 * anchor.web3.LAMPORTS_PER_SOL);
+    const airdropSig = await connection.requestAirdrop(
+      newOperator.publicKey,
+      2 * anchor.web3.LAMPORTS_PER_SOL
+    );
     await connection.confirmTransaction(airdropSig, "confirmed");
 
     const nextConfig = {
@@ -95,7 +103,9 @@ describe("Oracle Events", () => {
       expect(event.oldOperator).to.deep.equal(oracle.operator);
       expect(event.newOperator).to.deep.equal(newOperator.publicKey);
       expect(event.feePercentage).to.equal(nextConfig.feePercentage);
-      expect(Number(event.oracleBufferTime)).to.equal(nextConfig.oracleBufferTime);
+      expect(Number(event.oracleBufferTime)).to.equal(
+        nextConfig.oracleBufferTime
+      );
       expect(event.maxTickets).to.equal(nextConfig.maxTickets);
       expect(Number(event.maxTimeout)).to.equal(nextConfig.maxTimeout);
       expect(Number(event.minTimeout)).to.equal(nextConfig.minTimeout);
@@ -174,7 +184,9 @@ describe("Oracle Events", () => {
       expect(event.oldOperator).to.deep.equal(oracle.operator);
       expect(event.newOperator).to.deep.equal(oracle.operator);
       expect(event.feePercentage).to.equal(updatedConfig.feePercentage);
-      expect(Number(event.oracleBufferTime)).to.equal(updatedConfig.oracleBufferTime);
+      expect(Number(event.oracleBufferTime)).to.equal(
+        updatedConfig.oracleBufferTime
+      );
       expect(event.maxTickets).to.equal(updatedConfig.maxTickets);
       expect(Number(event.maxTimeout)).to.equal(updatedConfig.maxTimeout);
       expect(Number(event.minTimeout)).to.equal(updatedConfig.minTimeout);
@@ -186,12 +198,8 @@ describe("Oracle Events", () => {
         updatedConfig.oracleBufferTime
       );
       expect(onChain.maxTickets).to.equal(updatedConfig.maxTickets);
-      expect(onChain.maxTimeout.toNumber()).to.equal(
-        updatedConfig.maxTimeout
-      );
-      expect(onChain.minTimeout.toNumber()).to.equal(
-        updatedConfig.minTimeout
-      );
+      expect(onChain.maxTimeout.toNumber()).to.equal(updatedConfig.maxTimeout);
+      expect(onChain.minTimeout.toNumber()).to.equal(updatedConfig.minTimeout);
     } finally {
       await subscription.dispose().catch(() => {});
 

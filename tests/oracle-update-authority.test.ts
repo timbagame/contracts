@@ -1,6 +1,12 @@
 import { expect } from "chai";
 import * as anchor from "@coral-xyz/anchor";
-import { TestUtils, TestEnvironment, GameConfig, calculateWinnerIndex, getWinnerFromPlayers } from "./test-helpers";
+import {
+  TestUtils,
+  TestEnvironment,
+  GameConfig,
+  calculateWinnerIndex,
+  getWinnerFromPlayers,
+} from "./test-helpers";
 
 // Tests for oracle operator update and authority enforcement
 
@@ -29,7 +35,12 @@ describe("Oracle Update Authority", () => {
       timeout: new anchor.BN(60),
       isPrivate: false,
     };
-    await testUtils.game.initializeGame(gameData, cfg, creator.player, mint.mint);
+    await testUtils.game.initializeGame(
+      gameData,
+      cfg,
+      creator.player,
+      mint.mint
+    );
     await testUtils.game.joinGame(gameData.gamePDA, creator.player);
     await testUtils.game.joinGame(gameData.gamePDA, player1.player);
 
@@ -70,7 +81,10 @@ describe("Oracle Update Authority", () => {
           maxTimeout: new anchor.BN(oracle.config.maxTimeout),
           minTimeout: new anchor.BN(oracle.config.minTimeout),
         })
-        .accounts({ oldOracleOperator: newOperator.publicKey, newOracleOperator: oracle.operator })
+        .accounts({
+          oldOracleOperator: newOperator.publicKey,
+          newOracleOperator: oracle.operator,
+        })
         .signers([newOperator, oracle.operatorKeypair])
         .rpc();
     };
@@ -91,7 +105,10 @@ describe("Oracle Update Authority", () => {
         const msg = e.toString();
         // Some Anchor versions format as "AnchorError caused by account: oracle ..."
         // Accept either explicit code message or account constraint on oracle
-        expect(msg.includes("UnauthorizedOperator") || msg.includes("account: oracle")).to.be.true;
+        expect(
+          msg.includes("UnauthorizedOperator") ||
+            msg.includes("account: oracle")
+        ).to.be.true;
       }
 
       // Complete with new operator using helper (passes minimal accounts)
@@ -106,12 +123,20 @@ describe("Oracle Update Authority", () => {
 
       // Accumulated fee withdraw: old operator fails, new operator succeeds
       const spl = await import("@solana/spl-token");
-      const newOpAta = await anchor.utils.token.associatedAddress({ owner: newOperator.publicKey, mint: mint.mint });
+      const newOpAta = await anchor.utils.token.associatedAddress({
+        owner: newOperator.publicKey,
+        mint: mint.mint,
+      });
       // Fund new operator to create ATA if missing
-      const airdropSig = await env.provider.connection.requestAirdrop(newOperator.publicKey, 2 * anchor.web3.LAMPORTS_PER_SOL);
+      const airdropSig = await env.provider.connection.requestAirdrop(
+        newOperator.publicKey,
+        2 * anchor.web3.LAMPORTS_PER_SOL
+      );
       await env.provider.connection.confirmTransaction(airdropSig, "confirmed");
       // Create ATA for new operator if missing
-      try { await env.provider.connection.getTokenAccountBalance(newOpAta); } catch {
+      try {
+        await env.provider.connection.getTokenAccountBalance(newOpAta);
+      } catch {
         const ix = spl.createAssociatedTokenAccountInstruction(
           newOperator.publicKey,
           newOpAta,
@@ -132,13 +157,19 @@ describe("Oracle Update Authority", () => {
         expect.fail("Old operator should not withdraw after transfer");
       } catch (e: any) {
         const msg = e.toString();
-        expect(msg.includes("UnauthorizedOperator") || msg.includes("account: oracle")).to.be.true;
+        expect(
+          msg.includes("UnauthorizedOperator") ||
+            msg.includes("account: oracle")
+        ).to.be.true;
       }
 
       // New operator can withdraw remaining fees (possibly zero if no fees after one completion)
       await env.program.methods
         .withdrawTokenFee()
-        .accounts({ tokenMint: mint.mint, oracleOperator: newOperator.publicKey })
+        .accounts({
+          tokenMint: mint.mint,
+          oracleOperator: newOperator.publicKey,
+        })
         .signers([newOperator])
         .rpc();
     } finally {

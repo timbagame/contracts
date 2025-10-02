@@ -29,28 +29,42 @@ describe("Unjoin Event Emission", () => {
       isPrivate: false,
     };
 
-    await testUtils.game.initializeGame(gameData, gameConfig, p1.player, mint.mint);
+    await testUtils.game.initializeGame(
+      gameData,
+      gameConfig,
+      p1.player,
+      mint.mint
+    );
     await testUtils.game.joinGame(gameData.gamePDA, p1.player);
     await testUtils.game.joinGame(gameData.gamePDA, p2.player);
-    const gameAfterJoins = await env.program.account.game.fetch(gameData.gamePDA);
+    const gameAfterJoins = await env.program.account.game.fetch(
+      gameData.gamePDA
+    );
     expect(gameAfterJoins.ticketsCount).to.equal(2);
 
     // Subscribe to event BEFORE triggering unjoin
     let sub: number | undefined;
     const waitForEvent = new Promise<any>(async (resolve, reject) => {
       try {
-        sub = await env.program.addEventListener("playerUnjoined", (ev: any) => {
-          const matchGame = ev.gameKey.toString() === gameData.gamePDA.toString();
-          const matchPlayer = ev.player.toString() === p2.player.publicKey.toString();
-          if (matchGame && matchPlayer) resolve(ev);
-        });
+        sub = await env.program.addEventListener(
+          "playerUnjoined",
+          (ev: any) => {
+            const matchGame =
+              ev.gameKey.toString() === gameData.gamePDA.toString();
+            const matchPlayer =
+              ev.player.toString() === p2.player.publicKey.toString();
+            if (matchGame && matchPlayer) resolve(ev);
+          }
+        );
       } catch (err) {
         reject(err);
       }
       setTimeout(() => reject(new Error("EventTimeout")), 20000);
     });
 
-    await new Promise((r) => setTimeout(r, (5 + (oracle.config.oracleBufferTime as number) + 2) * 1000));
+    await new Promise((r) =>
+      setTimeout(r, (5 + (oracle.config.oracleBufferTime as number) + 2) * 1000)
+    );
 
     // Trigger unjoin and wait for matching event; tolerate rare zero-ticket edge
     let received: any | null = null;
@@ -70,7 +84,9 @@ describe("Unjoin Event Emission", () => {
 
     expect(received).to.not.be.null;
     expect(received!.gameKey.toString()).to.equal(gameData.gamePDA.toString());
-    expect(received!.player.toString()).to.equal(p2.player.publicKey.toString());
+    expect(received!.player.toString()).to.equal(
+      p2.player.publicKey.toString()
+    );
     expect(received!.ticketIndex).to.equal(1);
     expect(received!.ticketsCount).to.equal(1);
   }).timeout(90000);

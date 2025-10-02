@@ -18,7 +18,10 @@ type CoinflipEventName = keyof CoinflipEvents;
 async function subscribeEvent<TEvent extends CoinflipEventName>(
   program: anchor.Program<Coinflip>,
   eventName: TEvent
-): Promise<{ wait: Promise<CoinflipEvents[TEvent]>; dispose: () => Promise<void> }> {
+): Promise<{
+  wait: Promise<CoinflipEvents[TEvent]>;
+  dispose: () => Promise<void>;
+}> {
   let listenerId: number | undefined;
   let settled = false;
   let resolveEvent: (value: CoinflipEvents[TEvent]) => void;
@@ -97,11 +100,18 @@ describe("Withdraw Fee", () => {
       isPrivate: false,
     };
 
-    await testUtils.game.initializeGame(gameData, gameConfig, creator.player, mint.mint);
+    await testUtils.game.initializeGame(
+      gameData,
+      gameConfig,
+      creator.player,
+      mint.mint
+    );
     await testUtils.game.joinGame(gameData.gamePDA, creator.player);
     await testUtils.game.joinGame(gameData.gamePDA, player1.player);
 
-    const gameAccountBefore = await env.program.account.game.fetch(gameData.gamePDA);
+    const gameAccountBefore = await env.program.account.game.fetch(
+      gameData.gamePDA
+    );
     const winnerIndex = calculateWinnerIndex(
       gameAccountBefore.ticketsCount,
       gameData.secretKey,
@@ -117,7 +127,9 @@ describe("Withdraw Fee", () => {
       winnerIndex
     );
 
-    const gameTokenAccount = await env.program.account.gameToken.fetch(mint.gameTokenPDA);
+    const gameTokenAccount = await env.program.account.gameToken.fetch(
+      mint.gameTokenPDA
+    );
     const accumulatedFee = new anchor.BN(gameTokenAccount.feeAmount);
     expect(accumulatedFee.gt(new anchor.BN(0))).to.be.true;
 
@@ -127,7 +139,9 @@ describe("Withdraw Fee", () => {
       mint.mint,
       oracle.operatorKeypair
     );
-    const operatorPre = await env.provider.connection.getTokenAccountBalance(operatorAta);
+    const operatorPre = await env.provider.connection.getTokenAccountBalance(
+      operatorAta
+    );
 
     await env.program.methods
       .withdrawTokenFee()
@@ -138,11 +152,17 @@ describe("Withdraw Fee", () => {
       .signers([oracle.operatorKeypair])
       .rpc();
 
-    const gameTokenAfter = await env.program.account.gameToken.fetch(mint.gameTokenPDA);
+    const gameTokenAfter = await env.program.account.gameToken.fetch(
+      mint.gameTokenPDA
+    );
     expect(new anchor.BN(gameTokenAfter.feeAmount).isZero()).to.be.true;
 
-    const operatorPost = await env.provider.connection.getTokenAccountBalance(operatorAta);
-    const delta = new anchor.BN(operatorPost.value.amount).sub(new anchor.BN(operatorPre.value.amount));
+    const operatorPost = await env.provider.connection.getTokenAccountBalance(
+      operatorAta
+    );
+    const delta = new anchor.BN(operatorPost.value.amount).sub(
+      new anchor.BN(operatorPre.value.amount)
+    );
     expect(delta.eq(accumulatedFee)).to.be.true;
   });
 
@@ -154,7 +174,9 @@ describe("Withdraw Fee", () => {
       mint.mint,
       oracle.operatorKeypair
     );
-    const preBalance = await env.provider.connection.getTokenAccountBalance(operatorAta);
+    const preBalance = await env.provider.connection.getTokenAccountBalance(
+      operatorAta
+    );
 
     const subscription = await subscribeEvent(env.program, "tokenFeeWithdrawn");
 
@@ -202,7 +224,12 @@ describe("Withdraw Fee", () => {
       isPrivate: false,
     };
 
-    await testUtils.game.initializeGame(gameData, cfg, creator.player, mint.mint);
+    await testUtils.game.initializeGame(
+      gameData,
+      cfg,
+      creator.player,
+      mint.mint
+    );
     await testUtils.game.joinGame(gameData.gamePDA, creator.player);
     await testUtils.game.joinGame(gameData.gamePDA, player1.player);
 
