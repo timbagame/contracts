@@ -24,7 +24,9 @@ describe("Game Lifecycle Instruction Events", () => {
   let env: TestEnvironment;
   let testUtils: TestUtils;
 
-  const subscribeEvent = async <TEvent extends CoinflipEventName>(eventName: TEvent) => {
+  const subscribeEvent = async <TEvent extends CoinflipEventName>(
+    eventName: TEvent
+  ) => {
     let listenerId: number | undefined;
     let settled = false;
     let resolveEvent: (value: CoinflipEvents[TEvent]) => void;
@@ -42,12 +44,15 @@ describe("Game Lifecycle Instruction Events", () => {
       }
     }, 10000);
 
-    listenerId = await env.program.addEventListener(eventName, (event: CoinflipEvents[TEvent]) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      resolveEvent(event);
-    });
+    listenerId = await env.program.addEventListener(
+      eventName,
+      (event: CoinflipEvents[TEvent]) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        resolveEvent(event);
+      }
+    );
 
     const dispose = async () => {
       clearTimeout(timer);
@@ -116,11 +121,15 @@ describe("Game Lifecycle Instruction Events", () => {
         return;
       } catch (error) {
         const message = getErrorMessage(error);
-        const isBufferError = message.includes("Oracle buffer time not expired");
+        const isBufferError = message.includes(
+          "Oracle buffer time not expired"
+        );
 
         if (!isBufferError) {
           console.error(
-            `[PlayerUnjoined] unjoin failed (attempt ${attempt + 1}/${maxAttempts})`,
+            `[PlayerUnjoined] unjoin failed (attempt ${
+              attempt + 1
+            }/${maxAttempts})`,
             message,
             (error as any)?.error?.errorLogs ?? []
           );
@@ -163,7 +172,12 @@ describe("Game Lifecycle Instruction Events", () => {
 
     const subscription = await subscribeEvent("gameInitialized");
     try {
-      await testUtils.game.initializeGame(gameData, cfg, creator.player, mint.mint);
+      await testUtils.game.initializeGame(
+        gameData,
+        cfg,
+        creator.player,
+        mint.mint
+      );
 
       const event = await subscription.wait;
       expect(event.gameKey).to.deep.equal(gameData.gamePDA);
@@ -198,7 +212,12 @@ describe("Game Lifecycle Instruction Events", () => {
       isPrivate: false,
     };
 
-    await testUtils.game.initializeGame(gameData, cfg, creator.player, mint.mint);
+    await testUtils.game.initializeGame(
+      gameData,
+      cfg,
+      creator.player,
+      mint.mint
+    );
 
     const subscription = await subscribeEvent("playerJoined");
     try {
@@ -241,7 +260,12 @@ describe("Game Lifecycle Instruction Events", () => {
       isPrivate: false,
     };
 
-    await testUtils.game.initializeGame(gameData, cfg, creator.player, mint.mint);
+    await testUtils.game.initializeGame(
+      gameData,
+      cfg,
+      creator.player,
+      mint.mint
+    );
     await testUtils.game.joinGame(gameData.gamePDA, p1.player);
 
     const bufferSeconds =
@@ -290,7 +314,12 @@ describe("Game Lifecycle Instruction Events", () => {
       isPrivate: false,
     };
 
-    await testUtils.game.initializeGame(gameData, cfg, creator.player, mint.mint);
+    await testUtils.game.initializeGame(
+      gameData,
+      cfg,
+      creator.player,
+      mint.mint
+    );
     await testUtils.game.joinGame(gameData.gamePDA, creator.player);
     await testUtils.game.joinGame(gameData.gamePDA, p1.player);
 
@@ -323,7 +352,9 @@ describe("Game Lifecycle Instruction Events", () => {
       expect(Number(event.feeAmount)).to.equal(fee);
       expect(Number(event.winnerAmount)).to.equal(expectedWinnerAmount);
 
-      const tokenAccount = await env.program.account.gameToken.fetch(mint.gameTokenPDA);
+      const tokenAccount = await env.program.account.gameToken.fetch(
+        mint.gameTokenPDA
+      );
       expect(tokenAccount.feeAmount.toNumber()).to.equal(fee);
 
       try {
@@ -350,7 +381,12 @@ describe("Game Lifecycle Instruction Events", () => {
       isPrivate: false,
     };
 
-    await testUtils.game.initializeGame(gameData, cfg, creator.player, mint.mint);
+    await testUtils.game.initializeGame(
+      gameData,
+      cfg,
+      creator.player,
+      mint.mint
+    );
 
     const subscription = await subscribeEvent("gameClosed");
     try {
@@ -387,7 +423,12 @@ describe("Game Lifecycle Instruction Events", () => {
       isPrivate: false,
     };
 
-    await testUtils.game.initializeGame(gameData, cfg, creator.player, mint.mint);
+    await testUtils.game.initializeGame(
+      gameData,
+      cfg,
+      creator.player,
+      mint.mint
+    );
     await testUtils.game.joinGame(gameData.gamePDA, creator.player);
     await testUtils.game.joinGame(gameData.gamePDA, p1.player);
 
@@ -407,7 +448,9 @@ describe("Game Lifecycle Instruction Events", () => {
       winnerIndex
     );
 
-    const gameTokenBefore = await env.program.account.gameToken.fetch(mint.gameTokenPDA);
+    const gameTokenBefore = await env.program.account.gameToken.fetch(
+      mint.gameTokenPDA
+    );
     const feeToWithdraw = gameTokenBefore.feeAmount.toNumber();
     expect(feeToWithdraw).to.be.greaterThan(0);
 
@@ -437,7 +480,9 @@ describe("Game Lifecycle Instruction Events", () => {
       expect(event.tokenMint).to.deep.equal(mint.mint);
       expect(Number(event.amount)).to.equal(feeToWithdraw);
 
-      const gameTokenAfter = await env.program.account.gameToken.fetch(mint.gameTokenPDA);
+      const gameTokenAfter = await env.program.account.gameToken.fetch(
+        mint.gameTokenPDA
+      );
       expect(gameTokenAfter.feeAmount.toNumber()).to.equal(0);
     } finally {
       await subscription.dispose().catch(() => {});

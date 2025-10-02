@@ -28,7 +28,12 @@ describe("Unjoin Blocked While Waiting for Oracle", () => {
       isPrivate: false,
     };
 
-    await testUtils.game.initializeGame(gameData, gameConfig, p1.player, mint.mint);
+    await testUtils.game.initializeGame(
+      gameData,
+      gameConfig,
+      p1.player,
+      mint.mint
+    );
     await testUtils.game.joinGame(gameData.gamePDA, p1.player);
     await testUtils.game.joinGame(gameData.gamePDA, p2.player);
 
@@ -41,7 +46,9 @@ describe("Unjoin Blocked While Waiting for Oracle", () => {
       });
 
     // sanity: wait until after timeout+buffer then unjoin succeeds
-    await new Promise((r) => setTimeout(r, (3 + (oracle.config.oracleBufferTime as number) + 2) * 1000));
+    await new Promise((r) =>
+      setTimeout(r, (3 + (oracle.config.oracleBufferTime as number) + 2) * 1000)
+    );
     await testUtils.game.unjoinGame(gameData.gamePDA, p1.player);
     const acc = await env.program.account.game.fetch(gameData.gamePDA);
     expect(acc.ticketsCount).to.equal(1);

@@ -35,7 +35,12 @@ describe("Giveaway Unjoin and Close", () => {
       creator.playerTokenAccount.address
     );
 
-    await testUtils.game.initializeGame(gameData, gameConfig, creator.player, mint.mint);
+    await testUtils.game.initializeGame(
+      gameData,
+      gameConfig,
+      creator.player,
+      mint.mint
+    );
     await testUtils.game.joinGame(gameData.gamePDA, p1.player);
     await testUtils.game.joinGame(gameData.gamePDA, p2.player);
 
@@ -44,11 +49,15 @@ describe("Giveaway Unjoin and Close", () => {
     expect(gameBefore.totalAmount.toNumber()).to.equal(prize.toNumber());
 
     // Wait until buffer expiry then unjoin all participants to allow close
-    await new Promise((r) => setTimeout(r, (5 + (oracle.config.oracleBufferTime as number) + 2) * 1000));
+    await new Promise((r) =>
+      setTimeout(r, (5 + (oracle.config.oracleBufferTime as number) + 2) * 1000)
+    );
     await testUtils.game.unjoinGame(gameData.gamePDA, p1.player);
     await testUtils.game.unjoinGame(gameData.gamePDA, p2.player);
 
-    const gameAfterUnjoins = await env.program.account.game.fetch(gameData.gamePDA);
+    const gameAfterUnjoins = await env.program.account.game.fetch(
+      gameData.gamePDA
+    );
     expect(gameAfterUnjoins.ticketsCount).to.equal(0);
     expect(gameAfterUnjoins.totalAmount.toNumber()).to.equal(prize.toNumber());
 
@@ -66,6 +75,10 @@ describe("Giveaway Unjoin and Close", () => {
       creator.playerTokenAccount.address
     );
     // After lifecycle (fund then close), balance returns to original
-    expect(new anchor.BN(afterBal.value.amount).eq(new anchor.BN(beforeBal.value.amount))).to.be.true;
+    expect(
+      new anchor.BN(afterBal.value.amount).eq(
+        new anchor.BN(beforeBal.value.amount)
+      )
+    ).to.be.true;
   }).timeout(90000);
 });

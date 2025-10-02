@@ -29,7 +29,12 @@ describe("Config Constraints", () => {
     };
 
     try {
-      await testUtils.game.initializeGame(gameData, cfg, creator.player, mint.mint);
+      await testUtils.game.initializeGame(
+        gameData,
+        cfg,
+        creator.player,
+        mint.mint
+      );
       expect.fail("Should not allow coinflip with <2 tickets");
     } catch (e: any) {
       expect(e.toString()).to.include("InvalidTicketsCount");
@@ -51,7 +56,12 @@ describe("Config Constraints", () => {
     };
 
     try {
-      await testUtils.game.initializeGame(gameData, cfg, creator.player, mint.mint);
+      await testUtils.game.initializeGame(
+        gameData,
+        cfg,
+        creator.player,
+        mint.mint
+      );
       expect.fail("Should reject minTickets > maxTickets");
     } catch (e: any) {
       expect(e.toString()).to.include("InvalidTicketsCount");
@@ -71,7 +81,10 @@ describe("Config Constraints", () => {
         maxTimeout: new anchor.BN(oracle.config.maxTimeout),
         minTimeout: new anchor.BN(oracle.config.minTimeout),
       })
-      .accounts({ oldOracleOperator: oracle.operator, newOracleOperator: oracle.operator })
+      .accounts({
+        oldOracleOperator: oracle.operator,
+        newOracleOperator: oracle.operator,
+      })
       .signers([oracle.operatorKeypair, oracle.operatorKeypair])
       .rpc();
 
@@ -86,7 +99,12 @@ describe("Config Constraints", () => {
       isPrivate: false,
     };
     try {
-      await testUtils.game.initializeGame(gameData1, tooLong, creator.player, mint.mint);
+      await testUtils.game.initializeGame(
+        gameData1,
+        tooLong,
+        creator.player,
+        mint.mint
+      );
       expect.fail("Should reject timeout above oracle max");
     } catch (e: any) {
       expect(e.toString()).to.include("InvalidTimeout");
@@ -103,7 +121,12 @@ describe("Config Constraints", () => {
       isPrivate: false,
     };
     try {
-      await testUtils.game.initializeGame(gameData2, tooMany, creator.player, mint.mint);
+      await testUtils.game.initializeGame(
+        gameData2,
+        tooMany,
+        creator.player,
+        mint.mint
+      );
       expect.fail("Should reject > oracle.max_tickets");
     } catch (e: any) {
       expect(e.toString()).to.include("InvalidTicketsCount");
@@ -119,7 +142,10 @@ describe("Config Constraints", () => {
           maxTimeout: new anchor.BN(oracle.config.maxTimeout),
           minTimeout: new anchor.BN(oracle.config.minTimeout),
         })
-        .accounts({ oldOracleOperator: oracle.operator, newOracleOperator: oracle.operator })
+        .accounts({
+          oldOracleOperator: oracle.operator,
+          newOracleOperator: oracle.operator,
+        })
         .signers([oracle.operatorKeypair, oracle.operatorKeypair])
         .rpc();
       expect.fail("Should reject invalid fee percentage > 100");
@@ -136,7 +162,10 @@ describe("Config Constraints", () => {
         maxTimeout: new anchor.BN(oracle.config.maxTimeout),
         minTimeout: new anchor.BN(oracle.config.minTimeout),
       })
-      .accounts({ oldOracleOperator: oracle.operator, newOracleOperator: oracle.operator })
+      .accounts({
+        oldOracleOperator: oracle.operator,
+        newOracleOperator: oracle.operator,
+      })
       .signers([oracle.operatorKeypair, oracle.operatorKeypair])
       .rpc();
   });
@@ -156,7 +185,12 @@ describe("Config Constraints", () => {
     };
 
     try {
-      await testUtils.game.initializeGame(gameData, tooShort, creator.player, mint.mint);
+      await testUtils.game.initializeGame(
+        gameData,
+        tooShort,
+        creator.player,
+        mint.mint
+      );
       expect.fail("Should reject timeout below oracle minimum");
     } catch (e: any) {
       expect(e.toString()).to.include("InvalidTimeout");

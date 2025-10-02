@@ -30,11 +30,18 @@ describe("Unjoin Refund Precision", () => {
       isPrivate: false,
     };
 
-    await testUtils.game.initializeGame(gameData, gameConfig, creator.player, mint.mint);
+    await testUtils.game.initializeGame(
+      gameData,
+      gameConfig,
+      creator.player,
+      mint.mint
+    );
     await testUtils.game.joinGame(gameData.gamePDA, creator.player);
     await testUtils.game.joinGame(gameData.gamePDA, p1.player);
 
-    const preBalance = await env.provider.connection.getTokenAccountBalance(creator.playerTokenAccount.address);
+    const preBalance = await env.provider.connection.getTokenAccountBalance(
+      creator.playerTokenAccount.address
+    );
 
     // Wait until buffer expiry
     const bufferSecs = oracle.config.oracleBufferTime as number;
@@ -42,9 +49,13 @@ describe("Unjoin Refund Precision", () => {
 
     await testUtils.game.unjoinGame(gameData.gamePDA, creator.player);
 
-    const postBalance = await env.provider.connection.getTokenAccountBalance(creator.playerTokenAccount.address);
+    const postBalance = await env.provider.connection.getTokenAccountBalance(
+      creator.playerTokenAccount.address
+    );
 
-    const delta = new anchor.BN(postBalance.value.amount).sub(new anchor.BN(preBalance.value.amount));
+    const delta = new anchor.BN(postBalance.value.amount).sub(
+      new anchor.BN(preBalance.value.amount)
+    );
     expect(delta.eq(ticketAmount)).to.be.true;
   }).timeout(60000);
 });

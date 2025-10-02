@@ -62,7 +62,12 @@ describe("Unjoin Unauthorized Scenarios", () => {
       isPrivate: false,
     };
 
-    await testUtils.game.initializeGame(gameData, config, creator.player, mint.mint);
+    await testUtils.game.initializeGame(
+      gameData,
+      config,
+      creator.player,
+      mint.mint
+    );
 
     const waitSeconds =
       Number(config.timeout.toNumber()) +

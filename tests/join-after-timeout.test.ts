@@ -28,7 +28,12 @@ describe("Join After Timeout", () => {
       isPrivate: false,
     };
 
-    await testUtils.game.initializeGame(gameData, gameConfig, creator.player, mint.mint);
+    await testUtils.game.initializeGame(
+      gameData,
+      gameConfig,
+      creator.player,
+      mint.mint
+    );
 
     // Wait slightly past timeout
     await new Promise((r) => setTimeout(r, 3000));
@@ -41,4 +46,3 @@ describe("Join After Timeout", () => {
     }
   }).timeout(30000);
 });
-

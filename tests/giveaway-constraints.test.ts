@@ -31,7 +31,12 @@ describe("Giveaway Constraints", () => {
     };
 
     try {
-      await testUtils.game.initializeGame(gameData, cfg, creator.player, mint.mint);
+      await testUtils.game.initializeGame(
+        gameData,
+        cfg,
+        creator.player,
+        mint.mint
+      );
       expect.fail("Expected giveaway initialize to reject with minTickets < 1");
     } catch (e: any) {
       expect(e.toString()).to.include("InvalidTicketsCount");
@@ -54,7 +59,12 @@ describe("Giveaway Constraints", () => {
     };
 
     try {
-      await testUtils.game.initializeGame(gameData, cfg, creator.player, mint.mint);
+      await testUtils.game.initializeGame(
+        gameData,
+        cfg,
+        creator.player,
+        mint.mint
+      );
       expect.fail("Expected giveaway initialize to enforce token min amount");
     } catch (e: any) {
       expect(e.toString()).to.include("InvalidAmount");

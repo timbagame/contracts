@@ -37,7 +37,12 @@ describe("Giveaway Completion", () => {
       creator.playerTokenAccount.address
     );
 
-    await testUtils.game.initializeGame(gameData, cfg, creator.player, mint.mint);
+    await testUtils.game.initializeGame(
+      gameData,
+      cfg,
+      creator.player,
+      mint.mint
+    );
 
     const afterCreator = await env.provider.connection.getTokenAccountBalance(
       creator.playerTokenAccount.address
@@ -54,7 +59,9 @@ describe("Giveaway Completion", () => {
     // Complete with zeroPlayer as winner (winnerIndex is 0 due to 1 ticket)
     const winnerIndex = 0;
     const feePct = oracle.config.feePercentage; // e.g., 1%
-    const expectedFee = prize.mul(new anchor.BN(feePct)).div(new anchor.BN(100));
+    const expectedFee = prize
+      .mul(new anchor.BN(feePct))
+      .div(new anchor.BN(100));
     const expectedWinnerAmount = prize.sub(expectedFee);
 
     const preWinner = await env.provider.connection.getTokenAccountBalance(

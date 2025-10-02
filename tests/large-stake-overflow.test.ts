@@ -54,9 +54,8 @@ describe("Large stake overflow regression", () => {
 
     const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
     const expectedTotal = largeStake.mul(new anchor.BN(3));
-    expect(
-      new anchor.BN(gameAccount.totalAmount.toString()).eq(expectedTotal)
-    ).to.be.true;
+    expect(new anchor.BN(gameAccount.totalAmount.toString()).eq(expectedTotal))
+      .to.be.true;
 
     try {
       await testUtils.game.joinGame(gameData.gamePDA, players[3].player);

@@ -1,6 +1,12 @@
 import { expect } from "chai";
 import * as anchor from "@coral-xyz/anchor";
-import { TestUtils, TestEnvironment, GameConfig, calculateWinnerIndex, getWinnerFromPlayers } from "./test-helpers";
+import {
+  TestUtils,
+  TestEnvironment,
+  GameConfig,
+  calculateWinnerIndex,
+  getWinnerFromPlayers,
+} from "./test-helpers";
 
 // Negative authorization checks: non-creator close, non-operator withdraw/complete
 
@@ -28,7 +34,12 @@ describe("Authorization Negatives", () => {
       isPrivate: false,
     };
 
-    await testUtils.game.initializeGame(gameData, cfg, creator.player, mint.mint);
+    await testUtils.game.initializeGame(
+      gameData,
+      cfg,
+      creator.player,
+      mint.mint
+    );
 
     try {
       await env.program.methods
@@ -56,25 +67,55 @@ describe("Authorization Negatives", () => {
       isPrivate: false,
     };
 
-    await testUtils.game.initializeGame(gameData, cfg, creator.player, mint.mint);
+    await testUtils.game.initializeGame(
+      gameData,
+      cfg,
+      creator.player,
+      mint.mint
+    );
     await testUtils.game.joinGame(gameData.gamePDA, creator.player);
     await testUtils.game.joinGame(gameData.gamePDA, player1.player);
 
     const gm = await env.program.account.game.fetch(gameData.gamePDA);
-    const idx = calculateWinnerIndex(gm.ticketsCount, gameData.secretKey, Number(gm.lastSlot));
+    const idx = calculateWinnerIndex(
+      gm.ticketsCount,
+      gameData.secretKey,
+      Number(gm.lastSlot)
+    );
     const winner = getWinnerFromPlayers([creator, player1], idx);
-    await testUtils.game.completeGame(gameData, winner.player.publicKey, creator.player.publicKey, oracle.operator, idx);
+    await testUtils.game.completeGame(
+      gameData,
+      winner.player.publicKey,
+      creator.player.publicKey,
+      oracle.operator,
+      idx
+    );
 
     // Prepare fake operator with ATA
     const fakeOp = anchor.web3.Keypair.generate();
     const spl = await import("@solana/spl-token");
     // Airdrop lamports to fake operator to pay for ATA creation
-    const sig = await env.provider.connection.requestAirdrop(fakeOp.publicKey, 2 * anchor.web3.LAMPORTS_PER_SOL);
+    const sig = await env.provider.connection.requestAirdrop(
+      fakeOp.publicKey,
+      2 * anchor.web3.LAMPORTS_PER_SOL
+    );
     await env.provider.connection.confirmTransaction(sig, "confirmed");
-    const fakeAta = await anchor.utils.token.associatedAddress({ owner: fakeOp.publicKey, mint: mint.mint });
-    try { await env.provider.connection.getTokenAccountBalance(fakeAta); } catch {
-      const ix = spl.createAssociatedTokenAccountInstruction(fakeOp.publicKey, fakeAta, fakeOp.publicKey, mint.mint);
-      await env.provider.sendAndConfirm(new anchor.web3.Transaction().add(ix), [fakeOp]);
+    const fakeAta = await anchor.utils.token.associatedAddress({
+      owner: fakeOp.publicKey,
+      mint: mint.mint,
+    });
+    try {
+      await env.provider.connection.getTokenAccountBalance(fakeAta);
+    } catch {
+      const ix = spl.createAssociatedTokenAccountInstruction(
+        fakeOp.publicKey,
+        fakeAta,
+        fakeOp.publicKey,
+        mint.mint
+      );
+      await env.provider.sendAndConfirm(new anchor.web3.Transaction().add(ix), [
+        fakeOp,
+      ]);
     }
 
     try {
@@ -101,12 +142,21 @@ describe("Authorization Negatives", () => {
       timeout: new anchor.BN(3600),
       isPrivate: false,
     };
-    await testUtils.game.initializeGame(gameData, cfg, creator.player, mint.mint);
+    await testUtils.game.initializeGame(
+      gameData,
+      cfg,
+      creator.player,
+      mint.mint
+    );
     await testUtils.game.joinGame(gameData.gamePDA, creator.player);
     await testUtils.game.joinGame(gameData.gamePDA, player1.player);
 
     const gm = await env.program.account.game.fetch(gameData.gamePDA);
-    const idx = calculateWinnerIndex(gm.ticketsCount, gameData.secretKey, Number(gm.lastSlot));
+    const idx = calculateWinnerIndex(
+      gm.ticketsCount,
+      gameData.secretKey,
+      Number(gm.lastSlot)
+    );
     const winner = getWinnerFromPlayers([creator, player1], idx);
 
     const nonOp = anchor.web3.Keypair.generate();

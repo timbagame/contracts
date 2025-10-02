@@ -19,7 +19,9 @@ describe("Token Administration Instructions", () => {
   let env: TestEnvironment;
   let mintManager: MintManager;
 
-  const subscribeEvent = async <TEvent extends CoinflipEventName>(eventName: TEvent) => {
+  const subscribeEvent = async <TEvent extends CoinflipEventName>(
+    eventName: TEvent
+  ) => {
     let listenerId: number | undefined;
     let settled = false;
     let resolveEvent: (value: CoinflipEvents[TEvent]) => void;
@@ -37,12 +39,15 @@ describe("Token Administration Instructions", () => {
       }
     }, 10000);
 
-    listenerId = await env.program.addEventListener(eventName, (event: CoinflipEvents[TEvent]) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      resolveEvent(event);
-    });
+    listenerId = await env.program.addEventListener(
+      eventName,
+      (event: CoinflipEvents[TEvent]) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        resolveEvent(event);
+      }
+    );
 
     const dispose = async () => {
       clearTimeout(timer);
@@ -99,8 +104,14 @@ describe("Token Administration Instructions", () => {
 
     // Fund fake operator and mint authority for rent/fees
     const airdrops = await Promise.all([
-      connection.requestAirdrop(fakeOperator.publicKey, 2 * anchor.web3.LAMPORTS_PER_SOL),
-      connection.requestAirdrop(mintAuthority.publicKey, 2 * anchor.web3.LAMPORTS_PER_SOL),
+      connection.requestAirdrop(
+        fakeOperator.publicKey,
+        2 * anchor.web3.LAMPORTS_PER_SOL
+      ),
+      connection.requestAirdrop(
+        mintAuthority.publicKey,
+        2 * anchor.web3.LAMPORTS_PER_SOL
+      ),
     ]);
     await Promise.all(
       airdrops.map((sig) => connection.confirmTransaction(sig, "confirmed"))
@@ -190,7 +201,10 @@ describe("Token Administration Instructions", () => {
     try {
       await env.program.methods
         .updateToken({ minAmount: newMinAmount, enabled: false })
-        .accounts({ tokenMint: mint.mint, oracleOperator: env.oracle!.operator })
+        .accounts({
+          tokenMint: mint.mint,
+          oracleOperator: env.oracle!.operator,
+        })
         .signers([env.oracle!.operatorKeypair])
         .rpc();
 
@@ -199,7 +213,9 @@ describe("Token Administration Instructions", () => {
       expect(Number(event.minAmount)).to.equal(newMinAmount.toNumber());
       expect(event.enabled).to.equal(false);
 
-      const onChain = await env.program.account.gameToken.fetch(mint.gameTokenPDA);
+      const onChain = await env.program.account.gameToken.fetch(
+        mint.gameTokenPDA
+      );
       expect(onChain.minAmount.toNumber()).to.equal(newMinAmount.toNumber());
       expect(onChain.enabled).to.equal(false);
     } finally {
@@ -207,7 +223,10 @@ describe("Token Administration Instructions", () => {
 
       await env.program.methods
         .updateToken({ minAmount: new anchor.BN(1000), enabled: true })
-        .accounts({ tokenMint: mint.mint, oracleOperator: env.oracle!.operator })
+        .accounts({
+          tokenMint: mint.mint,
+          oracleOperator: env.oracle!.operator,
+        })
         .signers([env.oracle!.operatorKeypair])
         .rpc();
     }
