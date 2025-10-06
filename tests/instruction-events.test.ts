@@ -10,12 +10,10 @@ import {
   calculateWinnerIndex,
   getWinnerFromPlayers,
   getErrorMessage,
+  toNumber,
 } from "./test-helpers";
 
 // Instruction coverage: ensure lifecycle events emit and state updates match expectations
-
-const toNumber = (value: anchor.BN | number): number =>
-  typeof value === "number" ? value : value.toNumber();
 
 type TimbaEvents = anchor.IdlEvents<Timba>;
 type TimbaEventName = keyof TimbaEvents;
@@ -183,17 +181,17 @@ describe("Game Lifecycle Instruction Events", () => {
       const event = await subscription.wait;
       expect(event.gameKey).to.deep.equal(gameData.gamePDA);
       expect(event.creator).to.deep.equal(creator.player.publicKey);
-      expect(Number(event.ticketAmount)).to.equal(cfg.amount.toNumber());
+      expect(Number(event.ticketAmount)).to.equal(toNumber(cfg.amount));
       expect(event.maxTickets).to.equal(toNumber(cfg.maxTickets));
       expect(event.minTickets).to.equal(toNumber(cfg.minTickets));
       expect(event.isPrivate).to.equal(false);
 
       const account = await env.program.account.game.fetch(gameData.gamePDA);
       expect(account.creator.equals(creator.player.publicKey)).to.be.true;
-      expect(account.ticketAmount.toNumber()).to.equal(cfg.amount.toNumber());
+      expect(account.ticketAmount.toNumber()).to.equal(toNumber(cfg.amount));
       expect(account.maxTickets).to.equal(toNumber(cfg.maxTickets));
       expect(account.minTickets).to.equal(toNumber(cfg.minTickets));
-      expect(account.timeout.toNumber()).to.equal(cfg.timeout.toNumber());
+      expect(account.timeout.toNumber()).to.equal(toNumber(cfg.timeout));
       expect(account.ticketsCount).to.equal(0);
     } finally {
       await subscription.dispose().catch(() => {});
@@ -232,7 +230,7 @@ describe("Game Lifecycle Instruction Events", () => {
 
       const account = await env.program.account.game.fetch(gameData.gamePDA);
       expect(account.ticketsCount).to.equal(1);
-      expect(account.totalAmount.toNumber()).to.equal(cfg.amount.toNumber());
+      expect(account.totalAmount.toNumber()).to.equal(toNumber(cfg.amount));
 
       const participantDigest = createHash("sha256")
         .update("timba:part:v1")
@@ -276,7 +274,7 @@ describe("Game Lifecycle Instruction Events", () => {
 
     const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
     const readyAtTimestamp =
-      gameAccount.createdAt.toNumber() + cfg.timeout.toNumber() + bufferSeconds;
+      gameAccount.createdAt.toNumber() + toNumber(cfg.timeout) + bufferSeconds;
 
     const subscription = await subscribeEvent("playerUnjoined", 20_000);
     try {
@@ -346,7 +344,7 @@ describe("Game Lifecycle Instruction Events", () => {
       expect(event.gameKey).to.deep.equal(gameData.gamePDA);
       expect(event.winner).to.deep.equal(winner.player.publicKey);
 
-      const totalAmount = cfg.amount.toNumber() * 2;
+      const totalAmount = toNumber(cfg.amount) * 2;
       const fee = Math.floor((totalAmount * oracle.config.feePercentage) / 100);
       const expectedWinnerAmount = totalAmount - fee;
 
