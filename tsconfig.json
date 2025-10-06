@@ -4,7 +4,6 @@
     "typeRoots": ["./node_modules/@types"],
     "target": "ES2022",
     "module": "CommonJS",
-    "moduleResolution": "node",
     "strict": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
@@ -13,6 +12,6 @@
     "resolveJsonModule": true,
     "noUnusedParameters": true,
     "noUnusedLocals": true,
-    "lib": ["ES2020"]
+    "lib": ["ES2022"]
   }
 }
