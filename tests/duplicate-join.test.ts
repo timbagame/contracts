@@ -1,6 +1,11 @@
 import { expect } from "chai";
 import * as anchor from "@coral-xyz/anchor";
-import { TestUtils, TestEnvironment, GameConfig } from "./test-helpers";
+import {
+  TestUtils,
+  TestEnvironment,
+  GameConfig,
+  errorToString,
+} from "./test-helpers";
 
 // Tests duplicate join prevention using bloom + hash exact list
 
@@ -40,8 +45,8 @@ describe("Duplicate Join Prevention", () => {
     try {
       await testUtils.game.joinGame(gameData.gamePDA, creator.player);
       expect.fail("Expected duplicate join to fail");
-    } catch (e) {
-      expect(e.toString()).to.include("AlreadyJoined");
+    } catch (e: unknown) {
+      expect(errorToString(e)).to.include("AlreadyJoined");
     }
   });
 });

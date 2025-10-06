@@ -1,6 +1,11 @@
 import { expect } from "chai";
 import * as anchor from "@coral-xyz/anchor";
-import { TestUtils, TestEnvironment, GameConfig } from "./test-helpers";
+import {
+  TestUtils,
+  TestEnvironment,
+  GameConfig,
+  errorToString,
+} from "./test-helpers";
 
 // Tests unjoin behavior relative to oracle buffer expiration
 
@@ -43,8 +48,8 @@ describe("Unjoin After Buffer", () => {
     try {
       await testUtils.game.unjoinGame(gameData.gamePDA, creator.player);
       expect.fail("Should have failed before buffer expiry");
-    } catch (e) {
-      expect(e.toString()).to.include("OracleBufferNotExpired");
+    } catch (e: unknown) {
+      expect(errorToString(e)).to.include("OracleBufferNotExpired");
     }
 
     // Fast-forward time by manipulating Clock via sleep to exceed timeout + buffer

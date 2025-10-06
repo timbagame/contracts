@@ -6,6 +6,7 @@ import {
   calculateWinnerIndex,
   getWinnerFromPlayers,
   GameConfig,
+  errorToString,
 } from "./test-helpers";
 
 /**
@@ -169,8 +170,8 @@ describe("Core Game Operations", () => {
           mint.mint
         );
         expect.fail("Should have failed with invalid parameters");
-      } catch (error) {
-        expect(error.toString()).to.include("InvalidTicketsCount");
+      } catch (error: unknown) {
+        expect(errorToString(error)).to.include("InvalidTicketsCount");
       }
     });
 
@@ -307,9 +308,9 @@ describe("Core Game Operations", () => {
       try {
         await testUtils.game.joinGame(gameData.gamePDA, player1.player);
         expect.fail("Should have failed without operator");
-      } catch (error) {
+      } catch (error: unknown) {
         // Private games without operator should fail with private game access denied error
-        expect(error.toString()).to.include("PrivateGameAccessDenied");
+        expect(errorToString(error)).to.include("PrivateGameAccessDenied");
       }
     });
 
@@ -342,8 +343,8 @@ describe("Core Game Operations", () => {
           fakeOperator
         );
         expect.fail("Should have failed with wrong operator");
-      } catch (error) {
-        expect(error.toString()).to.include("PrivateGameAccessDenied");
+      } catch (error: unknown) {
+        expect(errorToString(error)).to.include("PrivateGameAccessDenied");
       }
     });
 
@@ -376,8 +377,8 @@ describe("Core Game Operations", () => {
       try {
         await testUtils.game.joinGame(gameData.gamePDA, player2.player);
         expect.fail("Should have failed when game is full");
-      } catch (error) {
-        expect(error.toString()).to.include("GameFull");
+      } catch (error: unknown) {
+        expect(errorToString(error)).to.include("GameFull");
       }
     });
 
@@ -410,8 +411,8 @@ describe("Core Game Operations", () => {
       try {
         await testUtils.game.joinGame(gameData.gamePDA, poorPlayer.player);
         expect.fail("Should have failed with insufficient funds");
-      } catch (error) {
-        expect(error.toString()).to.include("InsufficientBalance");
+      } catch (error: unknown) {
+        expect(errorToString(error)).to.include("InsufficientBalance");
       }
     });
   });
@@ -526,9 +527,9 @@ describe("Core Game Operations", () => {
           fakeOperator
         );
         expect.fail("Should have failed with wrong operator");
-      } catch (error) {
+      } catch (error: unknown) {
         // Should fail with unauthorized operator error
-        expect(error.toString()).to.include("UnauthorizedOperator");
+        expect(errorToString(error)).to.include("UnauthorizedOperator");
       }
     });
 
@@ -585,8 +586,8 @@ describe("Core Game Operations", () => {
           winnerIndex
         );
         expect.fail("Should have failed with wrong secret key");
-      } catch (error) {
-        expect(error.toString()).to.include("InvalidSecretKey");
+      } catch (error: unknown) {
+        expect(errorToString(error)).to.include("InvalidSecretKey");
       }
     });
   });

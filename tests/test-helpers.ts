@@ -12,6 +12,10 @@ import {
 import { PublicKey } from "@solana/web3.js";
 import { createHash } from "crypto";
 
+export function errorToString(error: unknown): string {
+  return error instanceof Error ? error.toString() : String(error);
+}
+
 /**
  * Shared test utilities for the Timba program test suite
  */
@@ -558,26 +562,15 @@ export class GameManager {
     creator: anchor.web3.Keypair,
     tokenMint: PublicKey
   ): Promise<void> {
-    // Normalize config fields to Anchor-compatible types (u64 -> BN)
-    const toBN = (v: any) =>
-      v && typeof v === "object" && "toArrayLike" in v ? v : new anchor.BN(v);
-    const cfg: any = {
+    const toBN = (value: anchor.BN | number): anchor.BN =>
+      anchor.BN.isBN(value) ? value : new anchor.BN(value);
+
+    const cfg = {
       gameType: config.gameType,
-      amount:
-        // Allow tests to pass either BN or number
-        anchor.BN.isBN &&
-        (config as any).amount &&
-        (config as any).amount.isZero !== undefined
-          ? (config as any).amount
-          : new anchor.BN((config as any).amount),
-      maxTickets: toBN(config.maxTickets as any),
-      minTickets: toBN(config.minTickets as any),
-      timeout:
-        anchor.BN.isBN &&
-        (config as any).timeout &&
-        (config as any).timeout.isZero !== undefined
-          ? (config as any).timeout
-          : new anchor.BN((config as any).timeout),
+      amount: toBN(config.amount as anchor.BN | number),
+      maxTickets: toBN(config.maxTickets),
+      minTickets: toBN(config.minTickets),
+      timeout: toBN(config.timeout as anchor.BN | number),
       isPrivate: config.isPrivate,
     };
 
@@ -622,30 +615,24 @@ export class GameManager {
       true
     );
 
-    const accounts: Record<string, PublicKey> = {
-      game: gamePDA,
-      player: player.publicKey,
-      gameToken: gameTokenPDA,
-      gameVault: gameVaultPDA,
-      playerTokenAccount,
-      gameTokenAccount,
-      oracle: oraclePDA,
-      systemProgram: anchor.web3.SystemProgram.programId,
-      tokenProgram: TOKEN_PROGRAM_ID,
-      associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
-    };
-
     const signers = [player];
-
-    if (oracleOperator) {
-      accounts.oracleOperator = oracleOperator.publicKey;
-      signers.push(oracleOperator);
-    }
 
     await this.program.methods
       .joinGame()
-      .accounts(accounts)
-      .signers(signers)
+      .accounts({
+        game: gamePDA,
+        player: player.publicKey,
+        gameToken: gameTokenPDA,
+        gameVault: gameVaultPDA,
+        playerTokenAccount,
+        gameTokenAccount,
+        oracle: oraclePDA,
+        systemProgram: anchor.web3.SystemProgram.programId,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+        ...(oracleOperator ? { oracleOperator: oracleOperator.publicKey } : {}),
+      })
+      .signers(oracleOperator ? [...signers, oracleOperator] : signers)
       .rpc();
   }
 
@@ -1055,7 +1042,7 @@ export class CollisionUtils {
         await testUtils.game.joinGame(gameData.gamePDA, player.player);
         successful++;
       } catch (error) {
-        if (error.toString().includes("AlreadyJoined")) {
+        if (errorToString(error).includes("AlreadyJoined")) {
           rejected++;
         } else {
           throw error;
