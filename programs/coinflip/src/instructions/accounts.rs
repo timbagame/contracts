@@ -19,6 +19,7 @@ pub struct InitializeOracle<'info> {
         seeds = [ORACLE_SEED],
         bump,
         constraint = Oracle::is_valid_fee_percentage(fee_percentage) @ ErrorCode::InvalidAmount,
+        constraint = Oracle::is_valid_buffer_time(oracle_buffer_time) @ ErrorCode::OracleBufferTooSmall,
         constraint = Oracle::is_valid_timeout(max_timeout, min_timeout) @ ErrorCode::InvalidTimeout,
         constraint = Oracle::is_valid_tickets_count(max_tickets) @ ErrorCode::InvalidTicketsCount,
     )]
@@ -39,6 +40,7 @@ pub struct UpdateOracle<'info> {
         bump,
         constraint = oracle.is_authorized_operator(&old_oracle_operator.key()) @ ErrorCode::UnauthorizedOperator,
         constraint = Oracle::is_valid_fee_percentage(fee_percentage) @ ErrorCode::InvalidAmount,
+        constraint = Oracle::is_valid_buffer_time(oracle_buffer_time) @ ErrorCode::OracleBufferTooSmall,
         constraint = Oracle::is_valid_timeout(max_timeout, min_timeout) @ ErrorCode::InvalidTimeout,
         constraint = Oracle::is_valid_tickets_count(max_tickets) @ ErrorCode::InvalidTicketsCount,
     )]

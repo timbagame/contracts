@@ -32,26 +32,13 @@ pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
 
     // Find salted participant hash and remove if present (single ticket per player)
     let player_hash = participant_hash(&game.key(), &player_key);
-    let removed_index_opt = game
-        .participant_hashes
+    let removed_index = game
+        .active_participants()
         .iter()
-        .position(|h| *h == player_hash);
-    if let Some(pos) = removed_index_opt {
-        game.participant_hashes.swap_remove(pos);
-        // Decrement counters and refund
-        let new_tickets_count = game
-            .tickets_count
-            .checked_sub(1)
-            .ok_or(ErrorCode::InvalidAmount)?;
-        let new_total_amount = game
-            .total_amount
-            .checked_sub(game.ticket_amount)
-            .ok_or(ErrorCode::InvalidAmount)?;
-        game.tickets_count = new_tickets_count;
-        game.total_amount = new_total_amount;
-    } else {
-        return err!(ErrorCode::UnauthorizedPlayer);
-    }
+        .position(|h| *h == player_hash)
+        .ok_or(ErrorCode::UnauthorizedPlayer)?;
+
+    game.remove_player_at(removed_index)?;
     game.last_slot = current_slot;
 
     // Refund player directly
@@ -75,7 +62,7 @@ pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
         player: player_key,
         total_amount: game.total_amount,
         tickets_count: game.tickets_count,
-        ticket_index: removed_index_opt.unwrap() as u32,
+        ticket_index: removed_index as u32,
         last_slot: current_slot,
         timestamp: current_time,
     });

@@ -18,7 +18,7 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
 
     // Duplicate prevention: scan exact salted hash list (per-game uniqueness)
     let player_hash = participant_hash(&game.key(), &player_key);
-    if game.participant_hashes.iter().any(|h| *h == player_hash) {
+    if game.active_participants().iter().any(|h| *h == player_hash) {
         return err!(ErrorCode::AlreadyJoined);
     }
 
@@ -27,11 +27,8 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
     // ===============================
 
     // Add player to game and update counters
-    game.add_player_to_game()?;
+    let ticket_index = game.add_player_to_game(player_hash)?;
     game.last_slot = current_slot;
-
-    // Append salted hash
-    game.participant_hashes.push(player_hash);
 
     // ===============================
     // TOKEN TRANSFER
@@ -57,7 +54,7 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
         player: player_key,
         total_amount: game.total_amount,
         tickets_count: game.tickets_count,
-        ticket_index: game.tickets_count - 1, // Just joined, so index is tickets_count - 1
+        ticket_index,
         last_slot: current_slot,
         timestamp: current_time,
     });

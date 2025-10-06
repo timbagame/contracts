@@ -132,6 +132,11 @@ impl Oracle {
         fee_percentage <= 100
     }
 
+    /// Validates oracle buffer time is strictly positive
+    pub fn is_valid_buffer_time(oracle_buffer_time: u64) -> bool {
+        oracle_buffer_time > 0
+    }
+
     /// Validates timeout parameters are in correct order
     pub fn is_valid_timeout(max_timeout: u64, min_timeout: u64) -> bool {
         max_timeout >= min_timeout
@@ -320,7 +325,13 @@ impl Game {
 
         // Mirror `is_buffer_expired` so the two helpers are complementary. Once the
         // buffer expiry second is reached we should stop reporting "waiting".
-        self.is_ready_for_completion(current_time) && current_time < expires_at
+        let still_waiting = if oracle_buffer_time == 0 {
+            current_time <= expires_at
+        } else {
+            current_time < expires_at
+        };
+
+        self.is_ready_for_completion(current_time) && still_waiting
     }
 
     /// Marks the game as completed by setting total_amount to zero
@@ -388,10 +399,15 @@ impl Game {
     // =============================================================================
 
     /// Add player to the game and update counters
-    pub fn add_player_to_game(&mut self) -> Result<()> {
-        if self.participant_hashes.len() >= self.max_tickets as usize {
+    pub fn add_player_to_game(&mut self, participant_hash: u64) -> Result<u32> {
+        if self.tickets_count >= self.max_tickets {
             return err!(ErrorCode::InvalidAmount);
         }
+
+        self.ensure_participant_capacity()?;
+
+        let ticket_index = self.tickets_count;
+        self.participant_hashes.push(participant_hash);
 
         let new_tickets_count = self
             .tickets_count
@@ -406,7 +422,56 @@ impl Game {
         self.tickets_count = new_tickets_count;
         self.total_amount = new_total_amount;
 
+        Ok(ticket_index)
+    }
+
+    fn ensure_participant_capacity(&mut self) -> Result<()> {
+        let required = self.max_tickets as usize;
+        if self.participant_hashes.capacity() >= required {
+            return Ok(());
+        }
+
+        let additional = required
+            .checked_sub(self.participant_hashes.capacity())
+            .ok_or(ErrorCode::ParticipantStorageExceeded)?;
+
+        self.participant_hashes
+            .try_reserve(additional)
+            .map_err(|_| ErrorCode::ParticipantStorageExceeded)?;
+
         Ok(())
+    }
+
+    pub fn remove_player_at(&mut self, index: usize) -> Result<()> {
+        if self.tickets_count == 0 {
+            return err!(ErrorCode::InvalidTicketsCount);
+        }
+
+        if index >= self.participant_hashes.len() {
+            return err!(ErrorCode::InvalidAmount);
+        }
+
+        self.participant_hashes.swap_remove(index);
+
+        self.tickets_count = self
+            .tickets_count
+            .checked_sub(1)
+            .ok_or(ErrorCode::InvalidAmount)?;
+
+        self.total_amount = self
+            .total_amount
+            .checked_sub(self.ticket_amount)
+            .ok_or(ErrorCode::InvalidAmount)?;
+
+        Ok(())
+    }
+
+    pub fn active_participants(&self) -> &[u64] {
+        let len = self
+            .participant_hashes
+            .len()
+            .min(self.tickets_count as usize);
+        &self.participant_hashes[..len]
     }
 
     // =============================================================================
