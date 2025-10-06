@@ -68,6 +68,10 @@ pub enum ErrorCode {
     #[msg("Oracle buffer time not expired")]
     OracleBufferNotExpired = 1108,
 
+    /// Program cannot allocate space for additional participants
+    #[msg("Participant storage exhausted")]
+    ParticipantStorageExceeded = 1109,
+
     // =========================================================================
     // PLAYER ACTION ERRORS (1200-1299)
     // =========================================================================
@@ -121,6 +125,10 @@ pub enum ErrorCode {
     /// Oracle configuration parameters are invalid
     #[msg("Invalid configuration")]
     InvalidConfiguration = 1304,
+
+    /// Oracle buffer time is below the minimum supported value
+    #[msg("Oracle buffer time too small")]
+    OracleBufferTooSmall = 1305,
 
     // =========================================================================
     // TOKEN ERRORS (1400-1499)
