@@ -5,6 +5,9 @@ package_manager = "yarn"
 resolution = true
 skip-lint = false
 
+[programs.mainnet]
+timba = "BpdzqWdNJfgeVCsFHppS4WgeRZSRxt5iSj6xH4QdeR7t"
+
 [programs.devnet]
 timba = "BpdzqWdNJfgeVCsFHppS4WgeRZSRxt5iSj6xH4QdeR7t"
 
