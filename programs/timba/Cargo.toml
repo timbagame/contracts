@@ -17,13 +17,9 @@ no-log-ix-name = []
 idl-build = [
   "anchor-lang/idl-build",
   "anchor-spl/idl-build",
-  "anchor-spl/token_2022",      # keep if you intend 2022 types in IDL
+  "anchor-spl/token_2022",
 ]
 
 [dependencies]
 anchor-lang = { workspace = true }
-anchor-spl  = { workspace = true, default-features = false, features = [
-  "token",
-  "associated_token",
-  "token_2022"                  # add to match your idl-build choice
-]}
+anchor-spl  = { workspace = true, features = ["token", "associated_token", "token_2022"] }
