@@ -5,6 +5,7 @@ import {
   TestEnvironment,
   GameConfig,
   errorToString,
+  toNumber,
 } from "./test-helpers";
 
 // Negative scenarios around unjoin authorization
@@ -75,9 +76,7 @@ describe("Unjoin Unauthorized Scenarios", () => {
     );
 
     const waitSeconds =
-      Number(config.timeout.toNumber()) +
-      Number(oracle.config.oracleBufferTime) +
-      2;
+      toNumber(config.timeout) + Number(oracle.config.oracleBufferTime) + 2;
     await new Promise((resolve) => setTimeout(resolve, waitSeconds * 1000));
 
     try {

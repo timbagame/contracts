@@ -12,6 +12,12 @@ import {
 import { PublicKey } from "@solana/web3.js";
 import { createHash } from "crypto";
 
+export const toBN = (value: anchor.BN | number): anchor.BN =>
+  anchor.BN.isBN(value) ? value : new anchor.BN(value);
+
+export const toNumber = (value: anchor.BN | number): number =>
+  anchor.BN.isBN(value) ? value.toNumber() : value;
+
 export function errorToString(error: unknown): string {
   return error instanceof Error ? error.toString() : String(error);
 }
@@ -562,11 +568,6 @@ export class GameManager {
     creator: anchor.web3.Keypair,
     tokenMint: PublicKey
   ): Promise<void> {
-    const toBN = (value: anchor.BN | number): anchor.BN =>
-      anchor.BN.isBN(value) ? value : new anchor.BN(value);
-    const toNumber = (value: anchor.BN | number): number =>
-      anchor.BN.isBN(value) ? value.toNumber() : value;
-
     const cfg = {
       gameType: config.gameType,
       amount: toBN(config.amount),
