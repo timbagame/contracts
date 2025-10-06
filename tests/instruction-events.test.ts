@@ -2,7 +2,7 @@ import { expect } from "chai";
 import * as anchor from "@coral-xyz/anchor";
 import { createHash } from "crypto";
 import { getOrCreateAssociatedTokenAccount } from "@solana/spl-token";
-import type { Coinflip } from "../target/types/coinflip";
+import type { Timba } from "../target/types/timba";
 import {
   TestEnvironment,
   TestUtils,
@@ -17,23 +17,23 @@ import {
 const toNumber = (value: anchor.BN | number): number =>
   typeof value === "number" ? value : value.toNumber();
 
-type CoinflipEvents = anchor.IdlEvents<Coinflip>;
-type CoinflipEventName = keyof CoinflipEvents;
+type TimbaEvents = anchor.IdlEvents<Timba>;
+type TimbaEventName = keyof TimbaEvents;
 
 describe("Game Lifecycle Instruction Events", () => {
   let env: TestEnvironment;
   let testUtils: TestUtils;
 
-  const subscribeEvent = async <TEvent extends CoinflipEventName>(
+  const subscribeEvent = async <TEvent extends TimbaEventName>(
     eventName: TEvent,
     timeoutMs = 10_000
   ) => {
     let listenerId: number | undefined;
     let settled = false;
-    let resolveEvent: (value: CoinflipEvents[TEvent]) => void;
+    let resolveEvent: (value: TimbaEvents[TEvent]) => void;
     let rejectEvent: (reason?: unknown) => void;
 
-    const wait = new Promise<CoinflipEvents[TEvent]>((resolve, reject) => {
+    const wait = new Promise<TimbaEvents[TEvent]>((resolve, reject) => {
       resolveEvent = resolve;
       rejectEvent = reject;
     });
@@ -47,7 +47,7 @@ describe("Game Lifecycle Instruction Events", () => {
 
     listenerId = await env.program.addEventListener(
       eventName,
-      (event: CoinflipEvents[TEvent]) => {
+      (event: TimbaEvents[TEvent]) => {
         if (settled) return;
         settled = true;
         clearTimeout(timer);

@@ -1,4 +1,4 @@
-# Coinflip Contracts
+# Timba Contracts
 
 A comprehensive Solana smart contract implementation of various gambling games using the Anchor framework. Part of the Timba gaming platform.
 
@@ -98,7 +98,7 @@ anchor test
 ## Program Structure
 
 ```
-programs/coinflip/src/
+programs/timba/src/
 ├── lib.rs              # Main program entry point with instruction handlers
 ├── state.rs            # Account structures and business logic
 ├── error.rs            # Custom error definitions

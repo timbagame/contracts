@@ -1,7 +1,7 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-- programs/coinflip/src: Rust/Anchor program (lib.rs, state.rs, error.rs, events.rs, instructions/).
+- programs/timba/src: Rust/Anchor program (lib.rs, state.rs, error.rs, events.rs, instructions/).
 - tests: TypeScript test suites run via Anchor + ts-mocha (e.g., core.test.ts, security.test.ts).
 - scripts: Dev helpers (setup-local.ts, update-idl.ts).
 - migrations, .anchor, target: Anchor artifacts (IDL in target/idl, generated types in target/types).

@@ -3,16 +3,16 @@ import { resolve } from "path";
 
 /**
  * Copies generated IDL and types from contracts to bot/ and oracle/.
- * - contracts/target/idl/coinflip.json -> bot/idl/idl.json and oracle/idl/idl.json
- * - contracts/target/types/coinflip.ts -> bot/idl/idlType.ts and oracle/idl/idlType.ts
+ * - contracts/target/idl/timba.json -> bot/idl/idl.json and oracle/idl/idl.json
+ * - contracts/target/types/timba.ts -> bot/idl/idlType.ts and oracle/idl/idlType.ts
  * No patching or address rewriting is performed.
  */
 async function main() {
   const workspaceRoot = resolve(__dirname, "..", "..");
   const contractsRoot = resolve(__dirname, "..");
 
-  const idlSrc = resolve(contractsRoot, "target", "idl", "coinflip.json");
-  const typesSrc = resolve(contractsRoot, "target", "types", "coinflip.ts");
+  const idlSrc = resolve(contractsRoot, "target", "idl", "timba.json");
+  const typesSrc = resolve(contractsRoot, "target", "types", "timba.ts");
 
   // Read sources (throws if not generated yet)
   const idlContent = readFileSync(idlSrc, "utf8");
