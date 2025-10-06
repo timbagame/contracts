@@ -1,5 +1,5 @@
-import idl from "../target/idl/coinflip.json";
-import type { Coinflip } from "../target/types/coinflip";
+import idl from "../target/idl/timba.json";
+import type { Timba } from "../target/types/timba";
 import {
   Connection,
   LAMPORTS_PER_SOL,
@@ -99,7 +99,7 @@ async function main() {
   }
 
   // Create Program interface
-  const program = new anchor.Program(idl as Coinflip, provider);
+  const program = new anchor.Program(idl as Timba, provider);
 
   // Derive oracle PDA
   const [oraclePDA] = PublicKey.findProgramAddressSync(

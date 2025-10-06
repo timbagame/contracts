@@ -7,27 +7,27 @@ import {
   getOrCreateAssociatedTokenAccount,
 } from "@solana/spl-token";
 import { PublicKey, SystemProgram } from "@solana/web3.js";
-import type { Coinflip } from "../target/types/coinflip";
+import type { Timba } from "../target/types/timba";
 import { MintManager, TestEnvironment } from "./test-helpers";
 
 // Instruction coverage for initialize_token and update_token flows
 
-type CoinflipEvents = anchor.IdlEvents<Coinflip>;
-type CoinflipEventName = keyof CoinflipEvents;
+type TimbaEvents = anchor.IdlEvents<Timba>;
+type TimbaEventName = keyof TimbaEvents;
 
 describe("Token Administration Instructions", () => {
   let env: TestEnvironment;
   let mintManager: MintManager;
 
-  const subscribeEvent = async <TEvent extends CoinflipEventName>(
+  const subscribeEvent = async <TEvent extends TimbaEventName>(
     eventName: TEvent
   ) => {
     let listenerId: number | undefined;
     let settled = false;
-    let resolveEvent: (value: CoinflipEvents[TEvent]) => void;
+    let resolveEvent: (value: TimbaEvents[TEvent]) => void;
     let rejectEvent: (reason?: unknown) => void;
 
-    const wait = new Promise<CoinflipEvents[TEvent]>((resolve, reject) => {
+    const wait = new Promise<TimbaEvents[TEvent]>((resolve, reject) => {
       resolveEvent = resolve;
       rejectEvent = reject;
     });
@@ -41,7 +41,7 @@ describe("Token Administration Instructions", () => {
 
     listenerId = await env.program.addEventListener(
       eventName,
-      (event: CoinflipEvents[TEvent]) => {
+      (event: TimbaEvents[TEvent]) => {
         if (settled) return;
         settled = true;
         clearTimeout(timer);

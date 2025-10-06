@@ -9,14 +9,14 @@ module.exports = async function (provider) {
   anchor.setProvider(provider);
 
   // Get program from IDL
-  const program = anchor.workspace.Coinflip;
+  const program = anchor.workspace.Timba;
 
   try {
     // Initialize Oracle parameters
     const config = {
       feePercentage: 1, // 1% fee
       oracleBufferTime: 300, // 5 minutes in seconds
-      maxPlayers: 1000000,
+      maxTickets: 100,
       maxTimeout: 86400, // 1 day in seconds
       minTimeout: 60, // 1 minute in seconds
     };

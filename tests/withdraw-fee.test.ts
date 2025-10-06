@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import * as anchor from "@coral-xyz/anchor";
 import { getOrCreateAssociatedTokenAccount } from "@solana/spl-token";
-import type { Coinflip } from "../target/types/coinflip";
+import type { Timba } from "../target/types/timba";
 import {
   TestUtils,
   TestEnvironment,
@@ -12,22 +12,22 @@ import {
 
 // Verifies fee withdrawal transfers accumulated fees to oracle operator
 
-type CoinflipEvents = anchor.IdlEvents<Coinflip>;
-type CoinflipEventName = keyof CoinflipEvents;
+type TimbaEvents = anchor.IdlEvents<Timba>;
+type TimbaEventName = keyof TimbaEvents;
 
-async function subscribeEvent<TEvent extends CoinflipEventName>(
-  program: anchor.Program<Coinflip>,
+async function subscribeEvent<TEvent extends TimbaEventName>(
+  program: anchor.Program<Timba>,
   eventName: TEvent
 ): Promise<{
-  wait: Promise<CoinflipEvents[TEvent]>;
+  wait: Promise<TimbaEvents[TEvent]>;
   dispose: () => Promise<void>;
 }> {
   let listenerId: number | undefined;
   let settled = false;
-  let resolveEvent: (value: CoinflipEvents[TEvent]) => void;
+  let resolveEvent: (value: TimbaEvents[TEvent]) => void;
   let rejectEvent: (reason?: unknown) => void;
 
-  const wait = new Promise<CoinflipEvents[TEvent]>((resolve, reject) => {
+  const wait = new Promise<TimbaEvents[TEvent]>((resolve, reject) => {
     resolveEvent = resolve;
     rejectEvent = reject;
   });

@@ -1,5 +1,5 @@
 import * as anchor from "@coral-xyz/anchor";
-import { Coinflip } from "../target/types/coinflip";
+import { Timba } from "../target/types/timba";
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
@@ -13,7 +13,7 @@ import { PublicKey } from "@solana/web3.js";
 import { createHash } from "crypto";
 
 /**
- * Shared test utilities for the Coinflip program test suite
+ * Shared test utilities for the Timba program test suite
  */
 
 export interface TestPlayer {
@@ -67,7 +67,7 @@ export interface GameConfig {
 export class TestEnvironment {
   private static instance: TestEnvironment;
 
-  public program: anchor.Program<Coinflip>;
+  public program: anchor.Program<Timba>;
   public provider: anchor.AnchorProvider;
   public oracle?: TestOracle;
   public globalMint?: TestMint;
@@ -79,7 +79,7 @@ export class TestEnvironment {
   private constructor() {
     this.provider = anchor.AnchorProvider.env();
     anchor.setProvider(this.provider);
-    this.program = anchor.workspace.Coinflip as anchor.Program<Coinflip>;
+    this.program = anchor.workspace.Timba as anchor.Program<Timba>;
   }
 
   public static getInstance(): TestEnvironment {
@@ -162,11 +162,11 @@ export class TestEnvironment {
  * Oracle management utilities
  */
 export class OracleManager {
-  private program: anchor.Program<Coinflip>;
+  private program: anchor.Program<Timba>;
   private provider: anchor.AnchorProvider;
 
   constructor(
-    program: anchor.Program<Coinflip>,
+    program: anchor.Program<Timba>,
     provider: anchor.AnchorProvider
   ) {
     this.program = program;
@@ -301,11 +301,11 @@ export class OracleManager {
  * Token and mint management utilities
  */
 export class MintManager {
-  private program: anchor.Program<Coinflip>;
+  private program: anchor.Program<Timba>;
   private provider: anchor.AnchorProvider;
 
   constructor(
-    program: anchor.Program<Coinflip>,
+    program: anchor.Program<Timba>,
     provider: anchor.AnchorProvider
   ) {
     this.program = program;
@@ -441,12 +441,12 @@ export class MintManager {
  * Player management utilities
  */
 export class PlayerManager {
-  private program: anchor.Program<Coinflip>;
+  private program: anchor.Program<Timba>;
   private provider: anchor.AnchorProvider;
   private mintManager: MintManager;
 
   constructor(provider: anchor.AnchorProvider) {
-    this.program = anchor.workspace.Coinflip as anchor.Program<Coinflip>;
+    this.program = anchor.workspace.Timba as anchor.Program<Timba>;
     this.provider = provider;
     this.mintManager = new MintManager(this.program, provider);
   }
@@ -529,9 +529,9 @@ export class PlayerManager {
  * Game management utilities
  */
 export class GameManager {
-  private program: anchor.Program<Coinflip>;
+  private program: anchor.Program<Timba>;
 
-  constructor(program: anchor.Program<Coinflip>) {
+  constructor(program: anchor.Program<Timba>) {
     this.program = program;
   }
 

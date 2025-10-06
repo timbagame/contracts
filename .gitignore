@@ -5,8 +5,8 @@
 target/**
 !target/idl/
 !target/types/
-!target/idl/coinflip.json
-!target/types/coinflip.ts
+!target/idl/timba.json
+!target/types/timba.ts
 
 **/*.rs.bk
 node_modules

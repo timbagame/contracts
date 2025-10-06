@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a comprehensive Solana smart contract implementing multiple gambling game types using the Anchor framework. Part of the larger Timba gaming platform, it features sophisticated bloom filter participation tracking, commit-reveal randomness, and support for both traditional and real-time game variants. The project structure follows standard Anchor conventions with a Rust program in `programs/coinflip/` and TypeScript tests in `tests/`.
+This is a comprehensive Solana smart contract implementing multiple gambling game types using the Anchor framework. Part of the larger Timba gaming platform, it features sophisticated bloom filter participation tracking, commit-reveal randomness, and support for both traditional and real-time game variants. The project structure follows standard Anchor conventions with a Rust program in `programs/timba/` and TypeScript tests in `tests/`.
 
 ## Common Commands
 
@@ -56,7 +56,7 @@ This is a comprehensive Solana smart contract implementing multiple gambling gam
 
 ### Program Structure
 
-The coinflip program (`programs/coinflip/src/`) is organized as follows:
+The timba program (`programs/timba/src/`) is organized as follows:
 
 - **lib.rs**: Main program entry point with all instruction handlers
 - **state.rs**: Account structures (Oracle, Game, GameToken) with size constants and bloom filter logic

@@ -4,7 +4,7 @@ use anchor_lang::prelude::*;
 // ERROR DEFINITIONS
 // =============================================================================
 
-/// Custom error codes for the coinflip program.
+/// Custom error codes for the timba program.
 ///
 /// Error codes are organized into ranges by category:
 /// - 1000-1099: Operator and Permission Errors
