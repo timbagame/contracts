@@ -244,5 +244,26 @@ describe("Config Constraints", () => {
     } catch (e: any) {
       expect(e.toString()).to.include("InvalidTicketsCount");
     }
+
+    // oracleBufferTime must be > 0
+    try {
+      await env.program.methods
+        .updateOracle({
+          feePercentage: oracle.config.feePercentage,
+          oracleBufferTime: new anchor.BN(0),
+          maxTickets: oracle.config.maxTickets,
+          maxTimeout: new anchor.BN(oracle.config.maxTimeout),
+          minTimeout: new anchor.BN(oracle.config.minTimeout),
+        })
+        .accounts({
+          oldOracleOperator: oracle.operator,
+          newOracleOperator: oracle.operator,
+        })
+        .signers([oracle.operatorKeypair, oracle.operatorKeypair])
+        .rpc();
+      expect.fail("Should reject oracle update when buffer time is zero");
+    } catch (e: any) {
+      expect(e.toString()).to.include("OracleBufferTooSmall");
+    }
   });
 });
