@@ -475,9 +475,9 @@ describe("Core Game Operations", () => {
       let fetchFailed = false;
       try {
         await env.program.account.game.fetch(gameData.gamePDA);
-      } catch (e) {
+      } catch (e: unknown) {
         fetchFailed = true;
-        expect(e.toString()).to.include("Account does not exist");
+        expect(errorToString(e)).to.include("Account does not exist");
       }
       expect(fetchFailed).to.be.true;
     });

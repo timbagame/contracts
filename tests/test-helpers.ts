@@ -57,11 +57,11 @@ export interface OracleConfig {
 
 export interface GameConfig {
   gameType: any;
-  amount: anchor.BN;
-  // Permit raw numbers in tests (we'll coerce to BN where needed)
+  amount: anchor.BN | number;
+  // Permit raw numbers in tests (we'll coerce to proper types where needed)
   maxTickets: anchor.BN | number;
   minTickets: anchor.BN | number;
-  timeout: anchor.BN;
+  timeout: anchor.BN | number;
   isPrivate: boolean;
 }
 
@@ -564,13 +564,15 @@ export class GameManager {
   ): Promise<void> {
     const toBN = (value: anchor.BN | number): anchor.BN =>
       anchor.BN.isBN(value) ? value : new anchor.BN(value);
+    const toNumber = (value: anchor.BN | number): number =>
+      anchor.BN.isBN(value) ? value.toNumber() : value;
 
     const cfg = {
       gameType: config.gameType,
-      amount: toBN(config.amount as anchor.BN | number),
-      maxTickets: toBN(config.maxTickets),
-      minTickets: toBN(config.minTickets),
-      timeout: toBN(config.timeout as anchor.BN | number),
+      amount: toBN(config.amount),
+      maxTickets: toNumber(config.maxTickets),
+      minTickets: toNumber(config.minTickets),
+      timeout: toBN(config.timeout),
       isPrivate: config.isPrivate,
     };
 
@@ -615,25 +617,35 @@ export class GameManager {
       true
     );
 
-    const signers = [player];
+    const commonAccounts = {
+      game: gamePDA,
+      player: player.publicKey,
+      gameToken: gameTokenPDA,
+      gameVault: gameVaultPDA,
+      playerTokenAccount,
+      gameTokenAccount,
+      oracle: oraclePDA,
+      systemProgram: anchor.web3.SystemProgram.programId,
+      tokenProgram: TOKEN_PROGRAM_ID,
+      associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+    };
 
-    await this.program.methods
-      .joinGame()
-      .accounts({
-        game: gamePDA,
-        player: player.publicKey,
-        gameToken: gameTokenPDA,
-        gameVault: gameVaultPDA,
-        playerTokenAccount,
-        gameTokenAccount,
-        oracle: oraclePDA,
-        systemProgram: anchor.web3.SystemProgram.programId,
-        tokenProgram: TOKEN_PROGRAM_ID,
-        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
-        ...(oracleOperator ? { oracleOperator: oracleOperator.publicKey } : {}),
-      })
-      .signers(oracleOperator ? [...signers, oracleOperator] : signers)
-      .rpc();
+    if (oracleOperator) {
+      await this.program.methods
+        .joinGame()
+        .accounts({
+          ...commonAccounts,
+          oracleOperator: oracleOperator.publicKey,
+        })
+        .signers([player, oracleOperator])
+        .rpc();
+    } else {
+      await this.program.methods
+        .joinGame()
+        .accounts(commonAccounts)
+        .signers([player])
+        .rpc();
+    }
   }
 
   // rollGame helper not included (multi-participation disabled)
