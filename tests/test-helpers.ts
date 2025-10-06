@@ -175,10 +175,7 @@ export class OracleManager {
   private program: anchor.Program<Timba>;
   private provider: anchor.AnchorProvider;
 
-  constructor(
-    program: anchor.Program<Timba>,
-    provider: anchor.AnchorProvider
-  ) {
+  constructor(program: anchor.Program<Timba>, provider: anchor.AnchorProvider) {
     this.program = program;
     this.provider = provider;
   }
@@ -314,10 +311,7 @@ export class MintManager {
   private program: anchor.Program<Timba>;
   private provider: anchor.AnchorProvider;
 
-  constructor(
-    program: anchor.Program<Timba>,
-    provider: anchor.AnchorProvider
-  ) {
+  constructor(program: anchor.Program<Timba>, provider: anchor.AnchorProvider) {
     this.program = program;
     this.provider = provider;
   }
