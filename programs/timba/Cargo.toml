@@ -1,8 +1,8 @@
 [package]
-name = "timba"
-version = "0.1.0"
-description = "Created with Anchor"
-edition = "2021"
+name         = "timba"
+version      = "0.1.0"
+description  = "Created with Anchor"
+edition      = "2021"
 
 [lib]
 crate-type = ["cdylib"]
@@ -15,11 +15,15 @@ no-entrypoint = []
 no-idl = []
 no-log-ix-name = []
 idl-build = [
-    "anchor-lang/idl-build",
-    "anchor-spl/idl-build",
-    "anchor-spl/token_2022",
+  "anchor-lang/idl-build",
+  "anchor-spl/idl-build",
+  "anchor-spl/token_2022",      # keep if you intend 2022 types in IDL
 ]
 
 [dependencies]
-anchor-lang = "0.31.1"
-anchor-spl = { version = "0.31.1", default-features = false, features = ["token", "associated_token"] }
+anchor-lang = { workspace = true }
+anchor-spl  = { workspace = true, default-features = false, features = [
+  "token",
+  "associated_token",
+  "token_2022"                  # add to match your idl-build choice
+]}
