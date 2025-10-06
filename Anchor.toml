@@ -18,7 +18,7 @@ timba = "BpdzqWdNJfgeVCsFHppS4WgeRZSRxt5iSj6xH4QdeR7t"
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "mainnet"
+cluster = "localnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
