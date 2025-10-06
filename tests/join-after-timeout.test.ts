@@ -1,6 +1,11 @@
 import { expect } from "chai";
 import * as anchor from "@coral-xyz/anchor";
-import { TestUtils, TestEnvironment, GameConfig } from "./test-helpers";
+import {
+  TestUtils,
+  TestEnvironment,
+  GameConfig,
+  errorToString,
+} from "./test-helpers";
 
 // Joining after timeout should fail with GameExpired
 
@@ -41,8 +46,8 @@ describe("Join After Timeout", () => {
     try {
       await testUtils.game.joinGame(gameData.gamePDA, p1.player);
       expect.fail("Expected GameExpired when joining after timeout");
-    } catch (e) {
-      expect(e.toString()).to.include("GameExpired");
+    } catch (e: unknown) {
+      expect(errorToString(e)).to.include("GameExpired");
     }
   }).timeout(30000);
 });

@@ -1,6 +1,11 @@
 import { expect } from "chai";
 import * as anchor from "@coral-xyz/anchor";
-import { TestUtils, TestEnvironment, GameConfig } from "./test-helpers";
+import {
+  TestUtils,
+  TestEnvironment,
+  GameConfig,
+  errorToString,
+} from "./test-helpers";
 
 // Negative scenarios around unjoin authorization
 
@@ -40,8 +45,8 @@ describe("Unjoin Unauthorized Scenarios", () => {
     try {
       await testUtils.game.unjoinGame(gameData.gamePDA, p2.player);
       expect.fail("Expected UnauthorizedPlayer for non-participant unjoin");
-    } catch (e) {
-      expect(e.toString()).to.include("UnauthorizedPlayer");
+    } catch (e: unknown) {
+      expect(errorToString(e)).to.include("UnauthorizedPlayer");
     }
 
     const g = await env.program.account.game.fetch(gameData.gamePDA);
@@ -78,8 +83,8 @@ describe("Unjoin Unauthorized Scenarios", () => {
     try {
       await testUtils.game.unjoinGame(gameData.gamePDA, creator.player);
       expect.fail("Expected InvalidTicketsCount when no participants joined");
-    } catch (e) {
-      expect(e.toString()).to.include("InvalidTicketsCount");
+    } catch (e: unknown) {
+      expect(errorToString(e)).to.include("InvalidTicketsCount");
     }
 
     const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);

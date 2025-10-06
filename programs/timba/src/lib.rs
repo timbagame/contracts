@@ -1,5 +1,6 @@
 #![allow(unexpected_cfgs)]
 #![deny(unused_must_use)]
+#![forbid(unsafe_code)]
 #![warn(clippy::all, clippy::pedantic)]
 
 use anchor_lang::prelude::*;
