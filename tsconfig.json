@@ -1,17 +1,18 @@
 {
   "compilerOptions": {
-    "types": ["mocha", "chai"],
+    "types": ["mocha", "node"],
     "typeRoots": ["./node_modules/@types"],
-    "target": "es2020",
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
     "strict": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,
+    "noEmit": true,
     "resolveJsonModule": true,
     "noUnusedParameters": true,
     "noUnusedLocals": true,
-    "noEmit": true,
-    "moduleResolution": "node",
-    "module": "commonjs",
-    "lib": ["es2020"],
-    "esModuleInterop": true
+    "lib": ["ES2020"]
   }
 }
