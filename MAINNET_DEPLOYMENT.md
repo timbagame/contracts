@@ -8,8 +8,25 @@ Follow this checklist when deploying the Anchor program to Solana mainnet-beta.
 - Solana CLI configured with a funded mainnet wallet
 - Program keypair generated and recorded in `Anchor.toml`
 - Oracle operator keypair JSON file (distinct from deployer if desired)
+- Fresh mainnet deployer keypair created solely for production; store the secret key offline (hardware wallet or encrypted cold storage) and keep redundant, secure backups
 
-## 1. Configure Environment
+## 1. Generate the Deployer Keypair
+
+Create the deployer key on an air-gapped or otherwise trusted machine:
+
+```bash
+solana-keygen new --outfile /tmp/timba-mainnet-deployer.json --no-bip39-passphrase
+```
+
+Record the public key (you will copy this into `Anchor.toml`):
+
+```bash
+solana-keygen pubkey /tmp/timba-mainnet-deployer.json
+```
+
+Immediately move the JSON file into secure, offline storage (hardware wallet export, encrypted drive, or sealed USB) and delete any plaintext copy from the online workstation once the deployment is complete.
+
+## 2. Configure Environment
 
 ```bash
 cd contracts
@@ -19,8 +36,9 @@ export ORACLE_OPERATOR_KEYPAIR_PATH=/path/to/oracle-operator.json
 ```
 
 > `ORACLE_OPERATOR_KEYPAIR_PATH` ensures the migration script assigns oracle authority to a dedicated key instead of the deployer.
+> Bring the deployer key onto a locked-down machine only long enough to sign the deployment, then remove it from the online system once the program is live.
 
-## 2. Build and Deploy
+## 3. Build and Deploy
 
 ```bash
 anchor build
@@ -33,14 +51,14 @@ If you rely on Anchor migrations (e.g., `migrations/deploy.ts`) run:
 anchor migrate
 ```
 
-## 3. Distribute the IDL
+## 4. Distribute the IDL
 
 1. Copy `target/idl/timba.json` to:
    - `../bot/idl/idl.json`
    - `../oracle/idl/idl.json`
 2. Commit the updated IDL if appropriate.
 
-## 4. Post-Deployment Checklist
+## 5. Post-Deployment Checklist
 
 - `solana program show BpdzqWdNJfgeVCsFHppS4WgeRZSRxt5iSj6xH4QdeR7t`
 - Confirm the oracle account was created with the intended operator:
@@ -48,8 +66,9 @@ anchor migrate
   anchor account oracle $(anchor keys list timba --program-id)
   ```
 - Ensure both oracle and bot wallets are funded for fees.
+- Archive the deployer key backups in offline storage after confirming the deployment; ongoing operations should not require this key.
 
-## 5. Optional: Token Initialisation
+## 6. Optional: Token Initialisation
 
 Run the bot utility scripts from the project root after services are configured:
 
