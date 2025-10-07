@@ -127,7 +127,7 @@ This creates a local test environment with:
 
 ## Deployment
 
-**Program ID**: `BpdzqWdNJfgeVCsFHppS4WgeRZSRxt5iSj6xH4QdeR7t` (devnet/localnet)
+**Program ID**: `BpdzqWdNJfgeVCsFHppS4WgeRZSRxt5iSj6xH4QdeR7t` (mainnet-beta)
 
 Deploy to your desired Solana cluster:
 
