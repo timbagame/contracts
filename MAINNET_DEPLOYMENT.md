@@ -99,7 +99,12 @@ When you need to retire the program, follow this sequence to halt new activity, 
    This drives the `scanAndCompleteActiveGames()` loop, refunding players or distributing winnings so vaults empty out. Allow time for timeout-based cancellations to mature if any games remain “not ready”.
 
 3. **Withdraw protocol fees**  
-   Use the oracle operator wallet to invoke `withdraw_token_fee` for every token mint that accrued fees (via an Anchor client or custom script). Destination accounts should be standard SPL token accounts under your control.
+   Use the bot helper to drain accumulated fees into the oracle operator wallet:
+   ```bash
+   cd ../bot
+   ORACLE_OPERATOR_KEYPAIR_PATH=/path/to/oracle-operator.json bun run scripts/withdraw-token-fees.ts
+   ```
+   The script creates missing ATAs for the operator (if needed) and withdraws fees for each configured token mint.
 
 4. **Verify no state remains**  
    - `solana account <game_token_pda>` should report zero lamports for every configured mint.  
