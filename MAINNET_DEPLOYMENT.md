@@ -78,3 +78,35 @@ ORACLE_OPERATOR_KEYPAIR_PATH=/path/to/oracle-operator.json bun run scripts/initi
 ```
 
 This registers the mainnet TIMBA and WSOL tokens with the on-chain oracle configuration.
+
+## 7. Decommission & Program Shutdown
+
+When you need to retire the program, follow this sequence to halt new activity, settle outstanding games, and recover funds before closing the program.
+
+1. **Disable new games**  
+   From the `bot/` directory, turn off each supported token so players cannot create additional games:
+   ```bash
+   cd ../bot
+   ORACLE_OPERATOR_KEYPAIR_PATH=/path/to/oracle-operator.json bun run scripts/disable-game-tokens.ts
+   ```
+
+2. **Force completion/cancellation of existing games**  
+   Run a manual scan with the oracle service (repeat until completed/not ready both return zero):
+   ```bash
+   cd ../oracle
+   bun run scripts/manual-shutdown.ts
+   ```
+   This drives the `scanAndCompleteActiveGames()` loop, refunding players or distributing winnings so vaults empty out. Allow time for timeout-based cancellations to mature if any games remain “not ready”.
+
+3. **Withdraw protocol fees**  
+   Use the oracle operator wallet to invoke `withdraw_token_fee` for every token mint that accrued fees (via an Anchor client or custom script). Destination accounts should be standard SPL token accounts under your control.
+
+4. **Verify no state remains**  
+   - `solana account <game_token_pda>` should report zero lamports for every configured mint.  
+   - `anchor account oracle <oracle_pda>` should show zero outstanding balances and the intended operator key.
+
+5. **Close the program (upgradeable loader)**  
+   ```
+   solana program close BpdzqWdNJfgeVCsFHppS4WgeRZSRxt5iSj6xH4QdeR7t --recipient <SAFE_RECIPIENT_PUBKEY>
+   ```
+   The recipient address receives the reclaimed rent from remaining program accounts. Run this from the workstation holding the deployer/upgrade authority key, then remove that key from the machine and return it to offline storage.
