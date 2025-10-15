@@ -75,8 +75,7 @@
               },
               {
                 "kind": "account",
-                "path": "game.token_mint",
-                "account": "Game"
+                "path": "token_mint"
               }
             ]
           }
@@ -102,8 +101,7 @@
               },
               {
                 "kind": "account",
-                "path": "game.token_mint",
-                "account": "Game"
+                "path": "token_mint"
               }
             ]
           }
@@ -118,46 +116,12 @@
                 "path": "creator"
               },
               {
-                "kind": "const",
-                "value": [
-                  6,
-                  221,
-                  246,
-                  225,
-                  215,
-                  101,
-                  161,
-                  147,
-                  217,
-                  203,
-                  225,
-                  70,
-                  206,
-                  235,
-                  121,
-                  172,
-                  28,
-                  180,
-                  133,
-                  237,
-                  95,
-                  91,
-                  55,
-                  145,
-                  58,
-                  140,
-                  245,
-                  133,
-                  126,
-                  255,
-                  0,
-                  169
-                ]
+                "kind": "account",
+                "path": "token_program"
               },
               {
                 "kind": "account",
-                "path": "game.token_mint",
-                "account": "Game"
+                "path": "token_mint"
               }
             ],
             "program": {
@@ -209,46 +173,12 @@
                 "path": "game_vault"
               },
               {
-                "kind": "const",
-                "value": [
-                  6,
-                  221,
-                  246,
-                  225,
-                  215,
-                  101,
-                  161,
-                  147,
-                  217,
-                  203,
-                  225,
-                  70,
-                  206,
-                  235,
-                  121,
-                  172,
-                  28,
-                  180,
-                  133,
-                  237,
-                  95,
-                  91,
-                  55,
-                  145,
-                  58,
-                  140,
-                  245,
-                  133,
-                  126,
-                  255,
-                  0,
-                  169
-                ]
+                "kind": "account",
+                "path": "token_program"
               },
               {
                 "kind": "account",
-                "path": "game.token_mint",
-                "account": "Game"
+                "path": "token_mint"
               }
             ],
             "program": {
@@ -396,8 +326,7 @@
               },
               {
                 "kind": "account",
-                "path": "game.token_mint",
-                "account": "Game"
+                "path": "token_mint"
               }
             ]
           }
@@ -423,8 +352,7 @@
               },
               {
                 "kind": "account",
-                "path": "game.token_mint",
-                "account": "Game"
+                "path": "token_mint"
               }
             ]
           }
@@ -439,46 +367,12 @@
                 "path": "winner"
               },
               {
-                "kind": "const",
-                "value": [
-                  6,
-                  221,
-                  246,
-                  225,
-                  215,
-                  101,
-                  161,
-                  147,
-                  217,
-                  203,
-                  225,
-                  70,
-                  206,
-                  235,
-                  121,
-                  172,
-                  28,
-                  180,
-                  133,
-                  237,
-                  95,
-                  91,
-                  55,
-                  145,
-                  58,
-                  140,
-                  245,
-                  133,
-                  126,
-                  255,
-                  0,
-                  169
-                ]
+                "kind": "account",
+                "path": "token_program"
               },
               {
                 "kind": "account",
-                "path": "game.token_mint",
-                "account": "Game"
+                "path": "token_mint"
               }
             ],
             "program": {
@@ -530,46 +424,12 @@
                 "path": "game_vault"
               },
               {
-                "kind": "const",
-                "value": [
-                  6,
-                  221,
-                  246,
-                  225,
-                  215,
-                  101,
-                  161,
-                  147,
-                  217,
-                  203,
-                  225,
-                  70,
-                  206,
-                  235,
-                  121,
-                  172,
-                  28,
-                  180,
-                  133,
-                  237,
-                  95,
-                  91,
-                  55,
-                  145,
-                  58,
-                  140,
-                  245,
-                  133,
-                  126,
-                  255,
-                  0,
-                  169
-                ]
+                "kind": "account",
+                "path": "token_program"
               },
               {
                 "kind": "account",
-                "path": "game.token_mint",
-                "account": "Game"
+                "path": "token_mint"
               }
             ],
             "program": {
@@ -774,41 +634,8 @@
                 "path": "creator"
               },
               {
-                "kind": "const",
-                "value": [
-                  6,
-                  221,
-                  246,
-                  225,
-                  215,
-                  101,
-                  161,
-                  147,
-                  217,
-                  203,
-                  225,
-                  70,
-                  206,
-                  235,
-                  121,
-                  172,
-                  28,
-                  180,
-                  133,
-                  237,
-                  95,
-                  91,
-                  55,
-                  145,
-                  58,
-                  140,
-                  245,
-                  133,
-                  126,
-                  255,
-                  0,
-                  169
-                ]
+                "kind": "account",
+                "path": "token_program"
               },
               {
                 "kind": "account",
@@ -864,41 +691,8 @@
                 "path": "game_vault"
               },
               {
-                "kind": "const",
-                "value": [
-                  6,
-                  221,
-                  246,
-                  225,
-                  215,
-                  101,
-                  161,
-                  147,
-                  217,
-                  203,
-                  225,
-                  70,
-                  206,
-                  235,
-                  121,
-                  172,
-                  28,
-                  180,
-                  133,
-                  237,
-                  95,
-                  91,
-                  55,
-                  145,
-                  58,
-                  140,
-                  245,
-                  133,
-                  126,
-                  255,
-                  0,
-                  169
-                ]
+                "kind": "account",
+                "path": "token_program"
               },
               {
                 "kind": "account",
@@ -1113,41 +907,8 @@
                 "path": "game_vault"
               },
               {
-                "kind": "const",
-                "value": [
-                  6,
-                  221,
-                  246,
-                  225,
-                  215,
-                  101,
-                  161,
-                  147,
-                  217,
-                  203,
-                  225,
-                  70,
-                  206,
-                  235,
-                  121,
-                  172,
-                  28,
-                  180,
-                  133,
-                  237,
-                  95,
-                  91,
-                  55,
-                  145,
-                  58,
-                  140,
-                  245,
-                  133,
-                  126,
-                  255,
-                  0,
-                  169
-                ]
+                "kind": "account",
+                "path": "token_program"
               },
               {
                 "kind": "account",
@@ -1293,8 +1054,7 @@
               },
               {
                 "kind": "account",
-                "path": "game.token_mint",
-                "account": "Game"
+                "path": "token_mint"
               }
             ]
           }
@@ -1320,8 +1080,7 @@
               },
               {
                 "kind": "account",
-                "path": "game.token_mint",
-                "account": "Game"
+                "path": "token_mint"
               }
             ]
           }
@@ -1336,46 +1095,12 @@
                 "path": "player"
               },
               {
-                "kind": "const",
-                "value": [
-                  6,
-                  221,
-                  246,
-                  225,
-                  215,
-                  101,
-                  161,
-                  147,
-                  217,
-                  203,
-                  225,
-                  70,
-                  206,
-                  235,
-                  121,
-                  172,
-                  28,
-                  180,
-                  133,
-                  237,
-                  95,
-                  91,
-                  55,
-                  145,
-                  58,
-                  140,
-                  245,
-                  133,
-                  126,
-                  255,
-                  0,
-                  169
-                ]
+                "kind": "account",
+                "path": "token_program"
               },
               {
                 "kind": "account",
-                "path": "game.token_mint",
-                "account": "Game"
+                "path": "token_mint"
               }
             ],
             "program": {
@@ -1427,46 +1152,12 @@
                 "path": "game_vault"
               },
               {
-                "kind": "const",
-                "value": [
-                  6,
-                  221,
-                  246,
-                  225,
-                  215,
-                  101,
-                  161,
-                  147,
-                  217,
-                  203,
-                  225,
-                  70,
-                  206,
-                  235,
-                  121,
-                  172,
-                  28,
-                  180,
-                  133,
-                  237,
-                  95,
-                  91,
-                  55,
-                  145,
-                  58,
-                  140,
-                  245,
-                  133,
-                  126,
-                  255,
-                  0,
-                  169
-                ]
+                "kind": "account",
+                "path": "token_program"
               },
               {
                 "kind": "account",
-                "path": "game.token_mint",
-                "account": "Game"
+                "path": "token_mint"
               }
             ],
             "program": {
@@ -1608,8 +1299,7 @@
               },
               {
                 "kind": "account",
-                "path": "game.token_mint",
-                "account": "Game"
+                "path": "token_mint"
               }
             ]
           }
@@ -1635,8 +1325,7 @@
               },
               {
                 "kind": "account",
-                "path": "game.token_mint",
-                "account": "Game"
+                "path": "token_mint"
               }
             ]
           }
@@ -1651,46 +1340,12 @@
                 "path": "player"
               },
               {
-                "kind": "const",
-                "value": [
-                  6,
-                  221,
-                  246,
-                  225,
-                  215,
-                  101,
-                  161,
-                  147,
-                  217,
-                  203,
-                  225,
-                  70,
-                  206,
-                  235,
-                  121,
-                  172,
-                  28,
-                  180,
-                  133,
-                  237,
-                  95,
-                  91,
-                  55,
-                  145,
-                  58,
-                  140,
-                  245,
-                  133,
-                  126,
-                  255,
-                  0,
-                  169
-                ]
+                "kind": "account",
+                "path": "token_program"
               },
               {
                 "kind": "account",
-                "path": "game.token_mint",
-                "account": "Game"
+                "path": "token_mint"
               }
             ],
             "program": {
@@ -1742,46 +1397,12 @@
                 "path": "game_vault"
               },
               {
-                "kind": "const",
-                "value": [
-                  6,
-                  221,
-                  246,
-                  225,
-                  215,
-                  101,
-                  161,
-                  147,
-                  217,
-                  203,
-                  225,
-                  70,
-                  206,
-                  235,
-                  121,
-                  172,
-                  28,
-                  180,
-                  133,
-                  237,
-                  95,
-                  91,
-                  55,
-                  145,
-                  58,
-                  140,
-                  245,
-                  133,
-                  126,
-                  255,
-                  0,
-                  169
-                ]
+                "kind": "account",
+                "path": "token_program"
               },
               {
                 "kind": "account",
-                "path": "game.token_mint",
-                "account": "Game"
+                "path": "token_mint"
               }
             ],
             "program": {
@@ -2077,41 +1698,8 @@
                 "path": "oracle_operator"
               },
               {
-                "kind": "const",
-                "value": [
-                  6,
-                  221,
-                  246,
-                  225,
-                  215,
-                  101,
-                  161,
-                  147,
-                  217,
-                  203,
-                  225,
-                  70,
-                  206,
-                  235,
-                  121,
-                  172,
-                  28,
-                  180,
-                  133,
-                  237,
-                  95,
-                  91,
-                  55,
-                  145,
-                  58,
-                  140,
-                  245,
-                  133,
-                  126,
-                  255,
-                  0,
-                  169
-                ]
+                "kind": "account",
+                "path": "token_program"
               },
               {
                 "kind": "account",
@@ -2167,41 +1755,8 @@
                 "path": "game_vault"
               },
               {
-                "kind": "const",
-                "value": [
-                  6,
-                  221,
-                  246,
-                  225,
-                  215,
-                  101,
-                  161,
-                  147,
-                  217,
-                  203,
-                  225,
-                  70,
-                  206,
-                  235,
-                  121,
-                  172,
-                  28,
-                  180,
-                  133,
-                  237,
-                  95,
-                  91,
-                  55,
-                  145,
-                  58,
-                  140,
-                  245,
-                  133,
-                  126,
-                  255,
-                  0,
-                  169
-                ]
+                "kind": "account",
+                "path": "token_program"
               },
               {
                 "kind": "account",
@@ -2570,6 +2125,16 @@
       "code": 7400,
       "name": "TokenNotEnabled",
       "msg": "Token not enabled"
+    },
+    {
+      "code": 7401,
+      "name": "InvalidTokenMint",
+      "msg": "Token mint mismatch"
+    },
+    {
+      "code": 7402,
+      "name": "UnsupportedTokenProgram",
+      "msg": "Unsupported token program"
     }
   ],
   "types": [
