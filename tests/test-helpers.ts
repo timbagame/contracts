@@ -37,6 +37,8 @@ export interface TestMint {
   mintAuthority: anchor.web3.Keypair;
   gameVaultPDA: PublicKey;
   gameTokenPDA: PublicKey;
+  tokenProgram: PublicKey;
+  decimals: number;
 }
 
 export interface TestGame {
@@ -317,8 +319,13 @@ export class MintManager {
     this.provider = provider;
   }
 
-  async createMint(): Promise<TestMint> {
+  async createMint(options?: {
+    tokenProgram?: PublicKey;
+    decimals?: number;
+  }): Promise<TestMint> {
     const mintAuthority = anchor.web3.Keypair.generate();
+    const tokenProgram = options?.tokenProgram ?? TOKEN_PROGRAM_ID;
+    const decimals = options?.decimals ?? 6;
 
     // Airdrop SOL to mint authority
     const signature = await this.provider.connection.requestAirdrop(
@@ -333,7 +340,10 @@ export class MintManager {
       mintAuthority,
       mintAuthority.publicKey,
       null,
-      6
+      decimals,
+      undefined,
+      undefined,
+      tokenProgram
     );
 
     // Get PDAs
@@ -348,19 +358,25 @@ export class MintManager {
     );
 
     // Create required token accounts
-    await getOrCreateAssociatedTokenAccount(
+    const gameVaultAta = await getOrCreateAssociatedTokenAccount(
       this.provider.connection,
       mintAuthority,
       mint,
       gameVaultPDA,
-      true
+      true,
+      undefined,
+      undefined,
+      tokenProgram
     );
 
     await getOrCreateAssociatedTokenAccount(
       this.provider.connection,
       mintAuthority,
       mint,
-      this.provider.publicKey
+      this.provider.publicKey,
+      undefined,
+      undefined,
+      tokenProgram
     );
 
     // Initialize token config
@@ -378,9 +394,16 @@ export class MintManager {
 
     await this.program.methods
       .initializeToken(tokenConfig)
-      .accounts({
-        oracleOperator: oracleAccount.operator,
+      .accountsStrict({
+        gameToken: gameTokenPDA,
         tokenMint: mint,
+        gameVault: gameVaultPDA,
+        gameTokenAccount: gameVaultAta.address,
+        oracle: oraclePDA,
+        oracleOperator: oracleAccount.operator,
+        systemProgram: anchor.web3.SystemProgram.programId,
+        tokenProgram,
+        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
       })
       .signers([oracleOperatorKeypair])
       .rpc();
@@ -390,6 +413,8 @@ export class MintManager {
       mintAuthority,
       gameVaultPDA,
       gameTokenPDA,
+      tokenProgram,
+      decimals,
     };
   }
 
@@ -437,7 +462,10 @@ export class MintManager {
       mint.mint,
       tokenAccount,
       mint.mintAuthority,
-      mintAmount
+      mintAmount,
+      undefined,
+      undefined,
+      mint.tokenProgram
     );
   }
 }
@@ -456,8 +484,31 @@ export class PlayerManager {
     this.mintManager = new MintManager(this.program, provider);
   }
 
+  private async resolveTokenProgram(tokenMint: PublicKey): Promise<PublicKey> {
+    const accountInfo = await this.provider.connection.getAccountInfo(
+      tokenMint
+    );
+
+    if (!accountInfo) {
+      throw new Error(`Token mint ${tokenMint.toBase58()} not found`);
+    }
+
+    if (accountInfo.owner.equals(TOKEN_PROGRAM_ID)) {
+      return TOKEN_PROGRAM_ID;
+    }
+
+    if (accountInfo.owner.equals(TOKEN_2022_PROGRAM_ID)) {
+      return TOKEN_2022_PROGRAM_ID;
+    }
+
+    throw new Error(
+      `Unsupported token program for mint ${tokenMint.toBase58()}`
+    );
+  }
+
   async createPlayer(mint: PublicKey): Promise<TestPlayer> {
     const player = anchor.web3.Keypair.generate();
+    const tokenProgram = await this.resolveTokenProgram(mint);
 
     // Airdrop SOL for rent
     const signature = await this.provider.connection.requestAirdrop(
@@ -471,7 +522,10 @@ export class PlayerManager {
       this.provider.connection,
       player,
       mint,
-      player.publicKey
+      player.publicKey,
+      undefined,
+      undefined,
+      tokenProgram
     );
 
     return {
@@ -484,6 +538,7 @@ export class PlayerManager {
     count: number,
     mint: PublicKey
   ): Promise<TestPlayer[]> {
+    const tokenProgram = await this.resolveTokenProgram(mint);
     const players = Array.from({ length: count }, () =>
       anchor.web3.Keypair.generate()
     );
@@ -508,7 +563,10 @@ export class PlayerManager {
         this.provider.connection,
         player,
         mint,
-        player.publicKey
+        player.publicKey,
+        undefined,
+        undefined,
+        tokenProgram
       );
 
       return { player, playerTokenAccount };
