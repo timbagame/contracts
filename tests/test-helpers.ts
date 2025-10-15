@@ -715,6 +715,7 @@ export class GameManager {
       oracle: oraclePDA,
       systemProgram: anchor.web3.SystemProgram.programId,
       tokenProgram,
+      associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
     };
 
     if (oracleOperator) {
