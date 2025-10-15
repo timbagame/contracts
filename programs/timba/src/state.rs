@@ -1,7 +1,7 @@
 use crate::error::ErrorCode;
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::hash::hashv;
-use anchor_spl::token::{transfer, Transfer};
+use anchor_spl::token_interface::{transfer_checked, TransferChecked};
 
 // =============================================================================
 // ACCOUNT SIZE CONSTANTS
@@ -207,7 +207,9 @@ impl GameToken {
         to: AccountInfo<'info>,
         authority: AccountInfo<'info>, // player or PDA
         token_program: AccountInfo<'info>,
+        token_mint: AccountInfo<'info>,
         amount: u64,
+        decimals: u8,
         use_pda_signer: bool,
     ) -> Result<()> {
         if use_pda_signer {
@@ -216,29 +218,33 @@ impl GameToken {
                 self.token_mint.as_ref(),
                 &[self.vault_bump],
             ];
-            transfer(
+            transfer_checked(
                 CpiContext::new_with_signer(
                     token_program,
-                    Transfer {
+                    TransferChecked {
                         from,
+                        mint: token_mint,
                         to,
                         authority,
                     },
                     &[signer_seeds],
                 ),
                 amount,
+                decimals,
             )?;
         } else {
-            transfer(
+            transfer_checked(
                 CpiContext::new(
                     token_program,
-                    Transfer {
+                    TransferChecked {
                         from,
+                        mint: token_mint,
                         to,
                         authority,
                     },
                 ),
                 amount,
+                decimals,
             )?;
         }
         Ok(())

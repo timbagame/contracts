@@ -151,7 +151,13 @@ describe("Oracle Update Authority", () => {
       try {
         await env.program.methods
           .withdrawTokenFee()
-          .accounts({ tokenMint: mint.mint, oracleOperator: oracle.operator })
+          .accounts({
+            tokenMint: mint.mint,
+            oracleOperator: oracle.operator,
+            tokenProgram: TOKEN_PROGRAM_ID,
+            associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+            systemProgram: anchor.web3.SystemProgram.programId,
+          })
           .signers([oracle.operatorKeypair])
           .rpc();
         expect.fail("Old operator should not withdraw after transfer");
@@ -169,6 +175,9 @@ describe("Oracle Update Authority", () => {
         .accounts({
           tokenMint: mint.mint,
           oracleOperator: newOperator.publicKey,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+          systemProgram: anchor.web3.SystemProgram.programId,
         })
         .signers([newOperator])
         .rpc();

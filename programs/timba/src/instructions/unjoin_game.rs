@@ -48,7 +48,9 @@ pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
             ctx.accounts.player_token_account.to_account_info(),
             ctx.accounts.game_vault.to_account_info(),
             ctx.accounts.token_program.to_account_info(),
+            ctx.accounts.token_mint.to_account_info(),
             game.ticket_amount,
+            ctx.accounts.token_mint.decimals,
             true,
         )?;
     }

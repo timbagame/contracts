@@ -1,7 +1,11 @@
 import { expect } from "chai";
 import * as anchor from "@coral-xyz/anchor";
 import { createHash } from "crypto";
-import { getOrCreateAssociatedTokenAccount } from "@solana/spl-token";
+import {
+  getOrCreateAssociatedTokenAccount,
+  TOKEN_PROGRAM_ID,
+  ASSOCIATED_TOKEN_PROGRAM_ID,
+} from "@solana/spl-token";
 import type { Timba } from "../target/types/timba";
 import {
   TestEnvironment,
@@ -391,7 +395,14 @@ describe("Game Lifecycle Instruction Events", () => {
     try {
       await env.program.methods
         .closeGame()
-        .accounts({ creator: creator.player.publicKey, game: gameData.gamePDA })
+        .accounts({
+          creator: creator.player.publicKey,
+          game: gameData.gamePDA,
+          tokenMint: mint.mint,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+          systemProgram: anchor.web3.SystemProgram.programId,
+        })
         .signers([creator.player])
         .rpc();
 
@@ -471,7 +482,13 @@ describe("Game Lifecycle Instruction Events", () => {
     try {
       await env.program.methods
         .withdrawTokenFee()
-        .accounts({ tokenMint: mint.mint, oracleOperator: oracle.operator })
+        .accounts({
+          tokenMint: mint.mint,
+          oracleOperator: oracle.operator,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+          systemProgram: anchor.web3.SystemProgram.programId,
+        })
         .signers([oracle.operatorKeypair])
         .rpc();
 

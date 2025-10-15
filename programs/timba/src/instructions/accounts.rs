@@ -1,6 +1,8 @@
 use anchor_lang::prelude::*;
 use anchor_spl::associated_token::AssociatedToken;
-use anchor_spl::token::{Mint, Token, TokenAccount};
+use anchor_spl::token::ID as TOKEN_PROGRAM_ID;
+use anchor_spl::token_2022::ID as TOKEN_2022_PROGRAM_ID;
+use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
 use crate::error::ErrorCode;
 use crate::state::*;
@@ -66,7 +68,7 @@ pub struct InitializeToken<'info> {
     )]
     pub game_token: Account<'info, GameToken>,
 
-    pub token_mint: Account<'info, Mint>,
+    pub token_mint: InterfaceAccount<'info, Mint>,
 
     /// CHECK: PDA authority for game's token accounts
     #[account(seeds = [GAME_VAULT_SEED, token_mint.key().as_ref()], bump)]
@@ -75,8 +77,9 @@ pub struct InitializeToken<'info> {
     #[account(
         associated_token::mint = token_mint,
         associated_token::authority = game_vault,
+        associated_token::token_program = token_program,
     )]
-    pub game_token_account: Account<'info, TokenAccount>,
+    pub game_token_account: InterfaceAccount<'info, TokenAccount>,
 
     #[account(
         seeds = [ORACLE_SEED],
@@ -89,7 +92,11 @@ pub struct InitializeToken<'info> {
     pub oracle_operator: Signer<'info>,
 
     pub system_program: Program<'info, System>,
-    pub token_program: Program<'info, Token>,
+    #[account(
+        constraint = token_program.key() == TOKEN_PROGRAM_ID
+            || token_program.key() == TOKEN_2022_PROGRAM_ID @ ErrorCode::UnsupportedTokenProgram,
+    )]
+    pub token_program: Interface<'info, TokenInterface>,
     pub associated_token_program: Program<'info, AssociatedToken>,
 }
 
@@ -100,10 +107,11 @@ pub struct UpdateToken<'info> {
         mut,
         seeds = [GAME_TOKEN_SEED, token_mint.key().as_ref()],
         bump,
+        constraint = game_token.token_mint == token_mint.key() @ ErrorCode::InvalidTokenMint,
     )]
     pub game_token: Account<'info, GameToken>,
 
-    pub token_mint: Account<'info, Mint>,
+    pub token_mint: InterfaceAccount<'info, Mint>,
 
     #[account(
         seeds = [ORACLE_SEED],
@@ -143,8 +151,12 @@ pub struct InitializeGame<'info> {
 
     #[account(mut, seeds = [ORACLE_SEED], bump)]
     pub oracle: Account<'info, Oracle>,
-    pub token_mint: Account<'info, Mint>,
-    #[account(seeds = [GAME_TOKEN_SEED, token_mint.key().as_ref()], bump)]
+    pub token_mint: InterfaceAccount<'info, Mint>,
+    #[account(
+        seeds = [GAME_TOKEN_SEED, token_mint.key().as_ref()],
+        bump,
+        constraint = game_token.token_mint == token_mint.key() @ ErrorCode::InvalidTokenMint,
+    )]
     pub game_token: Account<'info, GameToken>,
     /// CHECK: PDA authority for game's token accounts
     #[account(seeds = [GAME_VAULT_SEED, token_mint.key().as_ref()], bump = game_token.vault_bump)]
@@ -153,16 +165,22 @@ pub struct InitializeGame<'info> {
         mut,
         associated_token::mint = token_mint,
         associated_token::authority = creator,
+        associated_token::token_program = token_program,
     )]
-    pub creator_token_account: Account<'info, TokenAccount>,
+    pub creator_token_account: InterfaceAccount<'info, TokenAccount>,
     #[account(
         mut,
         associated_token::mint = token_mint,
         associated_token::authority = game_vault,
+        associated_token::token_program = token_program,
     )]
-    pub game_token_account: Account<'info, TokenAccount>,
+    pub game_token_account: InterfaceAccount<'info, TokenAccount>,
     pub system_program: Program<'info, System>,
-    pub token_program: Program<'info, Token>,
+    #[account(
+        constraint = token_program.key() == TOKEN_PROGRAM_ID
+            || token_program.key() == TOKEN_2022_PROGRAM_ID @ ErrorCode::UnsupportedTokenProgram,
+    )]
+    pub token_program: Interface<'info, TokenInterface>,
     pub associated_token_program: Program<'info, AssociatedToken>,
 }
 
@@ -178,28 +196,42 @@ pub struct JoinGame<'info> {
     pub game: Account<'info, Game>,
     #[account(mut)]
     pub player: Signer<'info>,
+    #[account(
+        constraint = game.token_mint == token_mint.key() @ ErrorCode::InvalidTokenMint,
+    )]
+    pub token_mint: InterfaceAccount<'info, Mint>,
     pub oracle_operator: Option<Signer<'info>>,
-    #[account(seeds = [GAME_TOKEN_SEED, game.token_mint.as_ref()], bump)]
+    #[account(
+        seeds = [GAME_TOKEN_SEED, token_mint.key().as_ref()],
+        bump,
+        constraint = game_token.token_mint == token_mint.key() @ ErrorCode::InvalidTokenMint,
+    )]
     pub game_token: Account<'info, GameToken>,
     /// CHECK: PDA authority for game's token accounts
-    #[account(seeds = [GAME_VAULT_SEED, game.token_mint.as_ref()], bump = game_token.vault_bump)]
+    #[account(seeds = [GAME_VAULT_SEED, token_mint.key().as_ref()], bump = game_token.vault_bump)]
     pub game_vault: AccountInfo<'info>,
     #[account(
         mut,
-        associated_token::mint = game.token_mint,
+        associated_token::mint = token_mint,
         associated_token::authority = player,
+        associated_token::token_program = token_program,
     )]
-    pub player_token_account: Account<'info, TokenAccount>,
+    pub player_token_account: InterfaceAccount<'info, TokenAccount>,
     #[account(
         mut,
-        associated_token::mint = game.token_mint,
+        associated_token::mint = token_mint,
         associated_token::authority = game_vault,
+        associated_token::token_program = token_program,
     )]
-    pub game_token_account: Account<'info, TokenAccount>,
+    pub game_token_account: InterfaceAccount<'info, TokenAccount>,
     #[account(seeds = [ORACLE_SEED], bump)]
     pub oracle: Account<'info, Oracle>,
     pub system_program: Program<'info, System>,
-    pub token_program: Program<'info, Token>,
+    #[account(
+        constraint = token_program.key() == TOKEN_PROGRAM_ID
+            || token_program.key() == TOKEN_2022_PROGRAM_ID @ ErrorCode::UnsupportedTokenProgram,
+    )]
+    pub token_program: Interface<'info, TokenInterface>,
     pub associated_token_program: Program<'info, AssociatedToken>,
 }
 
@@ -217,6 +249,10 @@ pub struct CompleteGame<'info> {
     )]
     pub game: Account<'info, Game>,
     #[account(
+        constraint = game.token_mint == token_mint.key() @ ErrorCode::InvalidTokenMint,
+    )]
+    pub token_mint: InterfaceAccount<'info, Mint>,
+    #[account(
         seeds = [ORACLE_SEED],
         bump,
         constraint = oracle.is_authorized_operator(&oracle_operator.key()) @ ErrorCode::UnauthorizedOperator,
@@ -231,27 +267,34 @@ pub struct CompleteGame<'info> {
     pub creator: AccountInfo<'info>,
     #[account(
         mut,
-        seeds = [GAME_TOKEN_SEED, game.token_mint.as_ref()],
+        seeds = [GAME_TOKEN_SEED, token_mint.key().as_ref()],
         bump,
+        constraint = game_token.token_mint == token_mint.key() @ ErrorCode::InvalidTokenMint,
     )]
     pub game_token: Account<'info, GameToken>,
     /// CHECK: PDA authority for game's token accounts
-    #[account(seeds = [GAME_VAULT_SEED, game.token_mint.as_ref()], bump = game_token.vault_bump)]
+    #[account(seeds = [GAME_VAULT_SEED, token_mint.key().as_ref()], bump = game_token.vault_bump)]
     pub game_vault: AccountInfo<'info>,
     #[account(
         mut,
-        associated_token::mint = game.token_mint,
+        associated_token::mint = token_mint,
         associated_token::authority = winner,
+        associated_token::token_program = token_program,
     )]
-    pub winner_token_account: Account<'info, TokenAccount>,
+    pub winner_token_account: InterfaceAccount<'info, TokenAccount>,
     #[account(
         mut,
-        associated_token::mint = game.token_mint,
+        associated_token::mint = token_mint,
         associated_token::authority = game_vault,
+        associated_token::token_program = token_program,
     )]
-    pub game_token_account: Account<'info, TokenAccount>,
+    pub game_token_account: InterfaceAccount<'info, TokenAccount>,
     pub system_program: Program<'info, System>,
-    pub token_program: Program<'info, Token>,
+    #[account(
+        constraint = token_program.key() == TOKEN_PROGRAM_ID
+            || token_program.key() == TOKEN_2022_PROGRAM_ID @ ErrorCode::UnsupportedTokenProgram,
+    )]
+    pub token_program: Interface<'info, TokenInterface>,
     pub associated_token_program: Program<'info, AssociatedToken>,
 }
 
@@ -261,31 +304,41 @@ pub struct UnjoinGame<'info> {
     pub game: Account<'info, Game>,
     #[account(mut)]
     pub player: Signer<'info>,
+    #[account(
+        constraint = game.token_mint == token_mint.key() @ ErrorCode::InvalidTokenMint,
+    )]
+    pub token_mint: InterfaceAccount<'info, Mint>,
     #[account(seeds = [ORACLE_SEED], bump)]
     pub oracle: Account<'info, Oracle>,
     #[account(
         mut,
-        seeds = [GAME_TOKEN_SEED, game.token_mint.as_ref()],
+        seeds = [GAME_TOKEN_SEED, token_mint.key().as_ref()],
         bump,
     )]
     pub game_token: Account<'info, GameToken>,
     /// CHECK: PDA authority for game's token accounts
-    #[account(seeds = [GAME_VAULT_SEED, game.token_mint.as_ref()], bump = game_token.vault_bump)]
+    #[account(seeds = [GAME_VAULT_SEED, token_mint.key().as_ref()], bump = game_token.vault_bump)]
     pub game_vault: AccountInfo<'info>,
     #[account(
         mut,
-        associated_token::mint = game.token_mint,
+        associated_token::mint = token_mint,
         associated_token::authority = player,
+        associated_token::token_program = token_program,
     )]
-    pub player_token_account: Account<'info, TokenAccount>,
+    pub player_token_account: InterfaceAccount<'info, TokenAccount>,
     #[account(
         mut,
-        associated_token::mint = game.token_mint,
+        associated_token::mint = token_mint,
         associated_token::authority = game_vault,
+        associated_token::token_program = token_program,
     )]
-    pub game_token_account: Account<'info, TokenAccount>,
+    pub game_token_account: InterfaceAccount<'info, TokenAccount>,
     pub system_program: Program<'info, System>,
-    pub token_program: Program<'info, Token>,
+    #[account(
+        constraint = token_program.key() == TOKEN_PROGRAM_ID
+            || token_program.key() == TOKEN_2022_PROGRAM_ID @ ErrorCode::UnsupportedTokenProgram,
+    )]
+    pub token_program: Interface<'info, TokenInterface>,
     pub associated_token_program: Program<'info, AssociatedToken>,
 }
 
@@ -300,31 +353,41 @@ pub struct CloseGame<'info> {
     pub game: Account<'info, Game>,
     #[account(mut)]
     pub creator: Signer<'info>,
+    #[account(
+        constraint = game.token_mint == token_mint.key() @ ErrorCode::InvalidTokenMint,
+    )]
+    pub token_mint: InterfaceAccount<'info, Mint>,
     #[account(seeds = [ORACLE_SEED], bump)]
     pub oracle: Account<'info, Oracle>,
     #[account(
         mut,
-        seeds = [GAME_TOKEN_SEED, game.token_mint.as_ref()],
+        seeds = [GAME_TOKEN_SEED, token_mint.key().as_ref()],
         bump,
     )]
     pub game_token: Account<'info, GameToken>,
     /// CHECK: PDA authority for game's token accounts
-    #[account(seeds = [GAME_VAULT_SEED, game.token_mint.as_ref()], bump = game_token.vault_bump)]
+    #[account(seeds = [GAME_VAULT_SEED, token_mint.key().as_ref()], bump = game_token.vault_bump)]
     pub game_vault: AccountInfo<'info>,
     #[account(
         mut,
-        associated_token::mint = game.token_mint,
+        associated_token::mint = token_mint,
         associated_token::authority = creator,
+        associated_token::token_program = token_program,
     )]
-    pub creator_token_account: Account<'info, TokenAccount>,
+    pub creator_token_account: InterfaceAccount<'info, TokenAccount>,
     #[account(
         mut,
-        associated_token::mint = game.token_mint,
+        associated_token::mint = token_mint,
         associated_token::authority = game_vault,
+        associated_token::token_program = token_program,
     )]
-    pub game_token_account: Account<'info, TokenAccount>,
+    pub game_token_account: InterfaceAccount<'info, TokenAccount>,
     pub system_program: Program<'info, System>,
-    pub token_program: Program<'info, Token>,
+    #[account(
+        constraint = token_program.key() == TOKEN_PROGRAM_ID
+            || token_program.key() == TOKEN_2022_PROGRAM_ID @ ErrorCode::UnsupportedTokenProgram,
+    )]
+    pub token_program: Interface<'info, TokenInterface>,
     pub associated_token_program: Program<'info, AssociatedToken>,
 }
 
@@ -340,7 +403,7 @@ pub struct WithdrawTokenFee<'info> {
         bump,
     )]
     pub game_token: Account<'info, GameToken>,
-    pub token_mint: Account<'info, Mint>,
+    pub token_mint: InterfaceAccount<'info, Mint>,
     /// CHECK: PDA authority for game's token accounts
     #[account(seeds = [GAME_VAULT_SEED, token_mint.key().as_ref()], bump = game_token.vault_bump)]
     pub game_vault: AccountInfo<'info>,
@@ -356,15 +419,21 @@ pub struct WithdrawTokenFee<'info> {
         mut,
         associated_token::mint = token_mint,
         associated_token::authority = oracle_operator,
+        associated_token::token_program = token_program,
     )]
-    pub oracle_operator_token_account: Account<'info, TokenAccount>,
+    pub oracle_operator_token_account: InterfaceAccount<'info, TokenAccount>,
     #[account(
         mut,
         associated_token::mint = token_mint,
         associated_token::authority = game_vault,
+        associated_token::token_program = token_program,
     )]
-    pub game_token_account: Account<'info, TokenAccount>,
+    pub game_token_account: InterfaceAccount<'info, TokenAccount>,
     pub system_program: Program<'info, System>,
-    pub token_program: Program<'info, Token>,
+    #[account(
+        constraint = token_program.key() == TOKEN_PROGRAM_ID
+            || token_program.key() == TOKEN_2022_PROGRAM_ID @ ErrorCode::UnsupportedTokenProgram,
+    )]
+    pub token_program: Interface<'info, TokenInterface>,
     pub associated_token_program: Program<'info, AssociatedToken>,
 }
