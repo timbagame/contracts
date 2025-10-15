@@ -1,5 +1,6 @@
 import { expect } from "chai";
 import * as anchor from "@coral-xyz/anchor";
+import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import {
   TestUtils,
   TestEnvironment,
@@ -151,13 +152,11 @@ describe("Oracle Update Authority", () => {
       try {
         await env.program.methods
           .withdrawTokenFee()
-          .accounts({
-            tokenMint: mint.mint,
-            oracleOperator: oracle.operator,
-            tokenProgram: TOKEN_PROGRAM_ID,
-            associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
-            systemProgram: anchor.web3.SystemProgram.programId,
-          })
+        .accounts({
+          tokenMint: mint.mint,
+          oracleOperator: oracle.operator,
+          tokenProgram: TOKEN_PROGRAM_ID,
+        })
           .signers([oracle.operatorKeypair])
           .rpc();
         expect.fail("Old operator should not withdraw after transfer");
@@ -176,8 +175,6 @@ describe("Oracle Update Authority", () => {
           tokenMint: mint.mint,
           oracleOperator: newOperator.publicKey,
           tokenProgram: TOKEN_PROGRAM_ID,
-          associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
-          systemProgram: anchor.web3.SystemProgram.programId,
         })
         .signers([newOperator])
         .rpc();

@@ -39,6 +39,9 @@ export type Timba = {
           "signer": true
         },
         {
+          "name": "tokenMint"
+        },
+        {
           "name": "oracle",
           "pda": {
             "seeds": [
@@ -298,8 +301,7 @@ export type Timba = {
           "address": "11111111111111111111111111111111"
         },
         {
-          "name": "tokenProgram",
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+          "name": "tokenProgram"
         },
         {
           "name": "associatedTokenProgram",
@@ -344,6 +346,9 @@ export type Timba = {
               }
             ]
           }
+        },
+        {
+          "name": "tokenMint"
         },
         {
           "name": "oracle",
@@ -617,8 +622,7 @@ export type Timba = {
           "address": "11111111111111111111111111111111"
         },
         {
-          "name": "tokenProgram",
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+          "name": "tokenProgram"
         },
         {
           "name": "associatedTokenProgram",
@@ -951,8 +955,7 @@ export type Timba = {
           "address": "11111111111111111111111111111111"
         },
         {
-          "name": "tokenProgram",
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+          "name": "tokenProgram"
         },
         {
           "name": "associatedTokenProgram",
@@ -1224,8 +1227,7 @@ export type Timba = {
           "address": "11111111111111111111111111111111"
         },
         {
-          "name": "tokenProgram",
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+          "name": "tokenProgram"
         },
         {
           "name": "associatedTokenProgram",
@@ -1267,6 +1269,9 @@ export type Timba = {
           "name": "player",
           "writable": true,
           "signer": true
+        },
+        {
+          "name": "tokenMint"
         },
         {
           "name": "oracleOperator",
@@ -1532,8 +1537,7 @@ export type Timba = {
           "address": "11111111111111111111111111111111"
         },
         {
-          "name": "tokenProgram",
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+          "name": "tokenProgram"
         },
         {
           "name": "associatedTokenProgram",
@@ -1566,6 +1570,9 @@ export type Timba = {
           "name": "player",
           "writable": true,
           "signer": true
+        },
+        {
+          "name": "tokenMint"
         },
         {
           "name": "oracle",
@@ -1827,8 +1834,7 @@ export type Timba = {
           "address": "11111111111111111111111111111111"
         },
         {
-          "name": "tokenProgram",
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+          "name": "tokenProgram"
         },
         {
           "name": "associatedTokenProgram",
@@ -2252,8 +2258,7 @@ export type Timba = {
           "address": "11111111111111111111111111111111"
         },
         {
-          "name": "tokenProgram",
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+          "name": "tokenProgram"
         },
         {
           "name": "associatedTokenProgram",

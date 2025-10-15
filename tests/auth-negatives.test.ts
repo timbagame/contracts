@@ -1,8 +1,7 @@
 import { expect } from "chai";
 import * as anchor from "@coral-xyz/anchor";
 import {
-  TOKEN_PROGRAM_ID,
-  ASSOCIATED_TOKEN_PROGRAM_ID,
+  TOKEN_PROGRAM_ID
 } from "@solana/spl-token";
 import {
   TestUtils,
@@ -53,8 +52,6 @@ describe("Authorization Negatives", () => {
           game: gameData.gamePDA,
           tokenMint: mint.mint,
           tokenProgram: TOKEN_PROGRAM_ID,
-          associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
-          systemProgram: anchor.web3.SystemProgram.programId,
         })
         .signers([other.player])
         .rpc();
@@ -136,8 +133,6 @@ describe("Authorization Negatives", () => {
           tokenMint: mint.mint,
           oracleOperator: fakeOp.publicKey,
           tokenProgram: TOKEN_PROGRAM_ID,
-          associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
-          systemProgram: anchor.web3.SystemProgram.programId,
         })
         .signers([fakeOp])
         .rpc();

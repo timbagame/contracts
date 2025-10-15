@@ -376,6 +376,7 @@ export class MintManager {
       this.provider.publicKey,
       undefined,
       undefined,
+      undefined,
       tokenProgram
     );
 
@@ -525,6 +526,7 @@ export class PlayerManager {
       player.publicKey,
       undefined,
       undefined,
+      undefined,
       tokenProgram
     );
 
@@ -564,6 +566,7 @@ export class PlayerManager {
         player,
         mint,
         player.publicKey,
+        undefined,
         undefined,
         undefined,
         tokenProgram
@@ -653,15 +656,13 @@ export class GameManager {
       isPrivate: config.isPrivate,
     };
 
-    await this.program.methods
-      .initializeGame(cfg, gameData.randomHash)
-      .accounts({
-        creator: creator.publicKey,
-        tokenMint,
-        tokenProgram,
-        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
-        systemProgram: anchor.web3.SystemProgram.programId,
-      })
+      await this.program.methods
+        .initializeGame(cfg, gameData.randomHash)
+        .accounts({
+          creator: creator.publicKey,
+          tokenMint,
+          tokenProgram,
+        })
       .signers([creator])
       .rpc();
   }
@@ -714,7 +715,6 @@ export class GameManager {
       oracle: oraclePDA,
       systemProgram: anchor.web3.SystemProgram.programId,
       tokenProgram,
-      associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
     };
 
     if (oracleOperator) {
@@ -837,23 +837,23 @@ export class GameManager {
       tokenProgram
     );
 
-    await this.program.methods
-      .completeGame(gameData.randomHash, gameData.secretKey, winnerIndex)
-      .accounts({
-        game: gameData.gamePDA,
-        tokenMint,
-        oracle: oraclePDA,
-        oracleOperator,
-        winner,
-        creator,
-        gameToken: gameTokenPDA,
-        gameVault: gameVaultPDA,
-        winnerTokenAccount,
-        gameTokenAccount,
-        systemProgram: anchor.web3.SystemProgram.programId,
-        tokenProgram,
-        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
-      })
+      await this.program.methods
+        .completeGame(gameData.randomHash, gameData.secretKey, winnerIndex)
+        .accountsStrict({
+          game: gameData.gamePDA,
+          tokenMint,
+          oracle: oraclePDA,
+          oracleOperator,
+          winner,
+          creator,
+          gameToken: gameTokenPDA,
+          gameVault: gameVaultPDA,
+          winnerTokenAccount,
+          gameTokenAccount,
+          tokenProgram,
+          systemProgram: anchor.web3.SystemProgram.programId,
+          associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+        })
       .signers([operatorKeypair])
       .rpc();
   }

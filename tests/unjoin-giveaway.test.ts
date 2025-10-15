@@ -1,8 +1,7 @@
 import { expect } from "chai";
 import * as anchor from "@coral-xyz/anchor";
 import {
-  TOKEN_PROGRAM_ID,
-  ASSOCIATED_TOKEN_PROGRAM_ID,
+  TOKEN_PROGRAM_ID
 } from "@solana/spl-token";
 import { TestUtils, TestEnvironment, GameConfig } from "./test-helpers";
 
@@ -68,14 +67,12 @@ describe("Giveaway Unjoin and Close", () => {
     // Creator closes game and gets full refund
     await env.program.methods
       .closeGame()
-      .accounts({
-        game: gameData.gamePDA,
-        creator: creator.player.publicKey,
-        tokenMint: mint.mint,
-        tokenProgram: TOKEN_PROGRAM_ID,
-        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
-        systemProgram: anchor.web3.SystemProgram.programId,
-      })
+        .accounts({
+          game: gameData.gamePDA,
+          creator: creator.player.publicKey,
+          tokenMint: mint.mint,
+          tokenProgram: TOKEN_PROGRAM_ID,
+        })
       .signers([creator.player])
       .rpc();
 
