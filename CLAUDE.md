@@ -12,7 +12,6 @@ This is a comprehensive Solana smart contract implementing multiple gambling gam
 
 - `anchor build` - Build the Solana program
 - `anchor test` - Run the test suite (uses ts-mocha with 1000000ms timeout)
-- `bun run setup-local` - Set up local development environment with airdrops and token creation
 
 **CRITICAL TESTING RULES**:
 🚨 **NEVER run `anchor test` with grep, pipes, tail, head, or any other commands!** 🚨
@@ -129,7 +128,7 @@ Key features:
 
 ### Development Environment
 
-The project includes devcontainer configuration for VS Code/Cursor and GitHub Codespaces with automatic dependency installation. Manual setup requires Rust, Solana CLI, Anchor, Node.js, and Bun. Use `bun run setup-local` to initialize local test environment with funded accounts and token configurations.
+The project includes devcontainer configuration for VS Code/Cursor and GitHub Codespaces with automatic dependency installation. Manual setup requires Rust, Solana CLI, Anchor, Node.js, and Bun.
 
 ### Code Organization Principles
 

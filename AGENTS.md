@@ -3,14 +3,13 @@
 ## Project Structure & Module Organization
 - programs/timba/src: Rust/Anchor program (lib.rs, state.rs, error.rs, events.rs, instructions/).
 - tests: TypeScript test suites run via Anchor + ts-mocha (e.g., core.test.ts, security.test.ts).
-- scripts: Dev helpers (setup-local.ts, update-idl.ts).
+- scripts: Dev helpers (update-idl.ts).
 - migrations, .anchor, target: Anchor artifacts (IDL in target/idl, generated types in target/types).
 - Anchor.toml: Program IDs, provider, and test runner config.
 
 ## Build, Test, and Development Commands
 - Build: `anchor build` — compiles the on-chain program and regenerates IDL/types.
 - Test: `anchor test` — runs ts-mocha with config from `Anchor.toml` against `tests/**/*.test.ts`.
-- Local setup: `bun run setup-local` — funds accounts and initializes oracle/token on localnet.
 - Sync IDL: `bun run update-idl` — copies `target/idl` and `target/types` to sibling consumers.
 
 ## Coding Style & Naming Conventions
