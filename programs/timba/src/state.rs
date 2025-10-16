@@ -1,6 +1,6 @@
 use crate::error::ErrorCode;
 use anchor_lang::prelude::*;
-use anchor_lang::solana_program::hash::hashv;
+use solana_program::hash::hashv;
 use anchor_spl::token_interface::{transfer_checked, TransferChecked};
 
 // =============================================================================

@@ -10,7 +10,7 @@
     "update-idl": "ts-node scripts/update-idl.ts"
   },
   "dependencies": {
-    "@coral-xyz/anchor": "^0.31.1"
+    "@coral-xyz/anchor": "^0.32.1"
   },
   "devDependencies": {
     "@solana/spl-token": "^0.4.13",

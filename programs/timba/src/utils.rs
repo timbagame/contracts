@@ -1,7 +1,7 @@
 use crate::state::Oracle;
 use crate::OracleConfig;
 use anchor_lang::prelude::*;
-use anchor_lang::solana_program::hash::hashv;
+use solana_program::hash::hashv;
 
 // =============================================================================
 // COMMON UTILITIES

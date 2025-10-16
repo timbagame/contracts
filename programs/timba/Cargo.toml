@@ -23,3 +23,4 @@ idl-build = [
 [dependencies]
 anchor-lang = { workspace = true }
 anchor-spl  = { workspace = true, features = ["token", "associated_token", "token_2022"] }
+solana-program = { workspace = true }
