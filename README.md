@@ -71,33 +71,11 @@ bun install
 
 ## Building
 
-### Development build
-
-Use the standard Anchor build while iterating locally:
+Build the program:
 
 ```bash
 anchor build
 ```
-
-### Production build (slim binary)
-
-Release deployments should compile with the `no-idl` and `no-log-ix-name` features
-enabled to strip the IDL and instruction names from the final SBF binary. A helper
-script is provided to ensure the correct toolchain and flags are used:
-
-```bash
-bun run build:prod
-```
-
-Running `bun run build:prod` on 2025-10-16 produced the following size regression
-baseline for `target/deploy/timba.so`:
-
-| Profile              | Command                      | Size (bytes) |
-| -------------------- | ---------------------------- | ------------ |
-| Default development  | `anchor build`               | 319,936      |
-| Slim production      | `bun run build:prod`         | 284,368      |
-
-Re-run the production build when touching program code to watch for regressions.
 
 ## Testing
 
