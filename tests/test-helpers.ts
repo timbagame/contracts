@@ -445,7 +445,12 @@ export class MintManager {
       return;
     }
 
-    const mintInfo = await getMint(this.provider.connection, mint.mint);
+    const mintInfo = await getMint(
+      this.provider.connection,
+      mint.mint,
+      undefined,
+      mint.tokenProgram
+    );
     const currentSupply = BigInt(mintInfo.supply.toString());
     const maxSupply = 0xffff_ffff_ffff_ffffn; // SPL Token total supply is u64::MAX
     const availableToMint =
@@ -693,15 +698,15 @@ export class GameManager {
       tokenMint,
       player.publicKey,
       false,
-      ASSOCIATED_TOKEN_PROGRAM_ID,
-      tokenProgram
+      tokenProgram,
+      ASSOCIATED_TOKEN_PROGRAM_ID
     );
     const gameTokenAccount = getAssociatedTokenAddressSync(
       tokenMint,
       gameVaultPDA,
       true,
-      ASSOCIATED_TOKEN_PROGRAM_ID,
-      tokenProgram
+      tokenProgram,
+      ASSOCIATED_TOKEN_PROGRAM_ID
     );
 
     const commonAccounts = {
@@ -763,15 +768,15 @@ export class GameManager {
       tokenMint,
       player.publicKey,
       false,
-      ASSOCIATED_TOKEN_PROGRAM_ID,
-      tokenProgram
+      tokenProgram,
+      ASSOCIATED_TOKEN_PROGRAM_ID
     );
     const gameTokenAccount = getAssociatedTokenAddressSync(
       tokenMint,
       gameVaultPDA,
       true,
-      ASSOCIATED_TOKEN_PROGRAM_ID,
-      tokenProgram
+      tokenProgram,
+      ASSOCIATED_TOKEN_PROGRAM_ID
     );
 
     await this.program.methods
@@ -827,15 +832,15 @@ export class GameManager {
       tokenMint,
       winner,
       false,
-      ASSOCIATED_TOKEN_PROGRAM_ID,
-      tokenProgram
+      tokenProgram,
+      ASSOCIATED_TOKEN_PROGRAM_ID
     );
     const gameTokenAccount = getAssociatedTokenAddressSync(
       tokenMint,
       gameVaultPDA,
       true,
-      ASSOCIATED_TOKEN_PROGRAM_ID,
-      tokenProgram
+      tokenProgram,
+      ASSOCIATED_TOKEN_PROGRAM_ID
     );
 
       await this.program.methods
