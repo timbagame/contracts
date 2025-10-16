@@ -1,5 +1,8 @@
 import { expect } from "chai";
 import * as anchor from "@coral-xyz/anchor";
+import {
+  TOKEN_PROGRAM_ID
+} from "@solana/spl-token";
 import { TestUtils, TestEnvironment, GameConfig } from "./test-helpers";
 
 // Ensures close_game blocked while waiting_for_oracle (game either not expired or ready path)
@@ -44,6 +47,8 @@ describe("Close Blocked While Waiting", () => {
         .accounts({
           creator: creator.player.publicKey,
           game: gameData.gamePDA,
+          tokenMint: mint.mint,
+          tokenProgram: TOKEN_PROGRAM_ID,
         })
         .signers([creator.player])
         .rpc();

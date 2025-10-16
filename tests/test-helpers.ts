@@ -3,6 +3,7 @@ import { Timba } from "../target/types/timba";
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
+  TOKEN_2022_PROGRAM_ID,
   createMint,
   getAssociatedTokenAddressSync,
   getMint,
@@ -36,12 +37,35 @@ export interface TestMint {
   mintAuthority: anchor.web3.Keypair;
   gameVaultPDA: PublicKey;
   gameTokenPDA: PublicKey;
+  tokenProgram: PublicKey;
+  decimals: number;
 }
 
 export interface TestGame {
   gamePDA: PublicKey;
   randomHash: number[];
   secretKey: number[];
+}
+
+async function resolveTokenProgram(
+  connection: anchor.web3.Connection,
+  tokenMint: PublicKey
+): Promise<PublicKey> {
+  const accountInfo = await connection.getAccountInfo(tokenMint);
+
+  if (!accountInfo) {
+    throw new Error(`Token mint ${tokenMint.toBase58()} not found`);
+  }
+
+  if (accountInfo.owner.equals(TOKEN_PROGRAM_ID)) {
+    return TOKEN_PROGRAM_ID;
+  }
+
+  if (accountInfo.owner.equals(TOKEN_2022_PROGRAM_ID)) {
+    return TOKEN_2022_PROGRAM_ID;
+  }
+
+  throw new Error(`Unsupported token program for mint ${tokenMint.toBase58()}`);
 }
 
 export interface TestOracle {
@@ -316,8 +340,13 @@ export class MintManager {
     this.provider = provider;
   }
 
-  async createMint(): Promise<TestMint> {
+  async createMint(options?: {
+    tokenProgram?: PublicKey;
+    decimals?: number;
+  }): Promise<TestMint> {
     const mintAuthority = anchor.web3.Keypair.generate();
+    const tokenProgram = options?.tokenProgram ?? TOKEN_PROGRAM_ID;
+    const decimals = options?.decimals ?? 6;
 
     // Airdrop SOL to mint authority
     const signature = await this.provider.connection.requestAirdrop(
@@ -332,7 +361,10 @@ export class MintManager {
       mintAuthority,
       mintAuthority.publicKey,
       null,
-      6
+      decimals,
+      undefined,
+      undefined,
+      tokenProgram
     );
 
     // Get PDAs
@@ -347,19 +379,26 @@ export class MintManager {
     );
 
     // Create required token accounts
-    await getOrCreateAssociatedTokenAccount(
+    const gameVaultAta = await getOrCreateAssociatedTokenAccount(
       this.provider.connection,
       mintAuthority,
       mint,
       gameVaultPDA,
-      true
+      true,
+      undefined,
+      undefined,
+      tokenProgram
     );
 
     await getOrCreateAssociatedTokenAccount(
       this.provider.connection,
       mintAuthority,
       mint,
-      this.provider.publicKey
+      this.provider.publicKey,
+      undefined,
+      undefined,
+      undefined,
+      tokenProgram
     );
 
     // Initialize token config
@@ -377,9 +416,16 @@ export class MintManager {
 
     await this.program.methods
       .initializeToken(tokenConfig)
-      .accounts({
-        oracleOperator: oracleAccount.operator,
+      .accountsStrict({
+        gameToken: gameTokenPDA,
         tokenMint: mint,
+        gameVault: gameVaultPDA,
+        gameTokenAccount: gameVaultAta.address,
+        oracle: oraclePDA,
+        oracleOperator: oracleAccount.operator,
+        systemProgram: anchor.web3.SystemProgram.programId,
+        tokenProgram,
+        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
       })
       .signers([oracleOperatorKeypair])
       .rpc();
@@ -389,6 +435,8 @@ export class MintManager {
       mintAuthority,
       gameVaultPDA,
       gameTokenPDA,
+      tokenProgram,
+      decimals,
     };
   }
 
@@ -418,7 +466,12 @@ export class MintManager {
       return;
     }
 
-    const mintInfo = await getMint(this.provider.connection, mint.mint);
+    const mintInfo = await getMint(
+      this.provider.connection,
+      mint.mint,
+      undefined,
+      mint.tokenProgram
+    );
     const currentSupply = BigInt(mintInfo.supply.toString());
     const maxSupply = 0xffff_ffff_ffff_ffffn; // SPL Token total supply is u64::MAX
     const availableToMint =
@@ -436,7 +489,10 @@ export class MintManager {
       mint.mint,
       tokenAccount,
       mint.mintAuthority,
-      mintAmount
+      mintAmount,
+      undefined,
+      undefined,
+      mint.tokenProgram
     );
   }
 }
@@ -457,6 +513,10 @@ export class PlayerManager {
 
   async createPlayer(mint: PublicKey): Promise<TestPlayer> {
     const player = anchor.web3.Keypair.generate();
+    const tokenProgram = await resolveTokenProgram(
+      this.provider.connection,
+      mint
+    );
 
     // Airdrop SOL for rent
     const signature = await this.provider.connection.requestAirdrop(
@@ -470,7 +530,11 @@ export class PlayerManager {
       this.provider.connection,
       player,
       mint,
-      player.publicKey
+      player.publicKey,
+      undefined,
+      undefined,
+      undefined,
+      tokenProgram
     );
 
     return {
@@ -483,6 +547,10 @@ export class PlayerManager {
     count: number,
     mint: PublicKey
   ): Promise<TestPlayer[]> {
+    const tokenProgram = await resolveTokenProgram(
+      this.provider.connection,
+      mint
+    );
     const players = Array.from({ length: count }, () =>
       anchor.web3.Keypair.generate()
     );
@@ -507,7 +575,11 @@ export class PlayerManager {
         this.provider.connection,
         player,
         mint,
-        player.publicKey
+        player.publicKey,
+        undefined,
+        undefined,
+        undefined,
+        tokenProgram
       );
 
       return { player, playerTokenAccount };
@@ -532,11 +604,31 @@ export class PlayerManager {
 /**
  * Game management utilities
  */
+type CompleteGameAccounts = {
+  game: PublicKey;
+  tokenMint: PublicKey;
+  oracle: PublicKey;
+  oracleOperator: PublicKey;
+  winner: PublicKey;
+  creator: PublicKey;
+  gameToken: PublicKey;
+  gameVault: PublicKey;
+  winnerTokenAccount: PublicKey;
+  gameTokenAccount: PublicKey;
+  tokenProgram: PublicKey;
+  systemProgram: PublicKey;
+  associatedTokenProgram: PublicKey;
+};
+
 export class GameManager {
   private program: anchor.Program<Timba>;
 
   constructor(program: anchor.Program<Timba>) {
     this.program = program;
+  }
+
+  private async resolveTokenProgram(tokenMint: PublicKey): Promise<PublicKey> {
+    return resolveTokenProgram(this.program.provider.connection, tokenMint);
   }
 
   generateGamePDA(): TestGame {
@@ -562,6 +654,7 @@ export class GameManager {
     creator: anchor.web3.Keypair,
     tokenMint: PublicKey
   ): Promise<void> {
+    const tokenProgram = await this.resolveTokenProgram(tokenMint);
     const cfg = {
       gameType: config.gameType,
       amount: toBN(config.amount),
@@ -576,6 +669,7 @@ export class GameManager {
       .accounts({
         creator: creator.publicKey,
         tokenMint,
+        tokenProgram,
       })
       .signers([creator])
       .rpc();
@@ -588,6 +682,7 @@ export class GameManager {
   ): Promise<void> {
     const gameAccount = await this.program.account.game.fetch(gamePDA);
     const tokenMint = new PublicKey(gameAccount.tokenMint);
+    const tokenProgram = await this.resolveTokenProgram(tokenMint);
 
     const [oraclePDA] = PublicKey.findProgramAddressSync(
       [Buffer.from("oracle")],
@@ -604,24 +699,30 @@ export class GameManager {
 
     const playerTokenAccount = getAssociatedTokenAddressSync(
       tokenMint,
-      player.publicKey
+      player.publicKey,
+      false,
+      tokenProgram,
+      ASSOCIATED_TOKEN_PROGRAM_ID
     );
     const gameTokenAccount = getAssociatedTokenAddressSync(
       tokenMint,
       gameVaultPDA,
-      true
+      true,
+      tokenProgram,
+      ASSOCIATED_TOKEN_PROGRAM_ID
     );
 
     const commonAccounts = {
       game: gamePDA,
       player: player.publicKey,
+      tokenMint,
       gameToken: gameTokenPDA,
       gameVault: gameVaultPDA,
       playerTokenAccount,
       gameTokenAccount,
       oracle: oraclePDA,
       systemProgram: anchor.web3.SystemProgram.programId,
-      tokenProgram: TOKEN_PROGRAM_ID,
+      tokenProgram,
       associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
     };
 
@@ -651,6 +752,7 @@ export class GameManager {
   ): Promise<void> {
     const gameAccount = await this.program.account.game.fetch(gamePDA);
     const tokenMint = new PublicKey(gameAccount.tokenMint);
+    const tokenProgram = await this.resolveTokenProgram(tokenMint);
 
     const [oraclePDA] = PublicKey.findProgramAddressSync(
       [Buffer.from("oracle")],
@@ -667,12 +769,17 @@ export class GameManager {
 
     const playerTokenAccount = getAssociatedTokenAddressSync(
       tokenMint,
-      player.publicKey
+      player.publicKey,
+      false,
+      tokenProgram,
+      ASSOCIATED_TOKEN_PROGRAM_ID
     );
     const gameTokenAccount = getAssociatedTokenAddressSync(
       tokenMint,
       gameVaultPDA,
-      true
+      true,
+      tokenProgram,
+      ASSOCIATED_TOKEN_PROGRAM_ID
     );
 
     await this.program.methods
@@ -680,13 +787,14 @@ export class GameManager {
       .accountsStrict({
         game: gamePDA,
         player: player.publicKey,
+        tokenMint,
         oracle: oraclePDA,
         gameToken: gameTokenPDA,
         gameVault: gameVaultPDA,
         playerTokenAccount,
         gameTokenAccount,
         systemProgram: anchor.web3.SystemProgram.programId,
-        tokenProgram: TOKEN_PROGRAM_ID,
+        tokenProgram,
         associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
       })
       .signers([player])
@@ -699,22 +807,85 @@ export class GameManager {
     creator: PublicKey,
     oracleOperator: PublicKey,
     winnerIndex: number,
-    oracleOperatorKeypair?: anchor.web3.Keypair
+    oracleOperatorKeypair?: anchor.web3.Keypair,
+    overrides?: Partial<CompleteGameAccounts>
   ): Promise<void> {
     // Use provided oracle operator keypair or default to deterministic one
     const operatorKeypair =
       oracleOperatorKeypair ||
       anchor.web3.Keypair.fromSeed(new Uint8Array(32).fill(42));
 
+    const accounts = await this.buildCompleteGameAccounts(
+      gameData,
+      winner,
+      creator,
+      oracleOperator,
+      overrides
+    );
+
     await this.program.methods
       .completeGame(gameData.randomHash, gameData.secretKey, winnerIndex)
-      .accountsPartial({
-        oracleOperator,
-        winner,
-        creator,
-      })
+      .accountsStrict(accounts)
       .signers([operatorKeypair])
       .rpc();
+  }
+
+  async buildCompleteGameAccounts(
+    gameData: TestGame,
+    winner: PublicKey,
+    creator: PublicKey,
+    oracleOperator: PublicKey,
+    overrides: Partial<CompleteGameAccounts> = {}
+  ): Promise<CompleteGameAccounts> {
+    const gameAccount = await this.program.account.game.fetch(gameData.gamePDA);
+    const tokenMint = new PublicKey(gameAccount.tokenMint);
+    const tokenProgram = await this.resolveTokenProgram(tokenMint);
+
+    const [oraclePDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("oracle")],
+      this.program.programId
+    );
+    const [gameTokenPDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("game_token"), tokenMint.toBuffer()],
+      this.program.programId
+    );
+    const [gameVaultPDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("game_vault"), tokenMint.toBuffer()],
+      this.program.programId
+    );
+
+    const winnerTokenAccount = getAssociatedTokenAddressSync(
+      tokenMint,
+      winner,
+      false,
+      tokenProgram,
+      ASSOCIATED_TOKEN_PROGRAM_ID
+    );
+    const gameTokenAccount = getAssociatedTokenAddressSync(
+      tokenMint,
+      gameVaultPDA,
+      true,
+      tokenProgram,
+      ASSOCIATED_TOKEN_PROGRAM_ID
+    );
+
+    const baseAccounts: CompleteGameAccounts = {
+      game: gameData.gamePDA,
+      tokenMint,
+      oracle: oraclePDA,
+      oracleOperator,
+      winner,
+      creator,
+      gameToken: gameTokenPDA,
+      gameVault: gameVaultPDA,
+      winnerTokenAccount,
+      gameTokenAccount,
+      tokenProgram,
+      systemProgram: anchor.web3.SystemProgram.programId,
+      associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+    };
+
+    return { ...baseAccounts, ...overrides };
   }
 
   // Convenience wrapper for tests expecting createGame()

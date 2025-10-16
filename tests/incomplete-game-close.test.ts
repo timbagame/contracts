@@ -1,5 +1,8 @@
 import { expect } from "chai";
 import * as anchor from "@coral-xyz/anchor";
+import {
+  TOKEN_PROGRAM_ID
+} from "@solana/spl-token";
 import { TestUtils, TestEnvironment, GameConfig } from "./test-helpers";
 
 // Tests closing a game after timeout when min tickets not reached and players unjoin
@@ -60,6 +63,8 @@ describe("Incomplete Game Close", () => {
       .accounts({
         creator: creator.player.publicKey,
         game: gameData.gamePDA,
+        tokenMint: mint.mint,
+        tokenProgram: TOKEN_PROGRAM_ID,
       })
       .signers([creator.player])
       .rpc();

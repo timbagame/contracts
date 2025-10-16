@@ -82,7 +82,9 @@ pub fn handler(
         ctx.accounts.winner_token_account.to_account_info(),
         ctx.accounts.game_vault.to_account_info(),
         ctx.accounts.token_program.to_account_info(),
+        ctx.accounts.token_mint.to_account_info(),
         winner_amount,
+        ctx.accounts.token_mint.decimals,
         true,
     )?;
 

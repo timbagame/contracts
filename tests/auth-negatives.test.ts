@@ -1,6 +1,9 @@
 import { expect } from "chai";
 import * as anchor from "@coral-xyz/anchor";
 import {
+  TOKEN_PROGRAM_ID
+} from "@solana/spl-token";
+import {
   TestUtils,
   TestEnvironment,
   GameConfig,
@@ -44,7 +47,12 @@ describe("Authorization Negatives", () => {
     try {
       await env.program.methods
         .closeGame()
-        .accounts({ creator: other.player.publicKey, game: gameData.gamePDA })
+        .accounts({
+          creator: other.player.publicKey,
+          game: gameData.gamePDA,
+          tokenMint: mint.mint,
+          tokenProgram: TOKEN_PROGRAM_ID,
+        })
         .signers([other.player])
         .rpc();
       expect.fail("Non-creator should not be able to close game");
@@ -121,7 +129,11 @@ describe("Authorization Negatives", () => {
     try {
       await env.program.methods
         .withdrawTokenFee()
-        .accounts({ tokenMint: mint.mint, oracleOperator: fakeOp.publicKey })
+        .accounts({
+          tokenMint: mint.mint,
+          oracleOperator: fakeOp.publicKey,
+          tokenProgram: TOKEN_PROGRAM_ID,
+        })
         .signers([fakeOp])
         .rpc();
       expect.fail("Non-operator should not be able to withdraw fees");
@@ -160,14 +172,17 @@ describe("Authorization Negatives", () => {
     const winner = getWinnerFromPlayers([creator, player1], idx);
 
     const nonOp = anchor.web3.Keypair.generate();
+    const accounts = await testUtils.game.buildCompleteGameAccounts(
+      gameData,
+      winner.player.publicKey,
+      creator.player.publicKey,
+      nonOp.publicKey
+    );
+
     try {
       await env.program.methods
         .completeGame(gameData.randomHash, gameData.secretKey, idx)
-        .accountsPartial({
-          oracleOperator: nonOp.publicKey,
-          winner: winner.player.publicKey,
-          creator: creator.player.publicKey,
-        })
+        .accountsStrict(accounts)
         .signers([nonOp])
         .rpc();
       expect.fail("Non-operator should not complete game");

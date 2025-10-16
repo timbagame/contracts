@@ -1,6 +1,9 @@
 import { expect } from "chai";
 import * as anchor from "@coral-xyz/anchor";
-import { getOrCreateAssociatedTokenAccount } from "@solana/spl-token";
+import {
+  getOrCreateAssociatedTokenAccount,
+  TOKEN_PROGRAM_ID,
+} from "@solana/spl-token";
 import type { Timba } from "../target/types/timba";
 import {
   TestUtils,
@@ -148,6 +151,7 @@ describe("Withdraw Fee", () => {
       .accounts({
         oracleOperator: oracle.operator,
         tokenMint: mint.mint,
+        tokenProgram: TOKEN_PROGRAM_ID,
       })
       .signers([oracle.operatorKeypair])
       .rpc();
@@ -186,6 +190,7 @@ describe("Withdraw Fee", () => {
         .accounts({
           oracleOperator: oracle.operator,
           tokenMint: mint.mint,
+          tokenProgram: TOKEN_PROGRAM_ID,
         })
         .signers([oracle.operatorKeypair])
         .rpc();
@@ -282,6 +287,7 @@ describe("Withdraw Fee", () => {
         .accounts({
           oracleOperator: oracle.operator,
           tokenMint: mint.mint,
+          tokenProgram: TOKEN_PROGRAM_ID,
         })
         .signers([oracle.operatorKeypair])
         .rpc();

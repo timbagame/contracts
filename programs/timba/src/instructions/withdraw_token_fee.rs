@@ -22,7 +22,9 @@ pub fn handler(ctx: Context<super::WithdrawTokenFee>) -> Result<()> {
         ctx.accounts.oracle_operator_token_account.to_account_info(),
         ctx.accounts.game_vault.to_account_info(),
         ctx.accounts.token_program.to_account_info(),
+        ctx.accounts.token_mint.to_account_info(),
         withdrawal_amount,
+        ctx.accounts.token_mint.decimals,
         true,
     )?;
 
