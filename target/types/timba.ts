@@ -8,8 +8,8 @@ export type Timba = {
   "address": "9MmCPEForkbt1L4Dk5BCd9ttErJiehwtdD4mM5J8YbFd",
   "metadata": {
     "name": "timba",
-    "version": "0.1.0",
-    "spec": "0.1.0",
+    "version": "0.1.1",
+    "spec": "0.1.1",
     "description": "Created with Anchor"
   },
   "instructions": [
