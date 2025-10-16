@@ -9,7 +9,7 @@ export type Timba = {
   "metadata": {
     "name": "timba",
     "version": "0.1.1",
-    "spec": "0.1.1",
+    "spec": "0.1.0",
     "description": "Created with Anchor"
   },
   "instructions": [
