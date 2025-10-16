@@ -2496,6 +2496,13 @@ export type Timba = {
             "type": "u8"
           },
           {
+            "name": "vaultTokenAccount",
+            "docs": [
+              "Game vault's associated token account"
+            ],
+            "type": "pubkey"
+          },
+          {
             "name": "minAmount",
             "docs": [
               "Minimum amount required to participate in games"

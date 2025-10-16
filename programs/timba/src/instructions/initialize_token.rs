@@ -12,6 +12,7 @@ pub fn handler(ctx: Context<super::InitializeToken>, config: TokenConfig) -> Res
     game_token.initialize(
         token_mint_key,
         ctx.bumps.game_vault,
+        ctx.accounts.game_token_account.key(),
         config.min_amount,
         config.enabled,
     );

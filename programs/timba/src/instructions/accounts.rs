@@ -1,11 +1,11 @@
 use anchor_lang::prelude::*;
-use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token::ID as TOKEN_PROGRAM_ID;
 use anchor_spl::token_2022::ID as TOKEN_2022_PROGRAM_ID;
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
 use crate::error::ErrorCode;
 use crate::state::*;
+use crate::utils::assert_ata;
 
 // =============================================================================
 // ORACLE MANAGEMENT
@@ -75,9 +75,12 @@ pub struct InitializeToken<'info> {
     pub game_vault: AccountInfo<'info>,
 
     #[account(
-        associated_token::mint = token_mint,
-        associated_token::authority = game_vault,
-        associated_token::token_program = token_program,
+        constraint = assert_ata(
+            game_token_account.key(),
+            game_vault.key(),
+            token_mint.key(),
+            token_program.key()
+        ) @ ErrorCode::InvalidTokenAccount,
     )]
     pub game_token_account: InterfaceAccount<'info, TokenAccount>,
 
@@ -97,7 +100,6 @@ pub struct InitializeToken<'info> {
             || token_program.key() == TOKEN_2022_PROGRAM_ID @ ErrorCode::UnsupportedTokenProgram,
     )]
     pub token_program: Interface<'info, TokenInterface>,
-    pub associated_token_program: Program<'info, AssociatedToken>,
 }
 
 #[derive(Accounts)]
@@ -163,16 +165,18 @@ pub struct InitializeGame<'info> {
     pub game_vault: AccountInfo<'info>,
     #[account(
         mut,
-        associated_token::mint = token_mint,
-        associated_token::authority = creator,
-        associated_token::token_program = token_program,
+        constraint = assert_ata(
+            creator_token_account.key(),
+            creator.key(),
+            token_mint.key(),
+            token_program.key()
+        ) @ ErrorCode::InvalidTokenAccount,
     )]
     pub creator_token_account: InterfaceAccount<'info, TokenAccount>,
     #[account(
         mut,
-        associated_token::mint = token_mint,
-        associated_token::authority = game_vault,
-        associated_token::token_program = token_program,
+        constraint = game_token_account.key() == game_token.vault_token_account
+            @ ErrorCode::InvalidTokenAccount,
     )]
     pub game_token_account: InterfaceAccount<'info, TokenAccount>,
     pub system_program: Program<'info, System>,
@@ -181,7 +185,6 @@ pub struct InitializeGame<'info> {
             || token_program.key() == TOKEN_2022_PROGRAM_ID @ ErrorCode::UnsupportedTokenProgram,
     )]
     pub token_program: Interface<'info, TokenInterface>,
-    pub associated_token_program: Program<'info, AssociatedToken>,
 }
 
 #[derive(Accounts)]
@@ -212,16 +215,18 @@ pub struct JoinGame<'info> {
     pub game_vault: AccountInfo<'info>,
     #[account(
         mut,
-        associated_token::mint = token_mint,
-        associated_token::authority = player,
-        associated_token::token_program = token_program,
+        constraint = assert_ata(
+            player_token_account.key(),
+            player.key(),
+            token_mint.key(),
+            token_program.key()
+        ) @ ErrorCode::InvalidTokenAccount,
     )]
     pub player_token_account: InterfaceAccount<'info, TokenAccount>,
     #[account(
         mut,
-        associated_token::mint = token_mint,
-        associated_token::authority = game_vault,
-        associated_token::token_program = token_program,
+        constraint = game_token_account.key() == game_token.vault_token_account
+            @ ErrorCode::InvalidTokenAccount,
     )]
     pub game_token_account: InterfaceAccount<'info, TokenAccount>,
     #[account(seeds = [ORACLE_SEED], bump)]
@@ -232,7 +237,6 @@ pub struct JoinGame<'info> {
             || token_program.key() == TOKEN_2022_PROGRAM_ID @ ErrorCode::UnsupportedTokenProgram,
     )]
     pub token_program: Interface<'info, TokenInterface>,
-    pub associated_token_program: Program<'info, AssociatedToken>,
 }
 
 #[derive(Accounts)]
@@ -277,16 +281,18 @@ pub struct CompleteGame<'info> {
     pub game_vault: AccountInfo<'info>,
     #[account(
         mut,
-        associated_token::mint = token_mint,
-        associated_token::authority = winner,
-        associated_token::token_program = token_program,
+        constraint = assert_ata(
+            winner_token_account.key(),
+            winner.key(),
+            token_mint.key(),
+            token_program.key()
+        ) @ ErrorCode::InvalidTokenAccount,
     )]
     pub winner_token_account: InterfaceAccount<'info, TokenAccount>,
     #[account(
         mut,
-        associated_token::mint = token_mint,
-        associated_token::authority = game_vault,
-        associated_token::token_program = token_program,
+        constraint = game_token_account.key() == game_token.vault_token_account
+            @ ErrorCode::InvalidTokenAccount,
     )]
     pub game_token_account: InterfaceAccount<'info, TokenAccount>,
     pub system_program: Program<'info, System>,
@@ -295,7 +301,6 @@ pub struct CompleteGame<'info> {
             || token_program.key() == TOKEN_2022_PROGRAM_ID @ ErrorCode::UnsupportedTokenProgram,
     )]
     pub token_program: Interface<'info, TokenInterface>,
-    pub associated_token_program: Program<'info, AssociatedToken>,
 }
 
 #[derive(Accounts)]
@@ -321,16 +326,18 @@ pub struct UnjoinGame<'info> {
     pub game_vault: AccountInfo<'info>,
     #[account(
         mut,
-        associated_token::mint = token_mint,
-        associated_token::authority = player,
-        associated_token::token_program = token_program,
+        constraint = assert_ata(
+            player_token_account.key(),
+            player.key(),
+            token_mint.key(),
+            token_program.key()
+        ) @ ErrorCode::InvalidTokenAccount,
     )]
     pub player_token_account: InterfaceAccount<'info, TokenAccount>,
     #[account(
         mut,
-        associated_token::mint = token_mint,
-        associated_token::authority = game_vault,
-        associated_token::token_program = token_program,
+        constraint = game_token_account.key() == game_token.vault_token_account
+            @ ErrorCode::InvalidTokenAccount,
     )]
     pub game_token_account: InterfaceAccount<'info, TokenAccount>,
     pub system_program: Program<'info, System>,
@@ -339,7 +346,6 @@ pub struct UnjoinGame<'info> {
             || token_program.key() == TOKEN_2022_PROGRAM_ID @ ErrorCode::UnsupportedTokenProgram,
     )]
     pub token_program: Interface<'info, TokenInterface>,
-    pub associated_token_program: Program<'info, AssociatedToken>,
 }
 
 #[derive(Accounts)]
@@ -370,16 +376,18 @@ pub struct CloseGame<'info> {
     pub game_vault: AccountInfo<'info>,
     #[account(
         mut,
-        associated_token::mint = token_mint,
-        associated_token::authority = creator,
-        associated_token::token_program = token_program,
+        constraint = assert_ata(
+            creator_token_account.key(),
+            creator.key(),
+            token_mint.key(),
+            token_program.key()
+        ) @ ErrorCode::InvalidTokenAccount,
     )]
     pub creator_token_account: InterfaceAccount<'info, TokenAccount>,
     #[account(
         mut,
-        associated_token::mint = token_mint,
-        associated_token::authority = game_vault,
-        associated_token::token_program = token_program,
+        constraint = game_token_account.key() == game_token.vault_token_account
+            @ ErrorCode::InvalidTokenAccount,
     )]
     pub game_token_account: InterfaceAccount<'info, TokenAccount>,
     pub system_program: Program<'info, System>,
@@ -388,7 +396,6 @@ pub struct CloseGame<'info> {
             || token_program.key() == TOKEN_2022_PROGRAM_ID @ ErrorCode::UnsupportedTokenProgram,
     )]
     pub token_program: Interface<'info, TokenInterface>,
-    pub associated_token_program: Program<'info, AssociatedToken>,
 }
 
 // =============================================================================
@@ -417,16 +424,18 @@ pub struct WithdrawTokenFee<'info> {
     pub oracle_operator: Signer<'info>,
     #[account(
         mut,
-        associated_token::mint = token_mint,
-        associated_token::authority = oracle_operator,
-        associated_token::token_program = token_program,
+        constraint = assert_ata(
+            oracle_operator_token_account.key(),
+            oracle_operator.key(),
+            token_mint.key(),
+            token_program.key()
+        ) @ ErrorCode::InvalidTokenAccount,
     )]
     pub oracle_operator_token_account: InterfaceAccount<'info, TokenAccount>,
     #[account(
         mut,
-        associated_token::mint = token_mint,
-        associated_token::authority = game_vault,
-        associated_token::token_program = token_program,
+        constraint = game_token_account.key() == game_token.vault_token_account
+            @ ErrorCode::InvalidTokenAccount,
     )]
     pub game_token_account: InterfaceAccount<'info, TokenAccount>,
     pub system_program: Program<'info, System>,
@@ -435,5 +444,4 @@ pub struct WithdrawTokenFee<'info> {
             || token_program.key() == TOKEN_2022_PROGRAM_ID @ ErrorCode::UnsupportedTokenProgram,
     )]
     pub token_program: Interface<'info, TokenInterface>,
-    pub associated_token_program: Program<'info, AssociatedToken>,
 }

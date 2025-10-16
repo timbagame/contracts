@@ -142,4 +142,7 @@ pub enum ErrorCode {
     /// Provided token program is not supported
     #[msg("Token program unsupported")]
     UnsupportedTokenProgram = 1402,
+    /// Provided token account does not match the expected associated token address
+    #[msg("Token account mismatch")]
+    InvalidTokenAccount = 1403,
 }

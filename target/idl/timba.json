@@ -2490,6 +2490,13 @@
             "type": "u8"
           },
           {
+            "name": "vault_token_account",
+            "docs": [
+              "Game vault's associated token account"
+            ],
+            "type": "pubkey"
+          },
+          {
             "name": "min_amount",
             "docs": [
               "Minimum amount required to participate in games"

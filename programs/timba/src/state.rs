@@ -41,7 +41,7 @@ pub const GAME_VAULT_SEED: &[u8] = b"game_vault";
 pub const MIN_COMPETITIVE_PLAYERS: u32 = 2;
 /// Minimum players required for giveaway games
 pub const MIN_GIVEAWAY_PLAYERS: u32 = 1;
-pub const GAME_TOKEN_SIZE: usize = 8 + 32 + 1 + 8 + 8 + 1;
+pub const GAME_TOKEN_SIZE: usize = 8 + 32 + 1 + 8 + 8 + 1 + 32;
 /// Base size of Game excluding variable-length Vec data
 pub const GAME_BASE_SIZE: usize = 8
     + 32 // creator
@@ -159,6 +159,8 @@ pub struct GameToken {
     pub token_mint: Pubkey,
     /// Vault bump seed for PDA token transfers
     pub vault_bump: u8,
+    /// Game vault's associated token account
+    pub vault_token_account: Pubkey,
     /// Minimum amount required to participate in games
     pub min_amount: u64,
     /// Accumulated fee amount for this token
@@ -179,11 +181,13 @@ impl GameToken {
         &mut self,
         token_mint: Pubkey,
         vault_bump: u8,
+        vault_token_account: Pubkey,
         min_amount: u64,
         enabled: bool,
     ) {
         self.token_mint = token_mint;
         self.vault_bump = vault_bump;
+        self.vault_token_account = vault_token_account;
         self.min_amount = min_amount;
         self.fee_amount = 0;
         self.enabled = enabled;
