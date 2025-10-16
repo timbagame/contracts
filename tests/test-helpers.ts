@@ -47,6 +47,27 @@ export interface TestGame {
   secretKey: number[];
 }
 
+async function resolveTokenProgram(
+  connection: anchor.web3.Connection,
+  tokenMint: PublicKey
+): Promise<PublicKey> {
+  const accountInfo = await connection.getAccountInfo(tokenMint);
+
+  if (!accountInfo) {
+    throw new Error(`Token mint ${tokenMint.toBase58()} not found`);
+  }
+
+  if (accountInfo.owner.equals(TOKEN_PROGRAM_ID)) {
+    return TOKEN_PROGRAM_ID;
+  }
+
+  if (accountInfo.owner.equals(TOKEN_2022_PROGRAM_ID)) {
+    return TOKEN_2022_PROGRAM_ID;
+  }
+
+  throw new Error(`Unsupported token program for mint ${tokenMint.toBase58()}`);
+}
+
 export interface TestOracle {
   oraclePDA: PublicKey;
   // Backwards compatibility alias: some tests expect `oracle`
@@ -490,31 +511,12 @@ export class PlayerManager {
     this.mintManager = new MintManager(this.program, provider);
   }
 
-  private async resolveTokenProgram(tokenMint: PublicKey): Promise<PublicKey> {
-    const accountInfo = await this.provider.connection.getAccountInfo(
-      tokenMint
-    );
-
-    if (!accountInfo) {
-      throw new Error(`Token mint ${tokenMint.toBase58()} not found`);
-    }
-
-    if (accountInfo.owner.equals(TOKEN_PROGRAM_ID)) {
-      return TOKEN_PROGRAM_ID;
-    }
-
-    if (accountInfo.owner.equals(TOKEN_2022_PROGRAM_ID)) {
-      return TOKEN_2022_PROGRAM_ID;
-    }
-
-    throw new Error(
-      `Unsupported token program for mint ${tokenMint.toBase58()}`
-    );
-  }
-
   async createPlayer(mint: PublicKey): Promise<TestPlayer> {
     const player = anchor.web3.Keypair.generate();
-    const tokenProgram = await this.resolveTokenProgram(mint);
+    const tokenProgram = await resolveTokenProgram(
+      this.provider.connection,
+      mint
+    );
 
     // Airdrop SOL for rent
     const signature = await this.provider.connection.requestAirdrop(
@@ -545,7 +547,10 @@ export class PlayerManager {
     count: number,
     mint: PublicKey
   ): Promise<TestPlayer[]> {
-    const tokenProgram = await this.resolveTokenProgram(mint);
+    const tokenProgram = await resolveTokenProgram(
+      this.provider.connection,
+      mint
+    );
     const players = Array.from({ length: count }, () =>
       anchor.web3.Keypair.generate()
     );
@@ -623,25 +628,7 @@ export class GameManager {
   }
 
   private async resolveTokenProgram(tokenMint: PublicKey): Promise<PublicKey> {
-    const accountInfo = await this.program.provider.connection.getAccountInfo(
-      tokenMint
-    );
-
-    if (!accountInfo) {
-      throw new Error(`Token mint ${tokenMint.toBase58()} not found`);
-    }
-
-    if (accountInfo.owner.equals(TOKEN_PROGRAM_ID)) {
-      return TOKEN_PROGRAM_ID;
-    }
-
-    if (accountInfo.owner.equals(TOKEN_2022_PROGRAM_ID)) {
-      return TOKEN_2022_PROGRAM_ID;
-    }
-
-    throw new Error(
-      `Unsupported token program for mint ${tokenMint.toBase58()}`
-    );
+    return resolveTokenProgram(this.program.provider.connection, tokenMint);
   }
 
   generateGamePDA(): TestGame {
