@@ -599,6 +599,22 @@ export class PlayerManager {
 /**
  * Game management utilities
  */
+type CompleteGameAccounts = {
+  game: PublicKey;
+  tokenMint: PublicKey;
+  oracle: PublicKey;
+  oracleOperator: PublicKey;
+  winner: PublicKey;
+  creator: PublicKey;
+  gameToken: PublicKey;
+  gameVault: PublicKey;
+  winnerTokenAccount: PublicKey;
+  gameTokenAccount: PublicKey;
+  tokenProgram: PublicKey;
+  systemProgram: PublicKey;
+  associatedTokenProgram: PublicKey;
+};
+
 export class GameManager {
   private program: anchor.Program<Timba>;
 
@@ -661,13 +677,13 @@ export class GameManager {
       isPrivate: config.isPrivate,
     };
 
-      await this.program.methods
-        .initializeGame(cfg, gameData.randomHash)
-        .accounts({
-          creator: creator.publicKey,
-          tokenMint,
-          tokenProgram,
-        })
+    await this.program.methods
+      .initializeGame(cfg, gameData.randomHash)
+      .accounts({
+        creator: creator.publicKey,
+        tokenMint,
+        tokenProgram,
+      })
       .signers([creator])
       .rpc();
   }
@@ -804,13 +820,36 @@ export class GameManager {
     creator: PublicKey,
     oracleOperator: PublicKey,
     winnerIndex: number,
-    oracleOperatorKeypair?: anchor.web3.Keypair
+    oracleOperatorKeypair?: anchor.web3.Keypair,
+    overrides?: Partial<CompleteGameAccounts>
   ): Promise<void> {
     // Use provided oracle operator keypair or default to deterministic one
     const operatorKeypair =
       oracleOperatorKeypair ||
       anchor.web3.Keypair.fromSeed(new Uint8Array(32).fill(42));
 
+    const accounts = await this.buildCompleteGameAccounts(
+      gameData,
+      winner,
+      creator,
+      oracleOperator,
+      overrides
+    );
+
+    await this.program.methods
+      .completeGame(gameData.randomHash, gameData.secretKey, winnerIndex)
+      .accountsStrict(accounts)
+      .signers([operatorKeypair])
+      .rpc();
+  }
+
+  async buildCompleteGameAccounts(
+    gameData: TestGame,
+    winner: PublicKey,
+    creator: PublicKey,
+    oracleOperator: PublicKey,
+    overrides: Partial<CompleteGameAccounts> = {}
+  ): Promise<CompleteGameAccounts> {
     const gameAccount = await this.program.account.game.fetch(gameData.gamePDA);
     const tokenMint = new PublicKey(gameAccount.tokenMint);
     const tokenProgram = await this.resolveTokenProgram(tokenMint);
@@ -843,25 +882,23 @@ export class GameManager {
       ASSOCIATED_TOKEN_PROGRAM_ID
     );
 
-      await this.program.methods
-        .completeGame(gameData.randomHash, gameData.secretKey, winnerIndex)
-        .accountsStrict({
-          game: gameData.gamePDA,
-          tokenMint,
-          oracle: oraclePDA,
-          oracleOperator,
-          winner,
-          creator,
-          gameToken: gameTokenPDA,
-          gameVault: gameVaultPDA,
-          winnerTokenAccount,
-          gameTokenAccount,
-          tokenProgram,
-          systemProgram: anchor.web3.SystemProgram.programId,
-          associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
-        })
-      .signers([operatorKeypair])
-      .rpc();
+    const baseAccounts: CompleteGameAccounts = {
+      game: gameData.gamePDA,
+      tokenMint,
+      oracle: oraclePDA,
+      oracleOperator,
+      winner,
+      creator,
+      gameToken: gameTokenPDA,
+      gameVault: gameVaultPDA,
+      winnerTokenAccount,
+      gameTokenAccount,
+      tokenProgram,
+      systemProgram: anchor.web3.SystemProgram.programId,
+      associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+    };
+
+    return { ...baseAccounts, ...overrides };
   }
 
   // Convenience wrapper for tests expecting createGame()

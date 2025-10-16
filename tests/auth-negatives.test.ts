@@ -172,14 +172,17 @@ describe("Authorization Negatives", () => {
     const winner = getWinnerFromPlayers([creator, player1], idx);
 
     const nonOp = anchor.web3.Keypair.generate();
+    const accounts = await testUtils.game.buildCompleteGameAccounts(
+      gameData,
+      winner.player.publicKey,
+      creator.player.publicKey,
+      nonOp.publicKey
+    );
+
     try {
       await env.program.methods
         .completeGame(gameData.randomHash, gameData.secretKey, idx)
-        .accountsPartial({
-          oracleOperator: nonOp.publicKey,
-          winner: winner.player.publicKey,
-          creator: creator.player.publicKey,
-        })
+        .accountsStrict(accounts)
         .signers([nonOp])
         .rpc();
       expect.fail("Non-operator should not complete game");
