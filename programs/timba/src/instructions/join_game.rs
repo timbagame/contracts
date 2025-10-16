@@ -40,7 +40,9 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
             ctx.accounts.game_token_account.to_account_info(),
             ctx.accounts.player.to_account_info(),
             ctx.accounts.token_program.to_account_info(),
+            ctx.accounts.token_mint.to_account_info(),
             game.ticket_amount,
+            ctx.accounts.token_mint.decimals,
             false,
         )?;
     }

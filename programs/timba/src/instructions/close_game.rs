@@ -28,7 +28,9 @@ pub fn handler(ctx: Context<super::CloseGame>) -> Result<()> {
             ctx.accounts.creator_token_account.to_account_info(),
             ctx.accounts.game_vault.to_account_info(),
             ctx.accounts.token_program.to_account_info(),
+            ctx.accounts.token_mint.to_account_info(),
             game.total_amount,
+            ctx.accounts.token_mint.decimals,
             true,
         )?;
     }

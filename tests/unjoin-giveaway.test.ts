@@ -1,5 +1,8 @@
 import { expect } from "chai";
 import * as anchor from "@coral-xyz/anchor";
+import {
+  TOKEN_PROGRAM_ID
+} from "@solana/spl-token";
 import { TestUtils, TestEnvironment, GameConfig } from "./test-helpers";
 
 // Giveaway: unjoin affects tickets_count but not total_amount; closing refunds full prize
@@ -64,10 +67,12 @@ describe("Giveaway Unjoin and Close", () => {
     // Creator closes game and gets full refund
     await env.program.methods
       .closeGame()
-      .accounts({
-        game: gameData.gamePDA,
-        creator: creator.player.publicKey,
-      })
+        .accounts({
+          game: gameData.gamePDA,
+          creator: creator.player.publicKey,
+          tokenMint: mint.mint,
+          tokenProgram: TOKEN_PROGRAM_ID,
+        })
       .signers([creator.player])
       .rpc();
 

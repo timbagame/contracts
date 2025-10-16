@@ -136,4 +136,10 @@ pub enum ErrorCode {
     /// Token is not enabled for game operations
     #[msg("Token not enabled")]
     TokenNotEnabled = 1400,
+    /// Token mint account does not match expected value
+    #[msg("Token mint mismatch")]
+    InvalidTokenMint = 1401,
+    /// Provided token program is not supported
+    #[msg("Unsupported token program")]
+    UnsupportedTokenProgram = 1402,
 }

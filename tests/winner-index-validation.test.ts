@@ -164,14 +164,17 @@ describe("Winner Index Validation", () => {
 
     const impostorCreator = anchor.web3.Keypair.generate();
 
+    const accounts = await testUtils.game.buildCompleteGameAccounts(
+      gameData,
+      winner.player.publicKey,
+      impostorCreator.publicKey,
+      oracle.operator
+    );
+
     try {
       await env.program.methods
         .completeGame(gameData.randomHash, gameData.secretKey, winnerIndex)
-        .accountsPartial({
-          oracleOperator: oracle.operator,
-          winner: winner.player.publicKey,
-          creator: impostorCreator.publicKey,
-        })
+        .accountsStrict(accounts)
         .signers([oracle.operatorKeypair])
         .rpc();
       expect.fail(
@@ -200,15 +203,20 @@ describe("Winner Index Validation", () => {
       throw new Error("Expected a non-winning participant");
     }
 
+    const accounts = await testUtils.game.buildCompleteGameAccounts(
+      gameData,
+      winner.player.publicKey,
+      creator.player.publicKey,
+      oracle.operator,
+      {
+        winnerTokenAccount: wrongAccountOwner.playerTokenAccount.address,
+      }
+    );
+
     try {
       await env.program.methods
         .completeGame(gameData.randomHash, gameData.secretKey, winnerIndex)
-        .accountsPartial({
-          oracleOperator: oracle.operator,
-          winner: winner.player.publicKey,
-          creator: creator.player.publicKey,
-          winnerTokenAccount: wrongAccountOwner.playerTokenAccount.address,
-        })
+        .accountsStrict(accounts)
         .signers([oracle.operatorKeypair])
         .rpc();
       expect.fail("Should reject mismatched winner token account");

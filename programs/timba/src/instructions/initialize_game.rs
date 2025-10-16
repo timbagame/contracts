@@ -45,7 +45,9 @@ pub fn handler(ctx: Context<super::InitializeGame>, config: GameConfig) -> Resul
             ctx.accounts.game_token_account.to_account_info(),
             ctx.accounts.creator.to_account_info(),
             ctx.accounts.token_program.to_account_info(),
+            ctx.accounts.token_mint.to_account_info(),
             config.amount,
+            ctx.accounts.token_mint.decimals,
             false,
         )?;
     }
