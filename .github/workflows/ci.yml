@@ -14,7 +14,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+      - uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        run: bun install --frozen-lockfile
       - name: Typecheck tests
-        run: npx tsc -p tsconfig.json --noEmit
+        run: bunx tsc -p tsconfig.json --noEmit
