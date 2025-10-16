@@ -425,7 +425,6 @@ export class MintManager {
         oracleOperator: oracleAccount.operator,
         systemProgram: anchor.web3.SystemProgram.programId,
         tokenProgram,
-        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
       })
       .signers([oracleOperatorKeypair])
       .rpc();
@@ -617,7 +616,6 @@ type CompleteGameAccounts = {
   gameTokenAccount: PublicKey;
   tokenProgram: PublicKey;
   systemProgram: PublicKey;
-  associatedTokenProgram: PublicKey;
 };
 
 export class GameManager {
@@ -723,7 +721,6 @@ export class GameManager {
       oracle: oraclePDA,
       systemProgram: anchor.web3.SystemProgram.programId,
       tokenProgram,
-      associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
     };
 
     if (oracleOperator) {
@@ -795,7 +792,6 @@ export class GameManager {
         gameTokenAccount,
         systemProgram: anchor.web3.SystemProgram.programId,
         tokenProgram,
-        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
       })
       .signers([player])
       .rpc();
@@ -882,7 +878,6 @@ export class GameManager {
       gameTokenAccount,
       tokenProgram,
       systemProgram: anchor.web3.SystemProgram.programId,
-      associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
     };
 
     return { ...baseAccounts, ...overrides };
