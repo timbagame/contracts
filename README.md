@@ -53,7 +53,7 @@ If you prefer not to use devcontainers, you'll need to install the following pre
 - [Solana CLI Tools](https://docs.solana.com/cli/install-solana-cli-tools)
 - [Anchor](https://www.anchor-lang.com/)
 - [Node.js](https://nodejs.org/)
-- [Yarn](https://yarnpkg.com/)
+- [Bun](https://bun.sh/)
 
 #### Manual Installation Steps
 
@@ -66,7 +66,7 @@ curl --proto '=https' --tlsv1.2 -sSfL https://solana-install.solana.workers.dev 
 2. Install dependencies:
 
 ```bash
-yarn install
+bun install
 ```
 
 ## Building
@@ -116,7 +116,7 @@ programs/timba/src/
 Set up local development environment:
 
 ```bash
-yarn run setup-local
+bun run setup-local
 ```
 
 This creates a local test environment with:
@@ -140,6 +140,6 @@ anchor deploy
 Check and fix code formatting:
 
 ```bash
-yarn run lint        # Check formatting
-yarn run lint:fix    # Fix formatting issues
+bun run lint        # Check formatting
+bun run lint:fix    # Fix formatting issues
 ```
