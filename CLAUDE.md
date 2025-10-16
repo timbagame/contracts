@@ -12,7 +12,7 @@ This is a comprehensive Solana smart contract implementing multiple gambling gam
 
 - `anchor build` - Build the Solana program
 - `anchor test` - Run the test suite (uses ts-mocha with 1000000ms timeout)
-- `yarn run setup-local` - Set up local development environment with airdrops and token creation
+- `bun run setup-local` - Set up local development environment with airdrops and token creation
 
 **CRITICAL TESTING RULES**:
 🚨 **NEVER run `anchor test` with grep, pipes, tail, head, or any other commands!** 🚨
@@ -22,24 +22,24 @@ This is a comprehensive Solana smart contract implementing multiple gambling gam
 - Do NOT use: `anchor test | grep`, `anchor test | tail`, etc.
 - This wastes enormous amounts of time and must be avoided
 
-🚨 **NEVER use `yarn test` - it's not a valid command for Anchor!** 🚨
+🚨 **NEVER use `bun test` (or `bun run test`) - it's not a valid command for Anchor!** 🚨
 
 - Anchor doesn't support running individual test files
 - To run specific tests, edit `Anchor.toml` and modify the `[[test]]` section
 - Only use `anchor test` to run the configured test suite
-- Remember: `yarn test` will always fail with Anchor projects
+- Remember: `bun test` (or `bun run test`) will always fail with Anchor projects
 
-🚨 **NEVER run individual test files with ts-mocha, yarn run, or any other direct commands!** 🚨
+🚨 **NEVER run individual test files with ts-mocha, bun run, or any other direct commands!** 🚨
 
-- Commands like `yarn run ts-mocha tests/collision-detection.test.ts` are FORBIDDEN
+- Commands like `bun run ts-mocha tests/collision-detection.test.ts` are FORBIDDEN
 - There is NO quick way to test individual files in Anchor projects
 - The ONLY options are: `anchor test` (full run) OR modify `Anchor.toml`
 - Attempting individual test runs will fail and violate project constraints
 
 ### Code Quality
 
-- `yarn run lint` - Check code formatting with Prettier
-- `yarn run lint:fix` - Fix code formatting issues
+- `bun run lint` - Check code formatting with Prettier
+- `bun run lint:fix` - Fix code formatting issues
 
 ### Local Development
 
@@ -129,7 +129,7 @@ Key features:
 
 ### Development Environment
 
-The project includes devcontainer configuration for VS Code/Cursor and GitHub Codespaces with automatic dependency installation. Manual setup requires Rust, Solana CLI, Anchor, Node.js, and Yarn. Use `yarn run setup-local` to initialize local test environment with funded accounts and token configurations.
+The project includes devcontainer configuration for VS Code/Cursor and GitHub Codespaces with automatic dependency installation. Manual setup requires Rust, Solana CLI, Anchor, Node.js, and Bun. Use `bun run setup-local` to initialize local test environment with funded accounts and token configurations.
 
 ### Code Organization Principles
 

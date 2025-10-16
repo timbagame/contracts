@@ -10,12 +10,12 @@
 ## Build, Test, and Development Commands
 - Build: `anchor build` — compiles the on-chain program and regenerates IDL/types.
 - Test: `anchor test` — runs ts-mocha with config from `Anchor.toml` against `tests/**/*.test.ts`.
-- Local setup: `yarn run setup-local` — funds accounts and initializes oracle/token on localnet.
-- Sync IDL: `yarn run update-idl` — copies `target/idl` and `target/types` to sibling consumers.
+- Local setup: `bun run setup-local` — funds accounts and initializes oracle/token on localnet.
+- Sync IDL: `bun run update-idl` — copies `target/idl` and `target/types` to sibling consumers.
 
 ## Coding Style & Naming Conventions
 - Rust: follow rustfmt defaults (snake_case modules/functions, CamelCase types). Prefer small, focused instruction handlers under `instructions/`. Run `cargo fmt` locally before committing.
-- TypeScript: Prettier with 2-space indent. Run `yarn run lint` (check) and `yarn run lint:fix` (write). Use camelCase for variables/functions and PascalCase for types.
+- TypeScript: Prettier with 2-space indent. Run `bun run lint` (check) and `bun run lint:fix` (write). Use camelCase for variables/functions and PascalCase for types.
 - Files: tests as `*.test.ts`; instruction files as verb_noun.rs (e.g., `initialize_oracle.rs`).
 
 ## Testing Guidelines
