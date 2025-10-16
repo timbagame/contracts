@@ -61,7 +61,7 @@ describe("Winner Authorization", () => {
       );
       expect.fail("Completion should fail for unauthorized winner");
     } catch (e: any) {
-      expect(e.toString()).to.include("Winner pubkey hash mismatch");
+      expect(e.toString()).to.include("Winner hash mismatch");
     }
   });
 });

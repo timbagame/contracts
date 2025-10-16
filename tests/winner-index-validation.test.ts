@@ -120,7 +120,7 @@ describe("Winner Index Validation", () => {
       expectAnchorError(
         e,
         "WinnerPubkeyHashMismatch",
-        "Winner pubkey hash mismatch"
+        "Winner hash mismatch"
       );
     }
   });
@@ -148,7 +148,7 @@ describe("Winner Index Validation", () => {
       );
       expect.fail("Should throw InvalidSecretKey");
     } catch (e: any) {
-      expectAnchorError(e, "InvalidSecretKey", "Invalid secret key");
+      expectAnchorError(e, "InvalidSecretKey", "Secret key mismatch");
     }
   });
 
@@ -277,11 +277,7 @@ describe("Winner Index Validation", () => {
       );
       expect.fail("Should throw GameNotReadyForOracle");
     } catch (e: any) {
-      expectAnchorError(
-        e,
-        "GameNotReadyForOracle",
-        "Game not ready for oracle"
-      );
+      expectAnchorError(e, "GameNotReadyForOracle", "Oracle not ready");
     }
   });
 
