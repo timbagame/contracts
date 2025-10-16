@@ -113,17 +113,7 @@ programs/timba/src/
 
 ## Local Development
 
-Set up local development environment:
-
-```bash
-bun run setup-local
-```
-
-This creates a local test environment with:
-
-- Funded test accounts
-- Token mints and configurations
-- Oracle initialization
+Start a local validator and configure wallets manually using the standard Anchor workflow (e.g., `solana-test-validator`, `solana airdrop`, and program-specific initialization transactions as needed).
 
 ## Deployment
 
