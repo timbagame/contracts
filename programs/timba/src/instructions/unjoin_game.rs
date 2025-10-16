@@ -11,6 +11,7 @@ pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
     let current_time = clock.unix_timestamp as u64;
     let current_slot = clock.slot;
     let player_key = ctx.accounts.player.key();
+    let token_decimals = ctx.accounts.token_mint.decimals;
 
     // ===============================
     // VALIDATION
@@ -24,36 +25,26 @@ pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
 
     // No need to check completion explicitly: completed games are closed (see CompleteGame: close = creator)
 
-    require!(game.tickets_count > 0, ErrorCode::InvalidTicketsCount);
-
     // ===============================
     // STATE UPDATES
     // ===============================
 
     // Find salted participant hash and remove if present (single ticket per player)
     let player_hash = participant_hash(&game.key(), &player_key);
-    let removed_index = game
-        .active_participants()
-        .iter()
-        .position(|h| *h == player_hash)
-        .ok_or(ErrorCode::UnauthorizedPlayer)?;
-
-    game.remove_player_at(removed_index)?;
+    let removed_index = game.remove_participant(player_hash)?;
     game.last_slot = current_slot;
 
     // Refund player directly
-    if game.ticket_amount > 0 {
-        ctx.accounts.game_token.handle_token_transfer(
-            ctx.accounts.game_token_account.to_account_info(),
-            ctx.accounts.player_token_account.to_account_info(),
-            ctx.accounts.game_vault.to_account_info(),
-            ctx.accounts.token_program.to_account_info(),
-            ctx.accounts.token_mint.to_account_info(),
-            game.ticket_amount,
-            ctx.accounts.token_mint.decimals,
-            true,
-        )?;
-    }
+    ctx.accounts.game_token.handle_token_transfer(
+        ctx.accounts.game_token_account.to_account_info(),
+        ctx.accounts.player_token_account.to_account_info(),
+        ctx.accounts.game_vault.to_account_info(),
+        ctx.accounts.token_program.to_account_info(),
+        ctx.accounts.token_mint.to_account_info(),
+        game.ticket_amount,
+        token_decimals,
+        true,
+    )?;
 
     // ===============================
     // EVENT EMISSION

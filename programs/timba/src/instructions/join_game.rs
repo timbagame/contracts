@@ -9,6 +9,7 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
     let current_time = clock.unix_timestamp as u64;
     let current_slot = clock.slot;
     let player_key = ctx.accounts.player.key();
+    let token_decimals = ctx.accounts.token_mint.decimals;
 
     // ===============================
     // VALIDATION
@@ -18,9 +19,10 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
 
     // Duplicate prevention: scan exact salted hash list (per-game uniqueness)
     let player_hash = participant_hash(&game.key(), &player_key);
-    if game.active_participants().iter().any(|h| *h == player_hash) {
-        return err!(ErrorCode::AlreadyJoined);
-    }
+    require!(
+        !game.contains_participant(player_hash),
+        ErrorCode::AlreadyJoined
+    );
 
     // ===============================
     // STATE UPDATES
@@ -34,18 +36,16 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
     // TOKEN TRANSFER
     // ===============================
 
-    if game.ticket_amount > 0 {
-        ctx.accounts.game_token.handle_token_transfer(
-            ctx.accounts.player_token_account.to_account_info(),
-            ctx.accounts.game_token_account.to_account_info(),
-            ctx.accounts.player.to_account_info(),
-            ctx.accounts.token_program.to_account_info(),
-            ctx.accounts.token_mint.to_account_info(),
-            game.ticket_amount,
-            ctx.accounts.token_mint.decimals,
-            false,
-        )?;
-    }
+    ctx.accounts.game_token.handle_token_transfer(
+        ctx.accounts.player_token_account.to_account_info(),
+        ctx.accounts.game_token_account.to_account_info(),
+        ctx.accounts.player.to_account_info(),
+        ctx.accounts.token_program.to_account_info(),
+        ctx.accounts.token_mint.to_account_info(),
+        game.ticket_amount,
+        token_decimals,
+        false,
+    )?;
 
     // ===============================
     // EVENT EMISSION

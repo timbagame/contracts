@@ -212,6 +212,10 @@ impl GameToken {
         decimals: u8,
         use_pda_signer: bool,
     ) -> Result<()> {
+        if amount == 0 {
+            return Ok(());
+        }
+
         if use_pda_signer {
             let signer_seeds = &[
                 GAME_VAULT_SEED,
@@ -478,6 +482,33 @@ impl Game {
             .len()
             .min(self.tickets_count as usize);
         &self.participant_hashes[..len]
+    }
+
+    /// Returns true if the participant hash already exists in the active set.
+    pub fn contains_participant(&self, participant_hash: u64) -> bool {
+        self.active_participants()
+            .iter()
+            .any(|existing| *existing == participant_hash)
+    }
+
+    /// Returns the index of the participant hash if it is present.
+    pub fn participant_index(&self, participant_hash: u64) -> Option<usize> {
+        self.active_participants()
+            .iter()
+            .position(|existing| *existing == participant_hash)
+    }
+
+    /// Removes the participant identified by the provided hash and returns the index removed.
+    pub fn remove_participant(&mut self, participant_hash: u64) -> Result<usize> {
+        if self.tickets_count == 0 {
+            return err!(ErrorCode::InvalidTicketsCount);
+        }
+
+        let index = self
+            .participant_index(participant_hash)
+            .ok_or(ErrorCode::UnauthorizedPlayer)?;
+        self.remove_player_at(index)?;
+        Ok(index)
     }
 
     // =============================================================================
