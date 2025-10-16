@@ -2000,42 +2000,42 @@ export type Timba = {
     {
       "code": 7000,
       "name": "unauthorizedOperator",
-      "msg": "Unauthorized operator"
+      "msg": "Unauthorized access"
     },
     {
       "code": 7001,
       "name": "unauthorizedPlayer",
-      "msg": "Unauthorized player"
+      "msg": "Unauthorized access"
     },
     {
       "code": 7002,
       "name": "invalidCreator",
-      "msg": "Invalid creator"
+      "msg": "Creator mismatch"
     },
     {
       "code": 7100,
       "name": "gameFull",
-      "msg": "Game already full"
+      "msg": "Game full"
     },
     {
       "code": 7101,
       "name": "gameWaitingForOracle",
-      "msg": "Game waiting for oracle"
+      "msg": "Awaiting oracle"
     },
     {
       "code": 7102,
       "name": "gameNotReadyForOracle",
-      "msg": "Game not ready for oracle"
+      "msg": "Oracle not ready"
     },
     {
       "code": 7103,
       "name": "gameHasActivePlayers",
-      "msg": "Cannot cancel game with active players"
+      "msg": "Active players remain"
     },
     {
       "code": 7104,
       "name": "gameNotCompleted",
-      "msg": "Game not completed"
+      "msg": "Game incomplete"
     },
     {
       "code": 7105,
@@ -2050,22 +2050,22 @@ export type Timba = {
     {
       "code": 7107,
       "name": "gameAlreadyCompleted",
-      "msg": "Game already completed"
+      "msg": "Game already settled"
     },
     {
       "code": 7108,
       "name": "oracleBufferNotExpired",
-      "msg": "Oracle buffer time not expired"
+      "msg": "Oracle buffer active"
     },
     {
       "code": 7109,
       "name": "participantStorageExceeded",
-      "msg": "Participant storage exhausted"
+      "msg": "Participant store full"
     },
     {
       "code": 7200,
       "name": "alreadyJoined",
-      "msg": "Player already joined"
+      "msg": "Already joined"
     },
     {
       "code": 7201,
@@ -2085,52 +2085,52 @@ export type Timba = {
     {
       "code": 7204,
       "name": "winnerPubkeyHashMismatch",
-      "msg": "Winner pubkey hash mismatch"
+      "msg": "Winner hash mismatch"
     },
     {
       "code": 7205,
       "name": "privateGameAccessDenied",
-      "msg": "Private game access denied"
+      "msg": "Private access denied"
     },
     {
       "code": 7206,
       "name": "randomnessGenerationFailed",
-      "msg": "Randomness generation failed"
+      "msg": "Randomness failed"
     },
     {
       "code": 7300,
       "name": "invalidTicketsCount",
-      "msg": "Invalid tickets count"
+      "msg": "Invalid config value"
     },
     {
       "code": 7301,
       "name": "invalidTimeout",
-      "msg": "Invalid timeout"
+      "msg": "Invalid config value"
     },
     {
       "code": 7302,
       "name": "invalidAmount",
-      "msg": "Invalid amount"
+      "msg": "Invalid config value"
     },
     {
       "code": 7303,
       "name": "invalidSecretKey",
-      "msg": "Invalid secret key"
+      "msg": "Secret key mismatch"
     },
     {
       "code": 7304,
       "name": "invalidConfiguration",
-      "msg": "Invalid configuration"
+      "msg": "Bad configuration"
     },
     {
       "code": 7305,
       "name": "oracleBufferTooSmall",
-      "msg": "Oracle buffer time too small"
+      "msg": "Oracle buffer short"
     },
     {
       "code": 7400,
       "name": "tokenNotEnabled",
-      "msg": "Token not enabled"
+      "msg": "Token disabled"
     },
     {
       "code": 7401,
@@ -2140,7 +2140,7 @@ export type Timba = {
     {
       "code": 7402,
       "name": "unsupportedTokenProgram",
-      "msg": "Unsupported token program"
+      "msg": "Token program unsupported"
     }
   ],
   "types": [

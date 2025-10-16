@@ -55,7 +55,7 @@ describe("Close Blocked While Waiting", () => {
       expect.fail("Should have failed with GameWaitingForOracle");
     } catch (e: any) {
       // Constraint order triggers GameHasActivePlayers before waiting check
-      expect(e.toString()).to.include("Cannot cancel game with active players");
+      expect(e.toString()).to.include("Active players remain");
     }
   });
 });

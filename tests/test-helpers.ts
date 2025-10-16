@@ -65,7 +65,7 @@ async function resolveTokenProgram(
     return TOKEN_2022_PROGRAM_ID;
   }
 
-  throw new Error(`Unsupported token program for mint ${tokenMint.toBase58()}`);
+  throw new Error(`Token program unsupported for mint ${tokenMint.toBase58()}`);
 }
 
 export interface TestOracle {

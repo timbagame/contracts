@@ -123,9 +123,7 @@ describe("Game Lifecycle Instruction Events", () => {
         return;
       } catch (error) {
         const message = getErrorMessage(error);
-        const isBufferError = message.includes(
-          "Oracle buffer time not expired"
-        );
+        const isBufferError = message.includes("Oracle buffer active");
 
         if (!isBufferError) {
           console.error(
