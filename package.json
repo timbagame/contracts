@@ -3,6 +3,7 @@
   "version": "0.1.1",
   "private": true,
   "scripts": {
+    "build:prod": "RUSTUP_TOOLCHAIN=nightly anchor build -- --features no-idl,no-log-ix-name -- --locked -Znext-lockfile-bump",
     "typecheck": "tsc --noEmit",
     "lint:fix": "prettier */*.js \"*/**/*{.js,.ts}\" -w",
     "lint": "prettier */*.js \"*/**/*{.js,.ts}\" --check",
