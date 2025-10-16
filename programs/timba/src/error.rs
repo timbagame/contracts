@@ -18,38 +18,38 @@ pub enum ErrorCode {
     // OPERATOR AND PERMISSION ERRORS (1000-1099)
     // =========================================================================
     /// The provided operator does not match the required operator
-    #[msg("Unauthorized operator")]
+    #[msg("Unauthorized access")]
     UnauthorizedOperator = 1000,
 
     /// Player is not authorized to perform this action
-    #[msg("Unauthorized player")]
+    #[msg("Unauthorized access")]
     UnauthorizedPlayer = 1001,
 
     /// The provided creator account does not match the game creator
-    #[msg("Invalid creator")]
+    #[msg("Creator mismatch")]
     InvalidCreator = 1002,
 
     // =========================================================================
     // GAME STATE ERRORS (1100-1199)
     // =========================================================================
     /// Game has reached maximum player capacity
-    #[msg("Game already full")]
+    #[msg("Game full")]
     GameFull = 1100,
 
     /// Game is in oracle waiting period and cannot be modified
-    #[msg("Game waiting for oracle")]
+    #[msg("Awaiting oracle")]
     GameWaitingForOracle = 1101,
 
     /// Game does not meet requirements for oracle completion
-    #[msg("Game not ready for oracle")]
+    #[msg("Oracle not ready")]
     GameNotReadyForOracle = 1102,
 
     /// Cannot close game while players are still active
-    #[msg("Cannot cancel game with active players")]
+    #[msg("Active players remain")]
     GameHasActivePlayers = 1103,
 
     /// Game has not been completed yet
-    #[msg("Game not completed")]
+    #[msg("Game incomplete")]
     GameNotCompleted = 1104,
 
     /// Invalid game type for this operation
@@ -61,22 +61,22 @@ pub enum ErrorCode {
     GameExpired = 1106,
 
     /// Game has already been completed
-    #[msg("Game already completed")]
+    #[msg("Game already settled")]
     GameAlreadyCompleted = 1107,
 
     /// Oracle buffer time has not expired yet for late unjoin / close operations
-    #[msg("Oracle buffer time not expired")]
+    #[msg("Oracle buffer active")]
     OracleBufferNotExpired = 1108,
 
     /// Program cannot allocate space for additional participants
-    #[msg("Participant storage exhausted")]
+    #[msg("Participant store full")]
     ParticipantStorageExceeded = 1109,
 
     // =========================================================================
     // PLAYER ACTION ERRORS (1200-1299)
     // =========================================================================
     /// Player has already joined this game
-    #[msg("Player already joined")]
+    #[msg("Already joined")]
     AlreadyJoined = 1200,
 
     /// Player does not have sufficient balance for this operation
@@ -92,54 +92,54 @@ pub enum ErrorCode {
     WinnerIndexOutOfRange = 1203,
 
     /// Winner pubkey hash at provided index does not match participant_hashes entry
-    #[msg("Winner pubkey hash mismatch")]
+    #[msg("Winner hash mismatch")]
     WinnerPubkeyHashMismatch = 1204,
 
     /// Player not authorized for private game
-    #[msg("Private game access denied")]
+    #[msg("Private access denied")]
     PrivateGameAccessDenied = 1205,
 
     /// Failed to generate unbiased random number for winner selection
-    #[msg("Randomness generation failed")]
+    #[msg("Randomness failed")]
     RandomnessGenerationFailed = 1206,
 
     // =========================================================================
     // CONFIGURATION ERRORS (1300-1399)
     // =========================================================================
     /// Ticket count configuration is invalid
-    #[msg("Invalid tickets count")]
+    #[msg("Invalid config value")]
     InvalidTicketsCount = 1300,
 
     /// Timeout configuration is invalid
-    #[msg("Invalid timeout")]
+    #[msg("Invalid config value")]
     InvalidTimeout = 1301,
 
     /// Amount configuration is invalid
-    #[msg("Invalid amount")]
+    #[msg("Invalid config value")]
     InvalidAmount = 1302,
 
     /// The provided secret key does not match the random hash
-    #[msg("Invalid secret key")]
+    #[msg("Secret key mismatch")]
     InvalidSecretKey = 1303,
 
     /// Oracle configuration parameters are invalid
-    #[msg("Invalid configuration")]
+    #[msg("Bad configuration")]
     InvalidConfiguration = 1304,
 
     /// Oracle buffer time is below the minimum supported value
-    #[msg("Oracle buffer time too small")]
+    #[msg("Oracle buffer short")]
     OracleBufferTooSmall = 1305,
 
     // =========================================================================
     // TOKEN ERRORS (1400-1499)
     // =========================================================================
     /// Token is not enabled for game operations
-    #[msg("Token not enabled")]
+    #[msg("Token disabled")]
     TokenNotEnabled = 1400,
     /// Token mint account does not match expected value
     #[msg("Token mint mismatch")]
     InvalidTokenMint = 1401,
     /// Provided token program is not supported
-    #[msg("Unsupported token program")]
+    #[msg("Token program unsupported")]
     UnsupportedTokenProgram = 1402,
 }

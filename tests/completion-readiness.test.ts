@@ -49,7 +49,7 @@ describe("Completion Readiness Guard", () => {
       );
       expect.fail("Should have failed readiness guard");
     } catch (e: any) {
-      expect(e.toString()).to.include("Game not ready for oracle");
+      expect(e.toString()).to.include("Oracle not ready");
     }
   });
 });
