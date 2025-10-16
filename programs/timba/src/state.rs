@@ -1,7 +1,7 @@
 use crate::error::ErrorCode;
 use anchor_lang::prelude::*;
-use anchor_lang::solana_program::hash::hashv;
 use anchor_spl::token_interface::{transfer_checked, TransferChecked};
+use solana_sha256_hasher::hashv;
 
 // =============================================================================
 // ACCOUNT SIZE CONSTANTS
