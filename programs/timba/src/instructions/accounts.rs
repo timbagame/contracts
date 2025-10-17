@@ -214,7 +214,7 @@ pub struct JoinGame<'info> {
     #[account(
         mut,
         constraint = assert_ata(
-            player_token_account.key(),
+            &player_token_account,
             player.key(),
             token_mint.key(),
             token_program.key()
@@ -224,7 +224,7 @@ pub struct JoinGame<'info> {
     #[account(
         mut,
         constraint = assert_ata(
-            game_token_account.key(),
+            &game_token_account,
             game_vault.key(),
             token_mint.key(),
             token_program.key()
@@ -284,7 +284,7 @@ pub struct CompleteGame<'info> {
     #[account(
         mut,
         constraint = assert_ata(
-            winner_token_account.key(),
+            &winner_token_account,
             winner.key(),
             token_mint.key(),
             token_program.key()
@@ -294,7 +294,7 @@ pub struct CompleteGame<'info> {
     #[account(
         mut,
         constraint = assert_ata(
-            game_token_account.key(),
+            &game_token_account,
             game_vault.key(),
             token_mint.key(),
             token_program.key()
@@ -333,7 +333,7 @@ pub struct UnjoinGame<'info> {
     #[account(
         mut,
         constraint = assert_ata(
-            player_token_account.key(),
+            &player_token_account,
             player.key(),
             token_mint.key(),
             token_program.key()
@@ -343,7 +343,7 @@ pub struct UnjoinGame<'info> {
     #[account(
         mut,
         constraint = assert_ata(
-            game_token_account.key(),
+            &game_token_account,
             game_vault.key(),
             token_mint.key(),
             token_program.key()
@@ -387,7 +387,7 @@ pub struct CloseGame<'info> {
     #[account(
         mut,
         constraint = assert_ata(
-            creator_token_account.key(),
+            &creator_token_account,
             creator.key(),
             token_mint.key(),
             token_program.key()
@@ -397,7 +397,7 @@ pub struct CloseGame<'info> {
     #[account(
         mut,
         constraint = assert_ata(
-            game_token_account.key(),
+            &game_token_account,
             game_vault.key(),
             token_mint.key(),
             token_program.key()
@@ -439,7 +439,7 @@ pub struct WithdrawTokenFee<'info> {
     #[account(
         mut,
         constraint = assert_ata(
-            oracle_operator_token_account.key(),
+            &oracle_operator_token_account,
             oracle_operator.key(),
             token_mint.key(),
             token_program.key()
@@ -449,7 +449,7 @@ pub struct WithdrawTokenFee<'info> {
     #[account(
         mut,
         constraint = assert_ata(
-            game_token_account.key(),
+            &game_token_account,
             game_vault.key(),
             token_mint.key(),
             token_program.key()

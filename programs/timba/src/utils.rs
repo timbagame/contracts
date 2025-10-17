@@ -2,6 +2,7 @@ use crate::state::Oracle;
 use crate::OracleConfig;
 use anchor_lang::prelude::*;
 use anchor_spl::associated_token::get_associated_token_address_with_program_id;
+use anchor_spl::token_interface::TokenAccount;
 use solana_sha256_hasher::hashv;
 
 // =============================================================================
@@ -20,9 +21,19 @@ pub fn get_current_time() -> Result<u64> {
 }
 
 /// Assert that an account matches the expected associated token address derived
-/// for the provided authority, mint, and token program
-pub fn assert_ata(account: Pubkey, authority: Pubkey, mint: Pubkey, token_program: Pubkey) -> bool {
-    account == get_associated_token_address_with_program_id(&authority, &mint, &token_program)
+/// for the provided authority, mint, and token program. Also validates that the
+/// token account's owner and mint align with the expected values to guard
+/// against mismatched accounts that share the same token program.
+pub fn assert_ata(
+    account: &InterfaceAccount<'_, TokenAccount>,
+    authority: Pubkey,
+    mint: Pubkey,
+    token_program: Pubkey,
+) -> bool {
+    account.owner == authority
+        && account.mint == mint
+        && account.key()
+            == get_associated_token_address_with_program_id(&authority, &mint, &token_program)
 }
 
 // =============================================================================

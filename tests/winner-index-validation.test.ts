@@ -226,11 +226,15 @@ describe("Winner Index Validation", () => {
       const tokenOwnerError = errorCode === "ConstraintTokenOwner";
       const associatedAccountError =
         errorCode === "ConstraintAssociatedTokenAccount";
+      const customAtaError =
+        errorCode === "InvalidAssociatedTokenAccount";
       expect(
         tokenOwnerError ||
           associatedAccountError ||
+          customAtaError ||
           msg.includes("ConstraintTokenOwner") ||
           msg.includes("ConstraintAssociatedTokenAccount") ||
+          msg.includes("Invalid associated token account") ||
           msg.includes("winnerTokenAccount")
       ).to.be.true;
     }
