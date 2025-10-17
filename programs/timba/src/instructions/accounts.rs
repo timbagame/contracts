@@ -302,6 +302,7 @@ pub struct CompleteGame<'info> {
 pub struct UnjoinGame<'info> {
     #[account(mut)]
     pub game: Account<'info, Game>,
+    /// CHECK: Player key is validated against the game participants list
     #[account(mut)]
     pub player: AccountInfo<'info>,
     #[account(
