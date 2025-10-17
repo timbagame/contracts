@@ -748,7 +748,8 @@ export class GameManager {
 
   async unjoinGame(
     gamePDA: PublicKey,
-    player: anchor.web3.Keypair
+    player: anchor.web3.Keypair,
+    authority?: anchor.web3.Keypair
   ): Promise<void> {
     const gameAccount = await this.program.account.game.fetch(gamePDA);
     const tokenMint = new PublicKey(gameAccount.tokenMint);
@@ -782,11 +783,14 @@ export class GameManager {
       ASSOCIATED_TOKEN_PROGRAM_ID
     );
 
+    const authoritySigner = authority ?? player;
+
     await this.program.methods
       .unjoinGame()
       .accountsStrict({
         game: gamePDA,
         player: player.publicKey,
+        authority: authoritySigner.publicKey,
         tokenMint,
         oracle: oraclePDA,
         gameToken: gameTokenPDA,
@@ -797,7 +801,7 @@ export class GameManager {
         tokenProgram,
         associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
       })
-      .signers([player])
+      .signers([authoritySigner])
       .rpc();
   }
 
