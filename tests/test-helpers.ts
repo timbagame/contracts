@@ -740,11 +740,49 @@ export class GameManager {
       isPrivate: config.isPrivate,
     };
 
+    const [oraclePDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("oracle")],
+      this.program.programId
+    );
+    const [gameTokenPDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("game_token"), tokenMint.toBuffer()],
+      this.program.programId
+    );
+    const [gameVaultPDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("game_vault"), tokenMint.toBuffer()],
+      this.program.programId
+    );
+    const creatorTokenAccountInfo = await getOrCreateAssociatedTokenAccount(
+      this.program.provider.connection,
+      creator,
+      tokenMint,
+      creator.publicKey,
+      false,
+      undefined,
+      undefined,
+      tokenProgram
+    );
+    const creatorTokenAccount = creatorTokenAccountInfo.address;
+    const gameTokenAccount = getAssociatedTokenAddressSync(
+      tokenMint,
+      gameVaultPDA,
+      true,
+      tokenProgram,
+      ASSOCIATED_TOKEN_PROGRAM_ID
+    );
+
     await this.program.methods
       .initializeGame(cfg, gameData.randomHash)
-      .accounts({
+      .accountsStrict({
+        game: gameData.gamePDA,
         creator: creator.publicKey,
+        oracle: oraclePDA,
         tokenMint,
+        gameToken: gameTokenPDA,
+        gameVault: gameVaultPDA,
+        creatorTokenAccount,
+        gameTokenAccount,
+        systemProgram: anchor.web3.SystemProgram.programId,
         tokenProgram,
       })
       .signers([creator])
