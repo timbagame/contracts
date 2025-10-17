@@ -122,7 +122,7 @@ Start a local validator and configure wallets manually using the standard Anchor
 Deploy to your desired Solana cluster:
 
 ```bash
-anchor deploy
+anchor deploy --no-idl
 ```
 
 ## Code Quality

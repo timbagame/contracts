@@ -42,7 +42,7 @@ export ORACLE_OPERATOR_KEYPAIR_PATH=/path/to/oracle-operator.json
 
 ```bash
 anchor build
-anchor deploy
+anchor deploy --no-idl
 ```
 
 If you rely on Anchor migrations (e.g., `migrations/deploy.ts`) run:
@@ -83,34 +83,40 @@ This registers the mainnet TIMBA and WSOL tokens with the on-chain oracle config
 
 When you need to retire the program, follow this sequence to halt new activity, settle outstanding games, and recover funds before closing the program.
 
-1. **Disable new games**  
+1. **Disable new games**
    From the `bot/` directory, turn off each supported token so players cannot create additional games:
+
    ```bash
    cd ../bot
    ORACLE_OPERATOR_KEYPAIR_PATH=/path/to/oracle-operator.json bun run scripts/disable-game-tokens.ts
    ```
 
-2. **Force completion/cancellation of existing games**  
+2. **Force completion/cancellation of existing games**
    Run a manual scan with the oracle service (repeat until completed/not ready both return zero):
+
    ```bash
    cd ../oracle
    bun run scripts/manual-shutdown.ts
    ```
+
    This drives the `scanAndCompleteActiveGames()` loop, refunding players or distributing winnings so vaults empty out. Allow time for timeout-based cancellations to mature if any games remain “not ready”.
 
-3. **Withdraw protocol fees**  
+3. **Withdraw protocol fees**
    Use the bot helper to drain accumulated fees into the oracle operator wallet:
+
    ```bash
    cd ../bot
    ORACLE_OPERATOR_KEYPAIR_PATH=/path/to/oracle-operator.json bun run scripts/withdraw-token-fees.ts
    ```
+
    The script creates missing ATAs for the operator (if needed) and withdraws fees for each configured token mint.
 
-4. **Verify no state remains**  
-   - `solana account <game_token_pda>` should report zero lamports for every configured mint.  
+4. **Verify no state remains**
+
+   - `solana account <game_token_pda>` should report zero lamports for every configured mint.
    - `anchor account oracle <oracle_pda>` should show zero outstanding balances and the intended operator key.
 
-5. **Close the program (upgradeable loader)**  
+5. **Close the program (upgradeable loader)**
    ```
    solana program close BpdzqWdNJfgeVCsFHppS4WgeRZSRxt5iSj6xH4QdeR7t --recipient <SAFE_RECIPIENT_PUBKEY>
    ```

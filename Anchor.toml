@@ -7,13 +7,13 @@ resolution = true
 skip-lint = false
 
 [programs.devnet]
-timba = "9MmCPEForkbt1L4Dk5BCd9ttErJiehwtdD4mM5J8YbFd"
+timba = "7GWv6X48imfr7SonQRCgka8XSh42J4UP74DyhP1RWNP6"
 
 [programs.localnet]
-timba = "9MmCPEForkbt1L4Dk5BCd9ttErJiehwtdD4mM5J8YbFd"
+timba = "7GWv6X48imfr7SonQRCgka8XSh42J4UP74DyhP1RWNP6"
 
 [programs.mainnet]
-timba = "9MmCPEForkbt1L4Dk5BCd9ttErJiehwtdD4mM5J8YbFd"
+timba = "7GWv6X48imfr7SonQRCgka8XSh42J4UP74DyhP1RWNP6"
 
 [registry]
 url = "https://api.apr.dev"
