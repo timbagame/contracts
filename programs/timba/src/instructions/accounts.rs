@@ -303,7 +303,12 @@ pub struct UnjoinGame<'info> {
     #[account(mut)]
     pub game: Account<'info, Game>,
     #[account(mut)]
-    pub player: Signer<'info>,
+    pub player: AccountInfo<'info>,
+    #[account(
+        constraint = game.is_creator(&authority.key())
+            || authority.key() == player.key() @ ErrorCode::UnauthorizedPlayer,
+    )]
+    pub authority: Signer<'info>,
     #[account(
         constraint = game.token_mint == token_mint.key() @ ErrorCode::InvalidTokenMint,
     )]
