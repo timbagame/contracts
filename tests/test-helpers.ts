@@ -478,7 +478,6 @@ export class MintManager {
         oracleOperator: oracleAccount.operator,
         systemProgram: anchor.web3.SystemProgram.programId,
         tokenProgram,
-        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
       })
       .signers([oracleOperatorKeypair])
       .rpc();

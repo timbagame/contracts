@@ -524,10 +524,6 @@
         },
         {
           "name": "token_program"
-        },
-        {
-          "name": "associated_token_program",
-          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
         }
       ],
       "args": [
@@ -680,6 +676,7 @@
         },
         {
           "name": "game_token_account",
+          "writable": true,
           "pda": {
             "seeds": [
               {
@@ -763,10 +760,6 @@
         },
         {
           "name": "token_program"
-        },
-        {
-          "name": "associated_token_program",
-          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
         }
       ],
       "args": [

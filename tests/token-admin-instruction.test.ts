@@ -1,7 +1,6 @@
 import { expect } from "chai";
 import * as anchor from "@coral-xyz/anchor";
 import {
-  ASSOCIATED_TOKEN_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
   createMint,
   getOrCreateAssociatedTokenAccount,
@@ -154,7 +153,6 @@ describe("Token Administration Instructions", () => {
           oracleOperator: fakeOperator.publicKey,
           systemProgram: SystemProgram.programId,
           tokenProgram: TOKEN_PROGRAM_ID,
-          associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
         })
         .signers([fakeOperator])
         .rpc();

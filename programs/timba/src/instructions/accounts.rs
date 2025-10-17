@@ -1,5 +1,4 @@
 use anchor_lang::prelude::*;
-use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token::ID as TOKEN_PROGRAM_ID;
 use anchor_spl::token_2022::ID as TOKEN_2022_PROGRAM_ID;
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
@@ -76,9 +75,13 @@ pub struct InitializeToken<'info> {
     pub game_vault: AccountInfo<'info>,
 
     #[account(
-        associated_token::mint = token_mint,
-        associated_token::authority = game_vault,
-        associated_token::token_program = token_program,
+        mut,
+        constraint = assert_ata(
+            &game_token_account,
+            game_vault.key(),
+            token_mint.key(),
+            token_program.key()
+        ) @ ErrorCode::InvalidAssociatedTokenAccount,
     )]
     pub game_token_account: InterfaceAccount<'info, TokenAccount>,
 
@@ -98,7 +101,6 @@ pub struct InitializeToken<'info> {
             || token_program.key() == TOKEN_2022_PROGRAM_ID @ ErrorCode::UnsupportedTokenProgram,
     )]
     pub token_program: Interface<'info, TokenInterface>,
-    pub associated_token_program: Program<'info, AssociatedToken>,
 }
 
 #[derive(Accounts)]
@@ -164,16 +166,22 @@ pub struct InitializeGame<'info> {
     pub game_vault: AccountInfo<'info>,
     #[account(
         mut,
-        associated_token::mint = token_mint,
-        associated_token::authority = creator,
-        associated_token::token_program = token_program,
+        constraint = assert_ata(
+            &creator_token_account,
+            creator.key(),
+            token_mint.key(),
+            token_program.key()
+        ) @ ErrorCode::InvalidAssociatedTokenAccount,
     )]
     pub creator_token_account: InterfaceAccount<'info, TokenAccount>,
     #[account(
         mut,
-        associated_token::mint = token_mint,
-        associated_token::authority = game_vault,
-        associated_token::token_program = token_program,
+        constraint = assert_ata(
+            &game_token_account,
+            game_vault.key(),
+            token_mint.key(),
+            token_program.key()
+        ) @ ErrorCode::InvalidAssociatedTokenAccount,
     )]
     pub game_token_account: InterfaceAccount<'info, TokenAccount>,
     pub system_program: Program<'info, System>,
@@ -182,7 +190,6 @@ pub struct InitializeGame<'info> {
             || token_program.key() == TOKEN_2022_PROGRAM_ID @ ErrorCode::UnsupportedTokenProgram,
     )]
     pub token_program: Interface<'info, TokenInterface>,
-    pub associated_token_program: Program<'info, AssociatedToken>,
 }
 
 #[derive(Accounts)]
