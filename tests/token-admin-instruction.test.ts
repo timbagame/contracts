@@ -154,7 +154,6 @@ describe("Token Administration Instructions", () => {
           oracleOperator: fakeOperator.publicKey,
           systemProgram: SystemProgram.programId,
           tokenProgram: TOKEN_PROGRAM_ID,
-          associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
         })
         .signers([fakeOperator])
         .rpc();
