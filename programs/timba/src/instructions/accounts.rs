@@ -354,7 +354,7 @@ pub struct CloseGame<'info> {
         mut,
         close = creator,
         constraint = game.is_creator(&creator.key()) @ ErrorCode::InvalidCreator,
-        constraint = game.tickets_count == 0 @ ErrorCode::GameHasActivePlayers,
+        constraint = game.ticket_amount == 0 || game.tickets_count == 0 @ ErrorCode::GameHasActivePlayers,
     )]
     pub game: Account<'info, Game>,
     #[account(mut)]
