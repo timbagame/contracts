@@ -1,6 +1,7 @@
 use crate::state::Oracle;
 use crate::OracleConfig;
 use anchor_lang::prelude::*;
+use anchor_spl::associated_token::get_associated_token_address_with_program_id;
 use solana_sha256_hasher::hashv;
 
 // =============================================================================
@@ -16,6 +17,12 @@ pub fn get_clock() -> Result<Clock> {
 /// Get current timestamp from Solana clock - eliminates repeated `Clock::get()` calls
 pub fn get_current_time() -> Result<u64> {
     Ok(get_clock()?.unix_timestamp as u64)
+}
+
+/// Assert that an account matches the expected associated token address derived
+/// for the provided authority, mint, and token program
+pub fn assert_ata(account: Pubkey, authority: Pubkey, mint: Pubkey, token_program: Pubkey) -> bool {
+    account == get_associated_token_address_with_program_id(&authority, &mint, &token_program)
 }
 
 // =============================================================================
