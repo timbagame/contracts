@@ -1,9 +1,6 @@
 import { expect } from "chai";
 import * as anchor from "@coral-xyz/anchor";
 import {
-  TOKEN_PROGRAM_ID
-} from "@solana/spl-token";
-import {
   TestUtils,
   TestEnvironment,
   GameConfig,
@@ -45,14 +42,13 @@ describe("Authorization Negatives", () => {
     );
 
     try {
+      const accounts = await testUtils.game.buildCloseGameAccounts(
+        gameData,
+        other.player.publicKey
+      );
       await env.program.methods
         .closeGame()
-        .accounts({
-          creator: other.player.publicKey,
-          game: gameData.gamePDA,
-          tokenMint: mint.mint,
-          tokenProgram: TOKEN_PROGRAM_ID,
-        })
+        .accountsStrict(accounts)
         .signers([other.player])
         .rpc();
       expect.fail("Non-creator should not be able to close game");
@@ -127,13 +123,13 @@ describe("Authorization Negatives", () => {
     }
 
     try {
+      const accounts = await testUtils.oracle.buildWithdrawTokenFeeAccounts(
+        mint.mint,
+        fakeOp.publicKey
+      );
       await env.program.methods
         .withdrawTokenFee()
-        .accounts({
-          tokenMint: mint.mint,
-          oracleOperator: fakeOp.publicKey,
-          tokenProgram: TOKEN_PROGRAM_ID,
-        })
+        .accountsStrict(accounts)
         .signers([fakeOp])
         .rpc();
       expect.fail("Non-operator should not be able to withdraw fees");

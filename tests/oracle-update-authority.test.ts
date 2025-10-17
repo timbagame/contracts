@@ -1,6 +1,5 @@
 import { expect } from "chai";
 import * as anchor from "@coral-xyz/anchor";
-import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import {
   TestUtils,
   TestEnvironment,
@@ -149,14 +148,15 @@ describe("Oracle Update Authority", () => {
       }
 
       // Old operator attempt (minimal accounts subset as per IDL)
+      const oldOperatorAccounts =
+        await testUtils.oracle.buildWithdrawTokenFeeAccounts(
+          mint.mint,
+          oracle.operator
+        );
       try {
         await env.program.methods
           .withdrawTokenFee()
-        .accounts({
-          tokenMint: mint.mint,
-          oracleOperator: oracle.operator,
-          tokenProgram: TOKEN_PROGRAM_ID,
-        })
+          .accountsStrict(oldOperatorAccounts)
           .signers([oracle.operatorKeypair])
           .rpc();
         expect.fail("Old operator should not withdraw after transfer");
@@ -169,13 +169,14 @@ describe("Oracle Update Authority", () => {
       }
 
       // New operator can withdraw remaining fees (possibly zero if no fees after one completion)
+      const newOperatorAccounts =
+        await testUtils.oracle.buildWithdrawTokenFeeAccounts(
+          mint.mint,
+          newOperator.publicKey
+        );
       await env.program.methods
         .withdrawTokenFee()
-        .accounts({
-          tokenMint: mint.mint,
-          oracleOperator: newOperator.publicKey,
-          tokenProgram: TOKEN_PROGRAM_ID,
-        })
+        .accountsStrict(newOperatorAccounts)
         .signers([newOperator])
         .rpc();
     } finally {

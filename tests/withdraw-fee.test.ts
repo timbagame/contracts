@@ -1,9 +1,6 @@
 import { expect } from "chai";
 import * as anchor from "@coral-xyz/anchor";
-import {
-  getOrCreateAssociatedTokenAccount,
-  TOKEN_PROGRAM_ID,
-} from "@solana/spl-token";
+import { getOrCreateAssociatedTokenAccount } from "@solana/spl-token";
 import type { Timba } from "../target/types/timba";
 import {
   TestUtils,
@@ -146,13 +143,14 @@ describe("Withdraw Fee", () => {
       operatorAta
     );
 
+    const withdrawAccounts = await testUtils.oracle.buildWithdrawTokenFeeAccounts(
+      mint.mint,
+      oracle.operator
+    );
+
     await env.program.methods
       .withdrawTokenFee()
-      .accounts({
-        oracleOperator: oracle.operator,
-        tokenMint: mint.mint,
-        tokenProgram: TOKEN_PROGRAM_ID,
-      })
+      .accountsStrict(withdrawAccounts)
       .signers([oracle.operatorKeypair])
       .rpc();
 
@@ -185,13 +183,13 @@ describe("Withdraw Fee", () => {
     const subscription = await subscribeEvent(env.program, "tokenFeeWithdrawn");
 
     try {
+      const accounts = await testUtils.oracle.buildWithdrawTokenFeeAccounts(
+        mint.mint,
+        oracle.operator
+      );
       await env.program.methods
         .withdrawTokenFee()
-        .accounts({
-          oracleOperator: oracle.operator,
-          tokenMint: mint.mint,
-          tokenProgram: TOKEN_PROGRAM_ID,
-        })
+        .accountsStrict(accounts)
         .signers([oracle.operatorKeypair])
         .rpc();
 
@@ -282,13 +280,13 @@ describe("Withdraw Fee", () => {
     const subscription = await subscribeEvent(env.program, "tokenFeeWithdrawn");
 
     try {
+      const accounts = await testUtils.oracle.buildWithdrawTokenFeeAccounts(
+        mint.mint,
+        oracle.operator
+      );
       await env.program.methods
         .withdrawTokenFee()
-        .accounts({
-          oracleOperator: oracle.operator,
-          tokenMint: mint.mint,
-          tokenProgram: TOKEN_PROGRAM_ID,
-        })
+        .accountsStrict(accounts)
         .signers([oracle.operatorKeypair])
         .rpc();
 

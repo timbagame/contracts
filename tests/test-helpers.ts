@@ -326,6 +326,59 @@ export class OracleManager {
       },
     };
   }
+
+  async buildWithdrawTokenFeeAccounts(
+    tokenMint: PublicKey,
+    oracleOperator: PublicKey,
+    overrides: Partial<WithdrawTokenFeeAccounts> = {}
+  ): Promise<WithdrawTokenFeeAccounts> {
+    const tokenProgram = await resolveTokenProgram(
+      this.provider.connection,
+      tokenMint
+    );
+
+    const [oraclePDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("oracle")],
+      this.program.programId
+    );
+    const [gameTokenPDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("game_token"), tokenMint.toBuffer()],
+      this.program.programId
+    );
+    const [gameVaultPDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("game_vault"), tokenMint.toBuffer()],
+      this.program.programId
+    );
+
+    const oracleOperatorTokenAccount = getAssociatedTokenAddressSync(
+      tokenMint,
+      oracleOperator,
+      false,
+      tokenProgram,
+      ASSOCIATED_TOKEN_PROGRAM_ID
+    );
+    const gameTokenAccount = getAssociatedTokenAddressSync(
+      tokenMint,
+      gameVaultPDA,
+      true,
+      tokenProgram,
+      ASSOCIATED_TOKEN_PROGRAM_ID
+    );
+
+    const baseAccounts: WithdrawTokenFeeAccounts = {
+      gameToken: gameTokenPDA,
+      tokenMint,
+      gameVault: gameVaultPDA,
+      oracle: oraclePDA,
+      oracleOperator,
+      oracleOperatorTokenAccount,
+      gameTokenAccount,
+      systemProgram: anchor.web3.SystemProgram.programId,
+      tokenProgram,
+    };
+
+    return { ...baseAccounts, ...overrides };
+  }
 }
 
 /**
@@ -619,6 +672,31 @@ type CompleteGameAccounts = {
   systemProgram: PublicKey;
 };
 
+type CloseGameAccounts = {
+  game: PublicKey;
+  creator: PublicKey;
+  tokenMint: PublicKey;
+  oracle: PublicKey;
+  gameToken: PublicKey;
+  gameVault: PublicKey;
+  creatorTokenAccount: PublicKey;
+  gameTokenAccount: PublicKey;
+  systemProgram: PublicKey;
+  tokenProgram: PublicKey;
+};
+
+type WithdrawTokenFeeAccounts = {
+  gameToken: PublicKey;
+  tokenMint: PublicKey;
+  gameVault: PublicKey;
+  oracle: PublicKey;
+  oracleOperator: PublicKey;
+  oracleOperatorTokenAccount: PublicKey;
+  gameTokenAccount: PublicKey;
+  systemProgram: PublicKey;
+  tokenProgram: PublicKey;
+};
+
 export class GameManager {
   private program: anchor.Program<Timba>;
 
@@ -795,6 +873,79 @@ export class GameManager {
         tokenProgram,
       })
       .signers([player])
+      .rpc();
+  }
+
+  async buildCloseGameAccounts(
+    gameData: TestGame,
+    creator: PublicKey,
+    overrides: Partial<CloseGameAccounts> = {}
+  ): Promise<CloseGameAccounts> {
+    const gameAccount = await this.program.account.game.fetch(
+      gameData.gamePDA
+    );
+    const tokenMint = new PublicKey(gameAccount.tokenMint);
+    const tokenProgram = await this.resolveTokenProgram(tokenMint);
+
+    const [oraclePDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("oracle")],
+      this.program.programId
+    );
+    const [gameTokenPDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("game_token"), tokenMint.toBuffer()],
+      this.program.programId
+    );
+    const [gameVaultPDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("game_vault"), tokenMint.toBuffer()],
+      this.program.programId
+    );
+
+    const creatorTokenAccount = getAssociatedTokenAddressSync(
+      tokenMint,
+      creator,
+      false,
+      tokenProgram,
+      ASSOCIATED_TOKEN_PROGRAM_ID
+    );
+    const gameTokenAccount = getAssociatedTokenAddressSync(
+      tokenMint,
+      gameVaultPDA,
+      true,
+      tokenProgram,
+      ASSOCIATED_TOKEN_PROGRAM_ID
+    );
+
+    const baseAccounts: CloseGameAccounts = {
+      game: gameData.gamePDA,
+      creator,
+      tokenMint,
+      oracle: oraclePDA,
+      gameToken: gameTokenPDA,
+      gameVault: gameVaultPDA,
+      creatorTokenAccount,
+      gameTokenAccount,
+      systemProgram: anchor.web3.SystemProgram.programId,
+      tokenProgram,
+    };
+
+    return { ...baseAccounts, ...overrides };
+  }
+
+  async closeGame(
+    gameData: TestGame,
+    creator: anchor.web3.Keypair,
+    overrides?: Partial<CloseGameAccounts>
+  ): Promise<void> {
+    const accounts = await this.buildCloseGameAccounts(
+      gameData,
+      creator.publicKey,
+      overrides
+    );
+
+    await this.program.methods
+      .closeGame()
+      .accountsStrict(accounts)
+      .signers([creator])
       .rpc();
   }
 

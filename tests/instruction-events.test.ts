@@ -1,10 +1,7 @@
 import { expect } from "chai";
 import * as anchor from "@coral-xyz/anchor";
 import { createHash } from "crypto";
-import {
-  getOrCreateAssociatedTokenAccount,
-  TOKEN_PROGRAM_ID,
-} from "@solana/spl-token";
+import { getOrCreateAssociatedTokenAccount } from "@solana/spl-token";
 import type { Timba } from "../target/types/timba";
 import {
   TestEnvironment,
@@ -390,14 +387,13 @@ describe("Game Lifecycle Instruction Events", () => {
 
     const subscription = await subscribeEvent("gameClosed");
     try {
+      const accounts = await testUtils.game.buildCloseGameAccounts(
+        gameData,
+        creator.player.publicKey
+      );
       await env.program.methods
         .closeGame()
-        .accounts({
-          creator: creator.player.publicKey,
-          game: gameData.gamePDA,
-          tokenMint: mint.mint,
-          tokenProgram: TOKEN_PROGRAM_ID,
-        })
+        .accountsStrict(accounts)
         .signers([creator.player])
         .rpc();
 
@@ -475,13 +471,13 @@ describe("Game Lifecycle Instruction Events", () => {
 
     const subscription = await subscribeEvent("tokenFeeWithdrawn");
     try {
+      const withdrawAccounts = await testUtils.oracle.buildWithdrawTokenFeeAccounts(
+        mint.mint,
+        oracle.operator
+      );
       await env.program.methods
         .withdrawTokenFee()
-        .accounts({
-          tokenMint: mint.mint,
-          oracleOperator: oracle.operator,
-          tokenProgram: TOKEN_PROGRAM_ID,
-        })
+        .accountsStrict(withdrawAccounts)
         .signers([oracle.operatorKeypair])
         .rpc();
 

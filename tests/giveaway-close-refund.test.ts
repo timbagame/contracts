@@ -1,8 +1,5 @@
 import { expect } from "chai";
 import * as anchor from "@coral-xyz/anchor";
-import {
-  TOKEN_PROGRAM_ID
-} from "@solana/spl-token";
 import { TestUtils, TestEnvironment, GameConfig } from "./test-helpers";
 
 // Verifies that closing an unused giveaway refunds the prize to creator
@@ -59,14 +56,14 @@ describe("Giveaway Close Refund", () => {
     await new Promise((r) => setTimeout(r, 4000));
 
     // Close game (no joins happened)
+    const closeAccounts = await testUtils.game.buildCloseGameAccounts(
+      gameData,
+      creator.player.publicKey
+    );
+
     await env.program.methods
       .closeGame()
-      .accounts({
-        creator: creator.player.publicKey,
-        game: gameData.gamePDA,
-        tokenMint: mint.mint,
-        tokenProgram: TOKEN_PROGRAM_ID,
-      })
+      .accountsStrict(closeAccounts)
       .signers([creator.player])
       .rpc();
 

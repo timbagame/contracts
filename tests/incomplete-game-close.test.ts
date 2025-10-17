@@ -1,8 +1,5 @@
 import { expect } from "chai";
 import * as anchor from "@coral-xyz/anchor";
-import {
-  TOKEN_PROGRAM_ID
-} from "@solana/spl-token";
 import { TestUtils, TestEnvironment, GameConfig } from "./test-helpers";
 
 // Tests closing a game after timeout when min tickets not reached and players unjoin
@@ -58,14 +55,14 @@ describe("Incomplete Game Close", () => {
     expect(gameAfterUnjoins.totalAmount.toNumber()).to.equal(0);
 
     // Close game (refund not applicable since not giveaway)
+    const closeAccounts = await testUtils.game.buildCloseGameAccounts(
+      gameData,
+      creator.player.publicKey
+    );
+
     await env.program.methods
       .closeGame()
-      .accounts({
-        creator: creator.player.publicKey,
-        game: gameData.gamePDA,
-        tokenMint: mint.mint,
-        tokenProgram: TOKEN_PROGRAM_ID,
-      })
+      .accountsStrict(closeAccounts)
       .signers([creator.player])
       .rpc();
   }).timeout(60000);

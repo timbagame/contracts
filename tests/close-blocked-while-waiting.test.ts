@@ -1,8 +1,5 @@
 import { expect } from "chai";
 import * as anchor from "@coral-xyz/anchor";
-import {
-  TOKEN_PROGRAM_ID
-} from "@solana/spl-token";
 import { TestUtils, TestEnvironment, GameConfig } from "./test-helpers";
 
 // Ensures close_game blocked while waiting_for_oracle (game either not expired or ready path)
@@ -42,14 +39,13 @@ describe("Close Blocked While Waiting", () => {
 
     try {
       // expect custom error, ensure creator signs and all accounts passed
+      const accounts = await testUtils.game.buildCloseGameAccounts(
+        gameData,
+        creator.player.publicKey
+      );
       await env.program.methods
         .closeGame()
-        .accounts({
-          creator: creator.player.publicKey,
-          game: gameData.gamePDA,
-          tokenMint: mint.mint,
-          tokenProgram: TOKEN_PROGRAM_ID,
-        })
+        .accountsStrict(accounts)
         .signers([creator.player])
         .rpc();
       expect.fail("Should have failed with GameWaitingForOracle");
