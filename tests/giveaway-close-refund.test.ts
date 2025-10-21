@@ -5,6 +5,7 @@ import {
   TestEnvironment,
   deriveGameAccounts,
   toGameTokenContext,
+  awaitBufferExpiry,
   giveawayGameConfig,
 } from "./test-helpers";
 
@@ -129,9 +130,7 @@ describe("Giveaway Close Refund", () => {
     );
     expect(gameBeforeClose.ticketsCount).to.equal(1);
 
-    const waitSeconds =
-      timeoutSeconds + (oracle.config.oracleBufferTime as number) + 1;
-    await new Promise((resolve) => setTimeout(resolve, waitSeconds * 1000));
+    await awaitBufferExpiry(gameBeforeClose, oracle.config, 1);
 
     const secondOraclePubkey = oracle.oracle ?? oracle.oraclePDA;
     if (!secondOraclePubkey) {

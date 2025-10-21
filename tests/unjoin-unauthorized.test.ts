@@ -3,7 +3,7 @@ import {
   TestUtils,
   TestEnvironment,
   errorToString,
-  toNumber,
+  awaitBufferExpiry,
   coinflipGameConfig,
 } from "./test-helpers";
 
@@ -33,10 +33,8 @@ describe("Unjoin Unauthorized Scenarios", () => {
     await testUtils.game.initializeGame(gameData, config, p1.player, mint.mint);
     await testUtils.game.joinGame(gameData.gamePDA, p1.player);
 
-    // Wait until timeout + buffer so unjoin is eligible if authorized
-    await new Promise((r) =>
-      setTimeout(r, (5 + (oracle.config.oracleBufferTime as number) + 2) * 1000)
-    );
+    const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+    await awaitBufferExpiry(gameAccount, oracle.config);
 
     // p2 never joined; should fail with UnauthorizedPlayer
     try {
@@ -68,9 +66,10 @@ describe("Unjoin Unauthorized Scenarios", () => {
       mint.mint
     );
 
-    const waitSeconds =
-      toNumber(config.timeout) + Number(oracle.config.oracleBufferTime) + 2;
-    await new Promise((resolve) => setTimeout(resolve, waitSeconds * 1000));
+    const secondGameAccount = await env.program.account.game.fetch(
+      gameData.gamePDA
+    );
+    await awaitBufferExpiry(secondGameAccount, oracle.config);
 
     try {
       await testUtils.game.unjoinGame(gameData.gamePDA, creator.player);
