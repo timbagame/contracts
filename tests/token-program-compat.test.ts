@@ -7,6 +7,7 @@ import {
   TestUtils,
   calculateWinnerIndex,
   getWinnerFromPlayers,
+  calculatePayoutBreakdown,
 } from "./test-helpers";
 
 // Ensures both legacy SPL Token and token-2022 mints exercise full game flows
@@ -75,9 +76,8 @@ describe("Token program compatibility", () => {
     );
 
     const totalPot = ticketAmount.mul(new anchor.BN(players.length));
-    const feePct = new anchor.BN(env.oracle!.config.feePercentage);
-    const expectedFee = totalPot.mul(feePct).div(new anchor.BN(100));
-    const expectedWinnerDelta = totalPot.sub(expectedFee);
+    const { fee: expectedFee, winnerAmount: expectedWinnerDelta } =
+      calculatePayoutBreakdown(totalPot, env.oracle!.config.feePercentage);
 
     await testUtils.game.completeGame(
       gameData,
