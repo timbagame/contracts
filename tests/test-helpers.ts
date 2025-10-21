@@ -68,6 +68,87 @@ async function resolveTokenProgram(
   throw new Error(`Token program unsupported for mint ${tokenMint.toBase58()}`);
 }
 
+export interface DerivedGameAccounts {
+  tokenMint: PublicKey;
+  tokenProgram: PublicKey;
+  oraclePDA: PublicKey;
+  gameTokenPDA: PublicKey;
+  gameVaultPDA: PublicKey;
+  gameTokenAccount: PublicKey;
+  playerTokenAccount?: PublicKey;
+  winnerTokenAccount?: PublicKey;
+}
+
+export async function deriveGameAccounts({
+  program,
+  gamePDA,
+  player,
+  winner,
+}: {
+  program: anchor.Program<Timba>;
+  gamePDA: PublicKey;
+  player?: PublicKey;
+  winner?: PublicKey;
+}): Promise<DerivedGameAccounts> {
+  const gameAccount = await program.account.game.fetch(gamePDA);
+  const tokenMint = new PublicKey(gameAccount.tokenMint);
+  const tokenProgram = await resolveTokenProgram(
+    program.provider.connection,
+    tokenMint
+  );
+
+  const [oraclePDA] = PublicKey.findProgramAddressSync(
+    [Buffer.from("oracle")],
+    program.programId
+  );
+
+  const mintManager = new MintManager(
+    program,
+    program.provider as anchor.AnchorProvider
+  );
+  const gameTokenPDA = mintManager.getGameTokenPDA(tokenMint);
+  const gameVaultPDA = mintManager.getGameVaultPDA(tokenMint);
+
+  const gameTokenAccount = getAssociatedTokenAddressSync(
+    tokenMint,
+    gameVaultPDA,
+    true,
+    tokenProgram,
+    ASSOCIATED_TOKEN_PROGRAM_ID
+  );
+
+  const derived: DerivedGameAccounts = {
+    tokenMint,
+    tokenProgram,
+    oraclePDA,
+    gameTokenPDA,
+    gameVaultPDA,
+    gameTokenAccount,
+  };
+
+  if (player) {
+    derived.playerTokenAccount = getAssociatedTokenAddressSync(
+      tokenMint,
+      player,
+      false,
+      tokenProgram,
+      ASSOCIATED_TOKEN_PROGRAM_ID
+    );
+  }
+
+  if (winner) {
+    derived.winnerTokenAccount = getAssociatedTokenAddressSync(
+      tokenMint,
+      winner,
+      false,
+      tokenProgram,
+      ASSOCIATED_TOKEN_PROGRAM_ID
+    );
+  }
+
+  return derived;
+}
+
 export interface TestOracle {
   oraclePDA: PublicKey;
   // Backwards compatibility alias: some tests expect `oracle`
@@ -680,49 +761,28 @@ export class GameManager {
     player: anchor.web3.Keypair,
     oracleOperator?: anchor.web3.Keypair
   ): Promise<void> {
-    const gameAccount = await this.program.account.game.fetch(gamePDA);
-    const tokenMint = new PublicKey(gameAccount.tokenMint);
-    const tokenProgram = await this.resolveTokenProgram(tokenMint);
+    const derived = await deriveGameAccounts({
+      program: this.program,
+      gamePDA,
+      player: player.publicKey,
+    });
 
-    const [oraclePDA] = PublicKey.findProgramAddressSync(
-      [Buffer.from("oracle")],
-      this.program.programId
-    );
-    const [gameTokenPDA] = PublicKey.findProgramAddressSync(
-      [Buffer.from("game_token"), tokenMint.toBuffer()],
-      this.program.programId
-    );
-    const [gameVaultPDA] = PublicKey.findProgramAddressSync(
-      [Buffer.from("game_vault"), tokenMint.toBuffer()],
-      this.program.programId
-    );
-
-    const playerTokenAccount = getAssociatedTokenAddressSync(
-      tokenMint,
-      player.publicKey,
-      false,
-      tokenProgram,
-      ASSOCIATED_TOKEN_PROGRAM_ID
-    );
-    const gameTokenAccount = getAssociatedTokenAddressSync(
-      tokenMint,
-      gameVaultPDA,
-      true,
-      tokenProgram,
-      ASSOCIATED_TOKEN_PROGRAM_ID
-    );
+    const playerTokenAccount = derived.playerTokenAccount;
+    if (!playerTokenAccount) {
+      throw new Error("Missing player token account for joinGame");
+    }
 
     const commonAccounts = {
       game: gamePDA,
       player: player.publicKey,
-      tokenMint,
-      gameToken: gameTokenPDA,
-      gameVault: gameVaultPDA,
+      tokenMint: derived.tokenMint,
+      gameToken: derived.gameTokenPDA,
+      gameVault: derived.gameVaultPDA,
       playerTokenAccount,
-      gameTokenAccount,
-      oracle: oraclePDA,
+      gameTokenAccount: derived.gameTokenAccount,
+      oracle: derived.oraclePDA,
       systemProgram: anchor.web3.SystemProgram.programId,
-      tokenProgram,
+      tokenProgram: derived.tokenProgram,
       associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
     };
 
@@ -751,37 +811,16 @@ export class GameManager {
     player: anchor.web3.Keypair,
     authority?: anchor.web3.Keypair
   ): Promise<void> {
-    const gameAccount = await this.program.account.game.fetch(gamePDA);
-    const tokenMint = new PublicKey(gameAccount.tokenMint);
-    const tokenProgram = await this.resolveTokenProgram(tokenMint);
+    const derived = await deriveGameAccounts({
+      program: this.program,
+      gamePDA,
+      player: player.publicKey,
+    });
 
-    const [oraclePDA] = PublicKey.findProgramAddressSync(
-      [Buffer.from("oracle")],
-      this.program.programId
-    );
-    const [gameTokenPDA] = PublicKey.findProgramAddressSync(
-      [Buffer.from("game_token"), tokenMint.toBuffer()],
-      this.program.programId
-    );
-    const [gameVaultPDA] = PublicKey.findProgramAddressSync(
-      [Buffer.from("game_vault"), tokenMint.toBuffer()],
-      this.program.programId
-    );
-
-    const playerTokenAccount = getAssociatedTokenAddressSync(
-      tokenMint,
-      player.publicKey,
-      false,
-      tokenProgram,
-      ASSOCIATED_TOKEN_PROGRAM_ID
-    );
-    const gameTokenAccount = getAssociatedTokenAddressSync(
-      tokenMint,
-      gameVaultPDA,
-      true,
-      tokenProgram,
-      ASSOCIATED_TOKEN_PROGRAM_ID
-    );
+    const playerTokenAccount = derived.playerTokenAccount;
+    if (!playerTokenAccount) {
+      throw new Error("Missing player token account for unjoinGame");
+    }
 
     const authoritySigner = authority ?? player;
 
@@ -791,14 +830,14 @@ export class GameManager {
         game: gamePDA,
         player: player.publicKey,
         authority: authoritySigner.publicKey,
-        tokenMint,
-        oracle: oraclePDA,
-        gameToken: gameTokenPDA,
-        gameVault: gameVaultPDA,
+        tokenMint: derived.tokenMint,
+        oracle: derived.oraclePDA,
+        gameToken: derived.gameTokenPDA,
+        gameVault: derived.gameVaultPDA,
         playerTokenAccount,
-        gameTokenAccount,
+        gameTokenAccount: derived.gameTokenAccount,
         systemProgram: anchor.web3.SystemProgram.programId,
-        tokenProgram,
+        tokenProgram: derived.tokenProgram,
         associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
       })
       .signers([authoritySigner])
@@ -841,50 +880,29 @@ export class GameManager {
     oracleOperator: PublicKey,
     overrides: Partial<CompleteGameAccounts> = {}
   ): Promise<CompleteGameAccounts> {
-    const gameAccount = await this.program.account.game.fetch(gameData.gamePDA);
-    const tokenMint = new PublicKey(gameAccount.tokenMint);
-    const tokenProgram = await this.resolveTokenProgram(tokenMint);
-
-    const [oraclePDA] = PublicKey.findProgramAddressSync(
-      [Buffer.from("oracle")],
-      this.program.programId
-    );
-    const [gameTokenPDA] = PublicKey.findProgramAddressSync(
-      [Buffer.from("game_token"), tokenMint.toBuffer()],
-      this.program.programId
-    );
-    const [gameVaultPDA] = PublicKey.findProgramAddressSync(
-      [Buffer.from("game_vault"), tokenMint.toBuffer()],
-      this.program.programId
-    );
-
-    const winnerTokenAccount = getAssociatedTokenAddressSync(
-      tokenMint,
+    const derived = await deriveGameAccounts({
+      program: this.program,
+      gamePDA: gameData.gamePDA,
       winner,
-      false,
-      tokenProgram,
-      ASSOCIATED_TOKEN_PROGRAM_ID
-    );
-    const gameTokenAccount = getAssociatedTokenAddressSync(
-      tokenMint,
-      gameVaultPDA,
-      true,
-      tokenProgram,
-      ASSOCIATED_TOKEN_PROGRAM_ID
-    );
+    });
+
+    const winnerTokenAccount = derived.winnerTokenAccount;
+    if (!winnerTokenAccount) {
+      throw new Error("Missing winner token account for completeGame");
+    }
 
     const baseAccounts: CompleteGameAccounts = {
       game: gameData.gamePDA,
-      tokenMint,
-      oracle: oraclePDA,
+      tokenMint: derived.tokenMint,
+      oracle: derived.oraclePDA,
       oracleOperator,
       winner,
       creator,
-      gameToken: gameTokenPDA,
-      gameVault: gameVaultPDA,
+      gameToken: derived.gameTokenPDA,
+      gameVault: derived.gameVaultPDA,
       winnerTokenAccount,
-      gameTokenAccount,
-      tokenProgram,
+      gameTokenAccount: derived.gameTokenAccount,
+      tokenProgram: derived.tokenProgram,
       systemProgram: anchor.web3.SystemProgram.programId,
       associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
     };
