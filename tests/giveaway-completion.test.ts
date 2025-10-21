@@ -63,8 +63,10 @@ describe("Giveaway Completion", () => {
 
     // Complete with zeroPlayer as winner (winnerIndex is 0 due to 1 ticket)
     const winnerIndex = 0;
-    const { fee: expectedFee, winnerAmount: expectedWinnerAmount } =
-      calculatePayoutBreakdown(prize, oracle.config.feePercentage);
+    const { winnerAmount: expectedWinnerAmount } = calculatePayoutBreakdown(
+      prize,
+      oracle.config.feePercentage
+    );
 
     const preWinner = await env.provider.connection.getTokenAccountBalance(
       zeroPlayer.playerTokenAccount.address
@@ -130,8 +132,10 @@ describe("Giveaway Completion", () => {
       Number(gameAccount.lastSlot)
     );
 
-    const { fee: expectedFee, winnerAmount: expectedWinnerAmount } =
-      calculatePayoutBreakdown(prize, oracle.config.feePercentage);
+    const { winnerAmount: expectedWinnerAmount } = calculatePayoutBreakdown(
+      prize,
+      oracle.config.feePercentage
+    );
 
     await testUtils.game.completeGame(
       gameData,
