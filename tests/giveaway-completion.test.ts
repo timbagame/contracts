@@ -1,6 +1,11 @@
 import { expect } from "chai";
 import * as anchor from "@coral-xyz/anchor";
-import { TestUtils, TestEnvironment, GameConfig } from "./test-helpers";
+import {
+  TestUtils,
+  TestEnvironment,
+  GameConfig,
+  calculatePayoutBreakdown,
+} from "./test-helpers";
 
 // Giveaway completion: 1 ticket max => ready immediately on first join; winner receives prize - fee
 
@@ -58,11 +63,8 @@ describe("Giveaway Completion", () => {
 
     // Complete with zeroPlayer as winner (winnerIndex is 0 due to 1 ticket)
     const winnerIndex = 0;
-    const feePct = oracle.config.feePercentage; // e.g., 1%
-    const expectedFee = prize
-      .mul(new anchor.BN(feePct))
-      .div(new anchor.BN(100));
-    const expectedWinnerAmount = prize.sub(expectedFee);
+    const { fee: expectedFee, winnerAmount: expectedWinnerAmount } =
+      calculatePayoutBreakdown(prize, oracle.config.feePercentage);
 
     const preWinner = await env.provider.connection.getTokenAccountBalance(
       zeroPlayer.playerTokenAccount.address
@@ -111,9 +113,7 @@ describe("Giveaway Completion", () => {
 
     await testUtils.game.joinGame(gameData.gamePDA, soloPlayer.player);
 
-    const gameAccount = await env.program.account.game.fetch(
-      gameData.gamePDA
-    );
+    const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
     expect(gameAccount.ticketsCount).to.equal(1);
 
     await new Promise((resolve) =>
@@ -130,11 +130,8 @@ describe("Giveaway Completion", () => {
       Number(gameAccount.lastSlot)
     );
 
-    const feePct = oracle.config.feePercentage;
-    const expectedFee = prize
-      .mul(new anchor.BN(feePct))
-      .div(new anchor.BN(100));
-    const expectedWinnerAmount = prize.sub(expectedFee);
+    const { fee: expectedFee, winnerAmount: expectedWinnerAmount } =
+      calculatePayoutBreakdown(prize, oracle.config.feePercentage);
 
     await testUtils.game.completeGame(
       gameData,
