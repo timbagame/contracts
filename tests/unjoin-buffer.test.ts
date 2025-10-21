@@ -4,6 +4,7 @@ import {
   TestUtils,
   TestEnvironment,
   errorToString,
+  awaitBufferExpiry,
   coinflipGameConfig,
 } from "./test-helpers";
 
@@ -48,18 +49,14 @@ describe("Unjoin After Buffer", () => {
     }
 
     // Fast-forward time by manipulating Clock via sleep to exceed timeout + buffer
-    const bufferSecs =
-      typeof oracle.config.oracleBufferTime === "number"
-        ? oracle.config.oracleBufferTime
-        : oracle.config.oracleBufferTime;
-    const shortTimeoutSecs =
-      typeof shortTimeout === "number" ? shortTimeout : shortTimeout.toNumber();
-    const waitMs = (shortTimeoutSecs + bufferSecs + 2) * 1000; // extra 2s margin
-    await new Promise((r) => setTimeout(r, waitMs));
+    const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+    await awaitBufferExpiry(gameAccount, oracle.config);
 
     // Now unjoin should succeed
     await testUtils.game.unjoinGame(gameData.gamePDA, creator.player);
-    const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
-    expect(gameAccount.ticketsCount).to.equal(0);
+    const updatedGameAccount = await env.program.account.game.fetch(
+      gameData.gamePDA
+    );
+    expect(updatedGameAccount.ticketsCount).to.equal(0);
   }).timeout(60000);
 });

@@ -12,6 +12,7 @@ import {
   deriveGameAccounts,
   toGameTokenContext,
   subscribeEvent,
+  awaitBufferExpiry,
   coinflipGameConfig,
 } from "./test-helpers";
 
@@ -21,53 +22,17 @@ describe("Game Lifecycle Instruction Events", () => {
   let env: TestEnvironment;
   let testUtils: TestUtils;
 
-  const getClockUnixTimestamp = async (): Promise<number> => {
-    const clockInfo = await env.provider.connection.getAccountInfo(
-      anchor.web3.SYSVAR_CLOCK_PUBKEY
-    );
-    if (!clockInfo) {
-      throw new Error("Clock sysvar account unavailable");
-    }
-
-    return Number(clockInfo.data.readBigInt64LE(32));
-  };
-
-  const waitForLateUnjoinReady = async (
-    readyAtTimestamp: number,
-    extraSlackSeconds: number
-  ): Promise<void> => {
-    const pollIntervalMs = 750;
-    const maxWaitMs = 120_000;
-    const adjustedTarget = readyAtTimestamp + extraSlackSeconds;
-    const start = Date.now();
-
-    while (true) {
-      const clockTimestamp = await getClockUnixTimestamp();
-
-      if (clockTimestamp >= adjustedTarget) {
-        return;
-      }
-
-      if (Date.now() - start > maxWaitMs) {
-        throw new Error(
-          `Timed out waiting for oracle buffer expiry (target=${adjustedTarget}, clock=${clockTimestamp}).`
-        );
-      }
-
-      await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
-    }
-  };
-
   const unjoinWithRetry = async (
     gamePDA: anchor.web3.PublicKey,
     player: anchor.web3.Keypair,
-    readyAtTimestamp: number
+    gameAccount: any,
+    oracleConfig: any
   ): Promise<void> => {
     const maxAttempts = 12;
 
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       const slackSeconds = 3 + attempt;
-      await waitForLateUnjoinReady(readyAtTimestamp, slackSeconds);
+      await awaitBufferExpiry(gameAccount, oracleConfig, slackSeconds);
 
       try {
         await testUtils.game.unjoinGame(gamePDA, player);
@@ -212,20 +177,18 @@ describe("Game Lifecycle Instruction Events", () => {
     );
     await testUtils.game.joinGame(gameData.gamePDA, p1.player);
 
-    const bufferSeconds =
-      typeof oracle.config.oracleBufferTime === "number"
-        ? oracle.config.oracleBufferTime
-        : Number(oracle.config.oracleBufferTime);
-
     const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
-    const readyAtTimestamp =
-      gameAccount.createdAt.toNumber() + toNumber(cfg.timeout) + bufferSeconds;
 
     const subscription = await subscribeEvent(env.program, "playerUnjoined", {
       timeoutMs: 20_000,
     });
     try {
-      await unjoinWithRetry(gameData.gamePDA, p1.player, readyAtTimestamp);
+      await unjoinWithRetry(
+        gameData.gamePDA,
+        p1.player,
+        gameAccount,
+        oracle.config
+      );
 
       const event = await subscription.wait;
       expect(event.player).to.deep.equal(p1.player.publicKey);

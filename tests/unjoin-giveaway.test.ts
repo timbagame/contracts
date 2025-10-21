@@ -5,6 +5,7 @@ import {
   TestEnvironment,
   deriveGameAccounts,
   toGameTokenContext,
+  awaitBufferExpiry,
   giveawayGameConfig,
 } from "./test-helpers";
 
@@ -50,10 +51,7 @@ describe("Giveaway Unjoin and Close", () => {
     expect(gameBefore.ticketAmount.toNumber()).to.equal(0);
     expect(gameBefore.totalAmount.toNumber()).to.equal(prize.toNumber());
 
-    // Wait until buffer expiry then unjoin all participants to allow close
-    await new Promise((r) =>
-      setTimeout(r, (5 + (oracle.config.oracleBufferTime as number) + 2) * 1000)
-    );
+    await awaitBufferExpiry(gameBefore, oracle.config);
     await testUtils.game.unjoinGame(gameData.gamePDA, p1.player);
     await testUtils.game.unjoinGame(gameData.gamePDA, p2.player);
 

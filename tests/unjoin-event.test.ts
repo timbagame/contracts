@@ -1,5 +1,10 @@
 import { expect } from "chai";
-import { TestUtils, TestEnvironment, coinflipGameConfig } from "./test-helpers";
+import {
+  TestUtils,
+  TestEnvironment,
+  awaitBufferExpiry,
+  coinflipGameConfig,
+} from "./test-helpers";
 
 // Validate PlayerUnjoined event fields
 
@@ -58,9 +63,7 @@ describe("Unjoin Event Emission", () => {
       setTimeout(() => reject(new Error("EventTimeout")), 20000);
     });
 
-    await new Promise((r) =>
-      setTimeout(r, (5 + (oracle.config.oracleBufferTime as number) + 2) * 1000)
-    );
+    await awaitBufferExpiry(gameAfterJoins, oracle.config);
 
     // Trigger unjoin and wait for matching event; tolerate rare zero-ticket edge
     let received: any | null = null;

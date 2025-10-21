@@ -1,5 +1,10 @@
 import { expect } from "chai";
-import { TestUtils, TestEnvironment, coinflipGameConfig } from "./test-helpers";
+import {
+  TestUtils,
+  TestEnvironment,
+  awaitBufferExpiry,
+  coinflipGameConfig,
+} from "./test-helpers";
 
 // Ensure unjoin is blocked during waiting_for_oracle window (min reached, before buffer expiry)
 
@@ -40,9 +45,8 @@ describe("Unjoin Blocked While Waiting for Oracle", () => {
       });
 
     // sanity: wait until after timeout+buffer then unjoin succeeds
-    await new Promise((r) =>
-      setTimeout(r, (3 + (oracle.config.oracleBufferTime as number) + 2) * 1000)
-    );
+    const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+    await awaitBufferExpiry(gameAccount, oracle.config);
     await testUtils.game.unjoinGame(gameData.gamePDA, p1.player);
     const acc = await env.program.account.game.fetch(gameData.gamePDA);
     expect(acc.ticketsCount).to.equal(1);

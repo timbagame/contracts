@@ -5,6 +5,7 @@ import {
   TestEnvironment,
   deriveGameAccounts,
   toGameTokenContext,
+  awaitBufferExpiry,
   coinflipGameConfig,
 } from "./test-helpers";
 
@@ -42,9 +43,8 @@ describe("Incomplete Game Close", () => {
     await testUtils.game.joinGame(gameData.gamePDA, p1.player);
     await testUtils.game.joinGame(gameData.gamePDA, p2.player);
 
-    // Wait timeout + buffer for unjoin eligibility
-    const bufferSecs = oracle.config.oracleBufferTime as number; // 2 by default
-    await new Promise((r) => setTimeout(r, (5 + bufferSecs + 2) * 1000));
+    const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+    await awaitBufferExpiry(gameAccount, oracle.config);
 
     // Unjoin all players
     for (const pl of [creator, p1, p2]) {

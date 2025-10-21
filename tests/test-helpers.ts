@@ -19,6 +19,9 @@ export const toBN = (value: anchor.BN | number): anchor.BN =>
 export const toNumber = (value: anchor.BN | number): number =>
   anchor.BN.isBN(value) ? value.toNumber() : value;
 
+const DEFAULT_BUFFER_POLL_INTERVAL_MS = 750;
+const DEFAULT_BUFFER_MAX_WAIT_MS = 120_000;
+
 const gameTokenCache = new Map<
   string,
   { tokenMint: PublicKey; tokenProgram: PublicKey }
@@ -166,6 +169,136 @@ export interface OracleConfig {
   maxTickets: number;
   maxTimeout: number;
   minTimeout: number;
+}
+
+type BufferReadyGameAccount = {
+  createdAt: anchor.BN | number;
+  timeout?: anchor.BN | number;
+  config?: {
+    timeout?: anchor.BN | number;
+  };
+};
+
+export interface AwaitBufferExpiryOptions {
+  /**
+   * Override the connection used for fetching the clock sysvar.
+   * Defaults to the shared Anchor provider connection.
+   */
+  connection?: anchor.web3.Connection;
+  /** Custom polling cadence in milliseconds. */
+  pollIntervalMs?: number;
+  /**
+   * Maximum wall-clock duration to wait before triggering a single extension.
+   * The helper allows one automatic extension before failing hard so that
+   * transient slot stalls do not break long-running tests.
+   */
+  maxWaitMs?: number;
+}
+
+export async function getClockUnixTimestamp(
+  connection: anchor.web3.Connection
+): Promise<number> {
+  const clockInfo = await connection.getAccountInfo(
+    anchor.web3.SYSVAR_CLOCK_PUBKEY
+  );
+
+  if (!clockInfo) {
+    throw new Error("Clock sysvar account unavailable");
+  }
+
+  return Number(clockInfo.data.readBigInt64LE(32));
+}
+
+function resolveTimeoutSeconds(gameAccount: BufferReadyGameAccount): number {
+  if (gameAccount.timeout !== undefined) {
+    return toNumber(gameAccount.timeout);
+  }
+
+  const configTimeout = gameAccount.config?.timeout;
+  if (configTimeout !== undefined) {
+    return toNumber(configTimeout);
+  }
+
+  throw new Error(
+    "Game account missing timeout information required for buffer calculation"
+  );
+}
+
+export async function awaitBufferExpiry(
+  gameAccount: BufferReadyGameAccount,
+  oracleConfig: OracleConfig,
+  extraSlackSeconds = 2,
+  options: AwaitBufferExpiryOptions = {}
+): Promise<void> {
+  const connection =
+    options.connection ?? TestEnvironment.getInstance().provider.connection;
+  const pollIntervalMs =
+    options.pollIntervalMs ?? DEFAULT_BUFFER_POLL_INTERVAL_MS;
+  const maxWaitMs = options.maxWaitMs ?? DEFAULT_BUFFER_MAX_WAIT_MS;
+
+  const createdAtSeconds = toNumber(gameAccount.createdAt);
+  const timeoutSeconds = resolveTimeoutSeconds(gameAccount);
+  const bufferSeconds =
+    typeof oracleConfig.oracleBufferTime === "number"
+      ? oracleConfig.oracleBufferTime
+      : toNumber(oracleConfig.oracleBufferTime);
+
+  const targetTimestamp = createdAtSeconds + timeoutSeconds + bufferSeconds;
+  const adjustedTarget = targetTimestamp + extraSlackSeconds;
+
+  let start = Date.now();
+  let extended = false;
+
+  while (true) {
+    const clockTimestamp = await getClockUnixTimestamp(connection);
+
+    if (clockTimestamp >= adjustedTarget) {
+      return;
+    }
+
+    if (Date.now() - start > maxWaitMs) {
+      if (!extended) {
+        console.warn(
+          `[awaitBufferExpiry] Extending wait (clock=${clockTimestamp}, target=${adjustedTarget}).`
+        );
+        extended = true;
+        start = Date.now();
+      } else {
+        throw new Error(
+          `Timed out waiting for oracle buffer expiry (target=${adjustedTarget}, clock=${clockTimestamp}).`
+        );
+      }
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+  }
+}
+
+/**
+ * Wait until the timeout has elapsed but before the oracle buffer expires so a
+ * completion instruction can be sent safely. This wraps `awaitBufferExpiry`
+ * with a negative slack adjustment that keeps the wait bounded inside the
+ * buffer window even if the helper needs to extend once due to slot stalls.
+ */
+export async function awaitOracleCompletionReady(
+  gameAccount: BufferReadyGameAccount,
+  oracleConfig: OracleConfig,
+  extraSlackSeconds = 0.5,
+  options: AwaitBufferExpiryOptions = {}
+): Promise<void> {
+  const bufferSeconds =
+    typeof oracleConfig.oracleBufferTime === "number"
+      ? oracleConfig.oracleBufferTime
+      : toNumber(oracleConfig.oracleBufferTime);
+
+  const boundedSlack =
+    bufferSeconds > 0
+      ? Math.min(extraSlackSeconds, Math.max(bufferSeconds - 0.25, 0))
+      : 0;
+
+  const adjustedSlack = -bufferSeconds + boundedSlack;
+
+  await awaitBufferExpiry(gameAccount, oracleConfig, adjustedSlack, options);
 }
 
 export interface GameConfig {
