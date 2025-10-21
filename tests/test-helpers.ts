@@ -24,6 +24,9 @@ const gameTokenCache = new Map<
   { tokenMint: PublicKey; tokenProgram: PublicKey }
 >();
 
+const DEFAULT_PLAYER_BALANCE = new anchor.BN(100_000_000);
+const DEFAULT_MIN_TOKEN_AMOUNT = new anchor.BN(1000);
+
 export async function requestAndConfirmAirdrop(
   connection: anchor.web3.Connection,
   pubkey: PublicKey,
@@ -148,11 +151,7 @@ async function createStandardSetup(
   const players = await playerManager.createPlayerPool(8, mint.mint);
 
   for (const player of players) {
-    await playerManager.fundPlayer(
-      player,
-      mint,
-      new anchor.BN(100_000_000)
-    );
+    await playerManager.fundPlayer(player, mint, DEFAULT_PLAYER_BALANCE);
   }
 
   return { oracle, mint, players };
@@ -1204,7 +1203,96 @@ export class TestUtils {
 
     this.env.testUtils = this;
 
+    await this.resetTokenConfiguration(setup);
+    await this.ensurePlayerBalances(setup);
+
     return setup;
+  }
+
+  private async resetTokenConfiguration(setup: StandardSetup): Promise<void> {
+    const { oracle, mint } = setup;
+    const oracleAddress = oracle.oracle ?? oracle.oraclePDA;
+    if (!oracleAddress) {
+      throw new Error("Oracle not initialized");
+    }
+
+    const tokenContext = gameTokenContextFromMint(mint, this.env.program);
+    const gameTokenAccount = await this.env.program.account.gameToken.fetch(
+      tokenContext.gameToken
+    );
+
+    if (!gameTokenAccount.minAmount.eq(DEFAULT_MIN_TOKEN_AMOUNT)) {
+      await this.env.program.methods
+        .updateToken({
+          minAmount: DEFAULT_MIN_TOKEN_AMOUNT,
+          enabled: true,
+        })
+        .accountsStrict({
+          gameToken: tokenContext.gameToken,
+          tokenMint: tokenContext.tokenMint,
+          oracle: oracleAddress,
+          oracleOperator: oracle.operator,
+        })
+        .signers([oracle.operatorKeypair])
+        .rpc();
+    } else if (!gameTokenAccount.enabled) {
+      await this.env.program.methods
+        .updateToken({
+          minAmount: gameTokenAccount.minAmount,
+          enabled: true,
+        })
+        .accountsStrict({
+          gameToken: tokenContext.gameToken,
+          tokenMint: tokenContext.tokenMint,
+          oracle: oracleAddress,
+          oracleOperator: oracle.operator,
+        })
+        .signers([oracle.operatorKeypair])
+        .rpc();
+    }
+
+    if (!gameTokenAccount.feeAmount.isZero()) {
+      const operatorTokenAccount = await getOrCreateAssociatedTokenAccount(
+        this.env.provider.connection,
+        oracle.operatorKeypair,
+        mint.mint,
+        oracle.operator,
+        undefined,
+        undefined,
+        undefined,
+        mint.tokenProgram
+      );
+
+      await this.env.program.methods
+        .withdrawTokenFee()
+        .accountsStrict({
+          gameTokenCtx: tokenContext,
+          oracle: oracleAddress,
+          oracleOperator: oracle.operator,
+          oracleOperatorTokenAccount: operatorTokenAccount.address,
+          systemProgram: anchor.web3.SystemProgram.programId,
+        })
+        .signers([oracle.operatorKeypair])
+        .rpc();
+    }
+  }
+
+  private async ensurePlayerBalances(setup: StandardSetup): Promise<void> {
+    const { mint, players } = setup;
+
+    for (const player of players) {
+      const balance = await this.env.provider.connection.getTokenAccountBalance(
+        player.playerTokenAccount.address
+      );
+      const currentAmount = new anchor.BN(balance.value.amount);
+
+      if (currentAmount.gte(DEFAULT_PLAYER_BALANCE)) {
+        continue;
+      }
+
+      const deficit = DEFAULT_PLAYER_BALANCE.sub(currentAmount);
+      await this.player.fundPlayer(player, mint, deficit);
+    }
   }
 }
 
