@@ -1,5 +1,4 @@
 import { expect } from "chai";
-import * as anchor from "@coral-xyz/anchor";
 import { TestUtils, TestEnvironment, coinflipGameConfig } from "./test-helpers";
 
 // Ensure unjoin is blocked during waiting_for_oracle window (min reached, before buffer expiry)

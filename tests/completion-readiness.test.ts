@@ -1,5 +1,4 @@
 import { expect } from "chai";
-import * as anchor from "@coral-xyz/anchor";
 import { TestUtils, TestEnvironment, coinflipGameConfig } from "./test-helpers";
 
 // Ensures GameNotReadyForOracle triggers when completion attempted too early
