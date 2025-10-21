@@ -39,22 +39,12 @@ pub fn handler(ctx: Context<super::InitializeGame>, config: GameConfig) -> Resul
 
     // Transfer tokens for giveaway games
     if game.ticket_amount == 0 {
-        ctx.accounts
-            .game_token_ctx
-            .game_token
-            .handle_token_transfer(
-                ctx.accounts.creator_token_account.to_account_info(),
-                ctx.accounts
-                    .game_token_ctx
-                    .game_token_account
-                    .to_account_info(),
-                ctx.accounts.creator.to_account_info(),
-                ctx.accounts.game_token_ctx.token_program.to_account_info(),
-                token_mint.to_account_info(),
-                config.amount,
-                token_mint.decimals,
-                false,
-            )?;
+        ctx.accounts.game_token_ctx.transfer_from_player(
+            &ctx.accounts.game_token_ctx.game_token,
+            &ctx.accounts.creator_token_account,
+            &ctx.accounts.creator,
+            config.amount,
+        )?;
     }
 
     // ===============================

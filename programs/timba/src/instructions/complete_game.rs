@@ -61,13 +61,14 @@ pub fn handler(
     let (winner_amount, fee_amount) = game.calculate_amounts(fee_percentage);
 
     // Update fee amount and transfer directly to winner
-    let game_token = &mut ctx.accounts.game_token_ctx.game_token;
-    let token_mint = &ctx.accounts.game_token_ctx.token_mint;
-    let new_fee_total = game_token
-        .fee_amount
-        .checked_add(fee_amount)
-        .ok_or(ErrorCode::InvalidAmount)?;
-    game_token.fee_amount = new_fee_total;
+    {
+        let game_token = &mut ctx.accounts.game_token_ctx.game_token;
+        let new_fee_total = game_token
+            .fee_amount
+            .checked_add(fee_amount)
+            .ok_or(ErrorCode::InvalidAmount)?;
+        game_token.fee_amount = new_fee_total;
+    }
 
     // Mark game as completed
     game.complete();
@@ -77,22 +78,11 @@ pub fn handler(
     // ===============================
 
     // Transfer winner amount directly to winner's token account
-    ctx.accounts
-        .game_token_ctx
-        .game_token
-        .handle_token_transfer(
-            ctx.accounts
-                .game_token_ctx
-                .game_token_account
-                .to_account_info(),
-            ctx.accounts.winner_token_account.to_account_info(),
-            ctx.accounts.game_token_ctx.game_vault.to_account_info(),
-            ctx.accounts.game_token_ctx.token_program.to_account_info(),
-            token_mint.to_account_info(),
-            winner_amount,
-            token_mint.decimals,
-            true,
-        )?;
+    ctx.accounts.game_token_ctx.transfer_from_vault(
+        &ctx.accounts.game_token_ctx.game_token,
+        &ctx.accounts.winner_token_account,
+        winner_amount,
+    )?;
 
     // ===============================
     // EVENT EMISSION
