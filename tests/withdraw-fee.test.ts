@@ -1,6 +1,5 @@
 import { expect } from "chai";
 import * as anchor from "@coral-xyz/anchor";
-import { getOrCreateAssociatedTokenAccount } from "@solana/spl-token";
 import {
   TestUtils,
   TestEnvironment,
@@ -12,23 +11,10 @@ import {
   subscribeEvent,
   coinflipGameConfig,
   getOraclePublicKey,
+  ensureOperatorAta,
 } from "./test-helpers";
 
 // Verifies fee withdrawal transfers accumulated fees to oracle operator
-
-async function ensureOperatorAta(
-  connection: anchor.web3.Connection,
-  mint: anchor.web3.PublicKey,
-  operator: anchor.web3.Keypair
-): Promise<anchor.web3.PublicKey> {
-  const account = await getOrCreateAssociatedTokenAccount(
-    connection,
-    operator,
-    mint,
-    operator.publicKey
-  );
-  return account.address;
-}
 
 describe("Withdraw Fee", () => {
   let testUtils: TestUtils;
@@ -87,8 +73,8 @@ describe("Withdraw Fee", () => {
     // Operator balance before
     const operatorAta = await ensureOperatorAta(
       env.provider.connection,
-      mint.mint,
-      oracle.operatorKeypair
+      oracle,
+      mint.mint
     );
     const operatorPre = await env.provider.connection.getTokenAccountBalance(
       operatorAta
@@ -132,8 +118,8 @@ describe("Withdraw Fee", () => {
 
     const operatorAta = await ensureOperatorAta(
       env.provider.connection,
-      mint.mint,
-      oracle.operatorKeypair
+      oracle,
+      mint.mint
     );
     const preBalance = await env.provider.connection.getTokenAccountBalance(
       operatorAta
@@ -235,8 +221,8 @@ describe("Withdraw Fee", () => {
 
     const operatorAta = await ensureOperatorAta(
       env.provider.connection,
-      mint.mint,
-      oracle.operatorKeypair
+      oracle,
+      mint.mint
     );
     const before = await env.provider.connection.getTokenAccountBalance(
       operatorAta

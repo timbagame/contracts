@@ -1,7 +1,6 @@
 import { expect } from "chai";
 import * as anchor from "@coral-xyz/anchor";
 import { createHash } from "crypto";
-import { getOrCreateAssociatedTokenAccount } from "@solana/spl-token";
 import {
   TestEnvironment,
   TestUtils,
@@ -15,6 +14,7 @@ import {
   awaitBufferExpiry,
   coinflipGameConfig,
   getOraclePublicKey,
+  ensureOperatorAta,
 } from "./test-helpers";
 
 // Instruction coverage: ensure lifecycle events emit and state updates match expectations
@@ -382,11 +382,10 @@ describe("Game Lifecycle Instruction Events", () => {
     );
     await connection.confirmTransaction(airdropSig, "confirmed");
 
-    const operatorAtaAccount = await getOrCreateAssociatedTokenAccount(
+    const operatorAta = await ensureOperatorAta(
       connection,
-      oracle.operatorKeypair,
-      mint.mint,
-      oracle.operator
+      oracle,
+      mint.mint
     );
 
     const subscription = await subscribeEvent(env.program, "tokenFeeWithdrawn");
@@ -403,7 +402,7 @@ describe("Game Lifecycle Instruction Events", () => {
           gameTokenCtx: toGameTokenContext(derived),
           oracle: oraclePubkey,
           oracleOperator: oracle.operator,
-          oracleOperatorTokenAccount: operatorAtaAccount.address,
+          oracleOperatorTokenAccount: operatorAta,
           systemProgram: anchor.web3.SystemProgram.programId,
         })
         .signers([oracle.operatorKeypair])

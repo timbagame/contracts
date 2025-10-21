@@ -175,6 +175,27 @@ export function getOraclePublicKey(testOracle: TestOracle): PublicKey {
   return oraclePubkey;
 }
 
+export async function ensureOperatorAta(
+  connection: anchor.web3.Connection,
+  oracle: TestOracle,
+  mint: PublicKey
+): Promise<PublicKey> {
+  const tokenProgram = await resolveTokenProgram(connection, mint);
+
+  const account = await getOrCreateAssociatedTokenAccount(
+    connection,
+    oracle.operatorKeypair,
+    mint,
+    oracle.operator,
+    undefined,
+    undefined,
+    undefined,
+    tokenProgram
+  );
+
+  return account.address;
+}
+
 export interface OracleConfig {
   feePercentage: number;
   oracleBufferTime: number;
@@ -1490,15 +1511,10 @@ export class TestUtils {
     }
 
     if (!gameTokenAccount.feeAmount.isZero()) {
-      const operatorTokenAccount = await getOrCreateAssociatedTokenAccount(
+      const operatorTokenAccount = await ensureOperatorAta(
         this.env.provider.connection,
-        oracle.operatorKeypair,
-        mint.mint,
-        oracle.operator,
-        undefined,
-        undefined,
-        undefined,
-        mint.tokenProgram
+        oracle,
+        mint.mint
       );
 
       await this.env.program.methods
@@ -1507,7 +1523,7 @@ export class TestUtils {
           gameTokenCtx: tokenContext,
           oracle: oracleAddress,
           oracleOperator: oracle.operator,
-          oracleOperatorTokenAccount: operatorTokenAccount.address,
+          oracleOperatorTokenAccount: operatorTokenAccount,
           systemProgram: anchor.web3.SystemProgram.programId,
         })
         .signers([oracle.operatorKeypair])
