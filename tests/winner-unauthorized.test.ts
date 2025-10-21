@@ -1,10 +1,9 @@
 import { expect } from "chai";
-import * as anchor from "@coral-xyz/anchor";
 import {
   TestUtils,
   TestEnvironment,
-  GameConfig,
   calculateWinnerIndex,
+  coinflipGameConfig,
 } from "./test-helpers";
 
 // Tests that completion rejects winner pubkey not in participant list
@@ -24,14 +23,7 @@ describe("Winner Authorization", () => {
     const gameData = testUtils.game.generateGamePDA();
     const [creator, player1, fakeWinner] = players;
 
-    const gameConfig: GameConfig = {
-      gameType: { coinflip: {} },
-      amount: new anchor.BN(1_000_000),
-      maxTickets: new anchor.BN(2),
-      minTickets: new anchor.BN(2),
-      timeout: new anchor.BN(3600),
-      isPrivate: false,
-    };
+    const gameConfig = coinflipGameConfig();
 
     await testUtils.game.initializeGame(
       gameData,

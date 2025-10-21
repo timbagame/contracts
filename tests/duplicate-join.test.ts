@@ -1,10 +1,9 @@
 import { expect } from "chai";
-import * as anchor from "@coral-xyz/anchor";
 import {
   TestUtils,
   TestEnvironment,
-  GameConfig,
   errorToString,
+  coinflipGameConfig,
 } from "./test-helpers";
 
 // Tests duplicate join prevention using bloom + hash exact list
@@ -24,14 +23,9 @@ describe("Duplicate Join Prevention", () => {
     const gameData = testUtils.game.generateGamePDA();
     const [creator] = players;
 
-    const gameConfig: GameConfig = {
-      gameType: { coinflip: {} },
-      amount: new anchor.BN(1_000_000),
-      maxTickets: new anchor.BN(2),
-      minTickets: new anchor.BN(2),
-      timeout: new anchor.BN(600),
-      isPrivate: false,
-    };
+    const gameConfig = coinflipGameConfig({
+      timeout: 600,
+    });
 
     await testUtils.game.initializeGame(
       gameData,

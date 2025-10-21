@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import * as anchor from "@coral-xyz/anchor";
-import { TestUtils, TestEnvironment, GameConfig } from "./test-helpers";
+import { TestUtils, TestEnvironment, giveawayGameConfig } from "./test-helpers";
 
 // Giveaway-specific configuration guard rails
 
@@ -21,14 +21,12 @@ describe("Giveaway Constraints", () => {
     const [creator] = players;
     const gameData = testUtils.game.generateGamePDA();
 
-    const cfg: GameConfig = {
-      gameType: { giveaway: {} },
+    const cfg = giveawayGameConfig({
       amount: new anchor.BN(5_000_000),
-      maxTickets: new anchor.BN(3),
-      minTickets: new anchor.BN(0),
-      timeout: new anchor.BN(600),
-      isPrivate: false,
-    };
+      maxTickets: 3,
+      minTickets: 0,
+      timeout: 600,
+    });
 
     try {
       await testUtils.game.initializeGame(
@@ -49,14 +47,11 @@ describe("Giveaway Constraints", () => {
     const gameData = testUtils.game.generateGamePDA();
 
     const belowMinPrize = new anchor.BN(100); // default minAmount is 1000 in mint manager
-    const cfg: GameConfig = {
-      gameType: { giveaway: {} },
+    const cfg = giveawayGameConfig({
       amount: belowMinPrize,
-      maxTickets: new anchor.BN(2),
-      minTickets: new anchor.BN(1),
-      timeout: new anchor.BN(600),
-      isPrivate: false,
-    };
+      maxTickets: 2,
+      timeout: 600,
+    });
 
     try {
       await testUtils.game.initializeGame(

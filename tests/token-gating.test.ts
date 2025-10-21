@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import * as anchor from "@coral-xyz/anchor";
-import { TestUtils, TestEnvironment, GameConfig } from "./test-helpers";
+import { TestUtils, TestEnvironment, coinflipGameConfig } from "./test-helpers";
 
 // Token gating tests: enabled flag and minAmount enforcement
 
@@ -26,14 +26,9 @@ describe("Token Gating", () => {
       .rpc();
 
     const gameData = testUtils.game.generateGamePDA();
-    const gameConfig: GameConfig = {
-      gameType: { coinflip: {} },
-      amount: new anchor.BN(1_000_000),
-      maxTickets: new anchor.BN(2),
-      minTickets: new anchor.BN(2),
-      timeout: new anchor.BN(60),
-      isPrivate: false,
-    };
+    const gameConfig = coinflipGameConfig({
+      timeout: 60,
+    });
 
     try {
       await testUtils.game.initializeGame(
@@ -62,14 +57,10 @@ describe("Token Gating", () => {
 
     const gameData = testUtils.game.generateGamePDA();
     const lowAmount = new anchor.BN(1_000_000);
-    const gameConfig: GameConfig = {
-      gameType: { coinflip: {} },
+    const gameConfig = coinflipGameConfig({
       amount: lowAmount,
-      maxTickets: new anchor.BN(2),
-      minTickets: new anchor.BN(2),
-      timeout: new anchor.BN(60),
-      isPrivate: false,
-    };
+      timeout: 60,
+    });
 
     // initialize should fail due to amount < minAmount
     try {
@@ -115,14 +106,11 @@ describe("Token Gating", () => {
     const [creator, p1, p2] = players;
 
     const gameData = testUtils.game.generateGamePDA();
-    const gameConfig: GameConfig = {
-      gameType: { coinflip: {} },
+    const gameConfig = coinflipGameConfig({
       amount: new anchor.BN(2_000_000),
-      maxTickets: new anchor.BN(3),
-      minTickets: new anchor.BN(2),
-      timeout: new anchor.BN(120),
-      isPrivate: false,
-    };
+      maxTickets: 3,
+      timeout: 120,
+    });
 
     await testUtils.game.initializeGame(
       gameData,

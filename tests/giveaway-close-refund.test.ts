@@ -3,9 +3,9 @@ import * as anchor from "@coral-xyz/anchor";
 import {
   TestUtils,
   TestEnvironment,
-  GameConfig,
   deriveGameAccounts,
   toGameTokenContext,
+  giveawayGameConfig,
 } from "./test-helpers";
 
 // Verifies that closing an unused giveaway refunds the prize to creator
@@ -27,14 +27,11 @@ describe("Giveaway Close Refund", () => {
 
     const prizeAmount = new anchor.BN(5_000_000);
 
-    const gameConfig: GameConfig = {
-      gameType: { giveaway: {} },
+    const gameConfig = giveawayGameConfig({
       amount: prizeAmount, // total prize
-      maxTickets: new anchor.BN(10),
-      minTickets: new anchor.BN(1),
-      timeout: new anchor.BN(30), // short timeout
-      isPrivate: false,
-    };
+      maxTickets: 10,
+      timeout: 30, // short timeout
+    });
 
     // Record creator balance before funding
     const beforeBal = await env.provider.connection.getTokenAccountBalance(
@@ -108,14 +105,11 @@ describe("Giveaway Close Refund", () => {
     const prizeAmount = new anchor.BN(4_000_000);
     const timeoutSeconds = 3;
 
-    const gameConfig: GameConfig = {
-      gameType: { giveaway: {} },
+    const gameConfig = giveawayGameConfig({
       amount: prizeAmount,
-      maxTickets: new anchor.BN(5),
-      minTickets: new anchor.BN(1),
-      timeout: new anchor.BN(timeoutSeconds),
-      isPrivate: false,
-    };
+      maxTickets: 5,
+      timeout: timeoutSeconds,
+    });
 
     const beforeBal = await env.provider.connection.getTokenAccountBalance(
       creator.playerTokenAccount.address
@@ -144,10 +138,14 @@ describe("Giveaway Close Refund", () => {
       throw new Error("Oracle not initialized for giveaway buffer test");
     }
 
-    const secondDerived = await deriveGameAccounts(env.program, gameData.gamePDA, {
-      player: creator.player.publicKey,
-      tokenMint: mint.mint,
-    });
+    const secondDerived = await deriveGameAccounts(
+      env.program,
+      gameData.gamePDA,
+      {
+        player: creator.player.publicKey,
+        tokenMint: mint.mint,
+      }
+    );
     if (!secondDerived.playerTokenAccount) {
       throw new Error("Missing creator token account for giveaway buffer test");
     }
