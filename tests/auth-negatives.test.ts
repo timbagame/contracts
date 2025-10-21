@@ -1,14 +1,13 @@
 import { expect } from "chai";
 import * as anchor from "@coral-xyz/anchor";
 import {
-  TOKEN_PROGRAM_ID
-} from "@solana/spl-token";
-import {
   TestUtils,
   TestEnvironment,
   GameConfig,
   calculateWinnerIndex,
   getWinnerFromPlayers,
+  deriveGameAccounts,
+  toGameTokenContext,
 } from "./test-helpers";
 
 // Negative authorization checks: non-creator close, non-operator withdraw/complete
@@ -44,14 +43,29 @@ describe("Authorization Negatives", () => {
       mint.mint
     );
 
+    const oraclePubkey = env.oracle?.oracle ?? env.oracle?.oraclePDA;
+    if (!oraclePubkey) {
+      throw new Error("Oracle not initialized for closeGame test");
+    }
+
+    const derived = await deriveGameAccounts(env.program, gameData.gamePDA, {
+      player: other.player.publicKey,
+      tokenMint: mint.mint,
+    });
+    if (!derived.playerTokenAccount) {
+      throw new Error("Failed to derive player token account for closeGame");
+    }
+
     try {
       await env.program.methods
         .closeGame()
-        .accounts({
-          creator: other.player.publicKey,
+        .accountsStrict({
           game: gameData.gamePDA,
-          tokenMint: mint.mint,
-          tokenProgram: TOKEN_PROGRAM_ID,
+          creator: other.player.publicKey,
+          oracle: oraclePubkey,
+          gameTokenCtx: toGameTokenContext(derived),
+          creatorTokenAccount: derived.playerTokenAccount,
+          systemProgram: anchor.web3.SystemProgram.programId,
         })
         .signers([other.player])
         .rpc();
@@ -126,13 +140,26 @@ describe("Authorization Negatives", () => {
       ]);
     }
 
+    const withdrawOracle = oracle.oracle ?? oracle.oraclePDA;
+    if (!withdrawOracle) {
+      throw new Error("Oracle not initialized for withdrawTokenFee test");
+    }
+
+    const withdrawDerived = await deriveGameAccounts(
+      env.program,
+      gameData.gamePDA,
+      { tokenMint: mint.mint }
+    );
+
     try {
       await env.program.methods
         .withdrawTokenFee()
-        .accounts({
-          tokenMint: mint.mint,
+        .accountsStrict({
+          gameTokenCtx: toGameTokenContext(withdrawDerived),
+          oracle: withdrawOracle,
           oracleOperator: fakeOp.publicKey,
-          tokenProgram: TOKEN_PROGRAM_ID,
+          oracleOperatorTokenAccount: fakeAta,
+          systemProgram: anchor.web3.SystemProgram.programId,
         })
         .signers([fakeOp])
         .rpc();

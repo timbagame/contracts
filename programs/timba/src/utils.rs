@@ -18,6 +18,12 @@ pub fn get_current_time() -> Result<u64> {
     Ok(get_clock()?.unix_timestamp as u64)
 }
 
+/// Get a tuple containing the current unix timestamp and slot from a single clock fetch
+pub fn get_clock_snapshot() -> Result<(u64, u64)> {
+    let clock = get_clock()?;
+    Ok((clock.unix_timestamp as u64, clock.slot))
+}
+
 // =============================================================================
 // ORACLE CONFIGURATION UTILITIES
 // =============================================================================

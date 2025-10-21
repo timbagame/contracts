@@ -1,10 +1,7 @@
 import { expect } from "chai";
 import * as anchor from "@coral-xyz/anchor";
 import { createHash } from "crypto";
-import {
-  getOrCreateAssociatedTokenAccount,
-  TOKEN_PROGRAM_ID,
-} from "@solana/spl-token";
+import { getOrCreateAssociatedTokenAccount } from "@solana/spl-token";
 import type { Timba } from "../target/types/timba";
 import {
   TestEnvironment,
@@ -14,6 +11,8 @@ import {
   getWinnerFromPlayers,
   getErrorMessage,
   toNumber,
+  deriveGameAccounts,
+  toGameTokenContext,
 } from "./test-helpers";
 
 // Instruction coverage: ensure lifecycle events emit and state updates match expectations
@@ -390,13 +389,28 @@ describe("Game Lifecycle Instruction Events", () => {
 
     const subscription = await subscribeEvent("gameClosed");
     try {
+      const oraclePubkey = env.oracle?.oracle ?? env.oracle?.oraclePDA;
+      if (!oraclePubkey) {
+        throw new Error("Oracle not initialized for closeGame event test");
+      }
+
+      const derived = await deriveGameAccounts(env.program, gameData.gamePDA, {
+        player: creator.player.publicKey,
+        tokenMint: mint.mint,
+      });
+      if (!derived.playerTokenAccount) {
+        throw new Error("Missing creator token account for closeGame event test");
+      }
+
       await env.program.methods
         .closeGame()
-        .accounts({
-          creator: creator.player.publicKey,
+        .accountsStrict({
           game: gameData.gamePDA,
-          tokenMint: mint.mint,
-          tokenProgram: TOKEN_PROGRAM_ID,
+          creator: creator.player.publicKey,
+          oracle: oraclePubkey,
+          gameTokenCtx: toGameTokenContext(derived),
+          creatorTokenAccount: derived.playerTokenAccount,
+          systemProgram: anchor.web3.SystemProgram.programId,
         })
         .signers([creator.player])
         .rpc();
@@ -466,7 +480,7 @@ describe("Game Lifecycle Instruction Events", () => {
     );
     await connection.confirmTransaction(airdropSig, "confirmed");
 
-    await getOrCreateAssociatedTokenAccount(
+    const operatorAtaAccount = await getOrCreateAssociatedTokenAccount(
       connection,
       oracle.operatorKeypair,
       mint.mint,
@@ -475,12 +489,23 @@ describe("Game Lifecycle Instruction Events", () => {
 
     const subscription = await subscribeEvent("tokenFeeWithdrawn");
     try {
+      const oraclePubkey = oracle.oracle ?? oracle.oraclePDA;
+      if (!oraclePubkey) {
+        throw new Error("Oracle not initialized for withdraw event test");
+      }
+
+      const derived = await deriveGameAccounts(env.program, gameData.gamePDA, {
+        tokenMint: mint.mint,
+      });
+
       await env.program.methods
         .withdrawTokenFee()
-        .accounts({
-          tokenMint: mint.mint,
+        .accountsStrict({
+          gameTokenCtx: toGameTokenContext(derived),
+          oracle: oraclePubkey,
           oracleOperator: oracle.operator,
-          tokenProgram: TOKEN_PROGRAM_ID,
+          oracleOperatorTokenAccount: operatorAtaAccount.address,
+          systemProgram: anchor.web3.SystemProgram.programId,
         })
         .signers([oracle.operatorKeypair])
         .rpc();
