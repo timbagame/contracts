@@ -19,6 +19,11 @@ export const toBN = (value: anchor.BN | number): anchor.BN =>
 export const toNumber = (value: anchor.BN | number): number =>
   anchor.BN.isBN(value) ? value.toNumber() : value;
 
+const gameTokenCache = new Map<
+  string,
+  { tokenMint: PublicKey; tokenProgram: PublicKey }
+>();
+
 export async function requestAndConfirmAirdrop(
   connection: anchor.web3.Connection,
   pubkey: PublicKey,
@@ -59,6 +64,7 @@ export interface TestGame {
 type DerivedGameAccountsOptions = {
   player?: PublicKey;
   winner?: PublicKey;
+  tokenMint?: PublicKey;
 };
 
 export type DerivedGameAccounts = {
@@ -566,12 +572,40 @@ export async function deriveGameAccounts(
   gamePDA: PublicKey,
   options: DerivedGameAccountsOptions = {}
 ): Promise<DerivedGameAccounts> {
-  const gameAccount = await program.account.game.fetch(gamePDA);
-  const tokenMint = new PublicKey(gameAccount.tokenMint);
-  const tokenProgram = await resolveTokenProgram(
-    program.provider.connection,
-    tokenMint
-  );
+  const cacheKey = gamePDA.toBase58();
+
+  let tokenMint: PublicKey | undefined = options.tokenMint;
+  let tokenProgram: PublicKey | undefined;
+
+  if (!tokenMint) {
+    try {
+      const gameAccount = await program.account.game.fetch(gamePDA);
+      tokenMint = new PublicKey(gameAccount.tokenMint);
+    } catch (error) {
+      const cached = gameTokenCache.get(cacheKey);
+      if (cached) {
+        tokenMint = cached.tokenMint;
+        tokenProgram = cached.tokenProgram;
+      } else {
+        throw error;
+      }
+    }
+  }
+
+  if (!tokenMint) {
+    throw new Error(
+      "Unable to derive game accounts: token mint could not be determined"
+    );
+  }
+
+  if (!tokenProgram) {
+    tokenProgram = await resolveTokenProgram(
+      program.provider.connection,
+      tokenMint
+    );
+  }
+
+  gameTokenCache.set(cacheKey, { tokenMint, tokenProgram });
 
   const [oracle] = PublicKey.findProgramAddressSync(
     [Buffer.from("oracle")],
@@ -856,6 +890,11 @@ export class GameManager {
       })
       .signers([creator])
       .rpc();
+
+    gameTokenCache.set(gameData.gamePDA.toBase58(), {
+      tokenMint,
+      tokenProgram,
+    });
   }
 
   async joinGame(
@@ -1162,80 +1201,6 @@ export class TestUtils {
    */
   async quickSetup(): Promise<StandardSetup> {
     const setup = await this.env.initialize();
-
-    const oraclePda = setup.oracle.oracle ?? setup.oracle.oraclePDA;
-    const defaultMinAmount = new anchor.BN(1000);
-    const desiredPlayerBalance = new anchor.BN(100_000_000);
-
-    // Ensure token configuration is reset to a known-good state for each test run
-    await this.env.program.methods
-      .updateToken({ minAmount: defaultMinAmount, enabled: true })
-      .accountsStrict({
-        gameToken: setup.mint.gameTokenPDA,
-        tokenMint: setup.mint.mint,
-        oracle: oraclePda,
-        oracleOperator: setup.oracle.operator,
-      })
-      .signers([setup.oracle.operatorKeypair])
-      .rpc();
-
-    // Derive shared token context for cleanup helpers
-    const { gameToken, gameVault, gameTokenAccount } = computeGameTokenContext(
-      this.env.program,
-      setup.mint.mint,
-      setup.mint.tokenProgram
-    );
-
-    const gameTokenCtx: GameTokenContextAccounts = {
-      tokenMint: setup.mint.mint,
-      gameToken,
-      gameVault,
-      gameTokenAccount,
-      tokenProgram: setup.mint.tokenProgram,
-      associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
-    };
-
-    // Ensure the oracle operator has an ATA for withdrawals before flushing fees
-    const operatorTokenAccount = (
-      await getOrCreateAssociatedTokenAccount(
-        this.env.provider.connection,
-        setup.oracle.operatorKeypair,
-        setup.mint.mint,
-        setup.oracle.operator,
-        false,
-        undefined,
-        undefined,
-        setup.mint.tokenProgram
-      )
-    ).address;
-
-    // Clear any accumulated fees so fee-related assertions remain deterministic
-    await this.env.program.methods
-      .withdrawTokenFee()
-      .accountsStrict({
-        gameTokenCtx,
-        oracle: oraclePda,
-        oracleOperator: setup.oracle.operator,
-        oracleOperatorTokenAccount: operatorTokenAccount,
-        systemProgram: anchor.web3.SystemProgram.programId,
-      })
-      .signers([setup.oracle.operatorKeypair])
-      .rpc();
-
-    // Top up player balances so each scenario starts from the same baseline
-    await Promise.all(
-      setup.players.map(async (player) => {
-        const balance = await this.env.provider.connection.getTokenAccountBalance(
-          player.playerTokenAccount.address
-        );
-        const currentAmount = new anchor.BN(balance.value.amount);
-
-        if (currentAmount.lt(desiredPlayerBalance)) {
-          const topUp = desiredPlayerBalance.sub(currentAmount);
-          await this.player.fundPlayer(player, setup.mint, topUp);
-        }
-      })
-    );
 
     this.env.testUtils = this;
 
