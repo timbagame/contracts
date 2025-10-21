@@ -954,21 +954,21 @@ export class PlayerManager {
     this.mintManager = new MintManager(this.program, provider);
   }
 
-  async createPlayer(mint: PublicKey): Promise<TestPlayer> {
-    const player = anchor.web3.Keypair.generate();
-    const tokenProgram = await resolveTokenProgram(
-      this.provider.connection,
-      mint
-    );
+  private async preparePlayerAccount(
+    player: anchor.web3.Keypair,
+    mint: PublicKey,
+    tokenProgram?: PublicKey
+  ): Promise<TestPlayer> {
+    const resolvedTokenProgram =
+      tokenProgram ??
+      (await resolveTokenProgram(this.provider.connection, mint));
 
-    // Airdrop SOL for rent
     await requestAndConfirmAirdrop(
       this.provider.connection,
       player.publicKey,
       3 * anchor.web3.LAMPORTS_PER_SOL
     );
 
-    // Create token account
     const playerTokenAccount = await getOrCreateAssociatedTokenAccount(
       this.provider.connection,
       player,
@@ -977,7 +977,7 @@ export class PlayerManager {
       undefined,
       undefined,
       undefined,
-      tokenProgram
+      resolvedTokenProgram
     );
 
     return {
@@ -986,46 +986,29 @@ export class PlayerManager {
     };
   }
 
+  async createPlayer(mint: PublicKey): Promise<TestPlayer> {
+    const player = anchor.web3.Keypair.generate();
+    return this.preparePlayerAccount(player, mint);
+  }
+
   async createPlayerPool(
     count: number,
     mint: PublicKey
   ): Promise<TestPlayer[]> {
-    const tokenProgram = await resolveTokenProgram(
-      this.provider.connection,
-      mint
-    );
     const players = Array.from({ length: count }, () =>
       anchor.web3.Keypair.generate()
     );
 
-    // Batch airdrop SOL
-    await Promise.all(
-      players.map((player) =>
-        requestAndConfirmAirdrop(
-          this.provider.connection,
-          player.publicKey,
-          3 * anchor.web3.LAMPORTS_PER_SOL
-        )
-      )
+    const tokenProgram = await resolveTokenProgram(
+      this.provider.connection,
+      mint
     );
 
-    // Create player data in parallel
-    const playerPromises = players.map(async (player) => {
-      const playerTokenAccount = await getOrCreateAssociatedTokenAccount(
-        this.provider.connection,
-        player,
-        mint,
-        player.publicKey,
-        undefined,
-        undefined,
-        undefined,
-        tokenProgram
-      );
-
-      return { player, playerTokenAccount };
-    });
-
-    return Promise.all(playerPromises);
+    return Promise.all(
+      players.map((player) =>
+        this.preparePlayerAccount(player, mint, tokenProgram)
+      )
+    );
   }
 
   async fundPlayer(
