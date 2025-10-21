@@ -1163,6 +1163,80 @@ export class TestUtils {
   async quickSetup(): Promise<StandardSetup> {
     const setup = await this.env.initialize();
 
+    const oraclePda = setup.oracle.oracle ?? setup.oracle.oraclePDA;
+    const defaultMinAmount = new anchor.BN(1000);
+    const desiredPlayerBalance = new anchor.BN(100_000_000);
+
+    // Ensure token configuration is reset to a known-good state for each test run
+    await this.env.program.methods
+      .updateToken({ minAmount: defaultMinAmount, enabled: true })
+      .accountsStrict({
+        gameToken: setup.mint.gameTokenPDA,
+        tokenMint: setup.mint.mint,
+        oracle: oraclePda,
+        oracleOperator: setup.oracle.operator,
+      })
+      .signers([setup.oracle.operatorKeypair])
+      .rpc();
+
+    // Derive shared token context for cleanup helpers
+    const { gameToken, gameVault, gameTokenAccount } = computeGameTokenContext(
+      this.env.program,
+      setup.mint.mint,
+      setup.mint.tokenProgram
+    );
+
+    const gameTokenCtx: GameTokenContextAccounts = {
+      tokenMint: setup.mint.mint,
+      gameToken,
+      gameVault,
+      gameTokenAccount,
+      tokenProgram: setup.mint.tokenProgram,
+      associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+    };
+
+    // Ensure the oracle operator has an ATA for withdrawals before flushing fees
+    const operatorTokenAccount = (
+      await getOrCreateAssociatedTokenAccount(
+        this.env.provider.connection,
+        setup.oracle.operatorKeypair,
+        setup.mint.mint,
+        setup.oracle.operator,
+        false,
+        undefined,
+        undefined,
+        setup.mint.tokenProgram
+      )
+    ).address;
+
+    // Clear any accumulated fees so fee-related assertions remain deterministic
+    await this.env.program.methods
+      .withdrawTokenFee()
+      .accountsStrict({
+        gameTokenCtx,
+        oracle: oraclePda,
+        oracleOperator: setup.oracle.operator,
+        oracleOperatorTokenAccount: operatorTokenAccount,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .signers([setup.oracle.operatorKeypair])
+      .rpc();
+
+    // Top up player balances so each scenario starts from the same baseline
+    await Promise.all(
+      setup.players.map(async (player) => {
+        const balance = await this.env.provider.connection.getTokenAccountBalance(
+          player.playerTokenAccount.address
+        );
+        const currentAmount = new anchor.BN(balance.value.amount);
+
+        if (currentAmount.lt(desiredPlayerBalance)) {
+          const topUp = desiredPlayerBalance.sub(currentAmount);
+          await this.player.fundPlayer(player, setup.mint, topUp);
+        }
+      })
+    );
+
     this.env.testUtils = this;
 
     return setup;
