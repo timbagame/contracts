@@ -7,6 +7,7 @@ import {
   toGameTokenContext,
   awaitBufferExpiry,
   giveawayGameConfig,
+  getOraclePublicKey,
 } from "./test-helpers";
 
 // Giveaway: unjoin affects tickets_count but not total_amount; closing refunds full prize
@@ -61,10 +62,7 @@ describe("Giveaway Unjoin and Close", () => {
     expect(gameAfterUnjoins.ticketsCount).to.equal(0);
     expect(gameAfterUnjoins.totalAmount.toNumber()).to.equal(prize.toNumber());
 
-    const oraclePubkey = oracle.oracle ?? oracle.oraclePDA;
-    if (!oraclePubkey) {
-      throw new Error("Oracle not initialized for giveaway unjoin test");
-    }
+    const oraclePubkey = getOraclePublicKey(oracle);
 
     const derived = await deriveGameAccounts(env.program, gameData.gamePDA, {
       player: creator.player.publicKey,

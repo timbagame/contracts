@@ -14,6 +14,7 @@ import {
   subscribeEvent,
   awaitBufferExpiry,
   coinflipGameConfig,
+  getOraclePublicKey,
 } from "./test-helpers";
 
 // Instruction coverage: ensure lifecycle events emit and state updates match expectations
@@ -390,10 +391,7 @@ describe("Game Lifecycle Instruction Events", () => {
 
     const subscription = await subscribeEvent(env.program, "tokenFeeWithdrawn");
     try {
-      const oraclePubkey = oracle.oracle ?? oracle.oraclePDA;
-      if (!oraclePubkey) {
-        throw new Error("Oracle not initialized for withdraw event test");
-      }
+      const oraclePubkey = getOraclePublicKey(oracle);
 
       const derived = await deriveGameAccounts(env.program, gameData.gamePDA, {
         tokenMint: mint.mint,
