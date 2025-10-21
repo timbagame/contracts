@@ -40,6 +40,55 @@ export function errorToString(error: unknown): string {
   return error instanceof Error ? error.toString() : String(error);
 }
 
+type TimbaEvents = anchor.IdlEvents<Timba>;
+type TimbaEventName = keyof TimbaEvents;
+
+export async function subscribeEvent<TEvent extends TimbaEventName>(
+  program: anchor.Program<Timba>,
+  eventName: TEvent,
+  { timeoutMs = 10_000 }: { timeoutMs?: number } = {}
+): Promise<{
+  wait: Promise<TimbaEvents[TEvent]>;
+  dispose: () => Promise<void>;
+}> {
+  let listenerId: number | undefined;
+  let settled = false;
+  let resolveEvent: (value: TimbaEvents[TEvent]) => void;
+  let rejectEvent: (reason?: unknown) => void;
+
+  const wait = new Promise<TimbaEvents[TEvent]>((resolve, reject) => {
+    resolveEvent = resolve;
+    rejectEvent = reject;
+  });
+
+  const timer = setTimeout(() => {
+    if (!settled) {
+      settled = true;
+      rejectEvent(new Error(`${eventName} timeout`));
+    }
+  }, timeoutMs);
+
+  listenerId = await program.addEventListener(eventName, (event) => {
+    if (settled) return;
+    settled = true;
+    clearTimeout(timer);
+    resolveEvent(event);
+  });
+
+  const dispose = async () => {
+    clearTimeout(timer);
+    if (listenerId !== undefined) {
+      await program.removeEventListener(listenerId);
+    }
+  };
+
+  wait.catch(async () => {
+    await dispose().catch(() => {});
+  });
+
+  return { wait, dispose };
+}
+
 /**
  * Shared test utilities for the Timba program test suite
  */
@@ -444,8 +493,11 @@ export class MintManager {
     );
 
     // Get PDAs and token accounts
-    const { gameToken: gameTokenPDA, gameVault: gameVaultPDA, gameTokenAccount } =
-      computeGameTokenContext(this.program, mint, tokenProgram);
+    const {
+      gameToken: gameTokenPDA,
+      gameVault: gameVaultPDA,
+      gameTokenAccount,
+    } = computeGameTokenContext(this.program, mint, tokenProgram);
 
     // Create required token accounts
     await getOrCreateAssociatedTokenAccount(

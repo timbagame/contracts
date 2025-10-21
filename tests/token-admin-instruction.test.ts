@@ -7,61 +7,13 @@ import {
   getOrCreateAssociatedTokenAccount,
 } from "@solana/spl-token";
 import { PublicKey, SystemProgram } from "@solana/web3.js";
-import type { Timba } from "../target/types/timba";
-import { MintManager, TestEnvironment } from "./test-helpers";
+import { MintManager, TestEnvironment, subscribeEvent } from "./test-helpers";
 
 // Instruction coverage for initialize_token and update_token flows
-
-type TimbaEvents = anchor.IdlEvents<Timba>;
-type TimbaEventName = keyof TimbaEvents;
 
 describe("Token Administration Instructions", () => {
   let env: TestEnvironment;
   let mintManager: MintManager;
-
-  const subscribeEvent = async <TEvent extends TimbaEventName>(
-    eventName: TEvent
-  ) => {
-    let listenerId: number | undefined;
-    let settled = false;
-    let resolveEvent: (value: TimbaEvents[TEvent]) => void;
-    let rejectEvent: (reason?: unknown) => void;
-
-    const wait = new Promise<TimbaEvents[TEvent]>((resolve, reject) => {
-      resolveEvent = resolve;
-      rejectEvent = reject;
-    });
-
-    const timer = setTimeout(() => {
-      if (!settled) {
-        settled = true;
-        rejectEvent(new Error(`${eventName} timeout`));
-      }
-    }, 10000);
-
-    listenerId = await env.program.addEventListener(
-      eventName,
-      (event: TimbaEvents[TEvent]) => {
-        if (settled) return;
-        settled = true;
-        clearTimeout(timer);
-        resolveEvent(event);
-      }
-    );
-
-    const dispose = async () => {
-      clearTimeout(timer);
-      if (listenerId !== undefined) {
-        await env.program.removeEventListener(listenerId);
-      }
-    };
-
-    wait.catch(async () => {
-      await dispose().catch(() => {});
-    });
-
-    return { wait, dispose };
-  };
 
   before(async () => {
     env = TestEnvironment.getInstance();
@@ -73,7 +25,7 @@ describe("Token Administration Instructions", () => {
   });
 
   it("should emit TokenInitialized event with expected payload", async () => {
-    const subscription = await subscribeEvent("tokenInitialized");
+    const subscription = await subscribeEvent(env.program, "tokenInitialized");
     try {
       const mint = await mintManager.createMint();
 
@@ -194,7 +146,7 @@ describe("Token Administration Instructions", () => {
 
   it("should emit TokenUpdated when configuration changes", async () => {
     const mint = await mintManager.createMint();
-    const subscription = await subscribeEvent("tokenUpdated");
+    const subscription = await subscribeEvent(env.program, "tokenUpdated");
 
     const newMinAmount = new anchor.BN(42_000);
 

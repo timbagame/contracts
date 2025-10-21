@@ -1,7 +1,6 @@
 import { expect } from "chai";
 import * as anchor from "@coral-xyz/anchor";
 import { getOrCreateAssociatedTokenAccount } from "@solana/spl-token";
-import type { Timba } from "../target/types/timba";
 import {
   TestUtils,
   TestEnvironment,
@@ -11,57 +10,10 @@ import {
   deriveGameAccounts,
   toGameTokenContext,
   gameTokenContextFromMint,
+  subscribeEvent,
 } from "./test-helpers";
 
 // Verifies fee withdrawal transfers accumulated fees to oracle operator
-
-type TimbaEvents = anchor.IdlEvents<Timba>;
-type TimbaEventName = keyof TimbaEvents;
-
-async function subscribeEvent<TEvent extends TimbaEventName>(
-  program: anchor.Program<Timba>,
-  eventName: TEvent
-): Promise<{
-  wait: Promise<TimbaEvents[TEvent]>;
-  dispose: () => Promise<void>;
-}> {
-  let listenerId: number | undefined;
-  let settled = false;
-  let resolveEvent: (value: TimbaEvents[TEvent]) => void;
-  let rejectEvent: (reason?: unknown) => void;
-
-  const wait = new Promise<TimbaEvents[TEvent]>((resolve, reject) => {
-    resolveEvent = resolve;
-    rejectEvent = reject;
-  });
-
-  const timer = setTimeout(() => {
-    if (!settled) {
-      settled = true;
-      rejectEvent(new Error(`${eventName} timeout`));
-    }
-  }, 15_000);
-
-  listenerId = await program.addEventListener(eventName, (event) => {
-    if (settled) return;
-    settled = true;
-    clearTimeout(timer);
-    resolveEvent(event);
-  });
-
-  const dispose = async () => {
-    clearTimeout(timer);
-    if (listenerId !== undefined) {
-      await program.removeEventListener(listenerId);
-    }
-  };
-
-  wait.catch(async () => {
-    await dispose().catch(() => {});
-  });
-
-  return { wait, dispose };
-}
 
 async function ensureOperatorAta(
   connection: anchor.web3.Connection,
@@ -194,7 +146,13 @@ describe("Withdraw Fee", () => {
       operatorAta
     );
 
-    const subscription = await subscribeEvent(env.program, "tokenFeeWithdrawn");
+    const subscription = await subscribeEvent(
+      env.program,
+      "tokenFeeWithdrawn",
+      {
+        timeoutMs: 15_000,
+      }
+    );
 
     try {
       const zeroFeeContext = gameTokenContextFromMint(mint);
@@ -299,16 +257,28 @@ describe("Withdraw Fee", () => {
       operatorAta
     );
 
-    const subscription = await subscribeEvent(env.program, "tokenFeeWithdrawn");
+    const subscription = await subscribeEvent(
+      env.program,
+      "tokenFeeWithdrawn",
+      {
+        timeoutMs: 15_000,
+      }
+    );
 
     const disabledOracle = oracle.oracle ?? oracle.oraclePDA;
     if (!disabledOracle) {
-      throw new Error("Oracle not initialized for disabled token withdraw test");
+      throw new Error(
+        "Oracle not initialized for disabled token withdraw test"
+      );
     }
 
-    const disabledDerived = await deriveGameAccounts(env.program, gameData.gamePDA, {
-      tokenMint: mint.mint,
-    });
+    const disabledDerived = await deriveGameAccounts(
+      env.program,
+      gameData.gamePDA,
+      {
+        tokenMint: mint.mint,
+      }
+    );
     const disabledCtx = toGameTokenContext(disabledDerived);
 
     try {
