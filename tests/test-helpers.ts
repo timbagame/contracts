@@ -370,6 +370,38 @@ export class OracleManager {
 /**
  * Token and mint management utilities
  */
+type GameTokenDerivation = {
+  gameToken: PublicKey;
+  gameVault: PublicKey;
+  gameTokenAccount: PublicKey;
+};
+
+export function computeGameTokenContext(
+  program: anchor.Program<Timba>,
+  tokenMint: PublicKey,
+  tokenProgram: PublicKey
+): GameTokenDerivation {
+  const [gameToken] = PublicKey.findProgramAddressSync(
+    [Buffer.from("game_token"), tokenMint.toBuffer()],
+    program.programId
+  );
+
+  const [gameVault] = PublicKey.findProgramAddressSync(
+    [Buffer.from("game_vault"), tokenMint.toBuffer()],
+    program.programId
+  );
+
+  const gameTokenAccount = getAssociatedTokenAddressSync(
+    tokenMint,
+    gameVault,
+    true,
+    tokenProgram,
+    ASSOCIATED_TOKEN_PROGRAM_ID
+  );
+
+  return { gameToken, gameVault, gameTokenAccount };
+}
+
 export class MintManager {
   private program: anchor.Program<Timba>;
   private provider: anchor.AnchorProvider;
@@ -406,16 +438,9 @@ export class MintManager {
       tokenProgram
     );
 
-    // Get PDAs
-    const [gameVaultPDA] = PublicKey.findProgramAddressSync(
-      [Buffer.from("game_vault"), mint.toBuffer()],
-      this.program.programId
-    );
-
-    const [gameTokenPDA] = PublicKey.findProgramAddressSync(
-      [Buffer.from("game_token"), mint.toBuffer()],
-      this.program.programId
-    );
+    // Get PDAs and token accounts
+    const { gameToken: gameTokenPDA, gameVault: gameVaultPDA, gameTokenAccount } =
+      computeGameTokenContext(this.program, mint, tokenProgram);
 
     // Create required token accounts
     const gameVaultAta = await getOrCreateAssociatedTokenAccount(
@@ -459,7 +484,7 @@ export class MintManager {
         gameToken: gameTokenPDA,
         tokenMint: mint,
         gameVault: gameVaultPDA,
-        gameTokenAccount: gameVaultAta.address,
+        gameTokenAccount,
         oracle: oraclePDA,
         oracleOperator: oracleAccount.operator,
         systemProgram: anchor.web3.SystemProgram.programId,
@@ -553,20 +578,10 @@ export async function deriveGameAccounts(
     program.programId
   );
 
-  const mintManager = new MintManager(
+  const { gameToken, gameVault, gameTokenAccount } = computeGameTokenContext(
     program,
-    program.provider as anchor.AnchorProvider
-  );
-
-  const gameToken = mintManager.getGameTokenPDA(tokenMint);
-  const gameVault = mintManager.getGameVaultPDA(tokenMint);
-
-  const gameTokenAccount = getAssociatedTokenAddressSync(
     tokenMint,
-    gameVault,
-    true,
-    tokenProgram,
-    ASSOCIATED_TOKEN_PROGRAM_ID
+    tokenProgram
   );
 
   const playerTokenAccount = options.player
@@ -615,20 +630,22 @@ export function toGameTokenContext(
 }
 
 export function gameTokenContextFromMint(
-  mint: TestMint
+  mint: TestMint,
+  program?: anchor.Program<Timba>
 ): GameTokenContextAccounts {
-  const gameTokenAccount = getAssociatedTokenAddressSync(
+  const resolvedProgram =
+    program ?? (anchor.workspace.Timba as anchor.Program<Timba>);
+
+  const { gameToken, gameVault, gameTokenAccount } = computeGameTokenContext(
+    resolvedProgram,
     mint.mint,
-    mint.gameVaultPDA,
-    true,
-    mint.tokenProgram,
-    ASSOCIATED_TOKEN_PROGRAM_ID
+    mint.tokenProgram
   );
 
   return {
     tokenMint: mint.mint,
-    gameToken: mint.gameTokenPDA,
-    gameVault: mint.gameVaultPDA,
+    gameToken,
+    gameVault,
     gameTokenAccount,
     tokenProgram: mint.tokenProgram,
     associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
@@ -798,20 +815,10 @@ export class GameManager {
       [Buffer.from("oracle")],
       this.program.programId
     );
-    const [gameToken] = PublicKey.findProgramAddressSync(
-      [Buffer.from("game_token"), tokenMint.toBuffer()],
-      this.program.programId
-    );
-    const [gameVault] = PublicKey.findProgramAddressSync(
-      [Buffer.from("game_vault"), tokenMint.toBuffer()],
-      this.program.programId
-    );
-    const gameTokenAccount = getAssociatedTokenAddressSync(
+    const { gameToken, gameVault, gameTokenAccount } = computeGameTokenContext(
+      this.program,
       tokenMint,
-      gameVault,
-      true,
-      tokenProgram,
-      ASSOCIATED_TOKEN_PROGRAM_ID
+      tokenProgram
     );
     const creatorTokenAccount = getAssociatedTokenAddressSync(
       tokenMint,
