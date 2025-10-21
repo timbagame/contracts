@@ -274,6 +274,33 @@ export async function awaitBufferExpiry(
   }
 }
 
+/**
+ * Wait until the timeout has elapsed but before the oracle buffer expires so a
+ * completion instruction can be sent safely. This wraps `awaitBufferExpiry`
+ * with a negative slack adjustment that keeps the wait bounded inside the
+ * buffer window even if the helper needs to extend once due to slot stalls.
+ */
+export async function awaitOracleCompletionReady(
+  gameAccount: BufferReadyGameAccount,
+  oracleConfig: OracleConfig,
+  extraSlackSeconds = 0.5,
+  options: AwaitBufferExpiryOptions = {}
+): Promise<void> {
+  const bufferSeconds =
+    typeof oracleConfig.oracleBufferTime === "number"
+      ? oracleConfig.oracleBufferTime
+      : toNumber(oracleConfig.oracleBufferTime);
+
+  const boundedSlack =
+    bufferSeconds > 0
+      ? Math.min(extraSlackSeconds, Math.max(bufferSeconds - 0.25, 0))
+      : 0;
+
+  const adjustedSlack = -bufferSeconds + boundedSlack;
+
+  await awaitBufferExpiry(gameAccount, oracleConfig, adjustedSlack, options);
+}
+
 export interface GameConfig {
   gameType: any;
   amount: anchor.BN | number;
