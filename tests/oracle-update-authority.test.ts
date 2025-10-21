@@ -3,11 +3,11 @@ import * as anchor from "@coral-xyz/anchor";
 import {
   TestUtils,
   TestEnvironment,
-  GameConfig,
   calculateWinnerIndex,
   getWinnerFromPlayers,
   deriveGameAccounts,
   toGameTokenContext,
+  coinflipGameConfig,
 } from "./test-helpers";
 
 // Tests for oracle operator update and authority enforcement
@@ -29,14 +29,10 @@ describe("Oracle Update Authority", () => {
     // Prepare a game to accumulate fees
     const gameData = testUtils.game.generateGamePDA();
     const ticketAmount = new anchor.BN(1_000_000);
-    const cfg: GameConfig = {
-      gameType: { coinflip: {} },
+    const cfg = coinflipGameConfig({
       amount: ticketAmount,
-      maxTickets: new anchor.BN(2),
-      minTickets: new anchor.BN(2),
-      timeout: new anchor.BN(60),
-      isPrivate: false,
-    };
+      timeout: 60,
+    });
     await testUtils.game.initializeGame(
       gameData,
       cfg,

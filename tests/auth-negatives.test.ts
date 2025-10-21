@@ -3,11 +3,11 @@ import * as anchor from "@coral-xyz/anchor";
 import {
   TestUtils,
   TestEnvironment,
-  GameConfig,
   calculateWinnerIndex,
   getWinnerFromPlayers,
   deriveGameAccounts,
   toGameTokenContext,
+  coinflipGameConfig,
 } from "./test-helpers";
 
 // Negative authorization checks: non-creator close, non-operator withdraw/complete
@@ -27,14 +27,7 @@ describe("Authorization Negatives", () => {
     const [creator, other] = players;
     const gameData = testUtils.game.generateGamePDA();
 
-    const cfg: GameConfig = {
-      gameType: { coinflip: {} },
-      amount: new anchor.BN(1_000_000),
-      maxTickets: new anchor.BN(2),
-      minTickets: new anchor.BN(2),
-      timeout: new anchor.BN(3600),
-      isPrivate: false,
-    };
+    const cfg = coinflipGameConfig();
 
     await testUtils.game.initializeGame(
       gameData,
@@ -80,14 +73,7 @@ describe("Authorization Negatives", () => {
     const [creator, player1] = players;
     const gameData = testUtils.game.generateGamePDA();
 
-    const cfg: GameConfig = {
-      gameType: { coinflip: {} },
-      amount: new anchor.BN(1_000_000),
-      maxTickets: new anchor.BN(2),
-      minTickets: new anchor.BN(2),
-      timeout: new anchor.BN(3600),
-      isPrivate: false,
-    };
+    const cfg = coinflipGameConfig();
 
     await testUtils.game.initializeGame(
       gameData,
@@ -173,14 +159,7 @@ describe("Authorization Negatives", () => {
     const { mint, players } = await testUtils.quickSetup();
     const [creator, player1] = players;
     const gameData = testUtils.game.generateGamePDA();
-    const cfg: GameConfig = {
-      gameType: { coinflip: {} },
-      amount: new anchor.BN(1_000_000),
-      maxTickets: new anchor.BN(2),
-      minTickets: new anchor.BN(2),
-      timeout: new anchor.BN(3600),
-      isPrivate: false,
-    };
+    const cfg = coinflipGameConfig();
     await testUtils.game.initializeGame(
       gameData,
       cfg,

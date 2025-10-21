@@ -3,11 +3,11 @@ import * as anchor from "@coral-xyz/anchor";
 import {
   TestUtils,
   TestEnvironment,
-  GameConfig,
   computeGameOutcome,
   calculatePayoutBreakdown,
   getErrorCode,
   getErrorMessage,
+  coinflipGameConfig,
 } from "./test-helpers";
 
 // Tests covering winner index validation errors
@@ -29,14 +29,7 @@ describe("Winner Index Validation", () => {
     const gameData = testUtils.game.generateGamePDA();
     const [creator, player1] = players;
 
-    const gameConfig: GameConfig = {
-      gameType: { coinflip: {} },
-      amount: new anchor.BN(1_000_000),
-      maxTickets: new anchor.BN(2),
-      minTickets: new anchor.BN(2),
-      timeout: new anchor.BN(3600),
-      isPrivate: false,
-    };
+    const gameConfig = coinflipGameConfig();
 
     await testUtils.game.initializeGame(
       gameData,
@@ -117,11 +110,7 @@ describe("Winner Index Validation", () => {
       );
       expect.fail("Should throw WinnerPubkeyHashMismatch");
     } catch (e: any) {
-      expectAnchorError(
-        e,
-        "WinnerPubkeyHashMismatch",
-        "Winner hash mismatch"
-      );
+      expectAnchorError(e, "WinnerPubkeyHashMismatch", "Winner hash mismatch");
     }
   });
 
@@ -241,14 +230,9 @@ describe("Winner Index Validation", () => {
     const [creator, player1] = players;
     const gameData = testUtils.game.generateGamePDA();
 
-    const gameConfig: GameConfig = {
-      gameType: { coinflip: {} },
-      amount: new anchor.BN(1_000_000),
-      maxTickets: new anchor.BN(3),
-      minTickets: new anchor.BN(2),
-      timeout: new anchor.BN(3600),
-      isPrivate: false,
-    };
+    const gameConfig = coinflipGameConfig({
+      maxTickets: 3,
+    });
 
     await testUtils.game.initializeGame(
       gameData,

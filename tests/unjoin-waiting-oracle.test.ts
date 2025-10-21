@@ -1,6 +1,5 @@
 import { expect } from "chai";
-import * as anchor from "@coral-xyz/anchor";
-import { TestUtils, TestEnvironment, GameConfig } from "./test-helpers";
+import { TestUtils, TestEnvironment, coinflipGameConfig } from "./test-helpers";
 
 // Ensure unjoin is blocked during waiting_for_oracle window (min reached, before buffer expiry)
 
@@ -19,14 +18,9 @@ describe("Unjoin Blocked While Waiting for Oracle", () => {
     const gameData = testUtils.game.generateGamePDA();
     const [p1, p2] = players;
 
-    const gameConfig: GameConfig = {
-      gameType: { coinflip: {} },
-      amount: new anchor.BN(1_000_000),
-      maxTickets: new anchor.BN(2),
-      minTickets: new anchor.BN(2),
-      timeout: new anchor.BN(3),
-      isPrivate: false,
-    };
+    const gameConfig = coinflipGameConfig({
+      timeout: 3,
+    });
 
     await testUtils.game.initializeGame(
       gameData,

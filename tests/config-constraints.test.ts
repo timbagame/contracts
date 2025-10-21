@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import * as anchor from "@coral-xyz/anchor";
-import { TestUtils, TestEnvironment, GameConfig } from "./test-helpers";
+import { TestUtils, TestEnvironment, coinflipGameConfig } from "./test-helpers";
 
 // Config validation constraints (tickets and timeout) and invalid oracle updates
 
@@ -19,14 +19,11 @@ describe("Config Constraints", () => {
     const [creator] = players;
     const gameData = testUtils.game.generateGamePDA();
 
-    const cfg: GameConfig = {
-      gameType: { coinflip: {} },
-      amount: new anchor.BN(1_000_000),
-      maxTickets: new anchor.BN(1),
-      minTickets: new anchor.BN(1),
-      timeout: new anchor.BN(60),
-      isPrivate: false,
-    };
+    const cfg = coinflipGameConfig({
+      maxTickets: 1,
+      minTickets: 1,
+      timeout: 60,
+    });
 
     try {
       await testUtils.game.initializeGame(
@@ -46,14 +43,11 @@ describe("Config Constraints", () => {
     const [creator] = players;
     const gameData = testUtils.game.generateGamePDA();
 
-    const cfg: GameConfig = {
-      gameType: { coinflip: {} },
-      amount: new anchor.BN(1_000_000),
-      maxTickets: new anchor.BN(3),
-      minTickets: new anchor.BN(4),
-      timeout: new anchor.BN(60),
-      isPrivate: false,
-    };
+    const cfg = coinflipGameConfig({
+      maxTickets: 3,
+      minTickets: 4,
+      timeout: 60,
+    });
 
     try {
       await testUtils.game.initializeGame(
@@ -90,14 +84,9 @@ describe("Config Constraints", () => {
 
     // Timeout above maxTimeout (default 86400) should fail
     const gameData1 = testUtils.game.generateGamePDA();
-    const tooLong: GameConfig = {
-      gameType: { coinflip: {} },
-      amount: new anchor.BN(1_000_000),
-      maxTickets: new anchor.BN(2),
-      minTickets: new anchor.BN(2),
-      timeout: new anchor.BN(200_000),
-      isPrivate: false,
-    };
+    const tooLong = coinflipGameConfig({
+      timeout: 200_000,
+    });
     try {
       await testUtils.game.initializeGame(
         gameData1,
@@ -112,14 +101,11 @@ describe("Config Constraints", () => {
 
     // maxTickets over oracle.max_tickets should fail
     const gameData2 = testUtils.game.generateGamePDA();
-    const tooMany: GameConfig = {
-      gameType: { coinflip: {} },
-      amount: new anchor.BN(1_000_000),
-      maxTickets: new anchor.BN(11),
-      minTickets: new anchor.BN(2),
-      timeout: new anchor.BN(60),
-      isPrivate: false,
-    };
+    const tooMany = coinflipGameConfig({
+      maxTickets: 11,
+      minTickets: 2,
+      timeout: 60,
+    });
     try {
       await testUtils.game.initializeGame(
         gameData2,
@@ -175,14 +161,9 @@ describe("Config Constraints", () => {
     const [creator] = players;
     const gameData = testUtils.game.generateGamePDA();
 
-    const tooShort: GameConfig = {
-      gameType: { coinflip: {} },
-      amount: new anchor.BN(1_000_000),
-      maxTickets: new anchor.BN(2),
-      minTickets: new anchor.BN(2),
-      timeout: new anchor.BN(0),
-      isPrivate: false,
-    };
+    const tooShort = coinflipGameConfig({
+      timeout: 0,
+    });
 
     try {
       await testUtils.game.initializeGame(

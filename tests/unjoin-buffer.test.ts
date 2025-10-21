@@ -3,8 +3,8 @@ import * as anchor from "@coral-xyz/anchor";
 import {
   TestUtils,
   TestEnvironment,
-  GameConfig,
   errorToString,
+  coinflipGameConfig,
 } from "./test-helpers";
 
 // Tests unjoin behavior relative to oracle buffer expiration
@@ -26,14 +26,9 @@ describe("Unjoin After Buffer", () => {
 
     const shortTimeout = new anchor.BN(5); // very short timeout
 
-    const gameConfig: GameConfig = {
-      gameType: { coinflip: {} },
-      amount: new anchor.BN(1_000_000),
-      maxTickets: new anchor.BN(2),
-      minTickets: new anchor.BN(2),
+    const gameConfig = coinflipGameConfig({
       timeout: shortTimeout,
-      isPrivate: false,
-    };
+    });
 
     await testUtils.game.initializeGame(
       gameData,

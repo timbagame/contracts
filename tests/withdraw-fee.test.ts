@@ -4,13 +4,13 @@ import { getOrCreateAssociatedTokenAccount } from "@solana/spl-token";
 import {
   TestUtils,
   TestEnvironment,
-  GameConfig,
   calculateWinnerIndex,
   getWinnerFromPlayers,
   deriveGameAccounts,
   toGameTokenContext,
   gameTokenContextFromMint,
   subscribeEvent,
+  coinflipGameConfig,
 } from "./test-helpers";
 
 // Verifies fee withdrawal transfers accumulated fees to oracle operator
@@ -46,14 +46,9 @@ describe("Withdraw Fee", () => {
 
     const ticketAmount = new anchor.BN(1_500_000);
 
-    const gameConfig: GameConfig = {
-      gameType: { coinflip: {} },
+    const gameConfig = coinflipGameConfig({
       amount: ticketAmount,
-      maxTickets: new anchor.BN(2),
-      minTickets: new anchor.BN(2),
-      timeout: new anchor.BN(3600),
-      isPrivate: false,
-    };
+    });
 
     await testUtils.game.initializeGame(
       gameData,
@@ -198,14 +193,9 @@ describe("Withdraw Fee", () => {
     const [creator, player1] = players;
 
     const ticketAmount = new anchor.BN(2_000_000);
-    const cfg: GameConfig = {
-      gameType: { coinflip: {} },
+    const cfg = coinflipGameConfig({
       amount: ticketAmount,
-      maxTickets: new anchor.BN(2),
-      minTickets: new anchor.BN(2),
-      timeout: new anchor.BN(3600),
-      isPrivate: false,
-    };
+    });
 
     await testUtils.game.initializeGame(
       gameData,

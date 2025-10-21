@@ -178,6 +178,64 @@ export interface GameConfig {
   isPrivate: boolean;
 }
 
+type GameConfigOverrides = Partial<{
+  amount: anchor.BN | number;
+  maxTickets: anchor.BN | number;
+  minTickets: anchor.BN | number;
+  timeout: anchor.BN | number;
+  isPrivate: boolean;
+}>;
+
+function buildGameConfig(
+  base: GameConfig,
+  overrides: GameConfigOverrides = {}
+): GameConfig {
+  const merged: GameConfig = {
+    ...base,
+    ...overrides,
+  };
+
+  return {
+    ...merged,
+    amount: toBN(merged.amount),
+    maxTickets: toBN(merged.maxTickets),
+    minTickets: toBN(merged.minTickets),
+    timeout: toBN(merged.timeout),
+  };
+}
+
+export function coinflipGameConfig(
+  overrides: GameConfigOverrides = {}
+): GameConfig {
+  return buildGameConfig(
+    {
+      gameType: { coinflip: {} },
+      amount: new anchor.BN(1_000_000),
+      maxTickets: new anchor.BN(2),
+      minTickets: new anchor.BN(2),
+      timeout: new anchor.BN(3600),
+      isPrivate: false,
+    },
+    overrides
+  );
+}
+
+export function giveawayGameConfig(
+  overrides: GameConfigOverrides = {}
+): GameConfig {
+  return buildGameConfig(
+    {
+      gameType: { giveaway: {} },
+      amount: new anchor.BN(2_000_000),
+      maxTickets: new anchor.BN(5),
+      minTickets: new anchor.BN(1),
+      timeout: new anchor.BN(1800),
+      isPrivate: false,
+    },
+    overrides
+  );
+}
+
 /**
  * Global test state manager
  */

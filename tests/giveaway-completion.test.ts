@@ -3,8 +3,8 @@ import * as anchor from "@coral-xyz/anchor";
 import {
   TestUtils,
   TestEnvironment,
-  GameConfig,
   calculatePayoutBreakdown,
+  giveawayGameConfig,
 } from "./test-helpers";
 
 // Giveaway completion: 1 ticket max => ready immediately on first join; winner receives prize - fee
@@ -28,14 +28,11 @@ describe("Giveaway Completion", () => {
     const zeroPlayer = await testUtils.player.createPlayer(mint.mint);
 
     const prize = new anchor.BN(5_000_000);
-    const cfg: GameConfig = {
-      gameType: { giveaway: {} },
+    const cfg = giveawayGameConfig({
       amount: prize, // total prize funded by creator
-      maxTickets: new anchor.BN(1), // single participant triggers readiness without waiting
-      minTickets: new anchor.BN(1),
-      timeout: new anchor.BN(3600),
-      isPrivate: false,
-    };
+      maxTickets: 1, // single participant triggers readiness without waiting
+      minTickets: 1,
+    });
 
     // Creator funds the prize at init
     const beforeCreator = await env.provider.connection.getTokenAccountBalance(
@@ -97,14 +94,11 @@ describe("Giveaway Completion", () => {
     const prize = new anchor.BN(3_000_000);
     const timeoutSeconds = 3;
 
-    const config: GameConfig = {
-      gameType: { giveaway: {} },
+    const config = giveawayGameConfig({
       amount: prize,
-      maxTickets: new anchor.BN(5),
-      minTickets: new anchor.BN(1),
-      timeout: new anchor.BN(timeoutSeconds),
-      isPrivate: false,
-    };
+      maxTickets: 5,
+      timeout: timeoutSeconds,
+    });
 
     await testUtils.game.initializeGame(
       gameData,

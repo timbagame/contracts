@@ -3,9 +3,9 @@ import * as anchor from "@coral-xyz/anchor";
 import {
   TestUtils,
   TestEnvironment,
-  GameConfig,
   deriveGameAccounts,
   toGameTokenContext,
+  giveawayGameConfig,
 } from "./test-helpers";
 
 // Giveaway: unjoin affects tickets_count but not total_amount; closing refunds full prize
@@ -27,14 +27,10 @@ describe("Giveaway Unjoin and Close", () => {
 
     const prize = new anchor.BN(5_000_000);
 
-    const gameConfig: GameConfig = {
-      gameType: { giveaway: {} },
+    const gameConfig = giveawayGameConfig({
       amount: prize,
-      maxTickets: new anchor.BN(5),
-      minTickets: new anchor.BN(1),
-      timeout: new anchor.BN(5),
-      isPrivate: false,
-    };
+      timeout: 5,
+    });
 
     // Record creator balance before funding (pre)
     const beforeBal = await env.provider.connection.getTokenAccountBalance(

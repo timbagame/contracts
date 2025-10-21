@@ -5,7 +5,6 @@ import { getOrCreateAssociatedTokenAccount } from "@solana/spl-token";
 import {
   TestEnvironment,
   TestUtils,
-  GameConfig,
   calculateWinnerIndex,
   getWinnerFromPlayers,
   getErrorMessage,
@@ -13,6 +12,7 @@ import {
   deriveGameAccounts,
   toGameTokenContext,
   subscribeEvent,
+  coinflipGameConfig,
 } from "./test-helpers";
 
 // Instruction coverage: ensure lifecycle events emit and state updates match expectations
@@ -112,14 +112,12 @@ describe("Game Lifecycle Instruction Events", () => {
     const { mint, players } = await testUtils.quickSetup();
     const [creator] = players;
     const gameData = testUtils.game.generateGamePDA();
-    const cfg: GameConfig = {
-      gameType: { coinflip: {} },
+    const cfg = coinflipGameConfig({
       amount: new anchor.BN(2_500_000),
-      maxTickets: new anchor.BN(3),
-      minTickets: new anchor.BN(2),
-      timeout: new anchor.BN(1800),
-      isPrivate: false,
-    };
+      maxTickets: 3,
+      minTickets: 2,
+      timeout: 1800,
+    });
 
     const subscription = await subscribeEvent(env.program, "gameInitialized");
     try {
@@ -154,14 +152,11 @@ describe("Game Lifecycle Instruction Events", () => {
     const { mint, players } = await testUtils.quickSetup();
     const [creator, joiner] = players;
     const gameData = testUtils.game.generateGamePDA();
-    const cfg: GameConfig = {
-      gameType: { coinflip: {} },
-      amount: new anchor.BN(1_000_000),
-      maxTickets: new anchor.BN(3),
-      minTickets: new anchor.BN(2),
-      timeout: new anchor.BN(900),
-      isPrivate: false,
-    };
+    const cfg = coinflipGameConfig({
+      maxTickets: 3,
+      minTickets: 2,
+      timeout: 900,
+    });
 
     await testUtils.game.initializeGame(
       gameData,
@@ -202,14 +197,12 @@ describe("Game Lifecycle Instruction Events", () => {
     const { oracle, mint, players } = await testUtils.quickSetup();
     const [creator, p1] = players;
     const gameData = testUtils.game.generateGamePDA();
-    const cfg: GameConfig = {
-      gameType: { coinflip: {} },
+    const cfg = coinflipGameConfig({
       amount: new anchor.BN(2_000_000),
-      maxTickets: new anchor.BN(3),
-      minTickets: new anchor.BN(2),
-      timeout: new anchor.BN(10),
-      isPrivate: false,
-    };
+      maxTickets: 3,
+      minTickets: 2,
+      timeout: 10,
+    });
 
     await testUtils.game.initializeGame(
       gameData,
@@ -258,14 +251,10 @@ describe("Game Lifecycle Instruction Events", () => {
     const { oracle, mint, players } = await testUtils.quickSetup();
     const [creator, p1] = players;
     const gameData = testUtils.game.generateGamePDA();
-    const cfg: GameConfig = {
-      gameType: { coinflip: {} },
+    const cfg = coinflipGameConfig({
       amount: new anchor.BN(5_000_000),
-      maxTickets: new anchor.BN(2),
-      minTickets: new anchor.BN(2),
-      timeout: new anchor.BN(600),
-      isPrivate: false,
-    };
+      timeout: 600,
+    });
 
     await testUtils.game.initializeGame(
       gameData,
@@ -325,14 +314,11 @@ describe("Game Lifecycle Instruction Events", () => {
     const { mint, players } = await testUtils.quickSetup();
     const [creator] = players;
     const gameData = testUtils.game.generateGamePDA();
-    const cfg: GameConfig = {
-      gameType: { coinflip: {} },
-      amount: new anchor.BN(1_000_000),
-      maxTickets: new anchor.BN(4),
-      minTickets: new anchor.BN(2),
-      timeout: new anchor.BN(1800),
-      isPrivate: false,
-    };
+    const cfg = coinflipGameConfig({
+      maxTickets: 4,
+      minTickets: 2,
+      timeout: 1800,
+    });
 
     await testUtils.game.initializeGame(
       gameData,
@@ -389,14 +375,10 @@ describe("Game Lifecycle Instruction Events", () => {
     const { oracle, mint, players } = await testUtils.quickSetup();
     const [creator, p1] = players;
     const gameData = testUtils.game.generateGamePDA();
-    const cfg: GameConfig = {
-      gameType: { coinflip: {} },
+    const cfg = coinflipGameConfig({
       amount: new anchor.BN(3_000_000),
-      maxTickets: new anchor.BN(2),
-      minTickets: new anchor.BN(2),
-      timeout: new anchor.BN(600),
-      isPrivate: false,
-    };
+      timeout: 600,
+    });
 
     await testUtils.game.initializeGame(
       gameData,

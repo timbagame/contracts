@@ -1,10 +1,10 @@
 import { expect } from "chai";
 import * as anchor from "@coral-xyz/anchor";
 import {
-  GameConfig,
   TestEnvironment,
   TestUtils,
   getErrorCode,
+  coinflipGameConfig,
 } from "./test-helpers";
 
 describe("Large stake overflow regression", () => {
@@ -32,14 +32,11 @@ describe("Large stake overflow regression", () => {
 
     const gameData = testUtils.game.generateGamePDA();
 
-    const gameConfig: GameConfig = {
-      gameType: { coinflip: {} },
+    const gameConfig = coinflipGameConfig({
       amount: largeStake,
-      maxTickets: new anchor.BN(4),
-      minTickets: new anchor.BN(2),
-      timeout: new anchor.BN(3600),
-      isPrivate: false,
-    };
+      maxTickets: 4,
+      minTickets: 2,
+    });
 
     await testUtils.game.initializeGame(
       gameData,
