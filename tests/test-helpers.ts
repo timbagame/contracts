@@ -443,7 +443,7 @@ export class MintManager {
       computeGameTokenContext(this.program, mint, tokenProgram);
 
     // Create required token accounts
-    const gameVaultAta = await getOrCreateAssociatedTokenAccount(
+    await getOrCreateAssociatedTokenAccount(
       this.provider.connection,
       mintAuthority,
       mint,
