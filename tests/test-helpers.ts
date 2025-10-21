@@ -19,6 +19,15 @@ export const toBN = (value: anchor.BN | number): anchor.BN =>
 export const toNumber = (value: anchor.BN | number): number =>
   anchor.BN.isBN(value) ? value.toNumber() : value;
 
+export async function requestAndConfirmAirdrop(
+  connection: anchor.web3.Connection,
+  pubkey: PublicKey,
+  lamports: number
+): Promise<anchor.web3.RpcResponseAndContext<anchor.web3.SignatureResult>> {
+  const signature = await connection.requestAirdrop(pubkey, lamports);
+  return connection.confirmTransaction(signature, "confirmed");
+}
+
 export function errorToString(error: unknown): string {
   return error instanceof Error ? error.toString() : String(error);
 }
@@ -287,22 +296,15 @@ export class OracleManager {
       }
 
       // Airdrop SOL for rent to both provider and oracle operator
-      const providerAirdrop = await this.provider.connection.requestAirdrop(
+      await requestAndConfirmAirdrop(
+        this.provider.connection,
         this.provider.publicKey,
         5 * anchor.web3.LAMPORTS_PER_SOL
       );
-      const operatorAirdrop = await this.provider.connection.requestAirdrop(
+      await requestAndConfirmAirdrop(
+        this.provider.connection,
         operatorKeypair.publicKey,
         5 * anchor.web3.LAMPORTS_PER_SOL
-      );
-
-      await this.provider.connection.confirmTransaction(
-        providerAirdrop,
-        "confirmed"
-      );
-      await this.provider.connection.confirmTransaction(
-        operatorAirdrop,
-        "confirmed"
       );
 
       const configForProgram = {
@@ -386,11 +388,11 @@ export class MintManager {
     const decimals = options?.decimals ?? 6;
 
     // Airdrop SOL to mint authority
-    const signature = await this.provider.connection.requestAirdrop(
+    await requestAndConfirmAirdrop(
+      this.provider.connection,
       mintAuthority.publicKey,
       5 * anchor.web3.LAMPORTS_PER_SOL
     );
-    await this.provider.connection.confirmTransaction(signature, "confirmed");
 
     // Create mint
     const mint = await createMint(
@@ -655,11 +657,11 @@ export class PlayerManager {
     );
 
     // Airdrop SOL for rent
-    const signature = await this.provider.connection.requestAirdrop(
+    await requestAndConfirmAirdrop(
+      this.provider.connection,
       player.publicKey,
       3 * anchor.web3.LAMPORTS_PER_SOL
     );
-    await this.provider.connection.confirmTransaction(signature, "confirmed");
 
     // Create token account
     const playerTokenAccount = await getOrCreateAssociatedTokenAccount(
@@ -692,16 +694,13 @@ export class PlayerManager {
     );
 
     // Batch airdrop SOL
-    const airdropPromises = players.map((player) =>
-      this.provider.connection.requestAirdrop(
-        player.publicKey,
-        3 * anchor.web3.LAMPORTS_PER_SOL
-      )
-    );
-    const signatures = await Promise.all(airdropPromises);
     await Promise.all(
-      signatures.map((signature) =>
-        this.provider.connection.confirmTransaction(signature, "confirmed")
+      players.map((player) =>
+        requestAndConfirmAirdrop(
+          this.provider.connection,
+          player.publicKey,
+          3 * anchor.web3.LAMPORTS_PER_SOL
+        )
       )
     );
 
