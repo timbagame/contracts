@@ -1,6 +1,11 @@
 import { expect } from "chai";
 import * as anchor from "@coral-xyz/anchor";
-import { TestUtils, TestEnvironment, coinflipGameConfig } from "./test-helpers";
+import {
+  TestUtils,
+  TestEnvironment,
+  awaitBufferExpiry,
+  coinflipGameConfig,
+} from "./test-helpers";
 
 // Precision check for unjoin refund amount
 
@@ -41,9 +46,8 @@ describe("Unjoin Refund Precision", () => {
       creator.playerTokenAccount.address
     );
 
-    // Wait until buffer expiry
-    const bufferSecs = oracle.config.oracleBufferTime as number;
-    await new Promise((r) => setTimeout(r, (5 + bufferSecs + 2) * 1000));
+    const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+    await awaitBufferExpiry(gameAccount, oracle.config);
 
     await testUtils.game.unjoinGame(gameData.gamePDA, creator.player);
 
