@@ -1,9 +1,6 @@
 import { expect } from "chai";
 import * as anchor from "@coral-xyz/anchor";
-import {
-  getOrCreateAssociatedTokenAccount,
-  TOKEN_PROGRAM_ID,
-} from "@solana/spl-token";
+import { getOrCreateAssociatedTokenAccount } from "@solana/spl-token";
 import type { Timba } from "../target/types/timba";
 import {
   TestUtils,
@@ -11,6 +8,9 @@ import {
   GameConfig,
   calculateWinnerIndex,
   getWinnerFromPlayers,
+  deriveGameAccounts,
+  toGameTokenContext,
+  gameTokenContextFromMint,
 } from "./test-helpers";
 
 // Verifies fee withdrawal transfers accumulated fees to oracle operator
@@ -146,12 +146,22 @@ describe("Withdraw Fee", () => {
       operatorAta
     );
 
+    const oraclePubkey = oracle.oracle ?? oracle.oraclePDA;
+    if (!oraclePubkey) {
+      throw new Error("Oracle not initialized for withdraw fee test");
+    }
+
+    const derived = await deriveGameAccounts(env.program, gameData.gamePDA);
+    const gameTokenCtx = toGameTokenContext(derived);
+
     await env.program.methods
       .withdrawTokenFee()
-      .accounts({
+      .accountsStrict({
+        gameTokenCtx,
+        oracle: oraclePubkey,
         oracleOperator: oracle.operator,
-        tokenMint: mint.mint,
-        tokenProgram: TOKEN_PROGRAM_ID,
+        oracleOperatorTokenAccount: operatorAta,
+        systemProgram: anchor.web3.SystemProgram.programId,
       })
       .signers([oracle.operatorKeypair])
       .rpc();
@@ -185,12 +195,20 @@ describe("Withdraw Fee", () => {
     const subscription = await subscribeEvent(env.program, "tokenFeeWithdrawn");
 
     try {
+      const zeroFeeContext = gameTokenContextFromMint(mint);
+      const zeroFeeOracle = oracle.oracle ?? oracle.oraclePDA;
+      if (!zeroFeeOracle) {
+        throw new Error("Oracle not initialized for zero-fee withdraw test");
+      }
+
       await env.program.methods
         .withdrawTokenFee()
-        .accounts({
+        .accountsStrict({
+          gameTokenCtx: zeroFeeContext,
+          oracle: zeroFeeOracle,
           oracleOperator: oracle.operator,
-          tokenMint: mint.mint,
-          tokenProgram: TOKEN_PROGRAM_ID,
+          oracleOperatorTokenAccount: operatorAta,
+          systemProgram: anchor.web3.SystemProgram.programId,
         })
         .signers([oracle.operatorKeypair])
         .rpc();
@@ -281,13 +299,23 @@ describe("Withdraw Fee", () => {
 
     const subscription = await subscribeEvent(env.program, "tokenFeeWithdrawn");
 
+    const disabledOracle = oracle.oracle ?? oracle.oraclePDA;
+    if (!disabledOracle) {
+      throw new Error("Oracle not initialized for disabled token withdraw test");
+    }
+
+    const disabledDerived = await deriveGameAccounts(env.program, gameData.gamePDA);
+    const disabledCtx = toGameTokenContext(disabledDerived);
+
     try {
       await env.program.methods
         .withdrawTokenFee()
-        .accounts({
+        .accountsStrict({
+          gameTokenCtx: disabledCtx,
+          oracle: disabledOracle,
           oracleOperator: oracle.operator,
-          tokenMint: mint.mint,
-          tokenProgram: TOKEN_PROGRAM_ID,
+          oracleOperatorTokenAccount: operatorAta,
+          systemProgram: anchor.web3.SystemProgram.programId,
         })
         .signers([oracle.operatorKeypair])
         .rpc();

@@ -1,12 +1,13 @@
 import { expect } from "chai";
 import * as anchor from "@coral-xyz/anchor";
-import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import {
   TestUtils,
   TestEnvironment,
   GameConfig,
   calculateWinnerIndex,
   getWinnerFromPlayers,
+  deriveGameAccounts,
+  toGameTokenContext,
 } from "./test-helpers";
 
 // Tests for oracle operator update and authority enforcement
@@ -91,6 +92,14 @@ describe("Oracle Update Authority", () => {
     };
 
     try {
+      const oraclePubkey = oracle.oracle ?? oracle.oraclePDA;
+      if (!oraclePubkey) {
+        throw new Error("Oracle not initialized for oracle update test");
+      }
+
+      const derived = await deriveGameAccounts(env.program, gameData.gamePDA);
+      const gameTokenCtx = toGameTokenContext(derived);
+
       // Old operator should fail to complete
       try {
         await testUtils.game.completeGame(
@@ -148,15 +157,22 @@ describe("Oracle Update Authority", () => {
         await env.provider.sendAndConfirm(tx, [newOperator]);
       }
 
+      const oldOperatorAta = await anchor.utils.token.associatedAddress({
+        owner: oracle.operator,
+        mint: mint.mint,
+      });
+
       // Old operator attempt (minimal accounts subset as per IDL)
       try {
         await env.program.methods
           .withdrawTokenFee()
-        .accounts({
-          tokenMint: mint.mint,
-          oracleOperator: oracle.operator,
-          tokenProgram: TOKEN_PROGRAM_ID,
-        })
+          .accountsStrict({
+            gameTokenCtx,
+            oracle: oraclePubkey,
+            oracleOperator: oracle.operator,
+            oracleOperatorTokenAccount: oldOperatorAta,
+            systemProgram: anchor.web3.SystemProgram.programId,
+          })
           .signers([oracle.operatorKeypair])
           .rpc();
         expect.fail("Old operator should not withdraw after transfer");
@@ -171,10 +187,12 @@ describe("Oracle Update Authority", () => {
       // New operator can withdraw remaining fees (possibly zero if no fees after one completion)
       await env.program.methods
         .withdrawTokenFee()
-        .accounts({
-          tokenMint: mint.mint,
+        .accountsStrict({
+          gameTokenCtx,
+          oracle: oraclePubkey,
           oracleOperator: newOperator.publicKey,
-          tokenProgram: TOKEN_PROGRAM_ID,
+          oracleOperatorTokenAccount: newOpAta,
+          systemProgram: anchor.web3.SystemProgram.programId,
         })
         .signers([newOperator])
         .rpc();
