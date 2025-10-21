@@ -6,6 +6,7 @@ import {
   GameConfig,
   calculateWinnerIndex,
   getWinnerFromPlayers,
+  calculatePayoutBreakdown,
 } from "./test-helpers";
 
 // Verifies fee accumulation on game completion and distribution to winner
@@ -65,11 +66,8 @@ describe("Fee Accumulation", () => {
     );
 
     const totalPot = ticketAmount.mul(new anchor.BN(2));
-    const feePct = oracle.config.feePercentage; // 1
-    const expectedFee = totalPot
-      .mul(new anchor.BN(feePct))
-      .div(new anchor.BN(100));
-    const expectedWinnerAmount = totalPot.sub(expectedFee);
+    const { fee: expectedFee, winnerAmount: expectedWinnerAmount } =
+      calculatePayoutBreakdown(totalPot, oracle.config.feePercentage);
 
     await testUtils.game.completeGame(
       gameData,
