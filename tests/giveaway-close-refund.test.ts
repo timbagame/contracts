@@ -1,9 +1,12 @@
 import { expect } from "chai";
 import * as anchor from "@coral-xyz/anchor";
 import {
-  TOKEN_PROGRAM_ID
-} from "@solana/spl-token";
-import { TestUtils, TestEnvironment, GameConfig } from "./test-helpers";
+  TestUtils,
+  TestEnvironment,
+  GameConfig,
+  deriveGameAccounts,
+  toGameTokenContext,
+} from "./test-helpers";
 
 // Verifies that closing an unused giveaway refunds the prize to creator
 
@@ -59,13 +62,28 @@ describe("Giveaway Close Refund", () => {
     await new Promise((r) => setTimeout(r, 4000));
 
     // Close game (no joins happened)
+    const oraclePubkey = env.oracle?.oracle ?? env.oracle?.oraclePDA;
+    if (!oraclePubkey) {
+      throw new Error("Oracle not initialized for giveaway close test");
+    }
+
+    const derived = await deriveGameAccounts(env.program, gameData.gamePDA, {
+      player: creator.player.publicKey,
+      tokenMint: mint.mint,
+    });
+    if (!derived.playerTokenAccount) {
+      throw new Error("Missing creator token account for giveaway close test");
+    }
+
     await env.program.methods
       .closeGame()
-      .accounts({
-        creator: creator.player.publicKey,
+      .accountsStrict({
         game: gameData.gamePDA,
-        tokenMint: mint.mint,
-        tokenProgram: TOKEN_PROGRAM_ID,
+        creator: creator.player.publicKey,
+        oracle: oraclePubkey,
+        gameTokenCtx: toGameTokenContext(derived),
+        creatorTokenAccount: derived.playerTokenAccount,
+        systemProgram: anchor.web3.SystemProgram.programId,
       })
       .signers([creator.player])
       .rpc();
@@ -121,13 +139,28 @@ describe("Giveaway Close Refund", () => {
       timeoutSeconds + (oracle.config.oracleBufferTime as number) + 1;
     await new Promise((resolve) => setTimeout(resolve, waitSeconds * 1000));
 
+    const secondOraclePubkey = oracle.oracle ?? oracle.oraclePDA;
+    if (!secondOraclePubkey) {
+      throw new Error("Oracle not initialized for giveaway buffer test");
+    }
+
+    const secondDerived = await deriveGameAccounts(env.program, gameData.gamePDA, {
+      player: creator.player.publicKey,
+      tokenMint: mint.mint,
+    });
+    if (!secondDerived.playerTokenAccount) {
+      throw new Error("Missing creator token account for giveaway buffer test");
+    }
+
     await env.program.methods
       .closeGame()
-      .accounts({
-        creator: creator.player.publicKey,
+      .accountsStrict({
         game: gameData.gamePDA,
-        tokenMint: mint.mint,
-        tokenProgram: TOKEN_PROGRAM_ID,
+        creator: creator.player.publicKey,
+        oracle: secondOraclePubkey,
+        gameTokenCtx: toGameTokenContext(secondDerived),
+        creatorTokenAccount: secondDerived.playerTokenAccount,
+        systemProgram: anchor.web3.SystemProgram.programId,
       })
       .signers([creator.player])
       .rpc();

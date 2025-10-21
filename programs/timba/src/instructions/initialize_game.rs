@@ -1,14 +1,13 @@
-use crate::utils::get_clock;
+use crate::utils::get_clock_snapshot;
 use crate::{events::GameInitialized, state::GameType, GameConfig};
 use anchor_lang::prelude::*;
 
 pub fn handler(ctx: Context<super::InitializeGame>, config: GameConfig) -> Result<()> {
     let game: &mut Account<'_, crate::state::Game> = &mut ctx.accounts.game;
-    let clock = get_clock()?;
-    let current_time = clock.unix_timestamp as u64;
-    let current_slot = clock.slot;
+    let (current_time, current_slot) = get_clock_snapshot()?;
     let creator_key = ctx.accounts.creator.key();
-    let token_mint_key = ctx.accounts.token_mint.key();
+    let token_mint = &ctx.accounts.game_token_ctx.token_mint;
+    let token_mint_key = token_mint.key();
 
     // ===============================
     // STATE INITIALIZATION
@@ -40,16 +39,22 @@ pub fn handler(ctx: Context<super::InitializeGame>, config: GameConfig) -> Resul
 
     // Transfer tokens for giveaway games
     if game.ticket_amount == 0 {
-        ctx.accounts.game_token.handle_token_transfer(
-            ctx.accounts.creator_token_account.to_account_info(),
-            ctx.accounts.game_token_account.to_account_info(),
-            ctx.accounts.creator.to_account_info(),
-            ctx.accounts.token_program.to_account_info(),
-            ctx.accounts.token_mint.to_account_info(),
-            config.amount,
-            ctx.accounts.token_mint.decimals,
-            false,
-        )?;
+        ctx.accounts
+            .game_token_ctx
+            .game_token
+            .handle_token_transfer(
+                ctx.accounts.creator_token_account.to_account_info(),
+                ctx.accounts
+                    .game_token_ctx
+                    .game_token_account
+                    .to_account_info(),
+                ctx.accounts.creator.to_account_info(),
+                ctx.accounts.game_token_ctx.token_program.to_account_info(),
+                token_mint.to_account_info(),
+                config.amount,
+                token_mint.decimals,
+                false,
+            )?;
     }
 
     // ===============================

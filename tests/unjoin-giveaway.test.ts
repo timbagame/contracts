@@ -1,9 +1,12 @@
 import { expect } from "chai";
 import * as anchor from "@coral-xyz/anchor";
 import {
-  TOKEN_PROGRAM_ID
-} from "@solana/spl-token";
-import { TestUtils, TestEnvironment, GameConfig } from "./test-helpers";
+  TestUtils,
+  TestEnvironment,
+  GameConfig,
+  deriveGameAccounts,
+  toGameTokenContext,
+} from "./test-helpers";
 
 // Giveaway: unjoin affects tickets_count but not total_amount; closing refunds full prize
 
@@ -64,15 +67,29 @@ describe("Giveaway Unjoin and Close", () => {
     expect(gameAfterUnjoins.ticketsCount).to.equal(0);
     expect(gameAfterUnjoins.totalAmount.toNumber()).to.equal(prize.toNumber());
 
+    const oraclePubkey = oracle.oracle ?? oracle.oraclePDA;
+    if (!oraclePubkey) {
+      throw new Error("Oracle not initialized for giveaway unjoin test");
+    }
+
+    const derived = await deriveGameAccounts(env.program, gameData.gamePDA, {
+      player: creator.player.publicKey,
+    });
+    if (!derived.playerTokenAccount) {
+      throw new Error("Missing creator token account for giveaway unjoin test");
+    }
+
     // Creator closes game and gets full refund
     await env.program.methods
       .closeGame()
-        .accounts({
-          game: gameData.gamePDA,
-          creator: creator.player.publicKey,
-          tokenMint: mint.mint,
-          tokenProgram: TOKEN_PROGRAM_ID,
-        })
+      .accountsStrict({
+        game: gameData.gamePDA,
+        creator: creator.player.publicKey,
+        oracle: oraclePubkey,
+        gameTokenCtx: toGameTokenContext(derived),
+        creatorTokenAccount: derived.playerTokenAccount,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
       .signers([creator.player])
       .rpc();
 

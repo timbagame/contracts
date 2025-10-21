@@ -1,9 +1,12 @@
 import { expect } from "chai";
 import * as anchor from "@coral-xyz/anchor";
 import {
-  TOKEN_PROGRAM_ID
-} from "@solana/spl-token";
-import { TestUtils, TestEnvironment, GameConfig } from "./test-helpers";
+  TestUtils,
+  TestEnvironment,
+  GameConfig,
+  deriveGameAccounts,
+  toGameTokenContext,
+} from "./test-helpers";
 
 // Tests closing a game after timeout when min tickets not reached and players unjoin
 
@@ -57,14 +60,29 @@ describe("Incomplete Game Close", () => {
     expect(gameAfterUnjoins.ticketsCount).to.equal(0);
     expect(gameAfterUnjoins.totalAmount.toNumber()).to.equal(0);
 
+    const oraclePubkey = oracle.oracle ?? oracle.oraclePDA;
+    if (!oraclePubkey) {
+      throw new Error("Oracle not initialized for incomplete close test");
+    }
+
+    const derived = await deriveGameAccounts(env.program, gameData.gamePDA, {
+      player: creator.player.publicKey,
+      tokenMint: mint.mint,
+    });
+    if (!derived.playerTokenAccount) {
+      throw new Error("Missing creator token account for incomplete close test");
+    }
+
     // Close game (refund not applicable since not giveaway)
     await env.program.methods
       .closeGame()
-      .accounts({
-        creator: creator.player.publicKey,
+      .accountsStrict({
         game: gameData.gamePDA,
-        tokenMint: mint.mint,
-        tokenProgram: TOKEN_PROGRAM_ID,
+        creator: creator.player.publicKey,
+        oracle: oraclePubkey,
+        gameTokenCtx: toGameTokenContext(derived),
+        creatorTokenAccount: derived.playerTokenAccount,
+        systemProgram: anchor.web3.SystemProgram.programId,
       })
       .signers([creator.player])
       .rpc();
