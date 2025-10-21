@@ -5,6 +5,7 @@ import {
   TestEnvironment,
   calculatePayoutBreakdown,
   giveawayGameConfig,
+  awaitBufferExpiry,
 } from "./test-helpers";
 
 // Giveaway completion: 1 ticket max => ready immediately on first join; winner receives prize - fee
@@ -112,9 +113,7 @@ describe("Giveaway Completion", () => {
     const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
     expect(gameAccount.ticketsCount).to.equal(1);
 
-    await new Promise((resolve) =>
-      setTimeout(resolve, (timeoutSeconds + 1) * 1000)
-    );
+    await awaitBufferExpiry(gameAccount, oracle.config);
 
     const preWinner = await env.provider.connection.getTokenAccountBalance(
       soloPlayer.playerTokenAccount.address
