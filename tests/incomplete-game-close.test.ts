@@ -7,6 +7,7 @@ import {
   toGameTokenContext,
   awaitBufferExpiry,
   coinflipGameConfig,
+  getOraclePublicKey,
 } from "./test-helpers";
 
 // Tests closing a game after timeout when min tickets not reached and players unjoin
@@ -57,10 +58,7 @@ describe("Incomplete Game Close", () => {
     expect(gameAfterUnjoins.ticketsCount).to.equal(0);
     expect(gameAfterUnjoins.totalAmount.toNumber()).to.equal(0);
 
-    const oraclePubkey = oracle.oracle ?? oracle.oraclePDA;
-    if (!oraclePubkey) {
-      throw new Error("Oracle not initialized for incomplete close test");
-    }
+    const oraclePubkey = getOraclePublicKey(oracle);
 
     const derived = await deriveGameAccounts(env.program, gameData.gamePDA, {
       player: creator.player.publicKey,

@@ -11,6 +11,7 @@ import {
   gameTokenContextFromMint,
   subscribeEvent,
   coinflipGameConfig,
+  getOraclePublicKey,
 } from "./test-helpers";
 
 // Verifies fee withdrawal transfers accumulated fees to oracle operator
@@ -93,10 +94,7 @@ describe("Withdraw Fee", () => {
       operatorAta
     );
 
-    const oraclePubkey = oracle.oracle ?? oracle.oraclePDA;
-    if (!oraclePubkey) {
-      throw new Error("Oracle not initialized for withdraw fee test");
-    }
+    const oraclePubkey = getOraclePublicKey(oracle);
 
     const derived = await deriveGameAccounts(env.program, gameData.gamePDA, {
       tokenMint: mint.mint,
@@ -151,10 +149,7 @@ describe("Withdraw Fee", () => {
 
     try {
       const zeroFeeContext = gameTokenContextFromMint(mint);
-      const zeroFeeOracle = oracle.oracle ?? oracle.oraclePDA;
-      if (!zeroFeeOracle) {
-        throw new Error("Oracle not initialized for zero-fee withdraw test");
-      }
+      const zeroFeeOracle = getOraclePublicKey(oracle);
 
       await env.program.methods
         .withdrawTokenFee()
@@ -255,12 +250,7 @@ describe("Withdraw Fee", () => {
       }
     );
 
-    const disabledOracle = oracle.oracle ?? oracle.oraclePDA;
-    if (!disabledOracle) {
-      throw new Error(
-        "Oracle not initialized for disabled token withdraw test"
-      );
-    }
+    const disabledOracle = getOraclePublicKey(oracle);
 
     const disabledDerived = await deriveGameAccounts(
       env.program,

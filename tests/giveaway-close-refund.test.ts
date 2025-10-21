@@ -7,6 +7,7 @@ import {
   toGameTokenContext,
   awaitBufferExpiry,
   giveawayGameConfig,
+  getOraclePublicKey,
 } from "./test-helpers";
 
 // Verifies that closing an unused giveaway refunds the prize to creator
@@ -60,10 +61,7 @@ describe("Giveaway Close Refund", () => {
     await new Promise((r) => setTimeout(r, 4000));
 
     // Close game (no joins happened)
-    const oraclePubkey = env.oracle?.oracle ?? env.oracle?.oraclePDA;
-    if (!oraclePubkey) {
-      throw new Error("Oracle not initialized for giveaway close test");
-    }
+    const oraclePubkey = getOraclePublicKey(env.oracle!);
 
     const derived = await deriveGameAccounts(env.program, gameData.gamePDA, {
       player: creator.player.publicKey,
@@ -132,10 +130,7 @@ describe("Giveaway Close Refund", () => {
 
     await awaitBufferExpiry(gameBeforeClose, oracle.config, 1);
 
-    const secondOraclePubkey = oracle.oracle ?? oracle.oraclePDA;
-    if (!secondOraclePubkey) {
-      throw new Error("Oracle not initialized for giveaway buffer test");
-    }
+    const secondOraclePubkey = getOraclePublicKey(oracle);
 
     const secondDerived = await deriveGameAccounts(
       env.program,

@@ -8,6 +8,7 @@ import {
   deriveGameAccounts,
   toGameTokenContext,
   coinflipGameConfig,
+  getOraclePublicKey,
 } from "./test-helpers";
 
 // Tests for oracle operator update and authority enforcement
@@ -88,10 +89,7 @@ describe("Oracle Update Authority", () => {
     };
 
     try {
-      const oraclePubkey = oracle.oracle ?? oracle.oraclePDA;
-      if (!oraclePubkey) {
-        throw new Error("Oracle not initialized for oracle update test");
-      }
+      const oraclePubkey = getOraclePublicKey(oracle);
 
       const derived = await deriveGameAccounts(env.program, gameData.gamePDA, {
         tokenMint: mint.mint,

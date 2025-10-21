@@ -8,6 +8,7 @@ import {
   deriveGameAccounts,
   toGameTokenContext,
   coinflipGameConfig,
+  getOraclePublicKey,
 } from "./test-helpers";
 
 // Negative authorization checks: non-creator close, non-operator withdraw/complete
@@ -36,10 +37,7 @@ describe("Authorization Negatives", () => {
       mint.mint
     );
 
-    const oraclePubkey = env.oracle?.oracle ?? env.oracle?.oraclePDA;
-    if (!oraclePubkey) {
-      throw new Error("Oracle not initialized for closeGame test");
-    }
+    const oraclePubkey = getOraclePublicKey(env.oracle!);
 
     const derived = await deriveGameAccounts(env.program, gameData.gamePDA, {
       player: other.player.publicKey,
@@ -126,10 +124,7 @@ describe("Authorization Negatives", () => {
       ]);
     }
 
-    const withdrawOracle = oracle.oracle ?? oracle.oraclePDA;
-    if (!withdrawOracle) {
-      throw new Error("Oracle not initialized for withdrawTokenFee test");
-    }
+    const withdrawOracle = getOraclePublicKey(oracle);
 
     const withdrawDerived = await deriveGameAccounts(
       env.program,
