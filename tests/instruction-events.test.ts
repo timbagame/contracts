@@ -2,7 +2,6 @@ import { expect } from "chai";
 import * as anchor from "@coral-xyz/anchor";
 import { createHash } from "crypto";
 import { getOrCreateAssociatedTokenAccount } from "@solana/spl-token";
-import type { Timba } from "../target/types/timba";
 import {
   TestEnvironment,
   TestUtils,
@@ -13,61 +12,14 @@ import {
   toNumber,
   deriveGameAccounts,
   toGameTokenContext,
+  subscribeEvent,
 } from "./test-helpers";
 
 // Instruction coverage: ensure lifecycle events emit and state updates match expectations
 
-type TimbaEvents = anchor.IdlEvents<Timba>;
-type TimbaEventName = keyof TimbaEvents;
-
 describe("Game Lifecycle Instruction Events", () => {
   let env: TestEnvironment;
   let testUtils: TestUtils;
-
-  const subscribeEvent = async <TEvent extends TimbaEventName>(
-    eventName: TEvent,
-    timeoutMs = 10_000
-  ) => {
-    let listenerId: number | undefined;
-    let settled = false;
-    let resolveEvent: (value: TimbaEvents[TEvent]) => void;
-    let rejectEvent: (reason?: unknown) => void;
-
-    const wait = new Promise<TimbaEvents[TEvent]>((resolve, reject) => {
-      resolveEvent = resolve;
-      rejectEvent = reject;
-    });
-
-    const timer = setTimeout(() => {
-      if (!settled) {
-        settled = true;
-        rejectEvent(new Error(`${eventName} timeout`));
-      }
-    }, timeoutMs);
-
-    listenerId = await env.program.addEventListener(
-      eventName,
-      (event: TimbaEvents[TEvent]) => {
-        if (settled) return;
-        settled = true;
-        clearTimeout(timer);
-        resolveEvent(event);
-      }
-    );
-
-    const dispose = async () => {
-      clearTimeout(timer);
-      if (listenerId !== undefined) {
-        await env.program.removeEventListener(listenerId);
-      }
-    };
-
-    wait.catch(async () => {
-      await dispose().catch(() => {});
-    });
-
-    return { wait, dispose };
-  };
 
   const getClockUnixTimestamp = async (): Promise<number> => {
     const clockInfo = await env.provider.connection.getAccountInfo(
@@ -169,7 +121,7 @@ describe("Game Lifecycle Instruction Events", () => {
       isPrivate: false,
     };
 
-    const subscription = await subscribeEvent("gameInitialized");
+    const subscription = await subscribeEvent(env.program, "gameInitialized");
     try {
       await testUtils.game.initializeGame(
         gameData,
@@ -218,7 +170,7 @@ describe("Game Lifecycle Instruction Events", () => {
       mint.mint
     );
 
-    const subscription = await subscribeEvent("playerJoined");
+    const subscription = await subscribeEvent(env.program, "playerJoined");
     try {
       await testUtils.game.joinGame(gameData.gamePDA, joiner.player);
 
@@ -276,7 +228,9 @@ describe("Game Lifecycle Instruction Events", () => {
     const readyAtTimestamp =
       gameAccount.createdAt.toNumber() + toNumber(cfg.timeout) + bufferSeconds;
 
-    const subscription = await subscribeEvent("playerUnjoined", 20_000);
+    const subscription = await subscribeEvent(env.program, "playerUnjoined", {
+      timeoutMs: 20_000,
+    });
     try {
       await unjoinWithRetry(gameData.gamePDA, p1.player, readyAtTimestamp);
 
@@ -330,7 +284,7 @@ describe("Game Lifecycle Instruction Events", () => {
     );
     const winner = getWinnerFromPlayers([creator, p1], winnerIndex);
 
-    const subscription = await subscribeEvent("gameCompleted");
+    const subscription = await subscribeEvent(env.program, "gameCompleted");
     try {
       await testUtils.game.completeGame(
         gameData,
@@ -387,7 +341,7 @@ describe("Game Lifecycle Instruction Events", () => {
       mint.mint
     );
 
-    const subscription = await subscribeEvent("gameClosed");
+    const subscription = await subscribeEvent(env.program, "gameClosed");
     try {
       const oraclePubkey = env.oracle?.oracle ?? env.oracle?.oraclePDA;
       if (!oraclePubkey) {
@@ -399,7 +353,9 @@ describe("Game Lifecycle Instruction Events", () => {
         tokenMint: mint.mint,
       });
       if (!derived.playerTokenAccount) {
-        throw new Error("Missing creator token account for closeGame event test");
+        throw new Error(
+          "Missing creator token account for closeGame event test"
+        );
       }
 
       await env.program.methods
@@ -487,7 +443,7 @@ describe("Game Lifecycle Instruction Events", () => {
       oracle.operator
     );
 
-    const subscription = await subscribeEvent("tokenFeeWithdrawn");
+    const subscription = await subscribeEvent(env.program, "tokenFeeWithdrawn");
     try {
       const oraclePubkey = oracle.oracle ?? oracle.oraclePDA;
       if (!oraclePubkey) {
