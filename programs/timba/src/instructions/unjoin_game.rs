@@ -11,7 +11,8 @@ pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
     let current_time = clock.unix_timestamp as u64;
     let current_slot = clock.slot;
     let player_key = ctx.accounts.player.key();
-    let token_decimals = ctx.accounts.token_mint.decimals;
+    let token_mint = &ctx.accounts.game_token_ctx.token_mint;
+    let token_decimals = token_mint.decimals;
 
     // ===============================
     // VALIDATION
@@ -35,16 +36,22 @@ pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
     game.last_slot = current_slot;
 
     // Refund player directly
-    ctx.accounts.game_token.handle_token_transfer(
-        ctx.accounts.game_token_account.to_account_info(),
-        ctx.accounts.player_token_account.to_account_info(),
-        ctx.accounts.game_vault.to_account_info(),
-        ctx.accounts.token_program.to_account_info(),
-        ctx.accounts.token_mint.to_account_info(),
-        game.ticket_amount,
-        token_decimals,
-        true,
-    )?;
+    ctx.accounts
+        .game_token_ctx
+        .game_token
+        .handle_token_transfer(
+            ctx.accounts
+                .game_token_ctx
+                .game_token_account
+                .to_account_info(),
+            ctx.accounts.player_token_account.to_account_info(),
+            ctx.accounts.game_token_ctx.game_vault.to_account_info(),
+            ctx.accounts.game_token_ctx.token_program.to_account_info(),
+            token_mint.to_account_info(),
+            game.ticket_amount,
+            token_decimals,
+            true,
+        )?;
 
     // ===============================
     // EVENT EMISSION
