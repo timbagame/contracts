@@ -98,6 +98,35 @@ export interface GameConfig {
 /**
  * Global test state manager
  */
+type StandardSetup = {
+  oracle: TestOracle;
+  mint: TestMint;
+  players: TestPlayer[];
+};
+
+async function createStandardSetup(
+  program: anchor.Program<Timba>,
+  provider: anchor.AnchorProvider
+): Promise<StandardSetup> {
+  const oracleManager = new OracleManager(program, provider);
+  const mintManager = new MintManager(program, provider);
+  const playerManager = new PlayerManager(provider);
+
+  const oracle = await oracleManager.createOracle();
+  const mint = await mintManager.createMint();
+  const players = await playerManager.createPlayerPool(8, mint.mint);
+
+  for (const player of players) {
+    await playerManager.fundPlayer(
+      player,
+      mint,
+      new anchor.BN(100_000_000)
+    );
+  }
+
+  return { oracle, mint, players };
+}
+
 export class TestEnvironment {
   private static instance: TestEnvironment;
 
@@ -133,36 +162,28 @@ export class TestEnvironment {
   /**
    * Initialize the test environment with oracle and global mint
    */
-  async initialize(): Promise<void> {
-    // Initialize oracle
-    const oracleManager = new OracleManager(this.program, this.provider);
-    this.oracle = await oracleManager.createOracle();
-
-    // Create global mint
-    const mintManager = new MintManager(this.program, this.provider);
-    this.globalMint = await mintManager.createMint();
-    this.mint = this.globalMint; // alias for tests referencing env.mint
-
-    // Create player pool
-    const playerManager = new PlayerManager(this.provider);
-    this.playerPool = await playerManager.createPlayerPool(
-      8,
-      this.globalMint.mint
-    );
-
-    // Fund all players
-    for (const player of this.playerPool) {
-      await mintManager.mintTokensToAccount(
-        this.globalMint,
-        player.playerTokenAccount.address,
-        new anchor.BN(100_000_000)
-      );
+  async initialize(): Promise<StandardSetup> {
+    if (this.oracle && this.globalMint && this.playerPool.length > 0) {
+      return {
+        oracle: this.oracle,
+        mint: this.globalMint,
+        players: this.playerPool,
+      };
     }
 
-    // Create test utilities after base environment is established
-    this.testUtils = new TestUtils();
+    const setup = await createStandardSetup(this.program, this.provider);
 
-    // Test environment initialized
+    this.oracle = setup.oracle;
+    this.globalMint = setup.mint;
+    this.mint = setup.mint; // alias for tests referencing env.mint
+    this.playerPool = setup.players;
+
+    // Create test utilities after base environment is established
+    if (!this.testUtils) {
+      this.testUtils = new TestUtils();
+    }
+
+    return setup;
   }
 
   // Backwards-compatible helper (some tests call env.createPlayer())
@@ -1063,21 +1084,12 @@ export class TestUtils {
   /**
    * Quick setup for a standard test scenario
    */
-  async quickSetup(): Promise<{
-    oracle: TestOracle;
-    mint: TestMint;
-    players: TestPlayer[];
-  }> {
-    const oracle = await this.oracle.createOracle();
-    const mint = await this.mint.createMint();
-    const players = await this.player.createPlayerPool(8, mint.mint);
+  async quickSetup(): Promise<StandardSetup> {
+    const setup = await this.env.initialize();
 
-    // Fund all players with tokens (100 million for extensive testing)
-    for (const player of players) {
-      await this.player.fundPlayer(player, mint, new anchor.BN(100_000_000));
-    }
+    this.env.testUtils = this;
 
-    return { oracle, mint, players };
+    return setup;
   }
 }
 
