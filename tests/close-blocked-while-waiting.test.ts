@@ -1,6 +1,12 @@
 import { expect } from "chai";
 import * as anchor from "@coral-xyz/anchor";
-import { TestUtils, TestEnvironment, GameConfig, deriveGameAccounts, toGameTokenContext } from "./test-helpers";
+import {
+  TestUtils,
+  TestEnvironment,
+  deriveGameAccounts,
+  toGameTokenContext,
+  coinflipGameConfig,
+} from "./test-helpers";
 
 // Ensures close_game blocked while waiting_for_oracle (game either not expired or ready path)
 
@@ -19,14 +25,7 @@ describe("Close Blocked While Waiting", () => {
     const gameData = testUtils.game.generateGamePDA();
     const [creator, p1] = players;
 
-    const gameConfig: GameConfig = {
-      gameType: { coinflip: {} },
-      amount: new anchor.BN(1_000_000),
-      maxTickets: new anchor.BN(2),
-      minTickets: new anchor.BN(2),
-      timeout: new anchor.BN(3600),
-      isPrivate: false,
-    };
+    const gameConfig = coinflipGameConfig();
 
     await testUtils.game.initializeGame(
       gameData,

@@ -5,8 +5,9 @@ import {
   TestEnvironment,
   calculateWinnerIndex,
   getWinnerFromPlayers,
-  GameConfig,
   errorToString,
+  coinflipGameConfig,
+  giveawayGameConfig,
 } from "./test-helpers";
 
 /**
@@ -122,14 +123,7 @@ describe("Core Game Operations", () => {
       const gameData = testUtils.game.generateGamePDA();
       const creator = players[0];
 
-      const gameConfig: GameConfig = {
-        gameType: { coinflip: {} },
-        amount: new anchor.BN(1_000_000),
-        maxTickets: new anchor.BN(2),
-        minTickets: new anchor.BN(2),
-        timeout: new anchor.BN(3600),
-        isPrivate: false,
-      };
+      const gameConfig = coinflipGameConfig();
 
       await testUtils.game.initializeGame(
         gameData,
@@ -153,14 +147,10 @@ describe("Core Game Operations", () => {
       const gameData = testUtils.game.generateGamePDA();
       const creator = players[0];
 
-      const invalidConfig: GameConfig = {
-        gameType: { coinflip: {} },
-        amount: new anchor.BN(1_000_000),
-        maxTickets: new anchor.BN(1), // Invalid: coinflip needs at least 2 players
-        minTickets: new anchor.BN(2), // Invalid: min > max
-        timeout: new anchor.BN(3600),
-        isPrivate: false,
-      };
+      const invalidConfig = coinflipGameConfig({
+        maxTickets: 1, // Invalid: coinflip needs at least 2 players
+        minTickets: 2, // Invalid: min > max
+      });
 
       try {
         await testUtils.game.initializeGame(
@@ -180,14 +170,7 @@ describe("Core Game Operations", () => {
       const gameData = testUtils.game.generateGamePDA();
       const creator = players[0];
 
-      const gameConfig: GameConfig = {
-        gameType: { giveaway: {} },
-        amount: new anchor.BN(2_000_000),
-        maxTickets: new anchor.BN(5),
-        minTickets: new anchor.BN(1),
-        timeout: new anchor.BN(1800),
-        isPrivate: false,
-      };
+      const gameConfig = giveawayGameConfig();
 
       await testUtils.game.initializeGame(
         gameData,
@@ -213,14 +196,7 @@ describe("Core Game Operations", () => {
       const gameData = testUtils.game.generateGamePDA();
       const [creator, player1] = players;
 
-      const gameConfig: GameConfig = {
-        gameType: { coinflip: {} },
-        amount: new anchor.BN(1_000_000),
-        maxTickets: new anchor.BN(2),
-        minTickets: new anchor.BN(2),
-        timeout: new anchor.BN(3600),
-        isPrivate: false,
-      };
+      const gameConfig = coinflipGameConfig();
 
       // Initialize game
       await testUtils.game.initializeGame(
@@ -249,14 +225,9 @@ describe("Core Game Operations", () => {
       const gameData = testUtils.game.generateGamePDA();
       const [creator, player1] = players;
 
-      const gameConfig: GameConfig = {
-        gameType: { coinflip: {} },
-        amount: new anchor.BN(1_000_000),
-        maxTickets: new anchor.BN(2),
-        minTickets: new anchor.BN(2),
-        timeout: new anchor.BN(3600),
+      const gameConfig = coinflipGameConfig({
         isPrivate: true, // Private game
-      };
+      });
 
       // Initialize private game
       await testUtils.game.initializeGame(
@@ -289,14 +260,7 @@ describe("Core Game Operations", () => {
       const gameData = testUtils.game.generateGamePDA();
       const [creator, player1] = players;
 
-      const gameConfig: GameConfig = {
-        gameType: { coinflip: {} },
-        amount: new anchor.BN(1_000_000),
-        maxTickets: new anchor.BN(2),
-        minTickets: new anchor.BN(2),
-        timeout: new anchor.BN(3600),
-        isPrivate: true,
-      };
+      const gameConfig = coinflipGameConfig({ isPrivate: true });
 
       await testUtils.game.initializeGame(
         gameData,
@@ -320,14 +284,7 @@ describe("Core Game Operations", () => {
       const [creator, player1] = players;
       const fakeOperator = anchor.web3.Keypair.generate();
 
-      const gameConfig: GameConfig = {
-        gameType: { coinflip: {} },
-        amount: new anchor.BN(1_000_000),
-        maxTickets: new anchor.BN(2),
-        minTickets: new anchor.BN(2),
-        timeout: new anchor.BN(3600),
-        isPrivate: true,
-      };
+      const gameConfig = coinflipGameConfig({ isPrivate: true });
 
       await testUtils.game.initializeGame(
         gameData,
@@ -353,14 +310,7 @@ describe("Core Game Operations", () => {
       const gameData = testUtils.game.generateGamePDA();
       const [creator, player1, player2] = players;
 
-      const gameConfig: GameConfig = {
-        gameType: { coinflip: {} },
-        amount: new anchor.BN(1_000_000),
-        maxTickets: new anchor.BN(2),
-        minTickets: new anchor.BN(2),
-        timeout: new anchor.BN(3600),
-        isPrivate: false,
-      };
+      const gameConfig = coinflipGameConfig();
 
       await testUtils.game.initializeGame(
         gameData,
@@ -392,14 +342,7 @@ describe("Core Game Operations", () => {
       const insufficientAmount = new anchor.BN(500_000); // Half of required
       await testUtils.player.fundPlayer(poorPlayer, mint, insufficientAmount);
 
-      const gameConfig: GameConfig = {
-        gameType: { coinflip: {} },
-        amount: new anchor.BN(1_000_000),
-        maxTickets: new anchor.BN(2),
-        minTickets: new anchor.BN(2),
-        timeout: new anchor.BN(3600),
-        isPrivate: false,
-      };
+      const gameConfig = coinflipGameConfig();
 
       await testUtils.game.initializeGame(
         gameData,
@@ -423,14 +366,7 @@ describe("Core Game Operations", () => {
       const gameData = testUtils.game.generateGamePDA();
       const [creator, player1] = players;
 
-      const gameConfig: GameConfig = {
-        gameType: { coinflip: {} },
-        amount: new anchor.BN(1_000_000),
-        maxTickets: new anchor.BN(2),
-        minTickets: new anchor.BN(2),
-        timeout: new anchor.BN(3600),
-        isPrivate: false,
-      };
+      const gameConfig = coinflipGameConfig();
 
       // Create and fill game
       await testUtils.game.initializeGame(
@@ -488,14 +424,7 @@ describe("Core Game Operations", () => {
       const [creator, player1] = players;
       const fakeOperator = anchor.web3.Keypair.generate();
 
-      const gameConfig: GameConfig = {
-        gameType: { coinflip: {} },
-        amount: new anchor.BN(1_000_000),
-        maxTickets: new anchor.BN(2),
-        minTickets: new anchor.BN(2),
-        timeout: new anchor.BN(3600),
-        isPrivate: false,
-      };
+      const gameConfig = coinflipGameConfig();
 
       await testUtils.game.initializeGame(
         gameData,
@@ -538,14 +467,7 @@ describe("Core Game Operations", () => {
       const gameData = testUtils.game.generateGamePDA();
       const [creator, player1] = players;
 
-      const gameConfig: GameConfig = {
-        gameType: { coinflip: {} },
-        amount: new anchor.BN(1_000_000),
-        maxTickets: new anchor.BN(2),
-        minTickets: new anchor.BN(2),
-        timeout: new anchor.BN(3600),
-        isPrivate: false,
-      };
+      const gameConfig = coinflipGameConfig();
 
       await testUtils.game.initializeGame(
         gameData,

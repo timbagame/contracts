@@ -3,9 +3,9 @@ import * as anchor from "@coral-xyz/anchor";
 import {
   TestUtils,
   TestEnvironment,
-  GameConfig,
   deriveGameAccounts,
   toGameTokenContext,
+  coinflipGameConfig,
 } from "./test-helpers";
 
 // Tests closing a game after timeout when min tickets not reached and players unjoin
@@ -25,14 +25,11 @@ describe("Incomplete Game Close", () => {
     const gameData = testUtils.game.generateGamePDA();
     const [creator, p1, p2] = players;
 
-    const gameConfig: GameConfig = {
-      gameType: { coinflip: {} },
-      amount: new anchor.BN(1_000_000),
-      maxTickets: new anchor.BN(5),
-      minTickets: new anchor.BN(4), // Will not reach
-      timeout: new anchor.BN(5), // short
-      isPrivate: false,
-    };
+    const gameConfig = coinflipGameConfig({
+      maxTickets: 5,
+      minTickets: 4, // Will not reach
+      timeout: 5, // short
+    });
 
     await testUtils.game.initializeGame(
       gameData,
@@ -70,7 +67,9 @@ describe("Incomplete Game Close", () => {
       tokenMint: mint.mint,
     });
     if (!derived.playerTokenAccount) {
-      throw new Error("Missing creator token account for incomplete close test");
+      throw new Error(
+        "Missing creator token account for incomplete close test"
+      );
     }
 
     // Close game (refund not applicable since not giveaway)

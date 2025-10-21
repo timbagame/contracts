@@ -1,10 +1,9 @@
 import { expect } from "chai";
-import * as anchor from "@coral-xyz/anchor";
 import {
   TestUtils,
   TestEnvironment,
-  GameConfig,
   errorToString,
+  coinflipGameConfig,
 } from "./test-helpers";
 
 // Joining after timeout should fail with GameExpired
@@ -24,14 +23,11 @@ describe("Join After Timeout", () => {
     const gameData = testUtils.game.generateGamePDA();
     const [creator, p1] = players;
 
-    const gameConfig: GameConfig = {
-      gameType: { coinflip: {} },
-      amount: new anchor.BN(1_000_000),
-      maxTickets: new anchor.BN(3),
-      minTickets: new anchor.BN(2),
-      timeout: new anchor.BN(2),
-      isPrivate: false,
-    };
+    const gameConfig = coinflipGameConfig({
+      maxTickets: 3,
+      minTickets: 2,
+      timeout: 2,
+    });
 
     await testUtils.game.initializeGame(
       gameData,

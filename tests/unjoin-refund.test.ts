@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import * as anchor from "@coral-xyz/anchor";
-import { TestUtils, TestEnvironment, GameConfig } from "./test-helpers";
+import { TestUtils, TestEnvironment, coinflipGameConfig } from "./test-helpers";
 
 // Precision check for unjoin refund amount
 
@@ -21,14 +21,12 @@ describe("Unjoin Refund Precision", () => {
 
     const ticketAmount = new anchor.BN(3_333_333); // awkward number for edge
 
-    const gameConfig: GameConfig = {
-      gameType: { coinflip: {} },
+    const gameConfig = coinflipGameConfig({
       amount: ticketAmount,
-      maxTickets: new anchor.BN(4),
-      minTickets: new anchor.BN(3),
-      timeout: new anchor.BN(5),
-      isPrivate: false,
-    };
+      maxTickets: 4,
+      minTickets: 3,
+      timeout: 5,
+    });
 
     await testUtils.game.initializeGame(
       gameData,

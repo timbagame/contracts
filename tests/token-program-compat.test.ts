@@ -2,12 +2,12 @@ import { expect } from "chai";
 import * as anchor from "@coral-xyz/anchor";
 import { TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID } from "@solana/spl-token";
 import {
-  GameConfig,
   TestEnvironment,
   TestUtils,
   calculateWinnerIndex,
   getWinnerFromPlayers,
   calculatePayoutBreakdown,
+  coinflipGameConfig,
 } from "./test-helpers";
 
 // Ensures both legacy SPL Token and token-2022 mints exercise full game flows
@@ -42,14 +42,10 @@ describe("Token program compatibility", () => {
     );
 
     const ticketAmount = new anchor.BN(1_000_000);
-    const gameConfig: GameConfig = {
-      gameType: { coinflip: {} },
+    const gameConfig = coinflipGameConfig({
       amount: ticketAmount,
-      maxTickets: 2,
-      minTickets: 2,
-      timeout: new anchor.BN(600),
-      isPrivate: false,
-    };
+      timeout: 600,
+    });
 
     const gameData = testUtils.game.generateGamePDA();
     await testUtils.game.initializeGame(

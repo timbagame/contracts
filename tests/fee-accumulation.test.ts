@@ -3,10 +3,10 @@ import * as anchor from "@coral-xyz/anchor";
 import {
   TestUtils,
   TestEnvironment,
-  GameConfig,
   calculateWinnerIndex,
   getWinnerFromPlayers,
   calculatePayoutBreakdown,
+  coinflipGameConfig,
 } from "./test-helpers";
 
 // Verifies fee accumulation on game completion and distribution to winner
@@ -32,14 +32,9 @@ describe("Fee Accumulation", () => {
     // We rely on default fee 1% set in first oracle initialization.
     const ticketAmount = new anchor.BN(2_000_000);
 
-    const gameConfig: GameConfig = {
-      gameType: { coinflip: {} },
+    const gameConfig = coinflipGameConfig({
       amount: ticketAmount,
-      maxTickets: new anchor.BN(2),
-      minTickets: new anchor.BN(2),
-      timeout: new anchor.BN(3600),
-      isPrivate: false,
-    };
+    });
 
     await testUtils.game.initializeGame(
       gameData,
