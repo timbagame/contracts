@@ -1,58 +1,10 @@
 import { expect } from "chai";
 import * as anchor from "@coral-xyz/anchor";
-import type { Timba } from "../target/types/timba";
-import { TestEnvironment, TestUtils } from "./test-helpers";
-
-type TimbaEvents = anchor.IdlEvents<Timba>;
-type TimbaEventName = keyof TimbaEvents;
+import { TestEnvironment, TestUtils, subscribeEvent } from "./test-helpers";
 
 describe("Oracle Events", () => {
   let env: TestEnvironment;
   let testUtils: TestUtils;
-
-  const subscribeEvent = async <TEvent extends TimbaEventName>(
-    eventName: TEvent
-  ) => {
-    let listenerId: number | undefined;
-    let settled = false;
-    let resolveEvent: (value: TimbaEvents[TEvent]) => void;
-    let rejectEvent: (reason?: unknown) => void;
-
-    const wait = new Promise<TimbaEvents[TEvent]>((resolve, reject) => {
-      resolveEvent = resolve;
-      rejectEvent = reject;
-    });
-
-    const timer = setTimeout(() => {
-      if (!settled) {
-        settled = true;
-        rejectEvent(new Error(`${eventName} timeout`));
-      }
-    }, 10000);
-
-    listenerId = await env.program.addEventListener(
-      eventName,
-      (event: TimbaEvents[TEvent]) => {
-        if (settled) return;
-        settled = true;
-        clearTimeout(timer);
-        resolveEvent(event);
-      }
-    );
-
-    const dispose = async () => {
-      clearTimeout(timer);
-      if (listenerId !== undefined) {
-        await env.program.removeEventListener(listenerId);
-      }
-    };
-
-    wait.catch(async () => {
-      await dispose().catch(() => {});
-    });
-
-    return { wait, dispose };
-  };
 
   before(async () => {
     env = TestEnvironment.getInstance();
@@ -81,7 +33,7 @@ describe("Oracle Events", () => {
       minTimeout: oracle.config.minTimeout,
     };
 
-    const subscription = await subscribeEvent("oracleUpdated");
+    const subscription = await subscribeEvent(env.program, "oracleUpdated");
 
     try {
       await env.program.methods
@@ -162,7 +114,7 @@ describe("Oracle Events", () => {
       minTimeout: oracle.config.minTimeout,
     };
 
-    const subscription = await subscribeEvent("oracleUpdated");
+    const subscription = await subscribeEvent(env.program, "oracleUpdated");
 
     try {
       await env.program.methods
