@@ -160,6 +160,45 @@ pub struct GameTokenContext<'info> {
     pub associated_token_program: Program<'info, AssociatedToken>,
 }
 
+impl<'info> GameTokenContext<'info> {
+    pub fn transfer_from_player(
+        &self,
+        game_token: &Account<'info, GameToken>,
+        player_token_account: &InterfaceAccount<'info, TokenAccount>,
+        player: &Signer<'info>,
+        amount: u64,
+    ) -> Result<()> {
+        game_token.handle_token_transfer(
+            player_token_account.to_account_info(),
+            self.game_token_account.to_account_info(),
+            player.to_account_info(),
+            self.token_program.to_account_info(),
+            self.token_mint.to_account_info(),
+            amount,
+            self.token_mint.decimals,
+            false,
+        )
+    }
+
+    pub fn transfer_from_vault(
+        &self,
+        game_token: &Account<'info, GameToken>,
+        destination_token_account: &InterfaceAccount<'info, TokenAccount>,
+        amount: u64,
+    ) -> Result<()> {
+        game_token.handle_token_transfer(
+            self.game_token_account.to_account_info(),
+            destination_token_account.to_account_info(),
+            self.game_vault.clone(),
+            self.token_program.to_account_info(),
+            self.token_mint.to_account_info(),
+            amount,
+            self.token_mint.decimals,
+            true,
+        )
+    }
+}
+
 #[derive(Accounts)]
 #[instruction(game_type: GameType, amount: u64, max_tickets: u32, min_tickets: u32, timeout: u64, is_private: bool, random_hash: [u8; 32])]
 pub struct InitializeGame<'info> {

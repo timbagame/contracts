@@ -7,8 +7,6 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
     let game = &mut ctx.accounts.game;
     let (current_time, current_slot) = get_clock_snapshot()?;
     let player_key = ctx.accounts.player.key();
-    let token_mint = &ctx.accounts.game_token_ctx.token_mint;
-    let token_decimals = token_mint.decimals;
 
     // ===============================
     // VALIDATION
@@ -35,22 +33,12 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
     // TOKEN TRANSFER
     // ===============================
 
-    ctx.accounts
-        .game_token_ctx
-        .game_token
-        .handle_token_transfer(
-            ctx.accounts.player_token_account.to_account_info(),
-            ctx.accounts
-                .game_token_ctx
-                .game_token_account
-                .to_account_info(),
-            ctx.accounts.player.to_account_info(),
-            ctx.accounts.game_token_ctx.token_program.to_account_info(),
-            token_mint.to_account_info(),
-            game.ticket_amount,
-            token_decimals,
-            false,
-        )?;
+    ctx.accounts.game_token_ctx.transfer_from_player(
+        &ctx.accounts.game_token_ctx.game_token,
+        &ctx.accounts.player_token_account,
+        &ctx.accounts.player,
+        game.ticket_amount,
+    )?;
 
     // ===============================
     // EVENT EMISSION
