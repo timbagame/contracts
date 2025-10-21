@@ -32,11 +32,9 @@ pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
     game.last_slot = current_slot;
 
     // Refund player directly
-    ctx.accounts.game_token_ctx.transfer_from_vault(
-        &ctx.accounts.game_token_ctx.game_token,
-        &ctx.accounts.player_token_account,
-        game.ticket_amount,
-    )?;
+    ctx.accounts
+        .game_token_ctx
+        .transfer_from_vault(&ctx.accounts.player_token_account, game.ticket_amount)?;
 
     // ===============================
     // EVENT EMISSION

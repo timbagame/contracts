@@ -78,11 +78,9 @@ pub fn handler(
     // ===============================
 
     // Transfer winner amount directly to winner's token account
-    ctx.accounts.game_token_ctx.transfer_from_vault(
-        &ctx.accounts.game_token_ctx.game_token,
-        &ctx.accounts.winner_token_account,
-        winner_amount,
-    )?;
+    ctx.accounts
+        .game_token_ctx
+        .transfer_from_vault(&ctx.accounts.winner_token_account, winner_amount)?;
 
     // ===============================
     // EVENT EMISSION

@@ -163,12 +163,11 @@ pub struct GameTokenContext<'info> {
 impl<'info> GameTokenContext<'info> {
     pub fn transfer_from_player(
         &self,
-        game_token: &Account<'info, GameToken>,
         player_token_account: &InterfaceAccount<'info, TokenAccount>,
         player: &Signer<'info>,
         amount: u64,
     ) -> Result<()> {
-        game_token.handle_token_transfer(
+        self.game_token.handle_token_transfer(
             player_token_account.to_account_info(),
             self.game_token_account.to_account_info(),
             player.to_account_info(),
@@ -182,11 +181,10 @@ impl<'info> GameTokenContext<'info> {
 
     pub fn transfer_from_vault(
         &self,
-        game_token: &Account<'info, GameToken>,
         destination_token_account: &InterfaceAccount<'info, TokenAccount>,
         amount: u64,
     ) -> Result<()> {
-        game_token.handle_token_transfer(
+        self.game_token.handle_token_transfer(
             self.game_token_account.to_account_info(),
             destination_token_account.to_account_info(),
             self.game_vault.clone(),
