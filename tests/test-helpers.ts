@@ -47,6 +47,22 @@ export interface TestGame {
   secretKey: number[];
 }
 
+type DerivedGameAccountsOptions = {
+  player?: PublicKey;
+  winner?: PublicKey;
+};
+
+export type DerivedGameAccounts = {
+  tokenMint: PublicKey;
+  tokenProgram: PublicKey;
+  oracle: PublicKey;
+  gameToken: PublicKey;
+  gameVault: PublicKey;
+  gameTokenAccount: PublicKey;
+  playerTokenAccount?: PublicKey;
+  winnerTokenAccount?: PublicKey;
+};
+
 async function resolveTokenProgram(
   connection: anchor.web3.Connection,
   tokenMint: PublicKey
@@ -98,6 +114,35 @@ export interface GameConfig {
 /**
  * Global test state manager
  */
+type StandardSetup = {
+  oracle: TestOracle;
+  mint: TestMint;
+  players: TestPlayer[];
+};
+
+async function createStandardSetup(
+  program: anchor.Program<Timba>,
+  provider: anchor.AnchorProvider
+): Promise<StandardSetup> {
+  const oracleManager = new OracleManager(program, provider);
+  const mintManager = new MintManager(program, provider);
+  const playerManager = new PlayerManager(provider);
+
+  const oracle = await oracleManager.createOracle();
+  const mint = await mintManager.createMint();
+  const players = await playerManager.createPlayerPool(8, mint.mint);
+
+  for (const player of players) {
+    await playerManager.fundPlayer(
+      player,
+      mint,
+      new anchor.BN(100_000_000)
+    );
+  }
+
+  return { oracle, mint, players };
+}
+
 export class TestEnvironment {
   private static instance: TestEnvironment;
 
@@ -133,36 +178,28 @@ export class TestEnvironment {
   /**
    * Initialize the test environment with oracle and global mint
    */
-  async initialize(): Promise<void> {
-    // Initialize oracle
-    const oracleManager = new OracleManager(this.program, this.provider);
-    this.oracle = await oracleManager.createOracle();
-
-    // Create global mint
-    const mintManager = new MintManager(this.program, this.provider);
-    this.globalMint = await mintManager.createMint();
-    this.mint = this.globalMint; // alias for tests referencing env.mint
-
-    // Create player pool
-    const playerManager = new PlayerManager(this.provider);
-    this.playerPool = await playerManager.createPlayerPool(
-      8,
-      this.globalMint.mint
-    );
-
-    // Fund all players
-    for (const player of this.playerPool) {
-      await mintManager.mintTokensToAccount(
-        this.globalMint,
-        player.playerTokenAccount.address,
-        new anchor.BN(100_000_000)
-      );
+  async initialize(): Promise<StandardSetup> {
+    if (this.oracle && this.globalMint && this.playerPool.length > 0) {
+      return {
+        oracle: this.oracle,
+        mint: this.globalMint,
+        players: this.playerPool,
+      };
     }
 
-    // Create test utilities after base environment is established
-    this.testUtils = new TestUtils();
+    const setup = await createStandardSetup(this.program, this.provider);
 
-    // Test environment initialized
+    this.oracle = setup.oracle;
+    this.globalMint = setup.mint;
+    this.mint = setup.mint; // alias for tests referencing env.mint
+    this.playerPool = setup.players;
+
+    // Create test utilities after base environment is established
+    if (!this.testUtils) {
+      this.testUtils = new TestUtils();
+    }
+
+    return setup;
   }
 
   // Backwards-compatible helper (some tests call env.createPlayer())
@@ -497,6 +534,71 @@ export class MintManager {
   }
 }
 
+export async function deriveGameAccounts(
+  program: anchor.Program<Timba>,
+  gamePDA: PublicKey,
+  options: DerivedGameAccountsOptions = {}
+): Promise<DerivedGameAccounts> {
+  const gameAccount = await program.account.game.fetch(gamePDA);
+  const tokenMint = new PublicKey(gameAccount.tokenMint);
+  const tokenProgram = await resolveTokenProgram(
+    program.provider.connection,
+    tokenMint
+  );
+
+  const [oracle] = PublicKey.findProgramAddressSync(
+    [Buffer.from("oracle")],
+    program.programId
+  );
+
+  const mintManager = new MintManager(
+    program,
+    program.provider as anchor.AnchorProvider
+  );
+
+  const gameToken = mintManager.getGameTokenPDA(tokenMint);
+  const gameVault = mintManager.getGameVaultPDA(tokenMint);
+
+  const gameTokenAccount = getAssociatedTokenAddressSync(
+    tokenMint,
+    gameVault,
+    true,
+    tokenProgram,
+    ASSOCIATED_TOKEN_PROGRAM_ID
+  );
+
+  const playerTokenAccount = options.player
+    ? getAssociatedTokenAddressSync(
+        tokenMint,
+        options.player,
+        false,
+        tokenProgram,
+        ASSOCIATED_TOKEN_PROGRAM_ID
+      )
+    : undefined;
+
+  const winnerTokenAccount = options.winner
+    ? getAssociatedTokenAddressSync(
+        tokenMint,
+        options.winner,
+        false,
+        tokenProgram,
+        ASSOCIATED_TOKEN_PROGRAM_ID
+      )
+    : undefined;
+
+  return {
+    tokenMint,
+    tokenProgram,
+    oracle,
+    gameToken,
+    gameVault,
+    gameTokenAccount,
+    playerTokenAccount,
+    winnerTokenAccount,
+  };
+}
+
 /**
  * Player management utilities
  */
@@ -680,49 +782,25 @@ export class GameManager {
     player: anchor.web3.Keypair,
     oracleOperator?: anchor.web3.Keypair
   ): Promise<void> {
-    const gameAccount = await this.program.account.game.fetch(gamePDA);
-    const tokenMint = new PublicKey(gameAccount.tokenMint);
-    const tokenProgram = await this.resolveTokenProgram(tokenMint);
+    const derived = await deriveGameAccounts(this.program, gamePDA, {
+      player: player.publicKey,
+    });
 
-    const [oraclePDA] = PublicKey.findProgramAddressSync(
-      [Buffer.from("oracle")],
-      this.program.programId
-    );
-    const [gameTokenPDA] = PublicKey.findProgramAddressSync(
-      [Buffer.from("game_token"), tokenMint.toBuffer()],
-      this.program.programId
-    );
-    const [gameVaultPDA] = PublicKey.findProgramAddressSync(
-      [Buffer.from("game_vault"), tokenMint.toBuffer()],
-      this.program.programId
-    );
-
-    const playerTokenAccount = getAssociatedTokenAddressSync(
-      tokenMint,
-      player.publicKey,
-      false,
-      tokenProgram,
-      ASSOCIATED_TOKEN_PROGRAM_ID
-    );
-    const gameTokenAccount = getAssociatedTokenAddressSync(
-      tokenMint,
-      gameVaultPDA,
-      true,
-      tokenProgram,
-      ASSOCIATED_TOKEN_PROGRAM_ID
-    );
+    if (!derived.playerTokenAccount) {
+      throw new Error("Missing player token account for joinGame");
+    }
 
     const commonAccounts = {
       game: gamePDA,
       player: player.publicKey,
-      tokenMint,
-      gameToken: gameTokenPDA,
-      gameVault: gameVaultPDA,
-      playerTokenAccount,
-      gameTokenAccount,
-      oracle: oraclePDA,
+      tokenMint: derived.tokenMint,
+      gameToken: derived.gameToken,
+      gameVault: derived.gameVault,
+      playerTokenAccount: derived.playerTokenAccount,
+      gameTokenAccount: derived.gameTokenAccount,
+      oracle: derived.oracle,
       systemProgram: anchor.web3.SystemProgram.programId,
-      tokenProgram,
+      tokenProgram: derived.tokenProgram,
       associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
     };
 
@@ -751,37 +829,13 @@ export class GameManager {
     player: anchor.web3.Keypair,
     authority?: anchor.web3.Keypair
   ): Promise<void> {
-    const gameAccount = await this.program.account.game.fetch(gamePDA);
-    const tokenMint = new PublicKey(gameAccount.tokenMint);
-    const tokenProgram = await this.resolveTokenProgram(tokenMint);
+    const derived = await deriveGameAccounts(this.program, gamePDA, {
+      player: player.publicKey,
+    });
 
-    const [oraclePDA] = PublicKey.findProgramAddressSync(
-      [Buffer.from("oracle")],
-      this.program.programId
-    );
-    const [gameTokenPDA] = PublicKey.findProgramAddressSync(
-      [Buffer.from("game_token"), tokenMint.toBuffer()],
-      this.program.programId
-    );
-    const [gameVaultPDA] = PublicKey.findProgramAddressSync(
-      [Buffer.from("game_vault"), tokenMint.toBuffer()],
-      this.program.programId
-    );
-
-    const playerTokenAccount = getAssociatedTokenAddressSync(
-      tokenMint,
-      player.publicKey,
-      false,
-      tokenProgram,
-      ASSOCIATED_TOKEN_PROGRAM_ID
-    );
-    const gameTokenAccount = getAssociatedTokenAddressSync(
-      tokenMint,
-      gameVaultPDA,
-      true,
-      tokenProgram,
-      ASSOCIATED_TOKEN_PROGRAM_ID
-    );
+    if (!derived.playerTokenAccount) {
+      throw new Error("Missing player token account for unjoinGame");
+    }
 
     const authoritySigner = authority ?? player;
 
@@ -791,14 +845,14 @@ export class GameManager {
         game: gamePDA,
         player: player.publicKey,
         authority: authoritySigner.publicKey,
-        tokenMint,
-        oracle: oraclePDA,
-        gameToken: gameTokenPDA,
-        gameVault: gameVaultPDA,
-        playerTokenAccount,
-        gameTokenAccount,
+        tokenMint: derived.tokenMint,
+        oracle: derived.oracle,
+        gameToken: derived.gameToken,
+        gameVault: derived.gameVault,
+        playerTokenAccount: derived.playerTokenAccount,
+        gameTokenAccount: derived.gameTokenAccount,
         systemProgram: anchor.web3.SystemProgram.programId,
-        tokenProgram,
+        tokenProgram: derived.tokenProgram,
         associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
       })
       .signers([authoritySigner])
@@ -841,50 +895,26 @@ export class GameManager {
     oracleOperator: PublicKey,
     overrides: Partial<CompleteGameAccounts> = {}
   ): Promise<CompleteGameAccounts> {
-    const gameAccount = await this.program.account.game.fetch(gameData.gamePDA);
-    const tokenMint = new PublicKey(gameAccount.tokenMint);
-    const tokenProgram = await this.resolveTokenProgram(tokenMint);
-
-    const [oraclePDA] = PublicKey.findProgramAddressSync(
-      [Buffer.from("oracle")],
-      this.program.programId
-    );
-    const [gameTokenPDA] = PublicKey.findProgramAddressSync(
-      [Buffer.from("game_token"), tokenMint.toBuffer()],
-      this.program.programId
-    );
-    const [gameVaultPDA] = PublicKey.findProgramAddressSync(
-      [Buffer.from("game_vault"), tokenMint.toBuffer()],
-      this.program.programId
-    );
-
-    const winnerTokenAccount = getAssociatedTokenAddressSync(
-      tokenMint,
+    const derived = await deriveGameAccounts(this.program, gameData.gamePDA, {
       winner,
-      false,
-      tokenProgram,
-      ASSOCIATED_TOKEN_PROGRAM_ID
-    );
-    const gameTokenAccount = getAssociatedTokenAddressSync(
-      tokenMint,
-      gameVaultPDA,
-      true,
-      tokenProgram,
-      ASSOCIATED_TOKEN_PROGRAM_ID
-    );
+    });
+
+    if (!derived.winnerTokenAccount) {
+      throw new Error("Missing winner token account for completeGame");
+    }
 
     const baseAccounts: CompleteGameAccounts = {
       game: gameData.gamePDA,
-      tokenMint,
-      oracle: oraclePDA,
+      tokenMint: derived.tokenMint,
+      oracle: derived.oracle,
       oracleOperator,
       winner,
       creator,
-      gameToken: gameTokenPDA,
-      gameVault: gameVaultPDA,
-      winnerTokenAccount,
-      gameTokenAccount,
-      tokenProgram,
+      gameToken: derived.gameToken,
+      gameVault: derived.gameVault,
+      winnerTokenAccount: derived.winnerTokenAccount,
+      gameTokenAccount: derived.gameTokenAccount,
+      tokenProgram: derived.tokenProgram,
       systemProgram: anchor.web3.SystemProgram.programId,
       associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
     };
@@ -1063,21 +1093,12 @@ export class TestUtils {
   /**
    * Quick setup for a standard test scenario
    */
-  async quickSetup(): Promise<{
-    oracle: TestOracle;
-    mint: TestMint;
-    players: TestPlayer[];
-  }> {
-    const oracle = await this.oracle.createOracle();
-    const mint = await this.mint.createMint();
-    const players = await this.player.createPlayerPool(8, mint.mint);
+  async quickSetup(): Promise<StandardSetup> {
+    const setup = await this.env.initialize();
 
-    // Fund all players with tokens (100 million for extensive testing)
-    for (const player of players) {
-      await this.player.fundPlayer(player, mint, new anchor.BN(100_000_000));
-    }
+    this.env.testUtils = this;
 
-    return { oracle, mint, players };
+    return setup;
   }
 }
 
