@@ -97,7 +97,9 @@ describe("Oracle Update Authority", () => {
         throw new Error("Oracle not initialized for oracle update test");
       }
 
-      const derived = await deriveGameAccounts(env.program, gameData.gamePDA);
+      const derived = await deriveGameAccounts(env.program, gameData.gamePDA, {
+        tokenMint: mint.mint,
+      });
       const gameTokenCtx = toGameTokenContext(derived);
 
       // Old operator should fail to complete

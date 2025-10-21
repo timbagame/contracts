@@ -396,6 +396,7 @@ describe("Game Lifecycle Instruction Events", () => {
 
       const derived = await deriveGameAccounts(env.program, gameData.gamePDA, {
         player: creator.player.publicKey,
+        tokenMint: mint.mint,
       });
       if (!derived.playerTokenAccount) {
         throw new Error("Missing creator token account for closeGame event test");
@@ -493,7 +494,9 @@ describe("Game Lifecycle Instruction Events", () => {
         throw new Error("Oracle not initialized for withdraw event test");
       }
 
-      const derived = await deriveGameAccounts(env.program, gameData.gamePDA);
+      const derived = await deriveGameAccounts(env.program, gameData.gamePDA, {
+        tokenMint: mint.mint,
+      });
 
       await env.program.methods
         .withdrawTokenFee()

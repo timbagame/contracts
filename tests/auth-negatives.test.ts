@@ -50,6 +50,7 @@ describe("Authorization Negatives", () => {
 
     const derived = await deriveGameAccounts(env.program, gameData.gamePDA, {
       player: other.player.publicKey,
+      tokenMint: mint.mint,
     });
     if (!derived.playerTokenAccount) {
       throw new Error("Failed to derive player token account for closeGame");
@@ -146,7 +147,8 @@ describe("Authorization Negatives", () => {
 
     const withdrawDerived = await deriveGameAccounts(
       env.program,
-      gameData.gamePDA
+      gameData.gamePDA,
+      { tokenMint: mint.mint }
     );
 
     try {

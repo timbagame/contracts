@@ -151,7 +151,9 @@ describe("Withdraw Fee", () => {
       throw new Error("Oracle not initialized for withdraw fee test");
     }
 
-    const derived = await deriveGameAccounts(env.program, gameData.gamePDA);
+    const derived = await deriveGameAccounts(env.program, gameData.gamePDA, {
+      tokenMint: mint.mint,
+    });
     const gameTokenCtx = toGameTokenContext(derived);
 
     await env.program.methods
@@ -304,7 +306,9 @@ describe("Withdraw Fee", () => {
       throw new Error("Oracle not initialized for disabled token withdraw test");
     }
 
-    const disabledDerived = await deriveGameAccounts(env.program, gameData.gamePDA);
+    const disabledDerived = await deriveGameAccounts(env.program, gameData.gamePDA, {
+      tokenMint: mint.mint,
+    });
     const disabledCtx = toGameTokenContext(disabledDerived);
 
     try {

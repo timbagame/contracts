@@ -44,6 +44,7 @@ describe("Close Blocked While Waiting", () => {
 
     const derived = await deriveGameAccounts(env.program, gameData.gamePDA, {
       player: creator.player.publicKey,
+      tokenMint: mint.mint,
     });
     if (!derived.playerTokenAccount) {
       throw new Error("Missing creator token account for closeGame test");

@@ -69,6 +69,7 @@ describe("Giveaway Close Refund", () => {
 
     const derived = await deriveGameAccounts(env.program, gameData.gamePDA, {
       player: creator.player.publicKey,
+      tokenMint: mint.mint,
     });
     if (!derived.playerTokenAccount) {
       throw new Error("Missing creator token account for giveaway close test");
@@ -145,6 +146,7 @@ describe("Giveaway Close Refund", () => {
 
     const secondDerived = await deriveGameAccounts(env.program, gameData.gamePDA, {
       player: creator.player.publicKey,
+      tokenMint: mint.mint,
     });
     if (!secondDerived.playerTokenAccount) {
       throw new Error("Missing creator token account for giveaway buffer test");
