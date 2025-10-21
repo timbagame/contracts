@@ -1,15 +1,13 @@
 use crate::error::ErrorCode;
 use crate::events::PlayerUnjoined;
-use crate::utils::{get_clock, participant_hash};
+use crate::utils::{get_clock_snapshot, participant_hash};
 use anchor_lang::prelude::*;
 
 pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
     let game = &mut ctx.accounts.game;
 
     let oracle = &ctx.accounts.oracle;
-    let clock = get_clock()?;
-    let current_time = clock.unix_timestamp as u64;
-    let current_slot = clock.slot;
+    let (current_time, current_slot) = get_clock_snapshot()?;
     let player_key = ctx.accounts.player.key();
     let token_mint = &ctx.accounts.game_token_ctx.token_mint;
     let token_decimals = token_mint.decimals;

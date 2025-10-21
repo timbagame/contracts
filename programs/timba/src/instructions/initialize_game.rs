@@ -1,12 +1,10 @@
-use crate::utils::get_clock;
+use crate::utils::get_clock_snapshot;
 use crate::{events::GameInitialized, state::GameType, GameConfig};
 use anchor_lang::prelude::*;
 
 pub fn handler(ctx: Context<super::InitializeGame>, config: GameConfig) -> Result<()> {
     let game: &mut Account<'_, crate::state::Game> = &mut ctx.accounts.game;
-    let clock = get_clock()?;
-    let current_time = clock.unix_timestamp as u64;
-    let current_slot = clock.slot;
+    let (current_time, current_slot) = get_clock_snapshot()?;
     let creator_key = ctx.accounts.creator.key();
     let token_mint = &ctx.accounts.game_token_ctx.token_mint;
     let token_mint_key = token_mint.key();
