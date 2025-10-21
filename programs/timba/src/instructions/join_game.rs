@@ -34,7 +34,6 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
     // ===============================
 
     ctx.accounts.game_token_ctx.transfer_from_player(
-        &ctx.accounts.game_token_ctx.game_token,
         &ctx.accounts.player_token_account,
         &ctx.accounts.player,
         game.ticket_amount,

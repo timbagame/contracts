@@ -23,11 +23,9 @@ pub fn handler(ctx: Context<super::CloseGame>) -> Result<()> {
 
     // Refund creator for giveaway games with remaining funds
     if game.ticket_amount == 0 && game.total_amount > 0 {
-        ctx.accounts.game_token_ctx.transfer_from_vault(
-            &ctx.accounts.game_token_ctx.game_token,
-            &ctx.accounts.creator_token_account,
-            game.total_amount,
-        )?;
+        ctx.accounts
+            .game_token_ctx
+            .transfer_from_vault(&ctx.accounts.creator_token_account, game.total_amount)?;
     }
 
     // ===============================

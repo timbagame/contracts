@@ -21,7 +21,6 @@ pub fn handler(ctx: Context<super::WithdrawTokenFee>) -> Result<()> {
     // ===============================
 
     ctx.accounts.game_token_ctx.transfer_from_vault(
-        &ctx.accounts.game_token_ctx.game_token,
         &ctx.accounts.oracle_operator_token_account,
         withdrawal_amount,
     )?;
