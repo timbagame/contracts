@@ -163,6 +163,18 @@ export interface TestOracle {
   config: OracleConfig;
 }
 
+export function getOraclePublicKey(testOracle: TestOracle): PublicKey {
+  const oraclePubkey = testOracle.oracle ?? testOracle.oraclePDA;
+
+  if (!oraclePubkey) {
+    throw new Error(
+      "Missing oracle public key: expected `oracle` or `oraclePDA` to be defined."
+    );
+  }
+
+  return oraclePubkey;
+}
+
 export interface OracleConfig {
   feePercentage: number;
   oracleBufferTime: number;
