@@ -1358,8 +1358,11 @@ export function calculateWinnerIndex(
     BigInt("0xFFFFFFFFFFFFFFFF") - (BigInt("0xFFFFFFFFFFFFFFFF") % nPlayers);
 
   for (let startPos = 0; startPos <= 32 - 8; startPos++) {
-    const randomBytes = entropyHash.subarray(startPos, startPos + 8);
-    const randomU64 = new DataView(randomBytes.buffer).getBigUint64(0, true);
+    const randomU64 = new DataView(
+      entropyHash.buffer,
+      entropyHash.byteOffset + startPos,
+      8
+    ).getBigUint64(0, true);
 
     if (randomU64 < maxValid) {
       return Number(randomU64 % nPlayers);
