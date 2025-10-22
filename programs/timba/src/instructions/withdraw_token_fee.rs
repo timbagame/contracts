@@ -26,11 +26,11 @@ pub fn handler(ctx: Context<super::WithdrawTokenFee>) -> Result<()> {
     // EVENT EMISSION
     // ===============================
 
-    emit!(TokenFeeWithdrawn {
-        operator: operator_key,
-        token_mint: token_mint_key,
-        amount: withdrawal_amount,
-    });
+    emit!(TokenFeeWithdrawn::new(
+        operator_key,
+        token_mint_key,
+        withdrawal_amount,
+    ));
 
     Ok(())
 }

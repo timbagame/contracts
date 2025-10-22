@@ -1,4 +1,4 @@
-use crate::state::GameType;
+use crate::state::{Game, GameType};
 use crate::{OracleConfig, TokenConfig};
 use anchor_lang::prelude::*;
 
@@ -134,6 +134,17 @@ pub struct TokenFeeWithdrawn {
     pub amount: u64,
 }
 
+impl TokenFeeWithdrawn {
+    #[must_use]
+    pub fn new(operator: Pubkey, token_mint: Pubkey, amount: u64) -> Self {
+        Self {
+            operator,
+            token_mint,
+            amount,
+        }
+    }
+}
+
 // =============================================================================
 // PLAYER EVENTS
 // =============================================================================
@@ -157,6 +168,27 @@ pub struct PlayerJoined {
     pub timestamp: u64,
 }
 
+impl PlayerJoined {
+    #[must_use]
+    pub fn new<'info>(
+        game: &Account<'info, Game>,
+        player: Pubkey,
+        ticket_index: u32,
+        last_slot: u64,
+        timestamp: u64,
+    ) -> Self {
+        Self {
+            game_key: game.key(),
+            player,
+            total_amount: game.total_amount,
+            tickets_count: game.tickets_count,
+            ticket_index,
+            last_slot,
+            timestamp,
+        }
+    }
+}
+
 /// Emitted when a player leaves a game before completion
 #[event]
 pub struct PlayerUnjoined {
@@ -174,6 +206,27 @@ pub struct PlayerUnjoined {
     pub last_slot: u64,
     /// Timestamp of the unjoin
     pub timestamp: u64,
+}
+
+impl PlayerUnjoined {
+    #[must_use]
+    pub fn new<'info>(
+        game: &Account<'info, Game>,
+        player: Pubkey,
+        ticket_index: u32,
+        last_slot: u64,
+        timestamp: u64,
+    ) -> Self {
+        Self {
+            game_key: game.key(),
+            player,
+            total_amount: game.total_amount,
+            tickets_count: game.tickets_count,
+            ticket_index,
+            last_slot,
+            timestamp,
+        }
+    }
 }
 
 // =============================================================================
@@ -207,6 +260,25 @@ pub struct GameInitialized {
     pub timeout: u64,
 }
 
+impl GameInitialized {
+    #[must_use]
+    pub fn new<'info>(game: &Account<'info, Game>, creator: Pubkey) -> Self {
+        Self {
+            game_key: game.key(),
+            creator,
+            game_type: game.game_type,
+            ticket_amount: game.ticket_amount,
+            total_amount: game.total_amount,
+            max_tickets: game.max_tickets,
+            min_tickets: game.min_tickets,
+            token_mint: game.token_mint,
+            is_private: game.is_private,
+            created_at: game.created_at,
+            timeout: game.timeout,
+        }
+    }
+}
+
 /// Emitted when a game is completed and winner is determined
 #[event]
 pub struct GameCompleted {
@@ -224,6 +296,26 @@ pub struct GameCompleted {
     pub timestamp: u64,
 }
 
+impl GameCompleted {
+    #[must_use]
+    pub fn new<'info>(
+        game: &Account<'info, Game>,
+        winner: Pubkey,
+        winner_amount: u64,
+        fee_amount: u64,
+        timestamp: u64,
+    ) -> Self {
+        Self {
+            game_key: game.key(),
+            winner,
+            tickets_count: game.tickets_count,
+            winner_amount,
+            fee_amount,
+            timestamp,
+        }
+    }
+}
+
 /// Emitted when a game is closed by the creator
 #[event]
 pub struct GameClosed {
@@ -231,4 +323,14 @@ pub struct GameClosed {
     pub game_key: Pubkey,
     /// Closure timestamp
     pub timestamp: u64,
+}
+
+impl GameClosed {
+    #[must_use]
+    pub fn new<'info>(game: &Account<'info, Game>, timestamp: u64) -> Self {
+        Self {
+            game_key: game.key(),
+            timestamp,
+        }
+    }
 }
