@@ -1,4 +1,5 @@
 import * as anchor from "@coral-xyz/anchor";
+import { expect } from "chai";
 import { Timba } from "../target/types/timba";
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
@@ -1443,6 +1444,38 @@ export function getErrorMessage(error: unknown): string {
   }
 
   return directMessage ?? "Unknown error";
+}
+
+export async function expectAnchorError(
+  promise: Promise<unknown>,
+  code: string,
+  {
+    fallbackSubstring,
+    message,
+  }: { fallbackSubstring?: string; message?: string } = {}
+): Promise<void> {
+  try {
+    await promise;
+    expect.fail(message ?? `Expected Anchor error code ${code}`);
+  } catch (error: unknown) {
+    const actualCode = getErrorCode(error);
+
+    if (actualCode) {
+      expect(actualCode).to.equal(code);
+      return;
+    }
+
+    if (fallbackSubstring) {
+      expect(getErrorMessage(error)).to.include(fallbackSubstring);
+      return;
+    }
+
+    expect.fail(
+      `Expected Anchor error code ${code} but received: ${getErrorMessage(
+        error
+      )}`
+    );
+  }
 }
 
 /**

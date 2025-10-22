@@ -1,4 +1,5 @@
 use crate::state::GameType;
+use crate::{OracleConfig, TokenConfig};
 use anchor_lang::prelude::*;
 
 // =============================================================================
@@ -45,6 +46,35 @@ pub struct OracleUpdated {
     pub min_timeout: u64,
 }
 
+impl OracleInitialized {
+    #[must_use]
+    pub fn from_config(operator: Pubkey, config: &OracleConfig) -> Self {
+        Self {
+            operator,
+            fee_percentage: config.fee_percentage,
+            oracle_buffer_time: config.oracle_buffer_time,
+            max_tickets: config.max_tickets,
+            max_timeout: config.max_timeout,
+            min_timeout: config.min_timeout,
+        }
+    }
+}
+
+impl OracleUpdated {
+    #[must_use]
+    pub fn from_config(old_operator: Pubkey, new_operator: Pubkey, config: &OracleConfig) -> Self {
+        Self {
+            old_operator,
+            new_operator,
+            fee_percentage: config.fee_percentage,
+            oracle_buffer_time: config.oracle_buffer_time,
+            max_tickets: config.max_tickets,
+            max_timeout: config.max_timeout,
+            min_timeout: config.min_timeout,
+        }
+    }
+}
+
 // =============================================================================
 // TOKEN EVENTS
 // =============================================================================
@@ -69,6 +99,28 @@ pub struct TokenUpdated {
     pub min_amount: u64,
     /// Updated enabled status
     pub enabled: bool,
+}
+
+impl TokenInitialized {
+    #[must_use]
+    pub fn from_config(token_mint: Pubkey, config: &TokenConfig) -> Self {
+        Self {
+            token_mint,
+            min_amount: config.min_amount,
+            enabled: config.enabled,
+        }
+    }
+}
+
+impl TokenUpdated {
+    #[must_use]
+    pub fn from_config(token_mint: Pubkey, config: &TokenConfig) -> Self {
+        Self {
+            token_mint,
+            min_amount: config.min_amount,
+            enabled: config.enabled,
+        }
+    }
 }
 
 /// Emitted when accumulated fees are withdrawn by operator

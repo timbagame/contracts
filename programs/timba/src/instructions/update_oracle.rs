@@ -17,15 +17,11 @@ pub fn handler(ctx: Context<super::UpdateOracle>, config: OracleConfig) -> Resul
     // EVENT EMISSION
     // ===============================
 
-    emit!(OracleUpdated {
-        old_operator: old_operator_key,
-        new_operator: new_operator_key,
-        fee_percentage: config.fee_percentage,
-        oracle_buffer_time: config.oracle_buffer_time,
-        max_tickets: config.max_tickets,
-        max_timeout: config.max_timeout,
-        min_timeout: config.min_timeout,
-    });
+    emit!(OracleUpdated::from_config(
+        old_operator_key,
+        new_operator_key,
+        &config,
+    ));
 
     Ok(())
 }

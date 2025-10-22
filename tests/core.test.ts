@@ -5,9 +5,9 @@ import {
   TestEnvironment,
   calculateWinnerIndex,
   getWinnerFromPlayers,
-  errorToString,
   coinflipGameConfig,
   giveawayGameConfig,
+  expectAnchorError,
 } from "./test-helpers";
 
 /**
@@ -152,17 +152,19 @@ describe("Core Game Operations", () => {
         minTickets: 2, // Invalid: min > max
       });
 
-      try {
-        await testUtils.game.initializeGame(
+      await expectAnchorError(
+        testUtils.game.initializeGame(
           gameData,
           invalidConfig,
           creator.player,
           mint.mint
-        );
-        expect.fail("Should have failed with invalid parameters");
-      } catch (error: unknown) {
-        expect(errorToString(error)).to.include("InvalidTicketsCount");
-      }
+        ),
+        "InvalidTicketsCount",
+        {
+          fallbackSubstring: "InvalidTicketsCount",
+          message: "Should have failed with invalid parameters",
+        }
+      );
     });
 
     it("should initialize giveaway game successfully", async () => {
@@ -269,13 +271,14 @@ describe("Core Game Operations", () => {
         mint.mint
       );
 
-      try {
-        await testUtils.game.joinGame(gameData.gamePDA, player1.player);
-        expect.fail("Should have failed without operator");
-      } catch (error: unknown) {
-        // Private games without operator should fail with private game access denied error
-        expect(errorToString(error)).to.include("PrivateGameAccessDenied");
-      }
+      await expectAnchorError(
+        testUtils.game.joinGame(gameData.gamePDA, player1.player),
+        "PrivateGameAccessDenied",
+        {
+          fallbackSubstring: "PrivateGameAccessDenied",
+          message: "Should have failed without operator",
+        }
+      );
     });
 
     it("should fail to join private game with wrong operator", async () => {
@@ -293,16 +296,18 @@ describe("Core Game Operations", () => {
         mint.mint
       );
 
-      try {
-        await testUtils.game.joinGame(
+      await expectAnchorError(
+        testUtils.game.joinGame(
           gameData.gamePDA,
           player1.player,
           fakeOperator
-        );
-        expect.fail("Should have failed with wrong operator");
-      } catch (error: unknown) {
-        expect(errorToString(error)).to.include("PrivateGameAccessDenied");
-      }
+        ),
+        "PrivateGameAccessDenied",
+        {
+          fallbackSubstring: "PrivateGameAccessDenied",
+          message: "Should have failed with wrong operator",
+        }
+      );
     });
 
     it("should fail to join full game", async () => {
@@ -324,12 +329,14 @@ describe("Core Game Operations", () => {
       await testUtils.game.joinGame(gameData.gamePDA, player1.player);
 
       // Try to join when full
-      try {
-        await testUtils.game.joinGame(gameData.gamePDA, player2.player);
-        expect.fail("Should have failed when game is full");
-      } catch (error: unknown) {
-        expect(errorToString(error)).to.include("GameFull");
-      }
+      await expectAnchorError(
+        testUtils.game.joinGame(gameData.gamePDA, player2.player),
+        "GameFull",
+        {
+          fallbackSubstring: "GameFull",
+          message: "Should have failed when game is full",
+        }
+      );
     });
 
     it("should fail to join with insufficient funds", async () => {
@@ -351,12 +358,14 @@ describe("Core Game Operations", () => {
         mint.mint
       );
 
-      try {
-        await testUtils.game.joinGame(gameData.gamePDA, poorPlayer.player);
-        expect.fail("Should have failed with insufficient funds");
-      } catch (error: unknown) {
-        expect(errorToString(error)).to.include("InsufficientBalance");
-      }
+      await expectAnchorError(
+        testUtils.game.joinGame(gameData.gamePDA, poorPlayer.player),
+        "InsufficientBalance",
+        {
+          fallbackSubstring: "InsufficientBalance",
+          message: "Should have failed with insufficient funds",
+        }
+      );
     });
   });
 
@@ -408,14 +417,14 @@ describe("Core Game Operations", () => {
       expect(parseInt(winnerBalance.value.amount)).to.be.greaterThan(
         100_000_000
       ); // initial 100m + winnings
-      let fetchFailed = false;
-      try {
-        await env.program.account.game.fetch(gameData.gamePDA);
-      } catch (e: unknown) {
-        fetchFailed = true;
-        expect(errorToString(e)).to.include("Account does not exist");
-      }
-      expect(fetchFailed).to.be.true;
+      await expectAnchorError(
+        env.program.account.game.fetch(gameData.gamePDA),
+        "AccountDoesNotExist",
+        {
+          fallbackSubstring: "Account does not exist",
+          message: "Expected game account to be closed after completion",
+        }
+      );
     });
 
     it("should fail to complete game with wrong operator", async () => {
@@ -446,20 +455,21 @@ describe("Core Game Operations", () => {
       );
       const winner = getWinnerFromPlayers([creator, player1], winnerIndex);
 
-      try {
-        await testUtils.game.completeGame(
+      await expectAnchorError(
+        testUtils.game.completeGame(
           gameData,
           winner.player.publicKey,
           creator.player.publicKey,
           fakeOperator.publicKey,
           winnerIndex,
           fakeOperator
-        );
-        expect.fail("Should have failed with wrong operator");
-      } catch (error: unknown) {
-        // Should fail with unauthorized operator error
-        expect(errorToString(error)).to.include("UnauthorizedOperator");
-      }
+        ),
+        "UnauthorizedOperator",
+        {
+          fallbackSubstring: "UnauthorizedOperator",
+          message: "Should have failed with wrong operator",
+        }
+      );
     });
 
     it("should fail to complete game with wrong secret key", async () => {
@@ -499,18 +509,20 @@ describe("Core Game Operations", () => {
       );
       const winner = getWinnerFromPlayers([creator, player1], winnerIndex);
 
-      try {
-        await testUtils.game.completeGame(
+      await expectAnchorError(
+        testUtils.game.completeGame(
           fakeGameData, // This has the wrong secret key
           winner.player.publicKey,
           creator.player.publicKey,
           oracle.operator,
           winnerIndex
-        );
-        expect.fail("Should have failed with wrong secret key");
-      } catch (error: unknown) {
-        expect(errorToString(error)).to.include("InvalidSecretKey");
-      }
+        ),
+        "InvalidSecretKey",
+        {
+          fallbackSubstring: "InvalidSecretKey",
+          message: "Should have failed with wrong secret key",
+        }
+      );
     });
   });
 

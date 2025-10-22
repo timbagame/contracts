@@ -1,6 +1,8 @@
 use crate::state::Oracle;
 use crate::OracleConfig;
 use anchor_lang::prelude::*;
+use anchor_spl::token::ID as TOKEN_PROGRAM_ID;
+use anchor_spl::token_2022::ID as TOKEN_2022_PROGRAM_ID;
 use solana_sha256_hasher::hashv;
 
 // =============================================================================
@@ -61,4 +63,13 @@ pub fn participant_hash(game_key: &Pubkey, player_key: &Pubkey) -> u64 {
     ])
     .to_bytes();
     u64::from_le_bytes(digest[0..8].try_into().unwrap())
+}
+
+// =============================================================================
+// TOKEN PROGRAM UTILITIES
+// =============================================================================
+
+/// Returns `true` if the provided program is one of the supported SPL token programs.
+pub fn is_supported_token_program(program: &Pubkey) -> bool {
+    program.eq(&TOKEN_PROGRAM_ID) || program.eq(&TOKEN_2022_PROGRAM_ID)
 }

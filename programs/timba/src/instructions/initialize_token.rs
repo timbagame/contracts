@@ -20,11 +20,7 @@ pub fn handler(ctx: Context<super::InitializeToken>, config: TokenConfig) -> Res
     // EVENT EMISSION
     // ===============================
 
-    emit!(TokenInitialized {
-        token_mint: token_mint_key,
-        min_amount: config.min_amount,
-        enabled: config.enabled,
-    });
+    emit!(TokenInitialized::from_config(token_mint_key, &config));
 
     Ok(())
 }
