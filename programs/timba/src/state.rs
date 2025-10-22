@@ -555,6 +555,7 @@ impl Game {
         if self.tickets_count == 0 {
             return err!(ErrorCode::InvalidTicketsCount);
         }
+
         let index = self
             .participant_index(participant_hash)
             .ok_or(ErrorCode::UnauthorizedPlayer)?;
