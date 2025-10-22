@@ -22,6 +22,13 @@ export const toNumber = (value: anchor.BN | number): number =>
 const DEFAULT_BUFFER_POLL_INTERVAL_MS = 750;
 const DEFAULT_BUFFER_MAX_WAIT_MS = 120_000;
 
+const ORACLE_SEED = Buffer.from("oracle");
+
+export function deriveOraclePda(programId: PublicKey): PublicKey {
+  const [oraclePda] = PublicKey.findProgramAddressSync([ORACLE_SEED], programId);
+  return oraclePda;
+}
+
 const gameTokenCache = new Map<
   string,
   { tokenMint: PublicKey; tokenProgram: PublicKey }
@@ -539,10 +546,7 @@ export class OracleManager {
       ...config,
     };
 
-    const [oraclePDA] = PublicKey.findProgramAddressSync(
-      [Buffer.from("oracle")],
-      this.program.programId
-    );
+    const oraclePDA = deriveOraclePda(this.program.programId);
 
     // Use a deterministic keypair for tests so we can reuse it
     const operatorKeypair = anchor.web3.Keypair.fromSeed(
@@ -617,10 +621,7 @@ export class OracleManager {
   }
 
   async getOracle(): Promise<TestOracle> {
-    const [oraclePDA] = PublicKey.findProgramAddressSync(
-      [Buffer.from("oracle")],
-      this.program.programId
-    );
+    const oraclePDA = deriveOraclePda(this.program.programId);
 
     const oracleAccount = await this.program.account.oracle.fetch(oraclePDA);
 
@@ -750,10 +751,7 @@ export class MintManager {
     const tokenConfig = { minAmount: new anchor.BN(1000), enabled: true };
 
     // Get the oracle operator from the oracle account
-    const [oraclePDA] = PublicKey.findProgramAddressSync(
-      [Buffer.from("oracle")],
-      this.program.programId
-    );
+    const oraclePDA = deriveOraclePda(this.program.programId);
     const oracleAccount = await this.program.account.oracle.fetch(oraclePDA);
     const oracleOperatorKeypair = anchor.web3.Keypair.fromSeed(
       new Uint8Array(32).fill(42)
@@ -882,10 +880,7 @@ export async function deriveGameAccounts(
 
   gameTokenCache.set(cacheKey, { tokenMint, tokenProgram });
 
-  const [oracle] = PublicKey.findProgramAddressSync(
-    [Buffer.from("oracle")],
-    program.programId
-  );
+  const oracle = deriveOraclePda(program.programId);
 
   const { gameToken, gameVault, gameTokenAccount } = computeGameTokenContext(
     program,
@@ -1103,10 +1098,7 @@ export class GameManager {
     tokenMint: PublicKey
   ): Promise<void> {
     const tokenProgram = await this.resolveTokenProgram(tokenMint);
-    const [oracle] = PublicKey.findProgramAddressSync(
-      [Buffer.from("oracle")],
-      this.program.programId
-    );
+    const oracle = deriveOraclePda(this.program.programId);
     const { gameToken, gameVault, gameTokenAccount } = computeGameTokenContext(
       this.program,
       tokenMint,
