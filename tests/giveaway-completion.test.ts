@@ -102,7 +102,8 @@ describe("Giveaway Completion", () => {
       config,
       creator,
       mint.mint,
-      [soloPlayer]
+      [soloPlayer],
+      { joinCreator: false }
     );
 
     const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
