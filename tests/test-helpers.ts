@@ -1292,6 +1292,27 @@ export class GameManager {
     return gameData;
   }
 
+  async createFilledGame(
+    config: GameConfig,
+    creator: TestPlayer,
+    tokenMint: PublicKey,
+    participants: TestPlayer[],
+    { joinCreator = true }: { joinCreator?: boolean } = {}
+  ): Promise<TestGame> {
+    const gameData = this.generateGamePDA();
+    await this.initializeGame(gameData, config, creator.player, tokenMint);
+
+    if (joinCreator) {
+      await this.joinGame(gameData.gamePDA, creator.player);
+    }
+
+    for (const participant of participants) {
+      await this.joinGame(gameData.gamePDA, participant.player);
+    }
+
+    return gameData;
+  }
+
   // Expose calculation helper for backward compatibility
   calculateWinnerIndex(
     ticketsCount: number,

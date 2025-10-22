@@ -5,16 +5,13 @@ pub fn handler(ctx: Context<super::WithdrawTokenFee>) -> Result<()> {
     let operator_key = ctx.accounts.oracle_operator.key();
     let token_mint = &ctx.accounts.game_token_ctx.token_mint;
     let token_mint_key = token_mint.key();
-    let withdrawal_amount = ctx.accounts.game_token_ctx.game_token.fee_amount;
+    let withdrawal_amount = ctx.accounts.game_token_ctx.game_token.drain_fees();
 
     // ===============================
     // STATE UPDATES
     // ===============================
 
-    {
-        let game_token = &mut ctx.accounts.game_token_ctx.game_token;
-        game_token.fee_amount = 0;
-    }
+    // No-op: fees are drained above.
 
     // ===============================
     // TOKEN TRANSFER
