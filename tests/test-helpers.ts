@@ -24,6 +24,12 @@ const DEFAULT_BUFFER_MAX_WAIT_MS = 120_000;
 
 const ORACLE_SEED = Buffer.from("oracle");
 
+const DEFAULT_OPERATOR_SEED = new Uint8Array(32).fill(42);
+
+export const DEFAULT_OPERATOR_KEYPAIR = anchor.web3.Keypair.fromSeed(
+  DEFAULT_OPERATOR_SEED
+);
+
 export function deriveOraclePda(programId: PublicKey): PublicKey {
   const [oraclePda] = PublicKey.findProgramAddressSync([ORACLE_SEED], programId);
   return oraclePda;
@@ -549,9 +555,7 @@ export class OracleManager {
     const oraclePDA = deriveOraclePda(this.program.programId);
 
     // Use a deterministic keypair for tests so we can reuse it
-    const operatorKeypair = anchor.web3.Keypair.fromSeed(
-      new Uint8Array(32).fill(42)
-    );
+    const operatorKeypair = DEFAULT_OPERATOR_KEYPAIR;
 
     try {
       // Check if oracle already exists and is properly initialized
@@ -626,9 +630,7 @@ export class OracleManager {
     const oracleAccount = await this.program.account.oracle.fetch(oraclePDA);
 
     // Use the same deterministic keypair as in createOracle
-    const operatorKeypair = anchor.web3.Keypair.fromSeed(
-      new Uint8Array(32).fill(42)
-    );
+    const operatorKeypair = DEFAULT_OPERATOR_KEYPAIR;
 
     return {
       oraclePDA,
@@ -753,9 +755,7 @@ export class MintManager {
     // Get the oracle operator from the oracle account
     const oraclePDA = deriveOraclePda(this.program.programId);
     const oracleAccount = await this.program.account.oracle.fetch(oraclePDA);
-    const oracleOperatorKeypair = anchor.web3.Keypair.fromSeed(
-      new Uint8Array(32).fill(42)
-    );
+    const oracleOperatorKeypair = DEFAULT_OPERATOR_KEYPAIR;
 
     await this.program.methods
       .initializeToken(tokenConfig)
@@ -1230,9 +1230,7 @@ export class GameManager {
     overrides?: Partial<CompleteGameAccounts>
   ): Promise<void> {
     // Use provided oracle operator keypair or default to deterministic one
-    const operatorKeypair =
-      oracleOperatorKeypair ||
-      anchor.web3.Keypair.fromSeed(new Uint8Array(32).fill(42));
+    const operatorKeypair = oracleOperatorKeypair || DEFAULT_OPERATOR_KEYPAIR;
 
     const accounts = await this.buildCompleteGameAccounts(
       gameData,
