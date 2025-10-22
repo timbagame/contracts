@@ -23,7 +23,6 @@ describe("Giveaway Completion", () => {
   it("should complete a giveaway and pay prize minus fee to winner without requiring player funds", async () => {
     const { oracle, mint, players } = await testUtils.quickSetup();
     const [creator] = players;
-    const gameData = testUtils.game.generateGamePDA();
 
     // Create a brand-new player with zero token balance for THIS mint
     const zeroPlayer = await testUtils.player.createPlayer(mint.mint);
@@ -40,11 +39,12 @@ describe("Giveaway Completion", () => {
       creator.playerTokenAccount.address
     );
 
-    await testUtils.game.initializeGame(
-      gameData,
+    const gameData = await testUtils.game.createFilledGame(
       cfg,
-      creator.player,
-      mint.mint
+      creator,
+      mint.mint,
+      [zeroPlayer],
+      { joinCreator: false }
     );
 
     const afterCreator = await env.provider.connection.getTokenAccountBalance(
@@ -57,8 +57,6 @@ describe("Giveaway Completion", () => {
     ).to.be.true;
 
     // Zero-balance player joins (should succeed for giveaway)
-    await testUtils.game.joinGame(gameData.gamePDA, zeroPlayer.player);
-
     // Complete with zeroPlayer as winner (winnerIndex is 0 due to 1 ticket)
     const winnerIndex = 0;
     const { winnerAmount: expectedWinnerAmount } = calculatePayoutBreakdown(
@@ -90,7 +88,6 @@ describe("Giveaway Completion", () => {
   it("should allow completing a giveaway with a single player after the timeout", async () => {
     const { oracle, mint, players } = await testUtils.quickSetup();
     const [creator, soloPlayer] = players;
-    const gameData = testUtils.game.generateGamePDA();
 
     const prize = new anchor.BN(3_000_000);
     const timeoutSeconds = 3;
@@ -101,14 +98,13 @@ describe("Giveaway Completion", () => {
       timeout: timeoutSeconds,
     });
 
-    await testUtils.game.initializeGame(
-      gameData,
+    const gameData = await testUtils.game.createFilledGame(
       config,
-      creator.player,
-      mint.mint
+      creator,
+      mint.mint,
+      [soloPlayer],
+      { joinCreator: false }
     );
-
-    await testUtils.game.joinGame(gameData.gamePDA, soloPlayer.player);
 
     const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
     expect(gameAccount.ticketsCount).to.equal(1);
