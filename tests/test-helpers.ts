@@ -1292,6 +1292,27 @@ export class GameManager {
     return gameData;
   }
 
+  async createFilledGame(
+    config: GameConfig,
+    creator: TestPlayer,
+    tokenMint: PublicKey,
+    participants: TestPlayer[],
+    { joinCreator = true }: { joinCreator?: boolean } = {}
+  ): Promise<TestGame> {
+    const gameData = this.generateGamePDA();
+    await this.initializeGame(gameData, config, creator.player, tokenMint);
+
+    if (joinCreator) {
+      await this.joinGame(gameData.gamePDA, creator.player);
+    }
+
+    for (const participant of participants) {
+      await this.joinGame(gameData.gamePDA, participant.player);
+    }
+
+    return gameData;
+  }
+
   // Expose calculation helper for backward compatibility
   calculateWinnerIndex(
     ticketsCount: number,
@@ -1337,8 +1358,11 @@ export function calculateWinnerIndex(
     BigInt("0xFFFFFFFFFFFFFFFF") - (BigInt("0xFFFFFFFFFFFFFFFF") % nPlayers);
 
   for (let startPos = 0; startPos <= 32 - 8; startPos++) {
-    const randomBytes = entropyHash.subarray(startPos, startPos + 8);
-    const randomU64 = new DataView(randomBytes.buffer).getBigUint64(0, true);
+    const randomU64 = new DataView(
+      entropyHash.buffer,
+      entropyHash.byteOffset + startPos,
+      8
+    ).getBigUint64(0, true);
 
     if (randomU64 < maxValid) {
       return Number(randomU64 % nPlayers);
