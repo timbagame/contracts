@@ -382,11 +382,7 @@ describe("Game Lifecycle Instruction Events", () => {
     );
     await connection.confirmTransaction(airdropSig, "confirmed");
 
-    const operatorAta = await ensureOperatorAta(
-      connection,
-      oracle,
-      mint.mint
-    );
+    const operatorAta = await ensureOperatorAta(connection, oracle, mint.mint);
 
     const subscription = await subscribeEvent(env.program, "tokenFeeWithdrawn");
     try {
