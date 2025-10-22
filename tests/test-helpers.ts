@@ -1475,32 +1475,25 @@ export class TestUtils {
       tokenContext.gameToken
     );
 
-    if (!gameTokenAccount.minAmount.eq(DEFAULT_MIN_TOKEN_AMOUNT)) {
+    const desiredMinAmount = DEFAULT_MIN_TOKEN_AMOUNT;
+    const desiredEnabled = true;
+    const updateTokenAccounts = {
+      gameToken: tokenContext.gameToken,
+      tokenMint: tokenContext.tokenMint,
+      oracle: oracleAddress,
+      oracleOperator: oracle.operator,
+    } as const;
+
+    if (
+      !gameTokenAccount.minAmount.eq(desiredMinAmount) ||
+      gameTokenAccount.enabled !== desiredEnabled
+    ) {
       await this.env.program.methods
         .updateToken({
-          minAmount: DEFAULT_MIN_TOKEN_AMOUNT,
-          enabled: true,
+          minAmount: desiredMinAmount,
+          enabled: desiredEnabled,
         })
-        .accountsStrict({
-          gameToken: tokenContext.gameToken,
-          tokenMint: tokenContext.tokenMint,
-          oracle: oracleAddress,
-          oracleOperator: oracle.operator,
-        })
-        .signers([oracle.operatorKeypair])
-        .rpc();
-    } else if (!gameTokenAccount.enabled) {
-      await this.env.program.methods
-        .updateToken({
-          minAmount: gameTokenAccount.minAmount,
-          enabled: true,
-        })
-        .accountsStrict({
-          gameToken: tokenContext.gameToken,
-          tokenMint: tokenContext.tokenMint,
-          oracle: oracleAddress,
-          oracleOperator: oracle.operator,
-        })
+        .accountsStrict(updateTokenAccounts)
         .signers([oracle.operatorKeypair])
         .rpc();
     }
