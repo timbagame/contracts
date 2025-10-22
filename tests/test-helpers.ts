@@ -31,7 +31,10 @@ export const DEFAULT_OPERATOR_KEYPAIR = anchor.web3.Keypair.fromSeed(
 );
 
 export function deriveOraclePda(programId: PublicKey): PublicKey {
-  const [oraclePda] = PublicKey.findProgramAddressSync([ORACLE_SEED], programId);
+  const [oraclePda] = PublicKey.findProgramAddressSync(
+    [ORACLE_SEED],
+    programId
+  );
   return oraclePda;
 }
 
@@ -785,18 +788,20 @@ export class MintManager {
 
   // Helper getters used in some tests
   getGameTokenPDA(mint: PublicKey): PublicKey {
-    const [pda] = PublicKey.findProgramAddressSync(
-      [Buffer.from("game_token"), mint.toBuffer()],
-      this.program.programId
+    const { gameToken } = computeGameTokenContext(
+      this.program,
+      mint,
+      TOKEN_PROGRAM_ID
     );
-    return pda;
+    return gameToken;
   }
   getGameVaultPDA(mint: PublicKey): PublicKey {
-    const [pda] = PublicKey.findProgramAddressSync(
-      [Buffer.from("game_vault"), mint.toBuffer()],
-      this.program.programId
+    const { gameVault } = computeGameTokenContext(
+      this.program,
+      mint,
+      TOKEN_PROGRAM_ID
     );
-    return pda;
+    return gameVault;
   }
 
   async mintTokensToAccount(
