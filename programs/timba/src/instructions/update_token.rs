@@ -15,11 +15,7 @@ pub fn handler(ctx: Context<super::UpdateToken>, config: TokenConfig) -> Result<
     // EVENT EMISSION
     // ===============================
 
-    emit!(TokenUpdated {
-        token_mint: token_mint_key,
-        min_amount: config.min_amount,
-        enabled: config.enabled,
-    });
+    emit!(TokenUpdated::from_config(token_mint_key, &config));
 
     Ok(())
 }

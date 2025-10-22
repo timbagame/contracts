@@ -40,15 +40,13 @@ pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
     // EVENT EMISSION
     // ===============================
 
-    emit!(PlayerUnjoined {
-        game_key: game.key(),
-        player: player_key,
-        total_amount: game.total_amount,
-        tickets_count: game.tickets_count,
-        ticket_index: removed_index as u32,
-        last_slot: current_slot,
-        timestamp: current_time,
-    });
+    emit!(PlayerUnjoined::new(
+        game,
+        player_key,
+        removed_index as u32,
+        current_slot,
+        current_time,
+    ));
 
     Ok(())
 }

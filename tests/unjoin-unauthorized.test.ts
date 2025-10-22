@@ -2,9 +2,9 @@ import { expect } from "chai";
 import {
   TestUtils,
   TestEnvironment,
-  errorToString,
   awaitBufferExpiry,
   coinflipGameConfig,
+  expectAnchorError,
 } from "./test-helpers";
 
 // Negative scenarios around unjoin authorization
@@ -37,12 +37,14 @@ describe("Unjoin Unauthorized Scenarios", () => {
     await awaitBufferExpiry(gameAccount, oracle.config);
 
     // p2 never joined; should fail with UnauthorizedPlayer
-    try {
-      await testUtils.game.unjoinGame(gameData.gamePDA, p2.player);
-      expect.fail("Expected UnauthorizedPlayer for non-participant unjoin");
-    } catch (e: unknown) {
-      expect(errorToString(e)).to.include("UnauthorizedPlayer");
-    }
+    await expectAnchorError(
+      testUtils.game.unjoinGame(gameData.gamePDA, p2.player),
+      "UnauthorizedPlayer",
+      {
+        fallbackSubstring: "UnauthorizedPlayer",
+        message: "Expected UnauthorizedPlayer for non-participant unjoin",
+      }
+    );
 
     const g = await env.program.account.game.fetch(gameData.gamePDA);
     expect(g.ticketsCount).to.equal(1);
@@ -71,12 +73,14 @@ describe("Unjoin Unauthorized Scenarios", () => {
     );
     await awaitBufferExpiry(secondGameAccount, oracle.config);
 
-    try {
-      await testUtils.game.unjoinGame(gameData.gamePDA, creator.player);
-      expect.fail("Expected InvalidTicketsCount when no participants joined");
-    } catch (e: unknown) {
-      expect(errorToString(e)).to.include("InvalidTicketsCount");
-    }
+    await expectAnchorError(
+      testUtils.game.unjoinGame(gameData.gamePDA, creator.player),
+      "InvalidTicketsCount",
+      {
+        fallbackSubstring: "InvalidTicketsCount",
+        message: "Expected InvalidTicketsCount when no participants joined",
+      }
+    );
 
     const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
     expect(gameAccount.ticketsCount).to.equal(0);

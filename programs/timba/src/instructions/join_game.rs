@@ -43,15 +43,13 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
     // EVENT EMISSION
     // ===============================
 
-    emit!(PlayerJoined {
-        game_key: game.key(),
-        player: player_key,
-        total_amount: game.total_amount,
-        tickets_count: game.tickets_count,
+    emit!(PlayerJoined::new(
+        game,
+        player_key,
         ticket_index,
-        last_slot: current_slot,
-        timestamp: current_time,
-    });
+        current_slot,
+        current_time,
+    ));
 
     Ok(())
 }

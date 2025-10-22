@@ -1,4 +1,5 @@
-use crate::state::GameType;
+use crate::state::{Game, GameType};
+use crate::{OracleConfig, TokenConfig};
 use anchor_lang::prelude::*;
 
 // =============================================================================
@@ -45,6 +46,58 @@ pub struct OracleUpdated {
     pub min_timeout: u64,
 }
 
+struct OracleEventFields {
+    fee_percentage: u8,
+    oracle_buffer_time: u64,
+    max_tickets: u32,
+    max_timeout: u64,
+    min_timeout: u64,
+}
+
+impl OracleEventFields {
+    #[must_use]
+    fn new(config: &OracleConfig) -> Self {
+        Self {
+            fee_percentage: config.fee_percentage,
+            oracle_buffer_time: config.oracle_buffer_time,
+            max_tickets: config.max_tickets,
+            max_timeout: config.max_timeout,
+            min_timeout: config.min_timeout,
+        }
+    }
+}
+
+impl OracleInitialized {
+    #[must_use]
+    pub fn from_config(operator: Pubkey, config: &OracleConfig) -> Self {
+        let fields = OracleEventFields::new(config);
+        Self {
+            operator,
+            fee_percentage: fields.fee_percentage,
+            oracle_buffer_time: fields.oracle_buffer_time,
+            max_tickets: fields.max_tickets,
+            max_timeout: fields.max_timeout,
+            min_timeout: fields.min_timeout,
+        }
+    }
+}
+
+impl OracleUpdated {
+    #[must_use]
+    pub fn from_config(old_operator: Pubkey, new_operator: Pubkey, config: &OracleConfig) -> Self {
+        let fields = OracleEventFields::new(config);
+        Self {
+            old_operator,
+            new_operator,
+            fee_percentage: fields.fee_percentage,
+            oracle_buffer_time: fields.oracle_buffer_time,
+            max_tickets: fields.max_tickets,
+            max_timeout: fields.max_timeout,
+            min_timeout: fields.min_timeout,
+        }
+    }
+}
+
 // =============================================================================
 // TOKEN EVENTS
 // =============================================================================
@@ -71,6 +124,47 @@ pub struct TokenUpdated {
     pub enabled: bool,
 }
 
+struct TokenEventFields {
+    token_mint: Pubkey,
+    min_amount: u64,
+    enabled: bool,
+}
+
+impl TokenEventFields {
+    #[must_use]
+    fn new(token_mint: Pubkey, config: &TokenConfig) -> Self {
+        Self {
+            token_mint,
+            min_amount: config.min_amount,
+            enabled: config.enabled,
+        }
+    }
+}
+
+impl TokenInitialized {
+    #[must_use]
+    pub fn from_config(token_mint: Pubkey, config: &TokenConfig) -> Self {
+        let fields = TokenEventFields::new(token_mint, config);
+        Self {
+            token_mint: fields.token_mint,
+            min_amount: fields.min_amount,
+            enabled: fields.enabled,
+        }
+    }
+}
+
+impl TokenUpdated {
+    #[must_use]
+    pub fn from_config(token_mint: Pubkey, config: &TokenConfig) -> Self {
+        let fields = TokenEventFields::new(token_mint, config);
+        Self {
+            token_mint: fields.token_mint,
+            min_amount: fields.min_amount,
+            enabled: fields.enabled,
+        }
+    }
+}
+
 /// Emitted when accumulated fees are withdrawn by operator
 #[event]
 pub struct TokenFeeWithdrawn {
@@ -80,6 +174,17 @@ pub struct TokenFeeWithdrawn {
     pub token_mint: Pubkey,
     /// Amount of fees withdrawn
     pub amount: u64,
+}
+
+impl TokenFeeWithdrawn {
+    #[must_use]
+    pub fn new(operator: Pubkey, token_mint: Pubkey, amount: u64) -> Self {
+        Self {
+            operator,
+            token_mint,
+            amount,
+        }
+    }
 }
 
 // =============================================================================
@@ -105,6 +210,50 @@ pub struct PlayerJoined {
     pub timestamp: u64,
 }
 
+struct PlayerEventFields {
+    game_key: Pubkey,
+    total_amount: u64,
+    tickets_count: u32,
+}
+
+impl PlayerEventFields {
+    #[must_use]
+    fn new(game_key: Pubkey, total_amount: u64, tickets_count: u32) -> Self {
+        Self {
+            game_key,
+            total_amount,
+            tickets_count,
+        }
+    }
+
+    #[must_use]
+    fn from_account(game: &Account<'_, Game>) -> Self {
+        Self::new(game.key(), game.total_amount, game.tickets_count)
+    }
+}
+
+impl PlayerJoined {
+    #[must_use]
+    pub fn new<'info>(
+        game: &Account<'info, Game>,
+        player: Pubkey,
+        ticket_index: u32,
+        last_slot: u64,
+        timestamp: u64,
+    ) -> Self {
+        let fields = PlayerEventFields::from_account(game);
+        Self {
+            game_key: fields.game_key,
+            player,
+            total_amount: fields.total_amount,
+            tickets_count: fields.tickets_count,
+            ticket_index,
+            last_slot,
+            timestamp,
+        }
+    }
+}
+
 /// Emitted when a player leaves a game before completion
 #[event]
 pub struct PlayerUnjoined {
@@ -122,6 +271,28 @@ pub struct PlayerUnjoined {
     pub last_slot: u64,
     /// Timestamp of the unjoin
     pub timestamp: u64,
+}
+
+impl PlayerUnjoined {
+    #[must_use]
+    pub fn new<'info>(
+        game: &Account<'info, Game>,
+        player: Pubkey,
+        ticket_index: u32,
+        last_slot: u64,
+        timestamp: u64,
+    ) -> Self {
+        let fields = PlayerEventFields::from_account(game);
+        Self {
+            game_key: fields.game_key,
+            player,
+            total_amount: fields.total_amount,
+            tickets_count: fields.tickets_count,
+            ticket_index,
+            last_slot,
+            timestamp,
+        }
+    }
 }
 
 // =============================================================================
@@ -155,6 +326,25 @@ pub struct GameInitialized {
     pub timeout: u64,
 }
 
+impl GameInitialized {
+    #[must_use]
+    pub fn new<'info>(game: &Account<'info, Game>, creator: Pubkey) -> Self {
+        Self {
+            game_key: game.key(),
+            creator,
+            game_type: game.game_type,
+            ticket_amount: game.ticket_amount,
+            total_amount: game.total_amount,
+            max_tickets: game.max_tickets,
+            min_tickets: game.min_tickets,
+            token_mint: game.token_mint,
+            is_private: game.is_private,
+            created_at: game.created_at,
+            timeout: game.timeout,
+        }
+    }
+}
+
 /// Emitted when a game is completed and winner is determined
 #[event]
 pub struct GameCompleted {
@@ -172,6 +362,26 @@ pub struct GameCompleted {
     pub timestamp: u64,
 }
 
+impl GameCompleted {
+    #[must_use]
+    pub fn new<'info>(
+        game: &Account<'info, Game>,
+        winner: Pubkey,
+        winner_amount: u64,
+        fee_amount: u64,
+        timestamp: u64,
+    ) -> Self {
+        Self {
+            game_key: game.key(),
+            winner,
+            tickets_count: game.tickets_count,
+            winner_amount,
+            fee_amount,
+            timestamp,
+        }
+    }
+}
+
 /// Emitted when a game is closed by the creator
 #[event]
 pub struct GameClosed {
@@ -179,4 +389,14 @@ pub struct GameClosed {
     pub game_key: Pubkey,
     /// Closure timestamp
     pub timestamp: u64,
+}
+
+impl GameClosed {
+    #[must_use]
+    pub fn new<'info>(game: &Account<'info, Game>, timestamp: u64) -> Self {
+        Self {
+            game_key: game.key(),
+            timestamp,
+        }
+    }
 }
