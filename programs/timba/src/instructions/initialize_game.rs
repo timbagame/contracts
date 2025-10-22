@@ -1,5 +1,5 @@
 use crate::utils::get_clock_snapshot;
-use crate::{events::GameInitialized, state::GameType, GameConfig};
+use crate::{events::GameInitialized, GameConfig};
 use anchor_lang::prelude::*;
 
 pub fn handler(ctx: Context<super::InitializeGame>, config: GameConfig) -> Result<()> {
@@ -13,25 +13,13 @@ pub fn handler(ctx: Context<super::InitializeGame>, config: GameConfig) -> Resul
     // STATE INITIALIZATION
     // ===============================
 
-    game.creator = creator_key;
-    game.game_type = config.game_type;
-    game.max_tickets = config.max_tickets;
-    game.min_tickets = config.min_tickets;
-    game.tickets_count = 0;
-    game.token_mint = token_mint_key;
-    game.created_at = current_time;
-    game.timeout = config.timeout;
-    game.last_slot = current_slot;
-    game.is_private = config.is_private;
-
-    // Set amounts based on game type
-    if config.game_type == GameType::Giveaway {
-        game.total_amount = config.amount;
-        game.ticket_amount = 0;
-    } else {
-        game.total_amount = 0;
-        game.ticket_amount = config.amount;
-    }
+    game.initialize(
+        creator_key,
+        token_mint_key,
+        &config,
+        current_time,
+        current_slot,
+    );
 
     // ===============================
     // TOKEN TRANSFER

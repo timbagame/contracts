@@ -28,7 +28,6 @@ describe("Withdraw Fee", () => {
 
   it("should withdraw accumulated fees to oracle operator", async () => {
     const { oracle, mint, players } = await testUtils.quickSetup();
-    const gameData = testUtils.game.generateGamePDA();
     const [creator, player1] = players;
 
     const ticketAmount = new anchor.BN(1_500_000);
@@ -37,14 +36,12 @@ describe("Withdraw Fee", () => {
       amount: ticketAmount,
     });
 
-    await testUtils.game.initializeGame(
-      gameData,
+    const gameData = await testUtils.game.createFilledGame(
       gameConfig,
-      creator.player,
-      mint.mint
+      creator,
+      mint.mint,
+      [player1]
     );
-    await testUtils.game.joinGame(gameData.gamePDA, creator.player);
-    await testUtils.game.joinGame(gameData.gamePDA, player1.player);
 
     const gameAccountBefore = await env.program.account.game.fetch(
       gameData.gamePDA
@@ -170,7 +167,6 @@ describe("Withdraw Fee", () => {
 
   it("should allow withdrawing fees even when the token configuration is disabled", async () => {
     const { oracle, mint, players } = await testUtils.quickSetup();
-    const gameData = testUtils.game.generateGamePDA();
     const [creator, player1] = players;
 
     const ticketAmount = new anchor.BN(2_000_000);
@@ -178,14 +174,12 @@ describe("Withdraw Fee", () => {
       amount: ticketAmount,
     });
 
-    await testUtils.game.initializeGame(
-      gameData,
+    const gameData = await testUtils.game.createFilledGame(
       cfg,
-      creator.player,
-      mint.mint
+      creator,
+      mint.mint,
+      [player1]
     );
-    await testUtils.game.joinGame(gameData.gamePDA, creator.player);
-    await testUtils.game.joinGame(gameData.gamePDA, player1.player);
 
     const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
     const winnerIndex = calculateWinnerIndex(
