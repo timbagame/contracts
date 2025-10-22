@@ -552,10 +552,6 @@ impl Game {
 
     /// Removes the participant identified by the provided hash and returns the index removed.
     pub fn remove_participant(&mut self, participant_hash: u64) -> Result<usize> {
-        if self.tickets_count == 0 {
-            return err!(ErrorCode::InvalidTicketsCount);
-        }
-
         let index = self
             .participant_index(participant_hash)
             .ok_or(ErrorCode::UnauthorizedPlayer)?;
