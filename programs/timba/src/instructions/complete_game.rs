@@ -82,14 +82,13 @@ pub fn handler(
     // EVENT EMISSION
     // ===============================
 
-    emit!(GameCompleted {
-        game_key: game.key(),
-        winner: ctx.accounts.winner.key(),
-        tickets_count: game.tickets_count,
+    emit!(GameCompleted::new(
+        game,
+        ctx.accounts.winner.key(),
         winner_amount,
         fee_amount,
-        timestamp: current_time,
-    });
+        current_time,
+    ));
 
     Ok(())
 }

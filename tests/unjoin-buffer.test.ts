@@ -3,9 +3,9 @@ import * as anchor from "@coral-xyz/anchor";
 import {
   TestUtils,
   TestEnvironment,
-  errorToString,
   awaitBufferExpiry,
   coinflipGameConfig,
+  expectAnchorError,
 } from "./test-helpers";
 
 // Tests unjoin behavior relative to oracle buffer expiration
@@ -41,12 +41,14 @@ describe("Unjoin After Buffer", () => {
     await testUtils.game.joinGame(gameData.gamePDA, creator.player);
 
     // Attempt unjoin before timeout+buffer
-    try {
-      await testUtils.game.unjoinGame(gameData.gamePDA, creator.player);
-      expect.fail("Should have failed before buffer expiry");
-    } catch (e: unknown) {
-      expect(errorToString(e)).to.include("OracleBufferNotExpired");
-    }
+    await expectAnchorError(
+      testUtils.game.unjoinGame(gameData.gamePDA, creator.player),
+      "OracleBufferNotExpired",
+      {
+        fallbackSubstring: "OracleBufferNotExpired",
+        message: "Should have failed before buffer expiry",
+      }
+    );
 
     // Fast-forward time by manipulating Clock via sleep to exceed timeout + buffer
     const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);

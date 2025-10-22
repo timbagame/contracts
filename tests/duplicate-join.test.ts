@@ -1,9 +1,8 @@
-import { expect } from "chai";
 import {
   TestUtils,
   TestEnvironment,
-  errorToString,
   coinflipGameConfig,
+  expectAnchorError,
 } from "./test-helpers";
 
 // Tests duplicate join prevention using bloom + hash exact list
@@ -36,11 +35,13 @@ describe("Duplicate Join Prevention", () => {
 
     await testUtils.game.joinGame(gameData.gamePDA, creator.player);
 
-    try {
-      await testUtils.game.joinGame(gameData.gamePDA, creator.player);
-      expect.fail("Expected duplicate join to fail");
-    } catch (e: unknown) {
-      expect(errorToString(e)).to.include("AlreadyJoined");
-    }
+    await expectAnchorError(
+      testUtils.game.joinGame(gameData.gamePDA, creator.player),
+      "AlreadyJoined",
+      {
+        fallbackSubstring: "AlreadyJoined",
+        message: "Expected duplicate join to fail",
+      }
+    );
   });
 });

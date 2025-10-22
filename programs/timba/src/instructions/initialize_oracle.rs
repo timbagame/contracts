@@ -16,14 +16,7 @@ pub fn handler(ctx: Context<super::InitializeOracle>, config: OracleConfig) -> R
     // EVENT EMISSION
     // ===============================
 
-    emit!(OracleInitialized {
-        operator: operator_key,
-        fee_percentage: config.fee_percentage,
-        oracle_buffer_time: config.oracle_buffer_time,
-        max_tickets: config.max_tickets,
-        max_timeout: config.max_timeout,
-        min_timeout: config.min_timeout,
-    });
+    emit!(OracleInitialized::from_config(operator_key, &config));
 
     Ok(())
 }

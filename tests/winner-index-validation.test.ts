@@ -8,6 +8,8 @@ import {
   getErrorCode,
   getErrorMessage,
   coinflipGameConfig,
+  expectAnchorError,
+  subscribeEvent,
 } from "./test-helpers";
 
 // Tests covering winner index validation errors
@@ -44,19 +46,6 @@ describe("Winner Index Validation", () => {
     return { oracle, mint, gameData, creator, player1 };
   }
 
-  function expectAnchorError(
-    error: unknown,
-    code: string,
-    fallbackSubstring: string
-  ) {
-    const actualCode = getErrorCode(error);
-    if (actualCode) {
-      expect(actualCode).to.equal(code);
-    } else {
-      expect(getErrorMessage(error)).to.include(fallbackSubstring);
-    }
-  }
-
   it("should fail with WinnerIndexMismatch when provided index differs from recomputed", async () => {
     const { oracle, gameData, creator, player1 } = await setupTwoPlayerGame();
 
@@ -68,18 +57,17 @@ describe("Winner Index Validation", () => {
     );
     const wrongIndex = (winnerIndex + 1) % gameAccount.ticketsCount; // ensure different but in range
 
-    try {
-      await testUtils.game.completeGame(
+    await expectAnchorError(
+      testUtils.game.completeGame(
         gameData,
         winner.player.publicKey,
         creator.player.publicKey,
         oracle.operator,
         wrongIndex
-      );
-      expect.fail("Should throw WinnerIndexMismatch");
-    } catch (e: any) {
-      expectAnchorError(e, "WinnerIndexMismatch", "Winner index mismatch");
-    }
+      ),
+      "WinnerIndexMismatch",
+      { fallbackSubstring: "Winner index mismatch" }
+    );
   });
 
   it("should fail with WinnerPubkeyHashMismatch when winner pubkey does not match stored hash", async () => {
@@ -100,18 +88,17 @@ describe("Winner Index Validation", () => {
       throw new Error("Expected to find a non-winning participant");
     }
 
-    try {
-      await testUtils.game.completeGame(
+    await expectAnchorError(
+      testUtils.game.completeGame(
         gameData,
         wrongWinner.player.publicKey,
         creator.player.publicKey,
         oracle.operator,
         winnerIndex
-      );
-      expect.fail("Should throw WinnerPubkeyHashMismatch");
-    } catch (e: any) {
-      expectAnchorError(e, "WinnerPubkeyHashMismatch", "Winner hash mismatch");
-    }
+      ),
+      "WinnerPubkeyHashMismatch",
+      { fallbackSubstring: "Winner hash mismatch" }
+    );
   });
 
   it("should fail with InvalidSecretKey when oracle submits mismatched secret", async () => {
@@ -127,18 +114,17 @@ describe("Winner Index Validation", () => {
     const tamperedSecret = [...gameData.secretKey];
     tamperedSecret[0] = (tamperedSecret[0] + 1) % 256;
 
-    try {
-      await testUtils.game.completeGame(
+    await expectAnchorError(
+      testUtils.game.completeGame(
         { ...gameData, secretKey: tamperedSecret },
         winner.player.publicKey,
         creator.player.publicKey,
         oracle.operator,
         winnerIndex
-      );
-      expect.fail("Should throw InvalidSecretKey");
-    } catch (e: any) {
-      expectAnchorError(e, "InvalidSecretKey", "Secret key mismatch");
-    }
+      ),
+      "InvalidSecretKey",
+      { fallbackSubstring: "Secret key mismatch" }
+    );
   });
 
   it("should reject complete_game when creator account does not match", async () => {
@@ -160,18 +146,15 @@ describe("Winner Index Validation", () => {
       oracle.operator
     );
 
-    try {
-      await env.program.methods
+    await expectAnchorError(
+      env.program.methods
         .completeGame(gameData.randomHash, gameData.secretKey, winnerIndex)
         .accountsStrict(accounts)
         .signers([oracle.operatorKeypair])
-        .rpc();
-      expect.fail(
-        "Should throw InvalidCreator when creator account mismatches"
-      );
-    } catch (e: any) {
-      expectAnchorError(e, "InvalidCreator", "Invalid creator");
-    }
+        .rpc(),
+      "InvalidCreator",
+      { fallbackSubstring: "Invalid creator" }
+    );
   });
 
   it("should fail when winner token account does not belong to supplied winner", async () => {
@@ -251,18 +234,17 @@ describe("Winner Index Validation", () => {
       participants
     );
 
-    try {
-      await testUtils.game.completeGame(
+    await expectAnchorError(
+      testUtils.game.completeGame(
         gameData,
         winner.player.publicKey,
         creator.player.publicKey,
         oracle.operator,
         winnerIndex
-      );
-      expect.fail("Should throw GameNotReadyForOracle");
-    } catch (e: any) {
-      expectAnchorError(e, "GameNotReadyForOracle", "Oracle not ready");
-    }
+      ),
+      "GameNotReadyForOracle",
+      { fallbackSubstring: "Oracle not ready" }
+    );
   });
 
   it("should complete successfully and distribute winnings when inputs are consistent", async () => {
@@ -331,27 +313,7 @@ describe("Winner Index Validation", () => {
     const { fee: expectedFee, winnerAmount: expectedWinnerAmount } =
       calculatePayoutBreakdown(pot, oracle.config.feePercentage);
 
-    let resolveEvent: ((event: any) => void) | undefined;
-    let rejectEvent: ((error: Error) => void) | undefined;
-    const eventPromise = new Promise<any>((resolve, reject) => {
-      const timeout = setTimeout(
-        () => reject(new Error("Event not emitted")),
-        5000
-      );
-      resolveEvent = (event: any) => {
-        clearTimeout(timeout);
-        resolve(event);
-      };
-      rejectEvent = (error: Error) => {
-        clearTimeout(timeout);
-        reject(error);
-      };
-    });
-
-    const listener = await env.program.addEventListener(
-      "gameCompleted",
-      (event) => resolveEvent?.(event)
-    );
+    const subscription = await subscribeEvent(env.program, "gameCompleted");
 
     let emittedEvent: any;
     try {
@@ -362,12 +324,10 @@ describe("Winner Index Validation", () => {
         oracle.operator,
         winnerIndex
       );
-      emittedEvent = await eventPromise;
-    } catch (err) {
-      rejectEvent?.(err as Error);
-      throw err;
+
+      emittedEvent = await subscription.wait;
     } finally {
-      await env.program.removeEventListener(listener);
+      await subscription.dispose();
     }
 
     expect(emittedEvent.gameKey.toBase58()).to.equal(

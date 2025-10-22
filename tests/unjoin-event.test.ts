@@ -4,6 +4,7 @@ import {
   TestEnvironment,
   awaitBufferExpiry,
   coinflipGameConfig,
+  subscribeEvent,
 } from "./test-helpers";
 
 // Validate PlayerUnjoined event fields
@@ -44,23 +45,8 @@ describe("Unjoin Event Emission", () => {
     expect(gameAfterJoins.ticketsCount).to.equal(2);
 
     // Subscribe to event BEFORE triggering unjoin
-    let sub: number | undefined;
-    const waitForEvent = new Promise<any>(async (resolve, reject) => {
-      try {
-        sub = await env.program.addEventListener(
-          "playerUnjoined",
-          (ev: any) => {
-            const matchGame =
-              ev.gameKey.toString() === gameData.gamePDA.toString();
-            const matchPlayer =
-              ev.player.toString() === p2.player.publicKey.toString();
-            if (matchGame && matchPlayer) resolve(ev);
-          }
-        );
-      } catch (err) {
-        reject(err);
-      }
-      setTimeout(() => reject(new Error("EventTimeout")), 20000);
+    const subscription = await subscribeEvent(env.program, "playerUnjoined", {
+      timeoutMs: 20_000,
     });
 
     await awaitBufferExpiry(gameAfterJoins, oracle.config);
@@ -69,17 +55,15 @@ describe("Unjoin Event Emission", () => {
     let received: any | null = null;
     try {
       await testUtils.game.unjoinGame(gameData.gamePDA, p2.player);
-      received = await waitForEvent;
+      received = await subscription.wait;
     } catch (e: any) {
       // If unjoin fails (e.g., due to zero tickets), clean up and end test inconclusively
-      if (sub !== undefined) await env.program.removeEventListener(sub);
+      await subscription.dispose();
       return;
     }
 
     // Always cleanup subscription
-    if (sub !== undefined) {
-      await env.program.removeEventListener(sub);
-    }
+    await subscription.dispose();
 
     expect(received).to.not.be.null;
     expect(received!.gameKey.toString()).to.equal(gameData.gamePDA.toString());

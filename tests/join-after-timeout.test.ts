@@ -1,9 +1,8 @@
-import { expect } from "chai";
 import {
   TestUtils,
   TestEnvironment,
-  errorToString,
   coinflipGameConfig,
+  expectAnchorError,
 } from "./test-helpers";
 
 // Joining after timeout should fail with GameExpired
@@ -39,11 +38,13 @@ describe("Join After Timeout", () => {
     // Wait slightly past timeout
     await new Promise((r) => setTimeout(r, 3000));
 
-    try {
-      await testUtils.game.joinGame(gameData.gamePDA, p1.player);
-      expect.fail("Expected GameExpired when joining after timeout");
-    } catch (e: unknown) {
-      expect(errorToString(e)).to.include("GameExpired");
-    }
+    await expectAnchorError(
+      testUtils.game.joinGame(gameData.gamePDA, p1.player),
+      "GameExpired",
+      {
+        fallbackSubstring: "GameExpired",
+        message: "Expected GameExpired when joining after timeout",
+      }
+    );
   }).timeout(30000);
 });

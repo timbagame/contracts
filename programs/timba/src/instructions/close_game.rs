@@ -32,10 +32,7 @@ pub fn handler(ctx: Context<super::CloseGame>) -> Result<()> {
     // EVENT EMISSION
     // ===============================
 
-    emit!(GameClosed {
-        game_key: game.key(),
-        timestamp: current_time,
-    });
+    emit!(GameClosed::new(game, current_time));
 
     Ok(())
 }

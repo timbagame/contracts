@@ -1,11 +1,10 @@
 use anchor_lang::prelude::*;
 use anchor_spl::associated_token::AssociatedToken;
-use anchor_spl::token::ID as TOKEN_PROGRAM_ID;
-use anchor_spl::token_2022::ID as TOKEN_2022_PROGRAM_ID;
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
 use crate::error::ErrorCode;
 use crate::state::*;
+use crate::utils::is_supported_token_program;
 
 // =============================================================================
 // ORACLE MANAGEMENT
@@ -93,8 +92,7 @@ pub struct InitializeToken<'info> {
 
     pub system_program: Program<'info, System>,
     #[account(
-        constraint = token_program.key() == TOKEN_PROGRAM_ID
-            || token_program.key() == TOKEN_2022_PROGRAM_ID @ ErrorCode::UnsupportedTokenProgram,
+        constraint = is_supported_token_program(&token_program.key()) @ ErrorCode::UnsupportedTokenProgram,
     )]
     pub token_program: Interface<'info, TokenInterface>,
     pub associated_token_program: Program<'info, AssociatedToken>,
@@ -152,8 +150,7 @@ pub struct GameTokenContext<'info> {
     pub game_token_account: InterfaceAccount<'info, TokenAccount>,
 
     #[account(
-        constraint = token_program.key() == TOKEN_PROGRAM_ID
-            || token_program.key() == TOKEN_2022_PROGRAM_ID @ ErrorCode::UnsupportedTokenProgram,
+        constraint = is_supported_token_program(&token_program.key()) @ ErrorCode::UnsupportedTokenProgram,
     )]
     pub token_program: Interface<'info, TokenInterface>,
 
