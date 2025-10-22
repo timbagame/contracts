@@ -1,0 +1,23 @@
+[package]
+name = "game-math"
+version = "0.1.0"
+edition = "2021"
+authors = ["Timba Contributors"]
+license = "Apache-2.0"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+default = ["std"]
+solana = ["dep:solana-sha256-hasher"]
+wasm = ["wasm-bindgen"]
+std = ["sha2/std"]
+
+[dependencies]
+sha2 = { version = "0.10", default-features = false }
+wasm-bindgen = { version = "0.2", optional = true }
+solana-sha256-hasher = { workspace = true, optional = true }
+
+[dev-dependencies]
+hex = "0.4"

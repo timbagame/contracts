@@ -1,7 +1,7 @@
-use crate::error::ErrorCode;
+use crate::{error::ErrorCode, GameConfig};
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::{transfer_checked, TransferChecked};
-use solana_sha256_hasher::hashv;
+use game_math::{self, verify_secret_key};
 
 // =============================================================================
 // ACCOUNT SIZE CONSTANTS
@@ -11,14 +11,6 @@ use solana_sha256_hasher::hashv;
 // oracle_buffer_time (u64: 8) + max_tickets (u32: 4) +
 // max_timeout (u64: 8) + min_timeout (u64: 8)
 pub const ORACLE_SIZE: usize = 8 + 32 + 1 + 8 + 4 + 8 + 8;
-
-// =============================================================================
-// ENTROPY CONSTANTS
-// =============================================================================
-/// Size of entropy window for winner calculation (8 bytes for u64)
-pub const ENTROPY_WINDOW_SIZE: usize = 8;
-/// Maximum number of entropy windows that fit in a 32-byte hash
-pub const MAX_ENTROPY_WINDOWS: usize = 32 - ENTROPY_WINDOW_SIZE;
 
 // =============================================================================
 // PDA SEED CONSTANTS
@@ -199,6 +191,26 @@ impl GameToken {
         amount >= self.min_amount
     }
 
+    /// Accrues protocol fees, guarding against overflow.
+    pub fn accrue_fee(&mut self, amount: u64) -> Result<()> {
+        if amount == 0 {
+            return Ok(());
+        }
+
+        self.fee_amount = self
+            .fee_amount
+            .checked_add(amount)
+            .ok_or(ErrorCode::InvalidAmount)?;
+        Ok(())
+    }
+
+    /// Returns all accumulated fees and resets the counter.
+    pub fn drain_fees(&mut self) -> u64 {
+        let fees = self.fee_amount;
+        self.fee_amount = 0;
+        fees
+    }
+
     /// Generalized token transfer helper (reduces duplication of PDA vs player authority logic)
     /// If `use_pda_signer` is true, signs the CPI with the game vault PDA seeds.
     pub fn handle_token_transfer<'info>(
@@ -293,6 +305,40 @@ impl Game {
     // CORE GAME LIFECYCLE METHODS
     // =============================================================================
 
+    /// Initializes a freshly created game account from configuration.
+    pub fn initialize(
+        &mut self,
+        creator: Pubkey,
+        token_mint: Pubkey,
+        config: &GameConfig,
+        created_at: u64,
+        slot: u64,
+    ) {
+        self.creator = creator;
+        self.game_type = config.game_type;
+        self.max_tickets = config.max_tickets;
+        self.min_tickets = config.min_tickets;
+        self.tickets_count = 0;
+        self.token_mint = token_mint;
+        self.created_at = created_at;
+        self.timeout = config.timeout;
+        self.last_slot = slot;
+        self.is_private = config.is_private;
+
+        match config.game_type {
+            GameType::Giveaway => {
+                self.total_amount = config.amount;
+                self.ticket_amount = 0;
+            }
+            _ => {
+                self.total_amount = 0;
+                self.ticket_amount = config.amount;
+            }
+        }
+
+        self.participant_hashes.clear();
+    }
+
     /// Checks if the game has exceeded its timeout duration
     pub fn is_expired(&self, current_time: u64) -> bool {
         let expiry = self.created_at.saturating_add(self.timeout);
@@ -351,48 +397,17 @@ impl Game {
 
     /// Verifies the secret key matches the random hash using SHA256
     pub fn verify_secret_key(random_hash: [u8; 32], secret_key: [u8; 32]) -> bool {
-        let random_hash_calculated = hashv(&[secret_key.as_ref()]).to_bytes();
-        random_hash_calculated == random_hash
+        verify_secret_key(random_hash, secret_key)
     }
 
     /// Calculates the winner index using secret key with unbiased random selection
     pub fn calculate_winner_index(&self, secret_key: [u8; 32]) -> Option<u32> {
-        // Use total tickets count for all game types
-        let n_entries = self.tickets_count as u64;
-
-        if n_entries == 1 {
-            return Some(0);
-        }
-
-        // Hash secret and slot together without allocation
-        let slot_bytes = self.last_slot.to_le_bytes();
-        let entropy_hash = hashv(&[secret_key.as_ref(), &slot_bytes]).to_bytes();
-
-        // Try sliding entropy windows through the hashed entropy using constants
-        let max_valid = u64::MAX - (u64::MAX % n_entries);
-        for start_pos in 0..=MAX_ENTROPY_WINDOWS {
-            let random_u64 = u64::from_le_bytes(
-                entropy_hash[start_pos..start_pos + ENTROPY_WINDOW_SIZE]
-                    .try_into()
-                    .unwrap(),
-            );
-
-            // Use this value if it's in the unbiased range
-            if random_u64 < max_valid {
-                return Some((random_u64 % n_entries) as u32);
-            }
-        }
-
-        // Return None if unable to generate unbiased random number
-        None
+        game_math::calculate_winner_index(self.tickets_count, self.last_slot, secret_key)
     }
 
     /// Calculates prize distribution with fee deduction
     pub fn calculate_amounts(&self, fee_percentage: u64) -> (u64, u64) {
-        // Use u128 for intermediate calculation to prevent overflow
-        let fee_amount = (self.total_amount as u128 * fee_percentage as u128 / 100) as u64;
-        let winner_amount = self.total_amount - fee_amount;
-        (winner_amount, fee_amount)
+        game_math::calculate_amounts(self.total_amount, fee_percentage)
     }
 
     /// Validation helpers for account constraints
@@ -486,9 +501,7 @@ impl Game {
 
     /// Returns true if the participant hash already exists in the active set.
     pub fn contains_participant(&self, participant_hash: u64) -> bool {
-        self.active_participants()
-            .iter()
-            .any(|existing| *existing == participant_hash)
+        self.participant_index(participant_hash).is_some()
     }
 
     /// Returns the index of the participant hash if it is present.
@@ -500,10 +513,6 @@ impl Game {
 
     /// Removes the participant identified by the provided hash and returns the index removed.
     pub fn remove_participant(&mut self, participant_hash: u64) -> Result<usize> {
-        if self.tickets_count == 0 {
-            return err!(ErrorCode::InvalidTicketsCount);
-        }
-
         let index = self
             .participant_index(participant_hash)
             .ok_or(ErrorCode::UnauthorizedPlayer)?;

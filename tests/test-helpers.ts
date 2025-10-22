@@ -12,6 +12,10 @@ import {
 } from "@solana/spl-token";
 import { PublicKey } from "@solana/web3.js";
 import { createHash } from "crypto";
+import {
+  wasmCalculateWinnerIndex,
+  wasmPayoutBreakdown,
+} from "./wasm/math";
 
 export const toBN = (value: anchor.BN | number): anchor.BN =>
   anchor.BN.isBN(value) ? value : new anchor.BN(value);
@@ -1292,6 +1296,27 @@ export class GameManager {
     return gameData;
   }
 
+  async createFilledGame(
+    config: GameConfig,
+    creator: TestPlayer,
+    tokenMint: PublicKey,
+    participants: TestPlayer[],
+    { joinCreator = true }: { joinCreator?: boolean } = {}
+  ): Promise<TestGame> {
+    const gameData = this.generateGamePDA();
+    await this.initializeGame(gameData, config, creator.player, tokenMint);
+
+    if (joinCreator) {
+      await this.joinGame(gameData.gamePDA, creator.player);
+    }
+
+    for (const participant of participants) {
+      await this.joinGame(gameData.gamePDA, participant.player);
+    }
+
+    return gameData;
+  }
+
   // Expose calculation helper for backward compatibility
   calculateWinnerIndex(
     ticketsCount: number,
@@ -1310,42 +1335,17 @@ export function calculateWinnerIndex(
   secretKey: number[],
   lastSlot: number
 ): number {
-  // Calculate entries: for Snowball games use total_amount/ticket_amount, for others use player count
-  let nEntries: number;
-  nEntries = ticketsCount;
+  const winnerIndex = wasmCalculateWinnerIndex(
+    ticketsCount,
+    Uint8Array.from(secretKey),
+    BigInt(lastSlot)
+  );
 
-  if (nEntries === 1) {
-    return 0;
+  if (winnerIndex < 0) {
+    throw new Error("Unable to generate unbiased random number");
   }
 
-  const nPlayers = BigInt(nEntries);
-
-  // Hash combination of secret key and last_slot for additional entropy
-  const combinedData = new Uint8Array(40);
-  combinedData.set(secretKey, 0);
-
-  // Convert lastSlot to little-endian bytes
-  const lastSlotBytes = new Uint8Array(8);
-  const lastSlotView = new DataView(lastSlotBytes.buffer);
-  lastSlotView.setBigUint64(0, BigInt(lastSlot), true);
-  combinedData.set(lastSlotBytes, 32);
-
-  const entropyHash = hash(Buffer.from(combinedData));
-
-  // Try sliding 8-byte windows through the hashed entropy
-  const maxValid =
-    BigInt("0xFFFFFFFFFFFFFFFF") - (BigInt("0xFFFFFFFFFFFFFFFF") % nPlayers);
-
-  for (let startPos = 0; startPos <= 32 - 8; startPos++) {
-    const randomBytes = entropyHash.subarray(startPos, startPos + 8);
-    const randomU64 = new DataView(randomBytes.buffer).getBigUint64(0, true);
-
-    if (randomU64 < maxValid) {
-      return Number(randomU64 % nPlayers);
-    }
-  }
-
-  throw new Error("Unable to generate unbiased random number");
+  return winnerIndex;
 }
 
 /**
@@ -1392,9 +1392,15 @@ export function calculatePayoutBreakdown(
   pot: anchor.BN,
   feePercentage: number
 ): { fee: anchor.BN; winnerAmount: anchor.BN } {
-  const fee = pot.mul(new anchor.BN(feePercentage)).div(new anchor.BN(100));
-  const winnerAmount = pot.sub(fee);
-  return { fee, winnerAmount };
+  const [winnerAmount, fee] = wasmPayoutBreakdown(
+    BigInt(pot.toString()),
+    BigInt(feePercentage)
+  );
+
+  return {
+    fee: new anchor.BN(fee.toString()),
+    winnerAmount: new anchor.BN(winnerAmount.toString()),
+  };
 }
 
 export function getErrorCode(error: unknown): string | undefined {

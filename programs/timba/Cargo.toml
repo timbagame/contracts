@@ -24,3 +24,4 @@ idl-build = [
 anchor-lang = { workspace = true }
 anchor-spl  = { workspace = true, features = ["token", "associated_token", "token_2022"] }
 solana-sha256-hasher = { workspace = true }
+game-math = { path = "../../crates/game-math", default-features = false, features = ["solana"] }
