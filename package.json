@@ -6,8 +6,7 @@
     "typecheck": "tsc --noEmit",
     "lint:fix": "prettier */*.js \"*/**/*{.js,.ts}\" -w",
     "lint": "prettier */*.js \"*/**/*{.js,.ts}\" --check",
-    "update-idl": "ts-node scripts/update-idl.ts",
-    "build:math": "wasm-pack build crates/game-math --target nodejs --out-dir tests/wasm/game-math -- --no-default-features --features wasm"
+    "update-idl": "ts-node scripts/update-idl.ts"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.32.1"

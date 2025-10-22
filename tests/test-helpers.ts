@@ -12,10 +12,6 @@ import {
 } from "@solana/spl-token";
 import { PublicKey } from "@solana/web3.js";
 import { createHash } from "crypto";
-import {
-  wasmCalculateWinnerIndex,
-  wasmPayoutBreakdown,
-} from "./wasm/math";
 
 export const toBN = (value: anchor.BN | number): anchor.BN =>
   anchor.BN.isBN(value) ? value : new anchor.BN(value);
@@ -1335,17 +1331,42 @@ export function calculateWinnerIndex(
   secretKey: number[],
   lastSlot: number
 ): number {
-  const winnerIndex = wasmCalculateWinnerIndex(
-    ticketsCount,
-    Uint8Array.from(secretKey),
-    BigInt(lastSlot)
-  );
+  // Calculate entries: for Snowball games use total_amount/ticket_amount, for others use player count
+  let nEntries: number;
+  nEntries = ticketsCount;
 
-  if (winnerIndex < 0) {
-    throw new Error("Unable to generate unbiased random number");
+  if (nEntries === 1) {
+    return 0;
   }
 
-  return winnerIndex;
+  const nPlayers = BigInt(nEntries);
+
+  // Hash combination of secret key and last_slot for additional entropy
+  const combinedData = new Uint8Array(40);
+  combinedData.set(secretKey, 0);
+
+  // Convert lastSlot to little-endian bytes
+  const lastSlotBytes = new Uint8Array(8);
+  const lastSlotView = new DataView(lastSlotBytes.buffer);
+  lastSlotView.setBigUint64(0, BigInt(lastSlot), true);
+  combinedData.set(lastSlotBytes, 32);
+
+  const entropyHash = hash(Buffer.from(combinedData));
+
+  // Try sliding 8-byte windows through the hashed entropy
+  const maxValid =
+    BigInt("0xFFFFFFFFFFFFFFFF") - (BigInt("0xFFFFFFFFFFFFFFFF") % nPlayers);
+
+  for (let startPos = 0; startPos <= 32 - 8; startPos++) {
+    const randomBytes = entropyHash.subarray(startPos, startPos + 8);
+    const randomU64 = new DataView(randomBytes.buffer).getBigUint64(0, true);
+
+    if (randomU64 < maxValid) {
+      return Number(randomU64 % nPlayers);
+    }
+  }
+
+  throw new Error("Unable to generate unbiased random number");
 }
 
 /**
@@ -1392,15 +1413,9 @@ export function calculatePayoutBreakdown(
   pot: anchor.BN,
   feePercentage: number
 ): { fee: anchor.BN; winnerAmount: anchor.BN } {
-  const [winnerAmount, fee] = wasmPayoutBreakdown(
-    BigInt(pot.toString()),
-    BigInt(feePercentage)
-  );
-
-  return {
-    fee: new anchor.BN(fee.toString()),
-    winnerAmount: new anchor.BN(winnerAmount.toString()),
-  };
+  const fee = pot.mul(new anchor.BN(feePercentage)).div(new anchor.BN(100));
+  const winnerAmount = pot.sub(fee);
+  return { fee, winnerAmount };
 }
 
 export function getErrorCode(error: unknown): string | undefined {

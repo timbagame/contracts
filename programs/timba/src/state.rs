@@ -1,7 +1,7 @@
 use crate::{error::ErrorCode, GameConfig};
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::{transfer_checked, TransferChecked};
-use game_math::{self, verify_secret_key};
+use solana_sha256_hasher::hashv;
 
 // =============================================================================
 // ACCOUNT SIZE CONSTANTS
@@ -11,6 +11,14 @@ use game_math::{self, verify_secret_key};
 // oracle_buffer_time (u64: 8) + max_tickets (u32: 4) +
 // max_timeout (u64: 8) + min_timeout (u64: 8)
 pub const ORACLE_SIZE: usize = 8 + 32 + 1 + 8 + 4 + 8 + 8;
+
+// =============================================================================
+// ENTROPY CONSTANTS
+// =============================================================================
+/// Size of entropy window for winner calculation (8 bytes for u64)
+pub const ENTROPY_WINDOW_SIZE: usize = 8;
+/// Maximum number of entropy windows that fit in a 32-byte hash
+pub const MAX_ENTROPY_WINDOWS: usize = 32 - ENTROPY_WINDOW_SIZE;
 
 // =============================================================================
 // PDA SEED CONSTANTS
@@ -397,17 +405,48 @@ impl Game {
 
     /// Verifies the secret key matches the random hash using SHA256
     pub fn verify_secret_key(random_hash: [u8; 32], secret_key: [u8; 32]) -> bool {
-        verify_secret_key(random_hash, secret_key)
+        let random_hash_calculated = hashv(&[secret_key.as_ref()]).to_bytes();
+        random_hash_calculated == random_hash
     }
 
     /// Calculates the winner index using secret key with unbiased random selection
     pub fn calculate_winner_index(&self, secret_key: [u8; 32]) -> Option<u32> {
-        game_math::calculate_winner_index(self.tickets_count, self.last_slot, secret_key)
+        // Use total tickets count for all game types
+        let n_entries = self.tickets_count as u64;
+
+        if n_entries == 1 {
+            return Some(0);
+        }
+
+        // Hash secret and slot together without allocation
+        let slot_bytes = self.last_slot.to_le_bytes();
+        let entropy_hash = hashv(&[secret_key.as_ref(), &slot_bytes]).to_bytes();
+
+        // Try sliding entropy windows through the hashed entropy using constants
+        let max_valid = u64::MAX - (u64::MAX % n_entries);
+        for start_pos in 0..=MAX_ENTROPY_WINDOWS {
+            let random_u64 = u64::from_le_bytes(
+                entropy_hash[start_pos..start_pos + ENTROPY_WINDOW_SIZE]
+                    .try_into()
+                    .unwrap(),
+            );
+
+            // Use this value if it's in the unbiased range
+            if random_u64 < max_valid {
+                return Some((random_u64 % n_entries) as u32);
+            }
+        }
+
+        // Return None if unable to generate unbiased random number
+        None
     }
 
     /// Calculates prize distribution with fee deduction
     pub fn calculate_amounts(&self, fee_percentage: u64) -> (u64, u64) {
-        game_math::calculate_amounts(self.total_amount, fee_percentage)
+        // Use u128 for intermediate calculation to prevent overflow
+        let fee_amount = (self.total_amount as u128 * fee_percentage as u128 / 100) as u64;
+        let winner_amount = self.total_amount - fee_amount;
+        (winner_amount, fee_amount)
     }
 
     /// Validation helpers for account constraints

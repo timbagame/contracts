@@ -95,16 +95,6 @@ anchor test
 
 **Note**: The test suite runs all files together - individual test file execution is not supported.
 
-### Shared math bindings
-
-Winner selection and payout math is compiled to WebAssembly so tests can re-use the on-chain logic. Build the bindings ahead of time with:
-
-```bash
-bun run build:math
-```
-
-The test utilities automatically invoke this script if the generated artifacts are missing.
-
 ## Program Structure
 
 ```
