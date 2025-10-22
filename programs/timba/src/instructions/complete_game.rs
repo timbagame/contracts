@@ -61,14 +61,10 @@ pub fn handler(
     let (winner_amount, fee_amount) = game.calculate_amounts(fee_percentage);
 
     // Update fee amount and transfer directly to winner
-    {
-        let game_token = &mut ctx.accounts.game_token_ctx.game_token;
-        let new_fee_total = game_token
-            .fee_amount
-            .checked_add(fee_amount)
-            .ok_or(ErrorCode::InvalidAmount)?;
-        game_token.fee_amount = new_fee_total;
-    }
+    ctx.accounts
+        .game_token_ctx
+        .game_token
+        .accrue_fee(fee_amount)?;
 
     // Mark game as completed
     game.complete();

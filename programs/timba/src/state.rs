@@ -1,4 +1,4 @@
-use crate::error::ErrorCode;
+use crate::{error::ErrorCode, GameConfig};
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::{transfer_checked, TransferChecked};
 use solana_sha256_hasher::hashv;
@@ -199,6 +199,26 @@ impl GameToken {
         amount >= self.min_amount
     }
 
+    /// Accrues protocol fees, guarding against overflow.
+    pub fn accrue_fee(&mut self, amount: u64) -> Result<()> {
+        if amount == 0 {
+            return Ok(());
+        }
+
+        self.fee_amount = self
+            .fee_amount
+            .checked_add(amount)
+            .ok_or(ErrorCode::InvalidAmount)?;
+        Ok(())
+    }
+
+    /// Returns all accumulated fees and resets the counter.
+    pub fn drain_fees(&mut self) -> u64 {
+        let fees = self.fee_amount;
+        self.fee_amount = 0;
+        fees
+    }
+
     /// Generalized token transfer helper (reduces duplication of PDA vs player authority logic)
     /// If `use_pda_signer` is true, signs the CPI with the game vault PDA seeds.
     pub fn handle_token_transfer<'info>(
@@ -292,6 +312,40 @@ impl Game {
     // =============================================================================
     // CORE GAME LIFECYCLE METHODS
     // =============================================================================
+
+    /// Initializes a freshly created game account from configuration.
+    pub fn initialize(
+        &mut self,
+        creator: Pubkey,
+        token_mint: Pubkey,
+        config: &GameConfig,
+        created_at: u64,
+        slot: u64,
+    ) {
+        self.creator = creator;
+        self.game_type = config.game_type;
+        self.max_tickets = config.max_tickets;
+        self.min_tickets = config.min_tickets;
+        self.tickets_count = 0;
+        self.token_mint = token_mint;
+        self.created_at = created_at;
+        self.timeout = config.timeout;
+        self.last_slot = slot;
+        self.is_private = config.is_private;
+
+        match config.game_type {
+            GameType::Giveaway => {
+                self.total_amount = config.amount;
+                self.ticket_amount = 0;
+            }
+            _ => {
+                self.total_amount = 0;
+                self.ticket_amount = config.amount;
+            }
+        }
+
+        self.participant_hashes.clear();
+    }
 
     /// Checks if the game has exceeded its timeout duration
     pub fn is_expired(&self, current_time: u64) -> bool {
@@ -486,9 +540,7 @@ impl Game {
 
     /// Returns true if the participant hash already exists in the active set.
     pub fn contains_participant(&self, participant_hash: u64) -> bool {
-        self.active_participants()
-            .iter()
-            .any(|existing| *existing == participant_hash)
+        self.participant_index(participant_hash).is_some()
     }
 
     /// Returns the index of the participant hash if it is present.
@@ -500,10 +552,6 @@ impl Game {
 
     /// Removes the participant identified by the provided hash and returns the index removed.
     pub fn remove_participant(&mut self, participant_hash: u64) -> Result<usize> {
-        if self.tickets_count == 0 {
-            return err!(ErrorCode::InvalidTicketsCount);
-        }
-
         let index = self
             .participant_index(participant_hash)
             .ok_or(ErrorCode::UnauthorizedPlayer)?;
