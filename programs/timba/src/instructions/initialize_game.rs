@@ -38,19 +38,7 @@ pub fn handler(ctx: Context<super::InitializeGame>, config: GameConfig) -> Resul
     // EVENT EMISSION
     // ===============================
 
-    emit!(GameInitialized {
-        game_key: game.key(),
-        creator: creator_key,
-        game_type: game.game_type,
-        ticket_amount: game.ticket_amount,
-        total_amount: game.total_amount,
-        max_tickets: game.max_tickets,
-        min_tickets: game.min_tickets,
-        token_mint: token_mint_key,
-        is_private: game.is_private,
-        created_at: game.created_at,
-        timeout: game.timeout,
-    });
+    emit!(GameInitialized::new(game, creator_key));
 
     Ok(())
 }
