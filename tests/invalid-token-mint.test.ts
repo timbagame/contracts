@@ -34,8 +34,21 @@ describe("Invalid token mint guard", () => {
     const creator = await testUtils.player.createPlayer(mintA.mint);
     const mismatchedPlayer = await testUtils.player.createPlayer(mintB.mint);
 
-    // Giveaways skip the balance pre-check, allowing the InvalidTokenMint constraint to surface.
     const gameConfig = giveawayGameConfig();
+    const requiredDeposit = new anchor.BN(gameConfig.amount.toString());
+
+    await testUtils.mint.mintTokensToAccount(
+      mintA,
+      creator.playerTokenAccount.address,
+      requiredDeposit
+    );
+    await testUtils.mint.mintTokensToAccount(
+      mintB,
+      mismatchedPlayer.playerTokenAccount.address,
+      requiredDeposit
+    );
+
+    // Giveaways skip the balance pre-check, allowing the InvalidTokenMint constraint to surface.
 
     const gameData = testUtils.game.generateGamePDA();
     await testUtils.game.initializeGame(
