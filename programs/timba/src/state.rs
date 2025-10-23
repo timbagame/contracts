@@ -1,6 +1,6 @@
 use crate::{error::ErrorCode, GameConfig};
 use anchor_lang::prelude::*;
-use anchor_spl::token_interface::{transfer_checked, TransferChecked};
+use anchor_spl::token_interface::{close_account, transfer_checked, CloseAccount, TransferChecked};
 use solana_sha256_hasher::hashv;
 
 // =============================================================================
@@ -271,6 +271,33 @@ impl GameToken {
                 decimals,
             )?;
         }
+        Ok(())
+    }
+
+    /// Closes the PDA-owned vault ATA and returns rent to destination.
+    pub fn close_vault_account<'info>(
+        &self,
+        vault_account: AccountInfo<'info>,
+        destination: AccountInfo<'info>,
+        vault_authority: AccountInfo<'info>,
+        token_program: AccountInfo<'info>,
+    ) -> Result<()> {
+        let signer_seeds = &[
+            GAME_VAULT_SEED,
+            self.token_mint.as_ref(),
+            &[self.vault_bump],
+        ];
+        close_account(
+            CpiContext::new_with_signer(
+                token_program,
+                CloseAccount {
+                    account: vault_account,
+                    destination,
+                    authority: vault_authority,
+                },
+                &[signer_seeds],
+            ),
+        )?;
         Ok(())
     }
 }
