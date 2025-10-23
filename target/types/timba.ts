@@ -248,6 +248,168 @@ export type Timba = {
       "args": []
     },
     {
+      "name": "closeToken",
+      "docs": [
+        "Closes token configuration and vault after settling funds"
+      ],
+      "discriminator": [
+        26,
+        74,
+        236,
+        151,
+        104,
+        64,
+        183,
+        249
+      ],
+      "accounts": [
+        {
+          "name": "tokenMint"
+        },
+        {
+          "name": "gameToken",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  109,
+                  101,
+                  95,
+                  116,
+                  111,
+                  107,
+                  101,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "tokenMint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "gameVault",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  109,
+                  101,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "tokenMint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "gameTokenAccount",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "gameVault"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "tokenMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "tokenProgram"
+        },
+        {
+          "name": "associatedTokenProgram",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "oracle",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  114,
+                  97,
+                  99,
+                  108,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "oracleOperator",
+          "writable": true,
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "completeGame",
       "docs": [
         "Completes a game by revealing the secret key and distributing winnings"
@@ -2004,6 +2166,19 @@ export type Timba = {
       ]
     },
     {
+      "name": "tokenClosed",
+      "discriminator": [
+        237,
+        76,
+        164,
+        114,
+        61,
+        65,
+        0,
+        152
+      ]
+    },
+    {
       "name": "tokenFeeWithdrawn",
       "discriminator": [
         92,
@@ -2188,6 +2363,16 @@ export type Timba = {
       "code": 7402,
       "name": "unsupportedTokenProgram",
       "msg": "Token program unsupported"
+    },
+    {
+      "code": 7403,
+      "name": "tokenVaultNotEmpty",
+      "msg": "Token vault not empty"
+    },
+    {
+      "code": 7404,
+      "name": "tokenFeesOutstanding",
+      "msg": "Token fees outstanding"
     }
   ],
   "types": [
@@ -2908,6 +3093,31 @@ export type Timba = {
               "Timestamp of the unjoin"
             ],
             "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "tokenClosed",
+      "docs": [
+        "Emitted when a token configuration and vault are closed"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "operator",
+            "docs": [
+              "Operator closing the token"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "tokenMint",
+            "docs": [
+              "Token mint that was removed"
+            ],
+            "type": "pubkey"
           }
         ]
       }
