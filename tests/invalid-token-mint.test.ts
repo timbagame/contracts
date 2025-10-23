@@ -4,6 +4,7 @@ import {
   TestEnvironment,
   TestUtils,
   coinflipGameConfig,
+  giveawayGameConfig,
   expectAnchorError,
   gameTokenContextFromMint,
   getOraclePublicKey,
@@ -32,7 +33,8 @@ describe("Invalid token mint guard", () => {
     const creator = await testUtils.player.createPlayer(mintA.mint);
     const mismatchedPlayer = await testUtils.player.createPlayer(mintB.mint);
 
-    const gameConfig = coinflipGameConfig();
+    // Giveaways skip the balance pre-check, allowing the InvalidTokenMint constraint to surface.
+    const gameConfig = giveawayGameConfig();
     const ticketAmount = gameConfig.amount as anchor.BN;
 
     const gameData = testUtils.game.generateGamePDA();
