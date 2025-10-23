@@ -105,6 +105,11 @@ pub mod timba {
         instructions::update_token::handler(ctx, config)
     }
 
+    /// Closes token configuration and vault after settling funds
+    pub fn close_token(ctx: Context<CloseToken>) -> Result<()> {
+        instructions::close_token::handler(ctx)
+    }
+
     // =========================================================================
     // PLAYER MANAGEMENT
     // =========================================================================

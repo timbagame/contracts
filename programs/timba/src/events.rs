@@ -187,6 +187,25 @@ impl TokenFeeWithdrawn {
     }
 }
 
+/// Emitted when a token configuration and vault are closed
+#[event]
+pub struct TokenClosed {
+    /// Operator closing the token
+    pub operator: Pubkey,
+    /// Token mint that was removed
+    pub token_mint: Pubkey,
+}
+
+impl TokenClosed {
+    #[must_use]
+    pub fn new(operator: Pubkey, token_mint: Pubkey) -> Self {
+        Self {
+            operator,
+            token_mint,
+        }
+    }
+}
+
 // =============================================================================
 // PLAYER EVENTS
 // =============================================================================

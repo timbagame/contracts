@@ -142,4 +142,10 @@ pub enum ErrorCode {
     /// Provided token program is not supported
     #[msg("Token program unsupported")]
     UnsupportedTokenProgram = 1402,
+    /// Vault still holds token funds
+    #[msg("Token vault not empty")]
+    TokenVaultNotEmpty = 1403,
+    /// Fees must be withdrawn before closing token
+    #[msg("Token fees outstanding")]
+    TokenFeesOutstanding = 1404,
 }

@@ -121,6 +121,51 @@ pub struct UpdateToken<'info> {
     pub oracle_operator: Signer<'info>,
 }
 
+#[derive(Accounts)]
+pub struct CloseToken<'info> {
+    pub token_mint: InterfaceAccount<'info, Mint>,
+
+    #[account(
+        mut,
+        close = oracle_operator,
+        seeds = [GAME_TOKEN_SEED, token_mint.key().as_ref()],
+        bump,
+        constraint = game_token.token_mint == token_mint.key() @ ErrorCode::InvalidTokenMint,
+        constraint = game_token.fee_amount == 0 @ ErrorCode::TokenFeesOutstanding,
+    )]
+    pub game_token: Account<'info, GameToken>,
+
+    /// CHECK: PDA authority for the vault ATA, validated by seeds and bump
+    #[account(seeds = [GAME_VAULT_SEED, token_mint.key().as_ref()], bump = game_token.vault_bump)]
+    pub game_vault: AccountInfo<'info>,
+
+    #[account(
+        mut,
+        associated_token::mint = token_mint,
+        associated_token::authority = game_vault,
+        associated_token::token_program = token_program,
+        constraint = game_token_account.amount == 0 @ ErrorCode::TokenVaultNotEmpty,
+    )]
+    pub game_token_account: InterfaceAccount<'info, TokenAccount>,
+
+    #[account(
+        constraint = is_supported_token_program(&token_program.key()) @ ErrorCode::UnsupportedTokenProgram,
+    )]
+    pub token_program: Interface<'info, TokenInterface>,
+
+    pub associated_token_program: Program<'info, AssociatedToken>,
+
+    #[account(
+        seeds = [ORACLE_SEED],
+        bump,
+        constraint = oracle.is_authorized_operator(&oracle_operator.key()) @ ErrorCode::UnauthorizedOperator,
+    )]
+    pub oracle: Account<'info, Oracle>,
+
+    #[account(mut)]
+    pub oracle_operator: Signer<'info>,
+}
+
 // =============================================================================
 // GAME MANAGEMENT
 // =============================================================================
