@@ -9,9 +9,16 @@ import {
 import { PublicKey, SystemProgram } from "@solana/web3.js";
 import {
   MintManager,
+  PlayerManager,
+  GameManager,
   TestEnvironment,
+  coinflipGameConfig,
+  computeGameTokenContext,
   expectAnchorError,
   subscribeEvent,
+  calculateWinnerIndex,
+  getWinnerFromPlayers,
+  errorToString,
 } from "./test-helpers";
 
 // Instruction coverage for initialize_token and update_token flows
@@ -265,5 +272,159 @@ describe("Token Administration Instructions", () => {
         .rpc(),
       "InvalidProgramId"
     );
+  });
+});
+
+describe("Token Close Instruction", () => {
+  let env: TestEnvironment;
+  let mintManager: MintManager;
+  let playerManager: PlayerManager;
+  let gameManager: GameManager;
+
+  before(async () => {
+    env = TestEnvironment.getInstance();
+    if (!env.oracle) {
+      await env.initialize();
+    }
+    mintManager = new MintManager(env.program, env.provider);
+    playerManager = new PlayerManager(env.provider);
+    gameManager = new GameManager(env.program);
+  });
+
+  const deriveCloseTokenAccounts = (
+    mint: Awaited<ReturnType<MintManager["createMint"]>>
+  ) => {
+    const { gameToken, gameVault, gameTokenAccount } = computeGameTokenContext(
+      env.program,
+      mint.mint,
+      mint.tokenProgram
+    );
+
+    return {
+      tokenMint: mint.mint,
+      gameToken,
+      gameVault,
+      gameTokenAccount,
+      tokenProgram: mint.tokenProgram,
+      associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+      oracle: env.oracle!.oraclePDA,
+      oracleOperator: env.oracle!.operator,
+    } as const;
+  };
+
+  it("should close token configuration and vault when empty", async () => {
+    const mint = await mintManager.createMint();
+    const accounts = deriveCloseTokenAccounts(mint);
+    const subscription = await subscribeEvent(env.program, "tokenClosed");
+
+    try {
+      await env.program.methods
+        .closeToken()
+        .accountsStrict(accounts)
+        .signers([env.oracle!.operatorKeypair])
+        .rpc();
+
+      const event = await subscription.wait;
+      expect(event.tokenMint).to.deep.equal(mint.mint);
+      expect(event.operator).to.deep.equal(env.oracle!.operator);
+
+      const gameTokenInfo = await env.provider.connection.getAccountInfo(
+        accounts.gameToken
+      );
+      const vaultAccountInfo = await env.provider.connection.getAccountInfo(
+        accounts.gameTokenAccount
+      );
+
+      expect(gameTokenInfo).to.be.null;
+      expect(vaultAccountInfo).to.be.null;
+    } finally {
+      await subscription.dispose().catch(() => {});
+    }
+  });
+
+  it("should reject close_token when vault holds remaining balance", async () => {
+    const mint = await mintManager.createMint();
+    const accounts = deriveCloseTokenAccounts(mint);
+
+    await mintManager.mintTokensToAccount(
+      mint,
+      accounts.gameTokenAccount,
+      new anchor.BN(5_000)
+    );
+
+    try {
+      await env.program.methods
+        .closeToken()
+        .accountsStrict(accounts)
+        .signers([env.oracle!.operatorKeypair])
+        .rpc();
+      expect.fail("Expected close_token to reject when vault is not empty");
+    } catch (error) {
+      expect(errorToString(error)).to.include("TokenVaultNotEmpty");
+    }
+  });
+
+  it("should reject close_token when fees remain outstanding", async () => {
+    const mint = await mintManager.createMint();
+    const accounts = deriveCloseTokenAccounts(mint);
+
+    const [creator, opponent] = await playerManager.createPlayerPool(
+      2,
+      mint.mint
+    );
+
+    const ticketAmount = new anchor.BN(1_000_000);
+    await playerManager.fundPlayer(creator, mint, ticketAmount.muln(2));
+    await playerManager.fundPlayer(opponent, mint, ticketAmount.muln(2));
+
+    const gameData = gameManager.generateGamePDA();
+    const gameConfig = coinflipGameConfig({ amount: ticketAmount });
+
+    await gameManager.initializeGame(
+      gameData,
+      gameConfig,
+      creator.player,
+      mint.mint
+    );
+
+    await gameManager.joinGame(gameData.gamePDA, creator.player);
+    await gameManager.joinGame(gameData.gamePDA, opponent.player);
+
+    const gameAccount = await env.program.account.game.fetch(
+      gameData.gamePDA
+    );
+    const winnerIndex = calculateWinnerIndex(
+      gameAccount.ticketsCount,
+      gameData.secretKey,
+      Number(gameAccount.lastSlot)
+    );
+    const winnerPlayer = getWinnerFromPlayers(
+      [creator, opponent],
+      winnerIndex
+    );
+
+  await gameManager.completeGame(
+      gameData,
+      winnerPlayer.player.publicKey,
+      creator.player.publicKey,
+      env.oracle!.operator,
+      winnerIndex
+    );
+
+    const gameTokenAccount = await env.program.account.gameToken.fetch(
+      accounts.gameToken
+    );
+    expect(gameTokenAccount.feeAmount.gt(new anchor.BN(0))).to.be.true;
+
+    try {
+      await env.program.methods
+        .closeToken()
+        .accountsStrict(accounts)
+        .signers([env.oracle!.operatorKeypair])
+        .rpc();
+      expect.fail("Expected close_token to reject when fees are outstanding");
+    } catch (error) {
+      expect(errorToString(error)).to.include("TokenFeesOutstanding");
+    }
   });
 });
