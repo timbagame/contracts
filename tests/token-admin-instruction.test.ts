@@ -7,7 +7,12 @@ import {
   getOrCreateAssociatedTokenAccount,
 } from "@solana/spl-token";
 import { PublicKey, SystemProgram } from "@solana/web3.js";
-import { MintManager, TestEnvironment, subscribeEvent } from "./test-helpers";
+import {
+  MintManager,
+  TestEnvironment,
+  expectAnchorError,
+  subscribeEvent,
+} from "./test-helpers";
 
 // Instruction coverage for initialize_token and update_token flows
 
@@ -144,6 +149,27 @@ describe("Token Administration Instructions", () => {
     }
   });
 
+  it("should reject update_token when token mint does not match game token", async () => {
+    const primaryMint = await mintManager.createMint();
+    const mismatchedMint = await mintManager.createMint();
+
+    // Anchor validates PDA seeds before applying the InvalidTokenMint account constraint,
+    // so a mismatched mint surfaces as a ConstraintSeeds failure at the framework level.
+    await expectAnchorError(
+      env.program.methods
+        .updateToken({ minAmount: new anchor.BN(77_777), enabled: true })
+        .accountsStrict({
+          gameToken: primaryMint.gameTokenPDA,
+          tokenMint: mismatchedMint.mint,
+          oracle: env.oracle!.oraclePDA,
+          oracleOperator: env.oracle!.operator,
+        })
+        .signers([env.oracle!.operatorKeypair])
+        .rpc(),
+      "ConstraintSeeds"
+    );
+  });
+
   it("should emit TokenUpdated when configuration changes", async () => {
     const mint = await mintManager.createMint();
     const subscription = await subscribeEvent(env.program, "tokenUpdated");
@@ -182,5 +208,62 @@ describe("Token Administration Instructions", () => {
         .signers([env.oracle!.operatorKeypair])
         .rpc();
     }
+  });
+
+  it("should reject initialize_token when token program is unsupported", async () => {
+    const connection = env.provider.connection;
+    const mintAuthority = anchor.web3.Keypair.generate();
+
+    const airdropSig = await connection.requestAirdrop(
+      mintAuthority.publicKey,
+      2 * anchor.web3.LAMPORTS_PER_SOL
+    );
+    await connection.confirmTransaction(airdropSig, "confirmed");
+
+    const mint = await createMint(
+      connection,
+      mintAuthority,
+      mintAuthority.publicKey,
+      null,
+      6
+    );
+
+    const [gameVaultPDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("game_vault"), mint.toBuffer()],
+      env.program.programId
+    );
+    const [gameTokenPDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("game_token"), mint.toBuffer()],
+      env.program.programId
+    );
+
+    const vaultAta = await getOrCreateAssociatedTokenAccount(
+      connection,
+      mintAuthority,
+      mint,
+      gameVaultPDA,
+      true
+    );
+
+    // The token interface enforces program identity ahead of the UnsupportedTokenProgram
+    // guard, leading Anchor to raise InvalidProgramId when an arbitrary program ID is used.
+    await expectAnchorError(
+      env.program.methods
+        .initializeToken({ minAmount: new anchor.BN(5_000), enabled: true })
+        .accountsStrict({
+          gameToken: gameTokenPDA,
+          tokenMint: mint,
+          gameVault: gameVaultPDA,
+          gameTokenAccount: vaultAta.address,
+          oracle: env.oracle!.oraclePDA,
+          oracleOperator: env.oracle!.operator,
+          systemProgram: SystemProgram.programId,
+          tokenProgram: anchor.web3.SystemProgram.programId,
+          associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+        })
+        .signers([env.oracle!.operatorKeypair])
+        .rpc(),
+      "InvalidProgramId"
+    );
   });
 });
