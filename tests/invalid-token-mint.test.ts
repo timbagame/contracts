@@ -1,4 +1,5 @@
 import * as anchor from "@coral-xyz/anchor";
+import { expect } from "chai";
 import { getOrCreateAssociatedTokenAccount } from "@solana/spl-token";
 import {
   TestEnvironment,
@@ -35,7 +36,6 @@ describe("Invalid token mint guard", () => {
 
     // Giveaways skip the balance pre-check, allowing the InvalidTokenMint constraint to surface.
     const gameConfig = giveawayGameConfig();
-    const ticketAmount = gameConfig.amount as anchor.BN;
 
     const gameData = testUtils.game.generateGamePDA();
     await testUtils.game.initializeGame(
@@ -46,13 +46,11 @@ describe("Invalid token mint guard", () => {
     );
     await testUtils.game.joinGame(gameData.gamePDA, creator.player);
 
-    const mismatchedStartingBalance = ticketAmount.mul(new anchor.BN(2));
-
-    await testUtils.mint.mintTokensToAccount(
-      mintB,
-      mismatchedPlayer.playerTokenAccount.address,
-      mismatchedStartingBalance
-    );
+    const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+    expect(gameAccount.tokenMint.toBase58()).to.equal(mintA.mint.toBase58());
+    expect(gameAccount.gameType).to.have.property("giveaway");
+    expect(new anchor.BN(gameAccount.ticketAmount).isZero()).to.be.true;
+    expect(mintA.mint.equals(mintB.mint)).to.be.false;
 
     const mismatchedContext = gameTokenContextFromMint(mintB, env.program);
 
