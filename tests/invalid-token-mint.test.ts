@@ -44,10 +44,12 @@ describe("Invalid token mint guard", () => {
     );
     await testUtils.game.joinGame(gameData.gamePDA, creator.player);
 
+    const mismatchedStartingBalance = ticketAmount.mul(new anchor.BN(2));
+
     await testUtils.mint.mintTokensToAccount(
       mintB,
       mismatchedPlayer.playerTokenAccount.address,
-      ticketAmount
+      mismatchedStartingBalance
     );
 
     const mismatchedContext = gameTokenContextFromMint(mintB, env.program);

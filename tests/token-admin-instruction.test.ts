@@ -153,6 +153,8 @@ describe("Token Administration Instructions", () => {
     const primaryMint = await mintManager.createMint();
     const mismatchedMint = await mintManager.createMint();
 
+    // Anchor validates PDA seeds before applying the InvalidTokenMint account constraint,
+    // so a mismatched mint surfaces as a ConstraintSeeds failure at the framework level.
     await expectAnchorError(
       env.program.methods
         .updateToken({ minAmount: new anchor.BN(77_777), enabled: true })
@@ -164,7 +166,7 @@ describe("Token Administration Instructions", () => {
         })
         .signers([env.oracle!.operatorKeypair])
         .rpc(),
-      "InvalidTokenMint"
+      "ConstraintSeeds"
     );
   });
 
@@ -243,6 +245,8 @@ describe("Token Administration Instructions", () => {
       true
     );
 
+    // The token interface enforces program identity ahead of the UnsupportedTokenProgram
+    // guard, leading Anchor to raise InvalidProgramId when an arbitrary program ID is used.
     await expectAnchorError(
       env.program.methods
         .initializeToken({ minAmount: new anchor.BN(5_000), enabled: true })
@@ -259,7 +263,7 @@ describe("Token Administration Instructions", () => {
         })
         .signers([env.oracle!.operatorKeypair])
         .rpc(),
-      "UnsupportedTokenProgram"
+      "InvalidProgramId"
     );
   });
 });
