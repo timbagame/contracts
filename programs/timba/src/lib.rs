@@ -22,7 +22,7 @@ use crate::state::GameType;
 // PROGRAM ID
 // =============================================================================
 
-declare_id!("7GWv6X48imfr7SonQRCgka8XSh42J4UP74DyhP1RWNP6");
+declare_id!("32Jr4JnXWvqq9GqPQynkooHsszaucUUvZfNLh2hdX2L5");
 
 // =============================================================================
 // CONFIGURATION STRUCTS
