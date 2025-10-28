@@ -19,7 +19,6 @@ describe("Giveaway Constraints", () => {
   it("should reject giveaway initialization when minTickets is below 1", async () => {
     const { mint, players } = await testUtils.quickSetup();
     const [creator] = players;
-    const gameData = testUtils.game.generateGamePDA();
 
     const cfg = giveawayGameConfig({
       amount: new anchor.BN(5_000_000),
@@ -29,12 +28,7 @@ describe("Giveaway Constraints", () => {
     });
 
     try {
-      await testUtils.game.initializeGame(
-        gameData,
-        cfg,
-        creator.player,
-        mint.mint
-      );
+      await testUtils.game.createGame(cfg, creator.player, mint.mint);
       expect.fail("Expected giveaway initialize to reject with minTickets < 1");
     } catch (e: any) {
       expect(e.toString()).to.include("InvalidTicketsCount");
@@ -44,7 +38,6 @@ describe("Giveaway Constraints", () => {
   it("should reject giveaway when prize is smaller than token min amount", async () => {
     const { mint, players } = await testUtils.quickSetup();
     const [creator] = players;
-    const gameData = testUtils.game.generateGamePDA();
 
     const belowMinPrize = new anchor.BN(100); // default minAmount is 1000 in mint manager
     const cfg = giveawayGameConfig({
@@ -54,12 +47,7 @@ describe("Giveaway Constraints", () => {
     });
 
     try {
-      await testUtils.game.initializeGame(
-        gameData,
-        cfg,
-        creator.player,
-        mint.mint
-      );
+      await testUtils.game.createGame(cfg, creator.player, mint.mint);
       expect.fail("Expected giveaway initialize to enforce token min amount");
     } catch (e: any) {
       expect(e.toString()).to.include("InvalidAmount");

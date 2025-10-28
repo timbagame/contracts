@@ -28,14 +28,12 @@ describe("Oracle Update Authority", () => {
     const [creator, player1] = players;
 
     // Prepare a game to accumulate fees
-    const gameData = testUtils.game.generateGamePDA();
     const ticketAmount = new anchor.BN(1_000_000);
     const cfg = coinflipGameConfig({
       amount: ticketAmount,
       timeout: 60,
     });
-    await testUtils.game.initializeGame(
-      gameData,
+    const gameData = await testUtils.game.createGame(
       cfg,
       creator.player,
       mint.mint
@@ -43,7 +41,7 @@ describe("Oracle Update Authority", () => {
     await testUtils.game.joinGame(gameData.gamePDA, creator.player);
     await testUtils.game.joinGame(gameData.gamePDA, player1.player);
 
-    const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+    const gameAccount = await testUtils.game.fetchGame(gameData.gamePDA);
     const winnerIndex = calculateWinnerIndex(
       gameAccount.ticketsCount,
       gameData.secretKey,

@@ -25,7 +25,6 @@ describe("Fee Accumulation", () => {
 
   it("should accumulate fee and pay net winnings to winner", async () => {
     const { oracle, mint, players } = await testUtils.quickSetup();
-    const gameData = testUtils.game.generateGamePDA();
     const [creator, player1] = players;
 
     // Use a higher fee to make assertion clearer (5%) -- oracle already exists so cannot update easily here.
@@ -36,8 +35,7 @@ describe("Fee Accumulation", () => {
       amount: ticketAmount,
     });
 
-    await testUtils.game.initializeGame(
-      gameData,
+    const gameData = await testUtils.game.createGame(
       gameConfig,
       creator.player,
       mint.mint
@@ -46,9 +44,7 @@ describe("Fee Accumulation", () => {
     await testUtils.game.joinGame(gameData.gamePDA, creator.player);
     await testUtils.game.joinGame(gameData.gamePDA, player1.player);
 
-    const gameAccountBefore = await env.program.account.game.fetch(
-      gameData.gamePDA
-    );
+    const gameAccountBefore = await testUtils.game.fetchGame(gameData.gamePDA);
 
     const winnerIndex = calculateWinnerIndex(
       gameAccountBefore.ticketsCount,

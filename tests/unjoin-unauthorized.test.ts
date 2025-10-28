@@ -21,7 +21,6 @@ describe("Unjoin Unauthorized Scenarios", () => {
 
   it("should reject unjoin by non-participant with UnauthorizedPlayer", async () => {
     const { oracle, mint, players } = await testUtils.quickSetup();
-    const gameData = testUtils.game.generateGamePDA();
     const [p1, p2] = players;
 
     const config = coinflipGameConfig({
@@ -30,10 +29,14 @@ describe("Unjoin Unauthorized Scenarios", () => {
       timeout: 5,
     });
 
-    await testUtils.game.initializeGame(gameData, config, p1.player, mint.mint);
+    const gameData = await testUtils.game.createGame(
+      config,
+      p1.player,
+      mint.mint
+    );
     await testUtils.game.joinGame(gameData.gamePDA, p1.player);
 
-    const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+    const gameAccount = await testUtils.game.fetchGame(gameData.gamePDA);
     await awaitBufferExpiry(gameAccount, oracle.config);
 
     // p2 never joined; should fail with UnauthorizedPlayer
@@ -46,14 +49,13 @@ describe("Unjoin Unauthorized Scenarios", () => {
       }
     );
 
-    const g = await env.program.account.game.fetch(gameData.gamePDA);
+    const g = await testUtils.game.fetchGame(gameData.gamePDA);
     expect(g.ticketsCount).to.equal(1);
   }).timeout(60000);
 
   it("should reject unjoin when no participants have joined the game", async () => {
     const { oracle, mint, players } = await testUtils.quickSetup();
     const [creator] = players;
-    const gameData = testUtils.game.generateGamePDA();
 
     const config = coinflipGameConfig({
       maxTickets: 3,
@@ -61,16 +63,13 @@ describe("Unjoin Unauthorized Scenarios", () => {
       timeout: 1,
     });
 
-    await testUtils.game.initializeGame(
-      gameData,
+    const gameData = await testUtils.game.createGame(
       config,
       creator.player,
       mint.mint
     );
 
-    const secondGameAccount = await env.program.account.game.fetch(
-      gameData.gamePDA
-    );
+    const secondGameAccount = await testUtils.game.fetchGame(gameData.gamePDA);
     await awaitBufferExpiry(secondGameAccount, oracle.config);
 
     await expectAnchorError(
@@ -82,7 +81,7 @@ describe("Unjoin Unauthorized Scenarios", () => {
       }
     );
 
-    const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+    const gameAccount = await testUtils.game.fetchGame(gameData.gamePDA);
     expect(gameAccount.ticketsCount).to.equal(0);
   }).timeout(60000);
 

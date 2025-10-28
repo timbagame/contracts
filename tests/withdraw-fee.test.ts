@@ -8,7 +8,7 @@ import {
   deriveGameAccounts,
   toGameTokenContext,
   gameTokenContextFromMint,
-  subscribeEvent,
+  captureEvent,
   coinflipGameConfig,
   getOraclePublicKey,
   ensureOperatorAta,
@@ -43,9 +43,7 @@ describe("Withdraw Fee", () => {
       [player1]
     );
 
-    const gameAccountBefore = await env.program.account.game.fetch(
-      gameData.gamePDA
-    );
+    const gameAccountBefore = await testUtils.game.fetchGame(gameData.gamePDA);
     const winnerIndex = calculateWinnerIndex(
       gameAccountBefore.ticketsCount,
       gameData.secretKey,
@@ -122,47 +120,43 @@ describe("Withdraw Fee", () => {
       operatorAta
     );
 
-    const subscription = await subscribeEvent(
+    const event = await captureEvent(
       env.program,
       "tokenFeeWithdrawn",
+      async () => {
+        const zeroFeeContext = gameTokenContextFromMint(mint);
+        const zeroFeeOracle = getOraclePublicKey(oracle);
+
+        await env.program.methods
+          .withdrawTokenFee()
+          .accountsStrict({
+            gameTokenCtx: zeroFeeContext,
+            oracle: zeroFeeOracle,
+            oracleOperator: oracle.operator,
+            oracleOperatorTokenAccount: operatorAta,
+            systemProgram: anchor.web3.SystemProgram.programId,
+          })
+          .signers([oracle.operatorKeypair])
+          .rpc();
+      },
       {
         timeoutMs: 15_000,
       }
     );
 
-    try {
-      const zeroFeeContext = gameTokenContextFromMint(mint);
-      const zeroFeeOracle = getOraclePublicKey(oracle);
+    expect(event.operator).to.deep.equal(oracle.operator);
+    expect(event.tokenMint).to.deep.equal(mint.mint);
+    expect(new anchor.BN(event.amount).isZero()).to.be.true;
 
-      await env.program.methods
-        .withdrawTokenFee()
-        .accountsStrict({
-          gameTokenCtx: zeroFeeContext,
-          oracle: zeroFeeOracle,
-          oracleOperator: oracle.operator,
-          oracleOperatorTokenAccount: operatorAta,
-          systemProgram: anchor.web3.SystemProgram.programId,
-        })
-        .signers([oracle.operatorKeypair])
-        .rpc();
+    const postBalance = await env.provider.connection.getTokenAccountBalance(
+      operatorAta
+    );
+    expect(postBalance.value.amount).to.equal(preBalance.value.amount);
 
-      const event = await subscription.wait;
-      expect(event.operator).to.deep.equal(oracle.operator);
-      expect(event.tokenMint).to.deep.equal(mint.mint);
-      expect(new anchor.BN(event.amount).isZero()).to.be.true;
-
-      const postBalance = await env.provider.connection.getTokenAccountBalance(
-        operatorAta
-      );
-      expect(postBalance.value.amount).to.equal(preBalance.value.amount);
-
-      const gameTokenAfter = await env.program.account.gameToken.fetch(
-        mint.gameTokenPDA
-      );
-      expect(new anchor.BN(gameTokenAfter.feeAmount).isZero()).to.be.true;
-    } finally {
-      await subscription.dispose().catch(() => {});
-    }
+    const gameTokenAfter = await env.program.account.gameToken.fetch(
+      mint.gameTokenPDA
+    );
+    expect(new anchor.BN(gameTokenAfter.feeAmount).isZero()).to.be.true;
   });
 
   it("should allow withdrawing fees even when the token configuration is disabled", async () => {
@@ -181,7 +175,7 @@ describe("Withdraw Fee", () => {
       [player1]
     );
 
-    const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+    const gameAccount = await testUtils.game.fetchGame(gameData.gamePDA);
     const winnerIndex = calculateWinnerIndex(
       gameAccount.ticketsCount,
       gameData.secretKey,
@@ -222,14 +216,6 @@ describe("Withdraw Fee", () => {
       operatorAta
     );
 
-    const subscription = await subscribeEvent(
-      env.program,
-      "tokenFeeWithdrawn",
-      {
-        timeoutMs: 15_000,
-      }
-    );
-
     const disabledOracle = getOraclePublicKey(oracle);
 
     const disabledDerived = await deriveGameAccounts(
@@ -242,19 +228,27 @@ describe("Withdraw Fee", () => {
     const disabledCtx = toGameTokenContext(disabledDerived);
 
     try {
-      await env.program.methods
-        .withdrawTokenFee()
-        .accountsStrict({
-          gameTokenCtx: disabledCtx,
-          oracle: disabledOracle,
-          oracleOperator: oracle.operator,
-          oracleOperatorTokenAccount: operatorAta,
-          systemProgram: anchor.web3.SystemProgram.programId,
-        })
-        .signers([oracle.operatorKeypair])
-        .rpc();
+      const event = await captureEvent(
+        env.program,
+        "tokenFeeWithdrawn",
+        async () => {
+          await env.program.methods
+            .withdrawTokenFee()
+            .accountsStrict({
+              gameTokenCtx: disabledCtx,
+              oracle: disabledOracle,
+              oracleOperator: oracle.operator,
+              oracleOperatorTokenAccount: operatorAta,
+              systemProgram: anchor.web3.SystemProgram.programId,
+            })
+            .signers([oracle.operatorKeypair])
+            .rpc();
+        },
+        {
+          timeoutMs: 15_000,
+        }
+      );
 
-      const event = await subscription.wait;
       expect(event.operator).to.deep.equal(oracle.operator);
       expect(event.tokenMint).to.deep.equal(mint.mint);
       expect(new anchor.BN(event.amount).eq(accumulatedFee)).to.be.true;
@@ -272,8 +266,6 @@ describe("Withdraw Fee", () => {
       );
       expect(new anchor.BN(gameTokenAfter.feeAmount).isZero()).to.be.true;
     } finally {
-      await subscription.dispose().catch(() => {});
-
       // Restore token enabled state to avoid leaking to other tests
       await env.program.methods
         .updateToken({ minAmount: originalMinAmount, enabled: true })

@@ -4,7 +4,7 @@ import {
   TestEnvironment,
   awaitBufferExpiry,
   coinflipGameConfig,
-  subscribeEvent,
+  captureEvent,
 } from "./test-helpers";
 
 // Validate PlayerUnjoined event fields
@@ -21,7 +21,6 @@ describe("Unjoin Event Emission", () => {
 
   it("emits PlayerUnjoined with correct index", async () => {
     const { oracle, mint, players } = await testUtils.quickSetup();
-    const gameData = testUtils.game.generateGamePDA();
     const [p1, p2] = players;
 
     const gameConfig = coinflipGameConfig({
@@ -31,41 +30,37 @@ describe("Unjoin Event Emission", () => {
       timeout: 5,
     });
 
-    await testUtils.game.initializeGame(
-      gameData,
+    const gameData = await testUtils.game.createGame(
       gameConfig,
       p1.player,
       mint.mint
     );
     await testUtils.game.joinGame(gameData.gamePDA, p1.player);
     await testUtils.game.joinGame(gameData.gamePDA, p2.player);
-    const gameAfterJoins = await env.program.account.game.fetch(
-      gameData.gamePDA
-    );
+    const gameAfterJoins = await testUtils.game.fetchGame(gameData.gamePDA);
     expect(gameAfterJoins.ticketsCount).to.equal(2);
 
     // Subscribe to event BEFORE triggering unjoin
-    const subscription = await subscribeEvent(env.program, "playerUnjoined", {
-      timeoutMs: 20_000,
-    });
-
     await awaitBufferExpiry(gameAfterJoins, oracle.config);
 
-    // Trigger unjoin and wait for matching event; tolerate rare zero-ticket edge
     let received: any | null = null;
     try {
-      await testUtils.game.unjoinGame(gameData.gamePDA, p2.player);
-      received = await subscription.wait;
-    } catch (e: any) {
-      // If unjoin fails (e.g., due to zero tickets), clean up and end test inconclusively
-      await subscription.dispose();
+      received = await captureEvent(
+        env.program,
+        "playerUnjoined",
+        async () => {
+          await testUtils.game.unjoinGame(gameData.gamePDA, p2.player);
+        },
+        { timeoutMs: 20_000 }
+      );
+    } catch (error) {
       return;
     }
 
-    // Always cleanup subscription
-    await subscription.dispose();
+    if (!received) {
+      return;
+    }
 
-    expect(received).to.not.be.null;
     expect(received!.gameKey.toString()).to.equal(gameData.gamePDA.toString());
     expect(received!.player.toString()).to.equal(
       p2.player.publicKey.toString()

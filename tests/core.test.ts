@@ -120,21 +120,17 @@ describe("Core Game Operations", () => {
   describe("Game Initialization", () => {
     it("should initialize coinflip game with valid parameters", async () => {
       const { mint, players } = await testUtils.quickSetup();
-      const gameData = testUtils.game.generateGamePDA();
       const creator = players[0];
 
       const gameConfig = coinflipGameConfig();
 
-      await testUtils.game.initializeGame(
-        gameData,
+      const gameData = await testUtils.game.createGame(
         gameConfig,
         creator.player,
         mint.mint
       );
 
-      const gameAccount = await env.program.account.game.fetch(
-        gameData.gamePDA
-      );
+      const gameAccount = await testUtils.game.fetchGame(gameData.gamePDA);
       expect(gameAccount.creator.equals(creator.player.publicKey)).to.be.true;
       expect(gameAccount.ticketAmount.toNumber()).to.equal(1_000_000);
       expect(gameAccount.maxTickets).to.equal(2);
@@ -144,7 +140,6 @@ describe("Core Game Operations", () => {
 
     it("should fail to initialize game with invalid parameters", async () => {
       const { mint, players } = await testUtils.quickSetup();
-      const gameData = testUtils.game.generateGamePDA();
       const creator = players[0];
 
       const invalidConfig = coinflipGameConfig({
@@ -153,12 +148,7 @@ describe("Core Game Operations", () => {
       });
 
       await expectAnchorError(
-        testUtils.game.initializeGame(
-          gameData,
-          invalidConfig,
-          creator.player,
-          mint.mint
-        ),
+        testUtils.game.createGame(invalidConfig, creator.player, mint.mint),
         "InvalidTicketsCount",
         {
           fallbackSubstring: "InvalidTicketsCount",
@@ -169,21 +159,17 @@ describe("Core Game Operations", () => {
 
     it("should initialize giveaway game successfully", async () => {
       const { mint, players } = await testUtils.quickSetup();
-      const gameData = testUtils.game.generateGamePDA();
       const creator = players[0];
 
       const gameConfig = giveawayGameConfig();
 
-      await testUtils.game.initializeGame(
-        gameData,
+      const gameData = await testUtils.game.createGame(
         gameConfig,
         creator.player,
         mint.mint
       );
 
-      const gameAccount = await env.program.account.game.fetch(
-        gameData.gamePDA
-      );
+      const gameAccount = await testUtils.game.fetchGame(gameData.gamePDA);
       expect(gameAccount.gameType.giveaway).to.not.be.undefined;
       expect(gameAccount.totalAmount.toNumber()).to.equal(2_000_000); // Giveaway uses totalAmount
       expect(gameAccount.ticketAmount.toNumber()).to.equal(0); // Giveaway sets ticketAmount to 0
@@ -195,14 +181,11 @@ describe("Core Game Operations", () => {
   describe("Player Join Operations", () => {
     it("should allow players to join public game", async () => {
       const { mint, players } = await testUtils.quickSetup();
-      const gameData = testUtils.game.generateGamePDA();
       const [creator, player1] = players;
 
       const gameConfig = coinflipGameConfig();
 
-      // Initialize game
-      await testUtils.game.initializeGame(
-        gameData,
+      const gameData = await testUtils.game.createGame(
         gameConfig,
         creator.player,
         mint.mint
@@ -211,29 +194,26 @@ describe("Core Game Operations", () => {
       // Creator joins
       await testUtils.game.joinGame(gameData.gamePDA, creator.player);
 
-      let gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+      let gameAccount = await testUtils.game.fetchGame(gameData.gamePDA);
       expect(gameAccount.ticketsCount).to.equal(1);
 
       // Second player joins
       await testUtils.game.joinGame(gameData.gamePDA, player1.player);
 
-      gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+      gameAccount = await testUtils.game.fetchGame(gameData.gamePDA);
       expect(gameAccount.ticketsCount).to.equal(2);
       expect(gameAccount.totalAmount.toNumber()).to.equal(2_000_000);
     });
 
     it("should allow players to join private game with operator", async () => {
       const { oracle, mint, players } = await testUtils.quickSetup();
-      const gameData = testUtils.game.generateGamePDA();
       const [creator, player1] = players;
 
       const gameConfig = coinflipGameConfig({
         isPrivate: true, // Private game
       });
 
-      // Initialize private game
-      await testUtils.game.initializeGame(
-        gameData,
+      const gameData = await testUtils.game.createGame(
         gameConfig,
         creator.player,
         mint.mint
@@ -251,21 +231,17 @@ describe("Core Game Operations", () => {
         oracle.operatorKeypair
       );
 
-      const gameAccount = await env.program.account.game.fetch(
-        gameData.gamePDA
-      );
+      const gameAccount = await testUtils.game.fetchGame(gameData.gamePDA);
       expect(gameAccount.ticketsCount).to.equal(2);
     });
 
     it("should fail to join private game without operator", async () => {
       const { mint, players } = await testUtils.quickSetup();
-      const gameData = testUtils.game.generateGamePDA();
       const [creator, player1] = players;
 
       const gameConfig = coinflipGameConfig({ isPrivate: true });
 
-      await testUtils.game.initializeGame(
-        gameData,
+      const gameData = await testUtils.game.createGame(
         gameConfig,
         creator.player,
         mint.mint
@@ -283,14 +259,12 @@ describe("Core Game Operations", () => {
 
     it("should fail to join private game with wrong operator", async () => {
       const { mint, players } = await testUtils.quickSetup();
-      const gameData = testUtils.game.generateGamePDA();
       const [creator, player1] = players;
       const fakeOperator = anchor.web3.Keypair.generate();
 
       const gameConfig = coinflipGameConfig({ isPrivate: true });
 
-      await testUtils.game.initializeGame(
-        gameData,
+      const gameData = await testUtils.game.createGame(
         gameConfig,
         creator.player,
         mint.mint
@@ -312,13 +286,11 @@ describe("Core Game Operations", () => {
 
     it("should fail to join full game", async () => {
       const { mint, players } = await testUtils.quickSetup();
-      const gameData = testUtils.game.generateGamePDA();
       const [creator, player1, player2] = players;
 
       const gameConfig = coinflipGameConfig();
 
-      await testUtils.game.initializeGame(
-        gameData,
+      const gameData = await testUtils.game.createGame(
         gameConfig,
         creator.player,
         mint.mint
@@ -341,7 +313,6 @@ describe("Core Game Operations", () => {
 
     it("should fail to join with insufficient funds", async () => {
       const { mint, players } = await testUtils.quickSetup();
-      const gameData = testUtils.game.generateGamePDA();
       const creator = players[0];
 
       // Create a player with insufficient funds
@@ -351,8 +322,7 @@ describe("Core Game Operations", () => {
 
       const gameConfig = coinflipGameConfig();
 
-      await testUtils.game.initializeGame(
-        gameData,
+      const gameData = await testUtils.game.createGame(
         gameConfig,
         creator.player,
         mint.mint
@@ -372,25 +342,21 @@ describe("Core Game Operations", () => {
   describe("Game Completion", () => {
     it("should complete game successfully with correct winner", async () => {
       const { oracle, mint, players } = await testUtils.quickSetup();
-      const gameData = testUtils.game.generateGamePDA();
       const [creator, player1] = players;
 
       const gameConfig = coinflipGameConfig();
 
-      // Create and fill game
-      await testUtils.game.initializeGame(
-        gameData,
+      const gameData = await testUtils.game.createGame(
         gameConfig,
         creator.player,
         mint.mint
       );
+      // Fill game
       await testUtils.game.joinGame(gameData.gamePDA, creator.player);
       await testUtils.game.joinGame(gameData.gamePDA, player1.player);
 
       // Calculate winner
-      const gameAccount = await env.program.account.game.fetch(
-        gameData.gamePDA
-      );
+      const gameAccount = await testUtils.game.fetchGame(gameData.gamePDA);
       const winnerIndex = calculateWinnerIndex(
         gameAccount.ticketsCount,
         gameData.secretKey,
@@ -418,7 +384,7 @@ describe("Core Game Operations", () => {
         100_000_000
       ); // initial 100m + winnings
       await expectAnchorError(
-        env.program.account.game.fetch(gameData.gamePDA),
+        testUtils.game.fetchGame(gameData.gamePDA),
         "AccountDoesNotExist",
         {
           fallbackSubstring: "Account does not exist",
@@ -429,14 +395,12 @@ describe("Core Game Operations", () => {
 
     it("should fail to complete game with wrong operator", async () => {
       const { mint, players } = await testUtils.quickSetup();
-      const gameData = testUtils.game.generateGamePDA();
       const [creator, player1] = players;
       const fakeOperator = anchor.web3.Keypair.generate();
 
       const gameConfig = coinflipGameConfig();
 
-      await testUtils.game.initializeGame(
-        gameData,
+      const gameData = await testUtils.game.createGame(
         gameConfig,
         creator.player,
         mint.mint
@@ -445,9 +409,7 @@ describe("Core Game Operations", () => {
       await testUtils.game.joinGame(gameData.gamePDA, player1.player);
 
       // Calculate winner first
-      const gameAccount = await env.program.account.game.fetch(
-        gameData.gamePDA
-      );
+      const gameAccount = await testUtils.game.fetchGame(gameData.gamePDA);
       const winnerIndex = calculateWinnerIndex(
         gameAccount.ticketsCount,
         gameData.secretKey,
@@ -474,13 +436,11 @@ describe("Core Game Operations", () => {
 
     it("should fail to complete game with wrong secret key", async () => {
       const { oracle, mint, players } = await testUtils.quickSetup();
-      const gameData = testUtils.game.generateGamePDA();
       const [creator, player1] = players;
 
       const gameConfig = coinflipGameConfig();
 
-      await testUtils.game.initializeGame(
-        gameData,
+      const gameData = await testUtils.game.createGame(
         gameConfig,
         creator.player,
         mint.mint
@@ -499,9 +459,7 @@ describe("Core Game Operations", () => {
       };
 
       // Calculate winner and create participation
-      const gameAccount = await env.program.account.game.fetch(
-        gameData.gamePDA
-      );
+      const gameAccount = await testUtils.game.fetchGame(gameData.gamePDA);
       const winnerIndex = calculateWinnerIndex(
         gameAccount.ticketsCount,
         gameData.secretKey, // Use correct secret for winner calculation
