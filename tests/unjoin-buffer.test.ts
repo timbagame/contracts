@@ -22,7 +22,6 @@ describe("Unjoin After Buffer", () => {
 
   it("should block unjoin before buffer and allow after buffer", async () => {
     const { oracle, mint, players } = await testUtils.quickSetup();
-    const gameData = testUtils.game.generateGamePDA();
     const [creator] = players;
 
     const shortTimeout = new anchor.BN(5); // very short timeout
@@ -31,8 +30,7 @@ describe("Unjoin After Buffer", () => {
       timeout: shortTimeout,
     });
 
-    await testUtils.game.initializeGame(
-      gameData,
+    const gameData = await testUtils.game.createGame(
       gameConfig,
       creator.player,
       mint.mint
@@ -51,14 +49,12 @@ describe("Unjoin After Buffer", () => {
     );
 
     // Fast-forward time by manipulating Clock via sleep to exceed timeout + buffer
-    const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+    const gameAccount = await testUtils.game.fetchGame(gameData.gamePDA);
     await awaitBufferExpiry(gameAccount, oracle.config);
 
     // Now unjoin should succeed
     await testUtils.game.unjoinGame(gameData.gamePDA, creator.player);
-    const updatedGameAccount = await env.program.account.game.fetch(
-      gameData.gamePDA
-    );
+    const updatedGameAccount = await testUtils.game.fetchGame(gameData.gamePDA);
     expect(updatedGameAccount.ticketsCount).to.equal(0);
   }).timeout(60000);
 });

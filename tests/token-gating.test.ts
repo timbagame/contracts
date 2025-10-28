@@ -25,18 +25,12 @@ describe("Token Gating", () => {
       .signers([oracle.operatorKeypair])
       .rpc();
 
-    const gameData = testUtils.game.generateGamePDA();
     const gameConfig = coinflipGameConfig({
       timeout: 60,
     });
 
     try {
-      await testUtils.game.initializeGame(
-        gameData,
-        gameConfig,
-        creator.player,
-        mint.mint
-      );
+      await testUtils.game.createGame(gameConfig, creator.player, mint.mint);
       expect.fail("Expected initializeGame to fail when token disabled");
     } catch (e: any) {
       expect(e.toString()).to.include("TokenNotEnabled");
@@ -55,7 +49,6 @@ describe("Token Gating", () => {
       .signers([oracle.operatorKeypair])
       .rpc();
 
-    const gameData = testUtils.game.generateGamePDA();
     const lowAmount = new anchor.BN(1_000_000);
     const gameConfig = coinflipGameConfig({
       amount: lowAmount,
@@ -64,12 +57,7 @@ describe("Token Gating", () => {
 
     // initialize should fail due to amount < minAmount
     try {
-      await testUtils.game.initializeGame(
-        gameData,
-        gameConfig,
-        creator.player,
-        mint.mint
-      );
+      await testUtils.game.createGame(gameConfig, creator.player, mint.mint);
       expect.fail("Expected initializeGame to fail when amount < minAmount");
     } catch (e: any) {
       expect(e.toString()).to.include("InvalidAmount");
@@ -82,8 +70,7 @@ describe("Token Gating", () => {
       .signers([oracle.operatorKeypair])
       .rpc();
 
-    await testUtils.game.initializeGame(
-      gameData,
+    const gameData = await testUtils.game.createGame(
       gameConfig,
       creator.player,
       mint.mint
@@ -97,7 +84,7 @@ describe("Token Gating", () => {
       .rpc();
 
     await testUtils.game.joinGame(gameData.gamePDA, p1.player);
-    const acc = await env.program.account.game.fetch(gameData.gamePDA);
+    const acc = await testUtils.game.fetchGame(gameData.gamePDA);
     expect(acc.ticketsCount).to.equal(1); // only p1 joined; creator not joined in this subtest
   });
 
@@ -105,15 +92,13 @@ describe("Token Gating", () => {
     const { oracle, mint, players } = await testUtils.quickSetup();
     const [creator, p1, p2] = players;
 
-    const gameData = testUtils.game.generateGamePDA();
     const gameConfig = coinflipGameConfig({
       amount: new anchor.BN(2_000_000),
       maxTickets: 3,
       timeout: 120,
     });
 
-    await testUtils.game.initializeGame(
-      gameData,
+    const gameData = await testUtils.game.createGame(
       gameConfig,
       creator.player,
       mint.mint

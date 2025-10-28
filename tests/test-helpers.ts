@@ -109,6 +109,22 @@ export async function subscribeEvent<TEvent extends TimbaEventName>(
   return { wait, dispose };
 }
 
+export async function captureEvent<TEvent extends TimbaEventName>(
+  program: anchor.Program<Timba>,
+  eventName: TEvent,
+  action: () => Promise<void>,
+  options: { timeoutMs?: number } = {}
+): Promise<TimbaEvents[TEvent]> {
+  const subscription = await subscribeEvent(program, eventName, options);
+
+  try {
+    await action();
+    return await subscription.wait;
+  } finally {
+    await subscription.dispose();
+  }
+}
+
 /**
  * Shared test utilities for the Timba program test suite
  */
@@ -1097,6 +1113,10 @@ export class GameManager {
     return { gamePDA, randomHash, secretKey };
   }
 
+  async fetchGame(gamePDA: PublicKey) {
+    return this.program.account.game.fetch(gamePDA);
+  }
+
   async initializeGame(
     gameData: TestGame,
     config: GameConfig,
@@ -1398,7 +1418,9 @@ export async function computeGameOutcome(
   gameData: TestGame,
   participants: TestPlayer[]
 ): Promise<GameOutcomeContext> {
-  const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+  const gameAccount = env.testUtils
+    ? await env.testUtils.game.fetchGame(gameData.gamePDA)
+    : await env.program.account.game.fetch(gameData.gamePDA);
   const winnerIndex = calculateWinnerIndex(
     gameAccount.ticketsCount,
     gameData.secretKey,
@@ -1691,10 +1713,7 @@ export class CollisionUtils {
 
     // Create many games to increase collision probability
     for (let i = 0; i < gameCount; i++) {
-      const gameData = testUtils.game.generateGamePDA();
-
-      await testUtils.game.initializeGame(
-        gameData,
+      const gameData = await testUtils.game.createGame(
         gameConfig,
         player.player,
         mint.mint
@@ -1722,11 +1741,8 @@ export class CollisionUtils {
     const gameConfig = this.gameConfig(60);
 
     for (let i = 0; i < attemptCount; i++) {
-      const gameData = testUtils.game.generateGamePDA();
-
       try {
-        await testUtils.game.initializeGame(
-          gameData,
+        const gameData = await testUtils.game.createGame(
           gameConfig,
           player.player,
           mint.mint

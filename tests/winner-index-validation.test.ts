@@ -9,7 +9,7 @@ import {
   getErrorMessage,
   coinflipGameConfig,
   expectAnchorError,
-  subscribeEvent,
+  captureEvent,
 } from "./test-helpers";
 
 // Tests covering winner index validation errors
@@ -28,13 +28,11 @@ describe("Winner Index Validation", () => {
 
   async function setupTwoPlayerGame() {
     const { oracle, mint, players } = await testUtils.quickSetup();
-    const gameData = testUtils.game.generateGamePDA();
     const [creator, player1] = players;
 
     const gameConfig = coinflipGameConfig();
 
-    await testUtils.game.initializeGame(
-      gameData,
+    const gameData = await testUtils.game.createGame(
       gameConfig,
       creator.player,
       mint.mint
@@ -211,14 +209,12 @@ describe("Winner Index Validation", () => {
   it("should fail with GameNotReadyForOracle until game reaches completion conditions", async () => {
     const { oracle, mint, players } = await testUtils.quickSetup();
     const [creator, player1] = players;
-    const gameData = testUtils.game.generateGamePDA();
 
     const gameConfig = coinflipGameConfig({
       maxTickets: 3,
     });
 
-    await testUtils.game.initializeGame(
-      gameData,
+    const gameData = await testUtils.game.createGame(
       gameConfig,
       creator.player,
       mint.mint
@@ -313,22 +309,19 @@ describe("Winner Index Validation", () => {
     const { fee: expectedFee, winnerAmount: expectedWinnerAmount } =
       calculatePayoutBreakdown(pot, oracle.config.feePercentage);
 
-    const subscription = await subscribeEvent(env.program, "gameCompleted");
-
-    let emittedEvent: any;
-    try {
-      await testUtils.game.completeGame(
-        gameData,
-        winner.player.publicKey,
-        creator.player.publicKey,
-        oracle.operator,
-        winnerIndex
-      );
-
-      emittedEvent = await subscription.wait;
-    } finally {
-      await subscription.dispose();
-    }
+    const emittedEvent = await captureEvent(
+      env.program,
+      "gameCompleted",
+      async () => {
+        await testUtils.game.completeGame(
+          gameData,
+          winner.player.publicKey,
+          creator.player.publicKey,
+          oracle.operator,
+          winnerIndex
+        );
+      }
+    );
 
     expect(emittedEvent.gameKey.toBase58()).to.equal(
       gameData.gamePDA.toBase58()

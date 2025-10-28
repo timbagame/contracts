@@ -50,16 +50,14 @@ describe("Invalid token mint guard", () => {
 
     // Giveaways skip the balance pre-check, allowing the InvalidTokenMint constraint to surface.
 
-    const gameData = testUtils.game.generateGamePDA();
-    await testUtils.game.initializeGame(
-      gameData,
+    const gameData = await testUtils.game.createGame(
       gameConfig,
       creator.player,
       mintA.mint
     );
     await testUtils.game.joinGame(gameData.gamePDA, creator.player);
 
-    const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+    const gameAccount = await testUtils.game.fetchGame(gameData.gamePDA);
     expect(gameAccount.tokenMint.toBase58()).to.equal(mintA.mint.toBase58());
     expect(gameAccount.gameType).to.have.property("giveaway");
     expect(new anchor.BN(gameAccount.ticketAmount).isZero()).to.be.true;
@@ -105,10 +103,7 @@ describe("Invalid token mint guard", () => {
     );
 
     const gameConfig = coinflipGameConfig();
-    const gameData = testUtils.game.generateGamePDA();
-
-    await testUtils.game.initializeGame(
-      gameData,
+    const gameData = await testUtils.game.createGame(
       gameConfig,
       creator.player,
       mintA.mint
@@ -117,7 +112,7 @@ describe("Invalid token mint guard", () => {
     await testUtils.game.joinGame(gameData.gamePDA, creator.player);
     await testUtils.game.joinGame(gameData.gamePDA, challenger.player);
 
-    const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+    const gameAccount = await testUtils.game.fetchGame(gameData.gamePDA);
     const winnerIndex = calculateWinnerIndex(
       gameAccount.ticketsCount,
       gameData.secretKey,
@@ -176,10 +171,7 @@ describe("Invalid token mint guard", () => {
     );
 
     const gameConfig = coinflipGameConfig();
-    const gameData = testUtils.game.generateGamePDA();
-
-    await testUtils.game.initializeGame(
-      gameData,
+    const gameData = await testUtils.game.createGame(
       gameConfig,
       creator.player,
       mintA.mint
