@@ -26,12 +26,10 @@ describe("Authorization Negatives", () => {
   it("should reject close_game by non-creator", async () => {
     const { mint, players } = await testUtils.quickSetup();
     const [creator, other] = players;
-    const gameData = testUtils.game.generateGamePDA();
 
     const cfg = coinflipGameConfig();
 
-    await testUtils.game.initializeGame(
-      gameData,
+    const gameData = await testUtils.game.createGame(
       cfg,
       creator.player,
       mint.mint
@@ -69,12 +67,10 @@ describe("Authorization Negatives", () => {
   it("should reject withdraw_token_fee by non-operator", async () => {
     const { oracle, mint, players } = await testUtils.quickSetup();
     const [creator, player1] = players;
-    const gameData = testUtils.game.generateGamePDA();
 
     const cfg = coinflipGameConfig();
 
-    await testUtils.game.initializeGame(
-      gameData,
+    const gameData = await testUtils.game.createGame(
       cfg,
       creator.player,
       mint.mint
@@ -82,7 +78,7 @@ describe("Authorization Negatives", () => {
     await testUtils.game.joinGame(gameData.gamePDA, creator.player);
     await testUtils.game.joinGame(gameData.gamePDA, player1.player);
 
-    const gm = await env.program.account.game.fetch(gameData.gamePDA);
+    const gm = await testUtils.game.fetchGame(gameData.gamePDA);
     const idx = calculateWinnerIndex(
       gm.ticketsCount,
       gameData.secretKey,
@@ -153,10 +149,8 @@ describe("Authorization Negatives", () => {
   it("should reject complete_game by non-operator signer", async () => {
     const { mint, players } = await testUtils.quickSetup();
     const [creator, player1] = players;
-    const gameData = testUtils.game.generateGamePDA();
     const cfg = coinflipGameConfig();
-    await testUtils.game.initializeGame(
-      gameData,
+    const gameData = await testUtils.game.createGame(
       cfg,
       creator.player,
       mint.mint
@@ -164,7 +158,7 @@ describe("Authorization Negatives", () => {
     await testUtils.game.joinGame(gameData.gamePDA, creator.player);
     await testUtils.game.joinGame(gameData.gamePDA, player1.player);
 
-    const gm = await env.program.account.game.fetch(gameData.gamePDA);
+    const gm = await testUtils.game.fetchGame(gameData.gamePDA);
     const idx = calculateWinnerIndex(
       gm.ticketsCount,
       gameData.secretKey,

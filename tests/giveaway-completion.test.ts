@@ -106,7 +106,7 @@ describe("Giveaway Completion", () => {
       { joinCreator: false }
     );
 
-    const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+    const gameAccount = await testUtils.game.fetchGame(gameData.gamePDA);
     expect(gameAccount.ticketsCount).to.equal(1);
 
     // Wait until the timeout elapses while remaining inside the oracle buffer

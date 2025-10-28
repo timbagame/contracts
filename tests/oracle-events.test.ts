@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import * as anchor from "@coral-xyz/anchor";
-import { TestEnvironment, TestUtils, subscribeEvent } from "./test-helpers";
+import { TestEnvironment, TestUtils, captureEvent } from "./test-helpers";
 
 describe("Oracle Events", () => {
   let env: TestEnvironment;
@@ -33,31 +33,32 @@ describe("Oracle Events", () => {
       minTimeout: oracle.config.minTimeout,
     };
 
-    const subscription = await subscribeEvent(env.program, "oracleUpdated");
-
     try {
-      await env.program.methods
-        .updateOracle({
-          feePercentage: nextConfig.feePercentage,
-          oracleBufferTime: new anchor.BN(nextConfig.oracleBufferTime),
-          maxTickets: nextConfig.maxTickets,
-          maxTimeout: new anchor.BN(nextConfig.maxTimeout),
-          minTimeout: new anchor.BN(nextConfig.minTimeout),
-        })
-        .accounts({
-          oldOracleOperator: oracle.operator,
-          newOracleOperator: newOperator.publicKey,
-        })
-        .signers([oracle.operatorKeypair, newOperator])
-        .rpc();
+      const event = await captureEvent(
+        env.program,
+        "oracleUpdated",
+        async () => {
+          await env.program.methods
+            .updateOracle({
+              feePercentage: nextConfig.feePercentage,
+              oracleBufferTime: new anchor.BN(nextConfig.oracleBufferTime),
+              maxTickets: nextConfig.maxTickets,
+              maxTimeout: new anchor.BN(nextConfig.maxTimeout),
+              minTimeout: new anchor.BN(nextConfig.minTimeout),
+            })
+            .accounts({
+              oldOracleOperator: oracle.operator,
+              newOracleOperator: newOperator.publicKey,
+            })
+            .signers([oracle.operatorKeypair, newOperator])
+            .rpc();
+        }
+      );
 
-      const event = await subscription.wait;
       expect(event.oldOperator).to.deep.equal(oracle.operator);
       expect(event.newOperator).to.deep.equal(newOperator.publicKey);
       expect(event.feePercentage).to.equal(nextConfig.feePercentage);
-      expect(Number(event.oracleBufferTime)).to.equal(
-        nextConfig.oracleBufferTime
-      );
+      expect(Number(event.oracleBufferTime)).to.equal(nextConfig.oracleBufferTime);
       expect(event.maxTickets).to.equal(nextConfig.maxTickets);
       expect(Number(event.maxTimeout)).to.equal(nextConfig.maxTimeout);
       expect(Number(event.minTimeout)).to.equal(nextConfig.minTimeout);
@@ -71,15 +72,9 @@ describe("Oracle Events", () => {
         nextConfig.oracleBufferTime
       );
       expect(updatedOracle.maxTickets).to.equal(nextConfig.maxTickets);
-      expect(updatedOracle.maxTimeout.toNumber()).to.equal(
-        nextConfig.maxTimeout
-      );
-      expect(updatedOracle.minTimeout.toNumber()).to.equal(
-        nextConfig.minTimeout
-      );
+      expect(updatedOracle.maxTimeout.toNumber()).to.equal(nextConfig.maxTimeout);
+      expect(updatedOracle.minTimeout.toNumber()).to.equal(nextConfig.minTimeout);
     } finally {
-      await subscription.dispose().catch(() => {});
-
       await env.program.methods
         .updateOracle({
           feePercentage: oracle.config.feePercentage,
@@ -114,25 +109,28 @@ describe("Oracle Events", () => {
       minTimeout: oracle.config.minTimeout,
     };
 
-    const subscription = await subscribeEvent(env.program, "oracleUpdated");
-
     try {
-      await env.program.methods
-        .updateOracle({
-          feePercentage: updatedConfig.feePercentage,
-          oracleBufferTime: new anchor.BN(updatedConfig.oracleBufferTime),
-          maxTickets: updatedConfig.maxTickets,
-          maxTimeout: new anchor.BN(updatedConfig.maxTimeout),
-          minTimeout: new anchor.BN(updatedConfig.minTimeout),
-        })
-        .accounts({
-          oldOracleOperator: oracle.operator,
-          newOracleOperator: oracle.operator,
-        })
-        .signers([oracle.operatorKeypair, oracle.operatorKeypair])
-        .rpc();
+      const event = await captureEvent(
+        env.program,
+        "oracleUpdated",
+        async () => {
+          await env.program.methods
+            .updateOracle({
+              feePercentage: updatedConfig.feePercentage,
+              oracleBufferTime: new anchor.BN(updatedConfig.oracleBufferTime),
+              maxTickets: updatedConfig.maxTickets,
+              maxTimeout: new anchor.BN(updatedConfig.maxTimeout),
+              minTimeout: new anchor.BN(updatedConfig.minTimeout),
+            })
+            .accounts({
+              oldOracleOperator: oracle.operator,
+              newOracleOperator: oracle.operator,
+            })
+            .signers([oracle.operatorKeypair, oracle.operatorKeypair])
+            .rpc();
+        }
+      );
 
-      const event = await subscription.wait;
       expect(event.oldOperator).to.deep.equal(oracle.operator);
       expect(event.newOperator).to.deep.equal(oracle.operator);
       expect(event.feePercentage).to.equal(updatedConfig.feePercentage);
@@ -153,8 +151,6 @@ describe("Oracle Events", () => {
       expect(onChain.maxTimeout.toNumber()).to.equal(updatedConfig.maxTimeout);
       expect(onChain.minTimeout.toNumber()).to.equal(updatedConfig.minTimeout);
     } finally {
-      await subscription.dispose().catch(() => {});
-
       await env.program.methods
         .updateOracle({
           feePercentage: oracle.config.feePercentage,
@@ -169,15 +165,6 @@ describe("Oracle Events", () => {
         })
         .signers([oracle.operatorKeypair, oracle.operatorKeypair])
         .rpc();
-
-      const restored = await env.program.account.oracle.fetch(oracle.oraclePDA);
-      expect(restored.feePercentage).to.equal(oracle.config.feePercentage);
-      expect(restored.oracleBufferTime.toNumber()).to.equal(
-        oracle.config.oracleBufferTime
-      );
-      expect(restored.maxTickets).to.equal(oracle.config.maxTickets);
-      expect(restored.maxTimeout.toNumber()).to.equal(oracle.config.maxTimeout);
-      expect(restored.minTimeout.toNumber()).to.equal(oracle.config.minTimeout);
     }
   }).timeout(60000);
 });

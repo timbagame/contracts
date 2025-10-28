@@ -22,13 +22,11 @@ describe("Close Blocked While Waiting", () => {
 
   it("should reject closing a game still waiting for oracle", async () => {
     const { mint, players } = await testUtils.quickSetup();
-    const gameData = testUtils.game.generateGamePDA();
     const [creator, p1] = players;
 
     const gameConfig = coinflipGameConfig();
 
-    await testUtils.game.initializeGame(
-      gameData,
+    const gameData = await testUtils.game.createGame(
       gameConfig,
       creator.player,
       mint.mint

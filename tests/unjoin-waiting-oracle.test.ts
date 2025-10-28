@@ -20,15 +20,13 @@ describe("Unjoin Blocked While Waiting for Oracle", () => {
 
   it("should reject unjoin before buffer when min tickets reached", async () => {
     const { oracle, mint, players } = await testUtils.quickSetup();
-    const gameData = testUtils.game.generateGamePDA();
     const [p1, p2] = players;
 
     const gameConfig = coinflipGameConfig({
       timeout: 3,
     });
 
-    await testUtils.game.initializeGame(
-      gameData,
+    const gameData = await testUtils.game.createGame(
       gameConfig,
       p1.player,
       mint.mint
@@ -45,10 +43,10 @@ describe("Unjoin Blocked While Waiting for Oracle", () => {
       });
 
     // sanity: wait until after timeout+buffer then unjoin succeeds
-    const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+    const gameAccount = await testUtils.game.fetchGame(gameData.gamePDA);
     await awaitBufferExpiry(gameAccount, oracle.config);
     await testUtils.game.unjoinGame(gameData.gamePDA, p1.player);
-    const acc = await env.program.account.game.fetch(gameData.gamePDA);
+    const acc = await testUtils.game.fetchGame(gameData.gamePDA);
     expect(acc.ticketsCount).to.equal(1);
   }).timeout(60000);
 });

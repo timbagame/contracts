@@ -47,9 +47,7 @@ describe("Token program compatibility", () => {
       timeout: 600,
     });
 
-    const gameData = testUtils.game.generateGamePDA();
-    await testUtils.game.initializeGame(
-      gameData,
+    const gameData = await testUtils.game.createGame(
       gameConfig,
       creator.player,
       mint.mint
@@ -58,7 +56,7 @@ describe("Token program compatibility", () => {
     await testUtils.game.joinGame(gameData.gamePDA, creator.player);
     await testUtils.game.joinGame(gameData.gamePDA, challenger.player);
 
-    const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+    const gameAccount = await testUtils.game.fetchGame(gameData.gamePDA);
     const winnerIndex = calculateWinnerIndex(
       gameAccount.ticketsCount,
       gameData.secretKey,

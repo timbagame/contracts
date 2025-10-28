@@ -15,7 +15,7 @@ import {
   coinflipGameConfig,
   computeGameTokenContext,
   expectAnchorError,
-  subscribeEvent,
+  captureEvent,
   calculateWinnerIndex,
   getWinnerFromPlayers,
   errorToString,
@@ -37,27 +37,29 @@ describe("Token Administration Instructions", () => {
   });
 
   it("should emit TokenInitialized event with expected payload", async () => {
-    const subscription = await subscribeEvent(env.program, "tokenInitialized");
-    try {
-      const mint = await mintManager.createMint();
+    let mint: any;
+    const event = await captureEvent(
+      env.program,
+      "tokenInitialized",
+      async () => {
+        mint = await mintManager.createMint();
+      }
+    );
 
-      const event = await subscription.wait;
-      const gameTokenAccount = await env.program.account.gameToken.fetch(
-        mint.gameTokenPDA
-      );
+    const createdMint = mint;
+    const gameTokenAccount = await env.program.account.gameToken.fetch(
+      createdMint.gameTokenPDA
+    );
 
-      const expectedMinAmount = gameTokenAccount.minAmount.toNumber();
+    const expectedMinAmount = gameTokenAccount.minAmount.toNumber();
 
-      expect(event.tokenMint).to.deep.equal(mint.mint);
-      expect(Number(event.minAmount)).to.equal(expectedMinAmount);
-      expect(event.enabled).to.equal(true);
+    expect(event.tokenMint).to.deep.equal(createdMint.mint);
+    expect(Number(event.minAmount)).to.equal(expectedMinAmount);
+    expect(event.enabled).to.equal(true);
 
-      expect(gameTokenAccount.tokenMint.equals(mint.mint)).to.be.true;
-      expect(gameTokenAccount.minAmount.toNumber()).to.equal(expectedMinAmount);
-      expect(gameTokenAccount.enabled).to.equal(true);
-    } finally {
-      await subscription.dispose().catch(() => {});
-    }
+    expect(gameTokenAccount.tokenMint.equals(createdMint.mint)).to.be.true;
+    expect(gameTokenAccount.minAmount.toNumber()).to.equal(expectedMinAmount);
+    expect(gameTokenAccount.enabled).to.equal(true);
   });
 
   it("should reject initialize_token when caller is not oracle operator", async () => {
@@ -179,21 +181,25 @@ describe("Token Administration Instructions", () => {
 
   it("should emit TokenUpdated when configuration changes", async () => {
     const mint = await mintManager.createMint();
-    const subscription = await subscribeEvent(env.program, "tokenUpdated");
 
     const newMinAmount = new anchor.BN(42_000);
 
     try {
-      await env.program.methods
-        .updateToken({ minAmount: newMinAmount, enabled: false })
-        .accounts({
-          tokenMint: mint.mint,
-          oracleOperator: env.oracle!.operator,
-        })
-        .signers([env.oracle!.operatorKeypair])
-        .rpc();
+      const event = await captureEvent(
+        env.program,
+        "tokenUpdated",
+        async () => {
+          await env.program.methods
+            .updateToken({ minAmount: newMinAmount, enabled: false })
+            .accounts({
+              tokenMint: mint.mint,
+              oracleOperator: env.oracle!.operator,
+            })
+            .signers([env.oracle!.operatorKeypair])
+            .rpc();
+        }
+      );
 
-      const event = await subscription.wait;
       expect(event.tokenMint).to.deep.equal(mint.mint);
       expect(Number(event.minAmount)).to.equal(newMinAmount.toNumber());
       expect(event.enabled).to.equal(false);
@@ -204,8 +210,6 @@ describe("Token Administration Instructions", () => {
       expect(onChain.minAmount.toNumber()).to.equal(newMinAmount.toNumber());
       expect(onChain.enabled).to.equal(false);
     } finally {
-      await subscription.dispose().catch(() => {});
-
       await env.program.methods
         .updateToken({ minAmount: new anchor.BN(1000), enabled: true })
         .accounts({
@@ -315,31 +319,31 @@ describe("Token Close Instruction", () => {
   it("should close token configuration and vault when empty", async () => {
     const mint = await mintManager.createMint();
     const accounts = deriveCloseTokenAccounts(mint);
-    const subscription = await subscribeEvent(env.program, "tokenClosed");
 
-    try {
-      await env.program.methods
-        .closeToken()
-        .accountsStrict(accounts)
-        .signers([env.oracle!.operatorKeypair])
-        .rpc();
+    const event = await captureEvent(
+      env.program,
+      "tokenClosed",
+      async () => {
+        await env.program.methods
+          .closeToken()
+          .accountsStrict(accounts)
+          .signers([env.oracle!.operatorKeypair])
+          .rpc();
+      }
+    );
 
-      const event = await subscription.wait;
-      expect(event.tokenMint).to.deep.equal(mint.mint);
-      expect(event.operator).to.deep.equal(env.oracle!.operator);
+    expect(event.tokenMint).to.deep.equal(mint.mint);
+    expect(event.operator).to.deep.equal(env.oracle!.operator);
 
-      const gameTokenInfo = await env.provider.connection.getAccountInfo(
-        accounts.gameToken
-      );
-      const vaultAccountInfo = await env.provider.connection.getAccountInfo(
-        accounts.gameTokenAccount
-      );
+    const gameTokenInfo = await env.provider.connection.getAccountInfo(
+      accounts.gameToken
+    );
+    const vaultAccountInfo = await env.provider.connection.getAccountInfo(
+      accounts.gameTokenAccount
+    );
 
-      expect(gameTokenInfo).to.be.null;
-      expect(vaultAccountInfo).to.be.null;
-    } finally {
-      await subscription.dispose().catch(() => {});
-    }
+    expect(gameTokenInfo).to.be.null;
+    expect(vaultAccountInfo).to.be.null;
   });
 
   it("should reject close_token when vault holds remaining balance", async () => {
@@ -377,11 +381,9 @@ describe("Token Close Instruction", () => {
     await playerManager.fundPlayer(creator, mint, ticketAmount.muln(2));
     await playerManager.fundPlayer(opponent, mint, ticketAmount.muln(2));
 
-    const gameData = gameManager.generateGamePDA();
     const gameConfig = coinflipGameConfig({ amount: ticketAmount });
 
-    await gameManager.initializeGame(
-      gameData,
+    const gameData = await gameManager.createGame(
       gameConfig,
       creator.player,
       mint.mint
@@ -390,9 +392,7 @@ describe("Token Close Instruction", () => {
     await gameManager.joinGame(gameData.gamePDA, creator.player);
     await gameManager.joinGame(gameData.gamePDA, opponent.player);
 
-    const gameAccount = await env.program.account.game.fetch(
-      gameData.gamePDA
-    );
+    const gameAccount = await gameManager.fetchGame(gameData.gamePDA);
     const winnerIndex = calculateWinnerIndex(
       gameAccount.ticketsCount,
       gameData.secretKey,

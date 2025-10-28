@@ -25,7 +25,6 @@ describe("Giveaway Close Refund", () => {
   it("should refund full prize to creator when closing unused giveaway", async () => {
     const { mint, players } = await testUtils.quickSetup();
     const [creator] = players;
-    const gameData = testUtils.game.generateGamePDA();
 
     const prizeAmount = new anchor.BN(5_000_000);
 
@@ -40,8 +39,7 @@ describe("Giveaway Close Refund", () => {
       creator.playerTokenAccount.address
     );
 
-    await testUtils.game.initializeGame(
-      gameData,
+    const gameData = await testUtils.game.createGame(
       gameConfig,
       creator.player,
       mint.mint
@@ -99,7 +97,6 @@ describe("Giveaway Close Refund", () => {
   it("should allow closing a giveaway with active players once the buffer expires", async () => {
     const { oracle, mint, players } = await testUtils.quickSetup();
     const [creator, participant] = players;
-    const gameData = testUtils.game.generateGamePDA();
 
     const prizeAmount = new anchor.BN(4_000_000);
     const timeoutSeconds = 3;
@@ -114,8 +111,7 @@ describe("Giveaway Close Refund", () => {
       creator.playerTokenAccount.address
     );
 
-    await testUtils.game.initializeGame(
-      gameData,
+    const gameData = await testUtils.game.createGame(
       gameConfig,
       creator.player,
       mint.mint
@@ -123,9 +119,7 @@ describe("Giveaway Close Refund", () => {
 
     await testUtils.game.joinGame(gameData.gamePDA, participant.player);
 
-    const gameBeforeClose = await env.program.account.game.fetch(
-      gameData.gamePDA
-    );
+    const gameBeforeClose = await testUtils.game.fetchGame(gameData.gamePDA);
     expect(gameBeforeClose.ticketsCount).to.equal(1);
 
     await awaitBufferExpiry(gameBeforeClose, oracle.config, 1);

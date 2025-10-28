@@ -30,16 +30,13 @@ describe("Large stake overflow regression", () => {
       await testUtils.player.fundPlayer(player, mint, largeStake);
     }
 
-    const gameData = testUtils.game.generateGamePDA();
-
     const gameConfig = coinflipGameConfig({
       amount: largeStake,
       maxTickets: 4,
       minTickets: 2,
     });
 
-    await testUtils.game.initializeGame(
-      gameData,
+    const gameData = await testUtils.game.createGame(
       gameConfig,
       players[0].player,
       mint.mint
@@ -49,7 +46,7 @@ describe("Large stake overflow regression", () => {
     await testUtils.game.joinGame(gameData.gamePDA, players[1].player);
     await testUtils.game.joinGame(gameData.gamePDA, players[2].player);
 
-    const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+    const gameAccount = await testUtils.game.fetchGame(gameData.gamePDA);
     const expectedTotal = largeStake.mul(new anchor.BN(3));
     expect(new anchor.BN(gameAccount.totalAmount.toString()).eq(expectedTotal))
       .to.be.true;

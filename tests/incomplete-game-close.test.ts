@@ -24,7 +24,6 @@ describe("Incomplete Game Close", () => {
 
   it("should allow players to unjoin after buffer then creator closes game", async () => {
     const { oracle, mint, players } = await testUtils.quickSetup();
-    const gameData = testUtils.game.generateGamePDA();
     const [creator, p1, p2] = players;
 
     const gameConfig = coinflipGameConfig({
@@ -33,8 +32,7 @@ describe("Incomplete Game Close", () => {
       timeout: 5, // short
     });
 
-    await testUtils.game.initializeGame(
-      gameData,
+    const gameData = await testUtils.game.createGame(
       gameConfig,
       creator.player,
       mint.mint
@@ -44,7 +42,7 @@ describe("Incomplete Game Close", () => {
     await testUtils.game.joinGame(gameData.gamePDA, p1.player);
     await testUtils.game.joinGame(gameData.gamePDA, p2.player);
 
-    const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+    const gameAccount = await testUtils.game.fetchGame(gameData.gamePDA);
     await awaitBufferExpiry(gameAccount, oracle.config);
 
     // Unjoin all players
@@ -52,9 +50,7 @@ describe("Incomplete Game Close", () => {
       await testUtils.game.unjoinGame(gameData.gamePDA, pl.player);
     }
 
-    const gameAfterUnjoins = await env.program.account.game.fetch(
-      gameData.gamePDA
-    );
+    const gameAfterUnjoins = await testUtils.game.fetchGame(gameData.gamePDA);
     expect(gameAfterUnjoins.ticketsCount).to.equal(0);
     expect(gameAfterUnjoins.totalAmount.toNumber()).to.equal(0);
 

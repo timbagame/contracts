@@ -21,7 +21,6 @@ describe("Unjoin Refund Precision", () => {
 
   it("should refund exactly ticket amount when unjoining after buffer", async () => {
     const { oracle, mint, players } = await testUtils.quickSetup();
-    const gameData = testUtils.game.generateGamePDA();
     const [creator, p1] = players;
 
     const ticketAmount = new anchor.BN(3_333_333); // awkward number for edge
@@ -33,8 +32,7 @@ describe("Unjoin Refund Precision", () => {
       timeout: 5,
     });
 
-    await testUtils.game.initializeGame(
-      gameData,
+    const gameData = await testUtils.game.createGame(
       gameConfig,
       creator.player,
       mint.mint
@@ -46,7 +44,7 @@ describe("Unjoin Refund Precision", () => {
       creator.playerTokenAccount.address
     );
 
-    const gameAccount = await env.program.account.game.fetch(gameData.gamePDA);
+    const gameAccount = await testUtils.game.fetchGame(gameData.gamePDA);
     await awaitBufferExpiry(gameAccount, oracle.config);
 
     await testUtils.game.unjoinGame(gameData.gamePDA, creator.player);

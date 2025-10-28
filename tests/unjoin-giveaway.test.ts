@@ -24,7 +24,6 @@ describe("Giveaway Unjoin and Close", () => {
 
   it("unjoin does not change prize; close refunds creator fully", async () => {
     const { oracle, mint, players } = await testUtils.quickSetup();
-    const gameData = testUtils.game.generateGamePDA();
     const [creator, p1, p2] = players;
 
     const prize = new anchor.BN(5_000_000);
@@ -39,8 +38,7 @@ describe("Giveaway Unjoin and Close", () => {
       creator.playerTokenAccount.address
     );
 
-    await testUtils.game.initializeGame(
-      gameData,
+    const gameData = await testUtils.game.createGame(
       gameConfig,
       creator.player,
       mint.mint
@@ -48,7 +46,7 @@ describe("Giveaway Unjoin and Close", () => {
     await testUtils.game.joinGame(gameData.gamePDA, p1.player);
     await testUtils.game.joinGame(gameData.gamePDA, p2.player);
 
-    const gameBefore = await env.program.account.game.fetch(gameData.gamePDA);
+    const gameBefore = await testUtils.game.fetchGame(gameData.gamePDA);
     expect(gameBefore.ticketAmount.toNumber()).to.equal(0);
     expect(gameBefore.totalAmount.toNumber()).to.equal(prize.toNumber());
 
@@ -56,9 +54,7 @@ describe("Giveaway Unjoin and Close", () => {
     await testUtils.game.unjoinGame(gameData.gamePDA, p1.player);
     await testUtils.game.unjoinGame(gameData.gamePDA, p2.player);
 
-    const gameAfterUnjoins = await env.program.account.game.fetch(
-      gameData.gamePDA
-    );
+    const gameAfterUnjoins = await testUtils.game.fetchGame(gameData.gamePDA);
     expect(gameAfterUnjoins.ticketsCount).to.equal(0);
     expect(gameAfterUnjoins.totalAmount.toNumber()).to.equal(prize.toNumber());
 

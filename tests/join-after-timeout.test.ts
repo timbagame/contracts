@@ -19,7 +19,6 @@ describe("Join After Timeout", () => {
 
   it("should reject join after timeout even before buffer", async () => {
     const { mint, players } = await testUtils.quickSetup();
-    const gameData = testUtils.game.generateGamePDA();
     const [creator, p1] = players;
 
     const gameConfig = coinflipGameConfig({
@@ -28,8 +27,7 @@ describe("Join After Timeout", () => {
       timeout: 2,
     });
 
-    await testUtils.game.initializeGame(
-      gameData,
+    const gameData = await testUtils.game.createGame(
       gameConfig,
       creator.player,
       mint.mint

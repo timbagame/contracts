@@ -17,7 +17,6 @@ describe("Config Constraints", () => {
   it("should reject coinflip with less than 2 players allowed", async () => {
     const { mint, players } = await testUtils.quickSetup();
     const [creator] = players;
-    const gameData = testUtils.game.generateGamePDA();
 
     const cfg = coinflipGameConfig({
       maxTickets: 1,
@@ -26,12 +25,7 @@ describe("Config Constraints", () => {
     });
 
     try {
-      await testUtils.game.initializeGame(
-        gameData,
-        cfg,
-        creator.player,
-        mint.mint
-      );
+      await testUtils.game.createGame(cfg, creator.player, mint.mint);
       expect.fail("Should not allow coinflip with <2 tickets");
     } catch (e: any) {
       expect(e.toString()).to.include("InvalidTicketsCount");
@@ -41,7 +35,6 @@ describe("Config Constraints", () => {
   it("should reject when minTickets > maxTickets", async () => {
     const { mint, players } = await testUtils.quickSetup();
     const [creator] = players;
-    const gameData = testUtils.game.generateGamePDA();
 
     const cfg = coinflipGameConfig({
       maxTickets: 3,
@@ -50,12 +43,7 @@ describe("Config Constraints", () => {
     });
 
     try {
-      await testUtils.game.initializeGame(
-        gameData,
-        cfg,
-        creator.player,
-        mint.mint
-      );
+      await testUtils.game.createGame(cfg, creator.player, mint.mint);
       expect.fail("Should reject minTickets > maxTickets");
     } catch (e: any) {
       expect(e.toString()).to.include("InvalidTicketsCount");
@@ -83,36 +71,24 @@ describe("Config Constraints", () => {
       .rpc();
 
     // Timeout above maxTimeout (default 86400) should fail
-    const gameData1 = testUtils.game.generateGamePDA();
     const tooLong = coinflipGameConfig({
       timeout: 200_000,
     });
     try {
-      await testUtils.game.initializeGame(
-        gameData1,
-        tooLong,
-        creator.player,
-        mint.mint
-      );
+      await testUtils.game.createGame(tooLong, creator.player, mint.mint);
       expect.fail("Should reject timeout above oracle max");
     } catch (e: any) {
       expect(e.toString()).to.include("InvalidTimeout");
     }
 
     // maxTickets over oracle.max_tickets should fail
-    const gameData2 = testUtils.game.generateGamePDA();
     const tooMany = coinflipGameConfig({
       maxTickets: 11,
       minTickets: 2,
       timeout: 60,
     });
     try {
-      await testUtils.game.initializeGame(
-        gameData2,
-        tooMany,
-        creator.player,
-        mint.mint
-      );
+      await testUtils.game.createGame(tooMany, creator.player, mint.mint);
       expect.fail("Should reject > oracle.max_tickets");
     } catch (e: any) {
       expect(e.toString()).to.include("InvalidTicketsCount");
@@ -159,19 +135,13 @@ describe("Config Constraints", () => {
   it("should reject timeout below oracle minimum", async () => {
     const { mint, players } = await testUtils.quickSetup();
     const [creator] = players;
-    const gameData = testUtils.game.generateGamePDA();
 
     const tooShort = coinflipGameConfig({
       timeout: 0,
     });
 
     try {
-      await testUtils.game.initializeGame(
-        gameData,
-        tooShort,
-        creator.player,
-        mint.mint
-      );
+      await testUtils.game.createGame(tooShort, creator.player, mint.mint);
       expect.fail("Should reject timeout below oracle minimum");
     } catch (e: any) {
       expect(e.toString()).to.include("InvalidTimeout");

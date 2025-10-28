@@ -19,15 +19,13 @@ describe("Duplicate Join Prevention", () => {
 
   it("should prevent duplicate join with AlreadyJoined error", async () => {
     const { mint, players } = await testUtils.quickSetup();
-    const gameData = testUtils.game.generateGamePDA();
     const [creator] = players;
 
     const gameConfig = coinflipGameConfig({
       timeout: 600,
     });
 
-    await testUtils.game.initializeGame(
-      gameData,
+    const gameData = await testUtils.game.createGame(
       gameConfig,
       creator.player,
       mint.mint
