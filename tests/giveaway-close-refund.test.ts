@@ -6,8 +6,10 @@ import {
   deriveGameAccounts,
   toGameTokenContext,
   awaitBufferExpiry,
+  awaitOracleCompletionReady,
   giveawayGameConfig,
   getOraclePublicKey,
+  expectAnchorError,
 } from "./test-helpers";
 
 // Verifies that closing an unused giveaway refunds the prize to creator
@@ -23,7 +25,7 @@ describe("Giveaway Close Refund", () => {
   });
 
   it("should refund full prize to creator when closing unused giveaway", async () => {
-    const { mint, players } = await testUtils.quickSetup();
+    const { oracle, mint, players } = await testUtils.quickSetup();
     const [creator] = players;
 
     const prizeAmount = new anchor.BN(5_000_000);
@@ -55,11 +57,12 @@ describe("Giveaway Close Refund", () => {
         .eq(prizeAmount)
     ).to.be.true;
 
-    // Wait until timeout + small buffer so waiting_for_oracle becomes false
-    await new Promise((r) => setTimeout(r, 4000));
+    const gameAccount = await testUtils.game.fetchGame(gameData.gamePDA);
+
+    await awaitBufferExpiry(gameAccount, oracle.config);
 
     // Close game (no joins happened)
-    const oraclePubkey = getOraclePublicKey(env.oracle!);
+    const oraclePubkey = getOraclePublicKey(oracle);
 
     const derived = await deriveGameAccounts(env.program, gameData.gamePDA, {
       player: creator.player.publicKey,
@@ -160,5 +163,58 @@ describe("Giveaway Close Refund", () => {
         new anchor.BN(beforeBal.value.amount)
       )
     ).to.be.true;
+  }).timeout(90000);
+
+  it("should reject closing a giveaway while still waiting for oracle", async () => {
+    const { oracle, mint, players } = await testUtils.quickSetup();
+    const [creator, participant] = players;
+
+    const prizeAmount = new anchor.BN(3_500_000);
+    const timeoutSeconds = 4;
+
+    const gameConfig = giveawayGameConfig({
+      amount: prizeAmount,
+      maxTickets: 5,
+      timeout: timeoutSeconds,
+    });
+
+    const gameData = await testUtils.game.createGame(
+      gameConfig,
+      creator.player,
+      mint.mint
+    );
+
+    await testUtils.game.joinGame(gameData.gamePDA, participant.player);
+
+    const beforeClose = await testUtils.game.fetchGame(gameData.gamePDA);
+
+    await awaitOracleCompletionReady(beforeClose, oracle.config);
+
+    const oraclePubkey = getOraclePublicKey(oracle);
+
+    const derived = await deriveGameAccounts(env.program, gameData.gamePDA, {
+      player: creator.player.publicKey,
+      tokenMint: mint.mint,
+    });
+    if (!derived.playerTokenAccount) {
+      throw new Error("Missing creator token account for giveaway waiting test");
+    }
+
+    await expectAnchorError(
+      env.program.methods
+        .closeGame()
+        .accountsStrict({
+          game: gameData.gamePDA,
+          creator: creator.player.publicKey,
+          oracle: oraclePubkey,
+          gameTokenCtx: toGameTokenContext(derived),
+          creatorTokenAccount: derived.playerTokenAccount,
+          systemProgram: anchor.web3.SystemProgram.programId,
+        })
+        .signers([creator.player])
+        .rpc(),
+      "GameWaitingForOracle",
+      { fallbackSubstring: "Awaiting oracle" }
+    );
   }).timeout(90000);
 });
