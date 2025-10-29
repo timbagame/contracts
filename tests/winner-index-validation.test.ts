@@ -99,6 +99,31 @@ describe("Winner Index Validation", () => {
     );
   });
 
+  it("should fail with WinnerIndexOutOfRange when winner index equals tickets count", async () => {
+    const { oracle, gameData, creator, player1 } = await setupTwoPlayerGame();
+
+    const participants = [creator, player1];
+    const { gameAccount, winner } = await computeGameOutcome(
+      env,
+      gameData,
+      participants
+    );
+
+    const outOfRangeIndex = gameAccount.ticketsCount;
+
+    await expectAnchorError(
+      testUtils.game.completeGame(
+        gameData,
+        winner.player.publicKey,
+        creator.player.publicKey,
+        oracle.operator,
+        outOfRangeIndex
+      ),
+      "WinnerIndexOutOfRange",
+      { fallbackSubstring: "Winner index out of range" }
+    );
+  });
+
   it("should fail with InvalidSecretKey when oracle submits mismatched secret", async () => {
     const { oracle, gameData, creator, player1 } = await setupTwoPlayerGame();
 
@@ -293,6 +318,37 @@ describe("Winner Index Validation", () => {
       gameData.gamePDA
     );
     expect(closedAccountInfo).to.be.null;
+  });
+
+  it("should reject completing an already settled game", async () => {
+    const { oracle, gameData, creator, player1 } = await setupTwoPlayerGame();
+
+    const participants = [creator, player1];
+    const { winnerIndex, winner } = await computeGameOutcome(
+      env,
+      gameData,
+      participants
+    );
+
+    await testUtils.game.completeGame(
+      gameData,
+      winner.player.publicKey,
+      creator.player.publicKey,
+      oracle.operator,
+      winnerIndex
+    );
+
+    await expectAnchorError(
+      testUtils.game.completeGame(
+        gameData,
+        winner.player.publicKey,
+        creator.player.publicKey,
+        oracle.operator,
+        winnerIndex
+      ),
+      "GameAlreadyCompleted",
+      { fallbackSubstring: "Game already settled" }
+    );
   });
 
   it("should emit GameCompleted event with expected payload", async () => {
