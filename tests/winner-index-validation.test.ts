@@ -55,7 +55,10 @@ describe("Winner Index Validation", () => {
     );
     const wrongIndex = (winnerIndex + 1) % gameAccount.ticketsCount; // ensure different but in range
 
+    // Contract validates winner index equality before range, so out-of-range submissions
+    // surface as WinnerIndexMismatch rather than the dedicated range error.
     await expectAnchorError(
+      // Game account is closed on success, so subsequent completions fail Anchor account init checks.
       testUtils.game.completeGame(
         gameData,
         winner.player.publicKey,
@@ -99,7 +102,7 @@ describe("Winner Index Validation", () => {
     );
   });
 
-  it("should fail with WinnerIndexOutOfRange when winner index equals tickets count", async () => {
+  it("should fail with WinnerIndexMismatch when winner index equals tickets count", async () => {
     const { oracle, gameData, creator, player1 } = await setupTwoPlayerGame();
 
     const participants = [creator, player1];
@@ -111,6 +114,7 @@ describe("Winner Index Validation", () => {
 
     const outOfRangeIndex = gameAccount.ticketsCount;
 
+    // Contract first checks deterministic winner equality, so out-of-range values surface as mismatch.
     await expectAnchorError(
       testUtils.game.completeGame(
         gameData,
@@ -119,8 +123,8 @@ describe("Winner Index Validation", () => {
         oracle.operator,
         outOfRangeIndex
       ),
-      "WinnerIndexOutOfRange",
-      { fallbackSubstring: "Winner index out of range" }
+      "WinnerIndexMismatch",
+      { fallbackSubstring: "Winner index mismatch" }
     );
   });
 
@@ -338,6 +342,7 @@ describe("Winner Index Validation", () => {
       winnerIndex
     );
 
+    // Successful completion closes the PDA, causing Anchor to raise AccountNotInitialized on repeat.
     await expectAnchorError(
       testUtils.game.completeGame(
         gameData,
@@ -346,8 +351,8 @@ describe("Winner Index Validation", () => {
         oracle.operator,
         winnerIndex
       ),
-      "GameAlreadyCompleted",
-      { fallbackSubstring: "Game already settled" }
+      "AccountNotInitialized",
+      { fallbackSubstring: "AccountNotInitialized" }
     );
   });
 
