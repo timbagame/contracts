@@ -14,7 +14,11 @@ describe("Winner Index Property Tests", () => {
         fc.integer({ min: 1, max: 64 }),
         fc.array(fc.integer({ min: 0, max: 255 }), { minLength: 32, maxLength: 32 }),
         fc.integer({ min: 0, max: Number.MAX_SAFE_INTEGER }),
-        (ticketsCount, secretKey, slot) => {
+        (
+          ticketsCount: number,
+          secretKey: number[],
+          slot: number
+        ) => {
           const winnerIndex = calculateWinnerIndex(ticketsCount, secretKey, slot);
           expect(winnerIndex).to.be.at.least(0);
           expect(winnerIndex).to.be.below(ticketsCount);
@@ -30,7 +34,11 @@ describe("Winner Index Property Tests", () => {
         fc.integer({ min: 1, max: 64 }),
         fc.array(fc.integer({ min: 0, max: 255 }), { minLength: 32, maxLength: 32 }),
         fc.integer({ min: 0, max: Number.MAX_SAFE_INTEGER }),
-        (ticketsCount, secretKey, slot) => {
+        (
+          ticketsCount: number,
+          secretKey: number[],
+          slot: number
+        ) => {
           const first = calculateWinnerIndex(ticketsCount, secretKey, slot);
           const second = calculateWinnerIndex(ticketsCount, [...secretKey], slot);
           expect(first).to.equal(second);
@@ -46,11 +54,10 @@ describe("Winner Index Property Tests", () => {
 
     const sampleSecrets = fc.sample(
       fc.array(fc.integer({ min: 0, max: 255 }), { minLength: 32, maxLength: 32 }),
-      512,
-      { seed: 424242 }
+      { seed: 424242, numRuns: 512 }
     );
 
-    sampleSecrets.forEach((secret, idx) => {
+    sampleSecrets.forEach((secret: number[], idx: number) => {
       const slot = idx * 17;
       const winnerIndex = calculateWinnerIndex(ticketsCount, secret, slot);
       seen.add(winnerIndex);
