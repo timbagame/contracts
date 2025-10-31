@@ -297,9 +297,9 @@ describe("Withdraw Fee", () => {
         })
         .signers([oracle.operatorKeypair])
         .rpc(),
-      "ConstraintAssociated",
+      "ConstraintTokenOwner",
       {
-        fallbackSubstring: "ConstraintAssociated",
+        fallbackSubstring: "ConstraintTokenOwner",
         message:
           "Withdrawal should fail when ATA authority does not match oracle operator",
       }
