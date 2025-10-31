@@ -1,5 +1,6 @@
 import { expect } from "chai";
 import * as anchor from "@coral-xyz/anchor";
+import { getOrCreateAssociatedTokenAccount } from "@solana/spl-token";
 import {
   TestUtils,
   TestEnvironment,
@@ -8,6 +9,7 @@ import {
   deriveGameAccounts,
   toGameTokenContext,
   gameTokenContextFromMint,
+  expectAnchorError,
   captureEvent,
   coinflipGameConfig,
   getOraclePublicKey,
@@ -274,4 +276,83 @@ describe("Withdraw Fee", () => {
         .rpc();
     }
   }).timeout(120000);
+
+  it("should reject withdrawals sent to an ATA not owned by the oracle operator", async () => {
+    const { oracle, mint, players } = await testUtils.quickSetup();
+    const attacker = players[0];
+
+    const maliciousAta = attacker.playerTokenAccount.address;
+    const oraclePubkey = getOraclePublicKey(oracle);
+    const legitContext = gameTokenContextFromMint(mint, env.program);
+
+    await expectAnchorError(
+      env.program.methods
+        .withdrawTokenFee()
+        .accountsStrict({
+          gameTokenCtx: legitContext,
+          oracle: oraclePubkey,
+          oracleOperator: oracle.operator,
+          oracleOperatorTokenAccount: maliciousAta,
+          systemProgram: anchor.web3.SystemProgram.programId,
+        })
+        .signers([oracle.operatorKeypair])
+        .rpc(),
+      "ConstraintTokenOwner",
+      {
+        fallbackSubstring: "ConstraintTokenOwner",
+        message:
+          "Withdrawal should fail when ATA authority does not match oracle operator",
+      }
+    );
+  });
+
+  it("should reject withdrawals when the provided vault PDA seeds do not match", async () => {
+    const { oracle, mint } = await testUtils.quickSetup();
+    const mismatchedMint = await testUtils.mint.createMint();
+
+    const oraclePubkey = getOraclePublicKey(oracle);
+    const legitContext = gameTokenContextFromMint(mint, env.program);
+
+    const fakeVaultAta = await getOrCreateAssociatedTokenAccount(
+      env.provider.connection,
+      oracle.operatorKeypair,
+      mint.mint,
+      mismatchedMint.gameVaultPDA,
+      true,
+      undefined,
+      undefined,
+      mint.tokenProgram
+    );
+
+    const mismatchedContext = {
+      ...legitContext,
+      gameVault: mismatchedMint.gameVaultPDA,
+      gameTokenAccount: fakeVaultAta.address,
+    };
+
+    const operatorAta = await ensureOperatorAta(
+      env.provider.connection,
+      oracle,
+      mint.mint
+    );
+
+    await expectAnchorError(
+      env.program.methods
+        .withdrawTokenFee()
+        .accountsStrict({
+          gameTokenCtx: mismatchedContext,
+          oracle: oraclePubkey,
+          oracleOperator: oracle.operator,
+          oracleOperatorTokenAccount: operatorAta,
+          systemProgram: anchor.web3.SystemProgram.programId,
+        })
+        .signers([oracle.operatorKeypair])
+        .rpc(),
+      "ConstraintSeeds",
+      {
+        fallbackSubstring: "ConstraintSeeds",
+        message: "Withdrawal should fail when vault PDA does not match recorded bump",
+      }
+    );
+  });
 });
