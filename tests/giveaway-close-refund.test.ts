@@ -24,6 +24,39 @@ describe("Giveaway Close Refund", () => {
     if (!env.oracle) await env.initialize();
   });
 
+  it("should fail giveaway initialization when creator lacks prize balance", async () => {
+    const { mint } = await testUtils.quickSetup();
+    const unfundedCreator = await testUtils.player.createPlayer(mint.mint);
+
+    const prizeAmount = new anchor.BN(5_000_000);
+    const gameConfig = giveawayGameConfig({
+      amount: prizeAmount,
+      maxTickets: 5,
+      timeout: 45,
+    });
+
+    const gameData = testUtils.game.generateGamePDA();
+
+    await expectAnchorError(
+      testUtils.game.initializeGame(
+        gameData,
+        gameConfig,
+        unfundedCreator.player,
+        mint.mint
+      ),
+      "InsufficientFunds",
+      {
+        fallbackSubstring: "insufficient funds",
+        message: "Giveaway init should fail without prize balance",
+      }
+    );
+
+    const maybeGame = await env.provider.connection.getAccountInfo(
+      gameData.gamePDA
+    );
+    expect(maybeGame).to.be.null;
+  }).timeout(60000);
+
   it("should refund full prize to creator when closing unused giveaway", async () => {
     const { oracle, mint, players } = await testUtils.quickSetup();
     const [creator] = players;

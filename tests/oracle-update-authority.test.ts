@@ -9,6 +9,7 @@ import {
   toGameTokenContext,
   coinflipGameConfig,
   getOraclePublicKey,
+  expectAnchorError,
 } from "./test-helpers";
 
 // Tests for oracle operator update and authority enforcement
@@ -22,6 +23,97 @@ describe("Oracle Update Authority", () => {
     testUtils = new TestUtils();
     if (!env.oracle) await env.initialize();
   });
+
+  it("should gate private joins to the rotated oracle operator", async () => {
+    const { oracle, mint, players } = await testUtils.quickSetup();
+    const [creator] = players;
+
+    const ticketAmount = new anchor.BN(1_000_000);
+    const config = coinflipGameConfig({
+      amount: ticketAmount,
+      isPrivate: true,
+      maxTickets: 3,
+      timeout: 90,
+    });
+
+    const gameData = await testUtils.game.createGame(
+      config,
+      creator.player,
+      mint.mint
+    );
+    await testUtils.game.joinGame(
+      gameData.gamePDA,
+      creator.player,
+      oracle.operatorKeypair
+    );
+
+    const candidate = await testUtils.player.createPlayer(mint.mint);
+    await testUtils.player.fundPlayer(candidate, mint, ticketAmount);
+
+    const newOperator = anchor.web3.Keypair.generate();
+    const connection = env.provider.connection;
+    const airdropSig = await connection.requestAirdrop(
+      newOperator.publicKey,
+      2 * anchor.web3.LAMPORTS_PER_SOL
+    );
+    await connection.confirmTransaction(airdropSig, "confirmed");
+
+    const updateArgs = {
+      feePercentage: oracle.config.feePercentage,
+      oracleBufferTime: new anchor.BN(oracle.config.oracleBufferTime),
+      maxTickets: oracle.config.maxTickets,
+      maxTimeout: new anchor.BN(oracle.config.maxTimeout),
+      minTimeout: new anchor.BN(oracle.config.minTimeout),
+    } as const;
+
+    const updateAccounts = {
+      oldOracleOperator: oracle.operator,
+      newOracleOperator: newOperator.publicKey,
+    } as const;
+
+    await env.program.methods
+      .updateOracle(updateArgs)
+      .accounts(updateAccounts)
+      .signers([oracle.operatorKeypair, newOperator])
+      .rpc();
+
+    const restore = async () => {
+      await env.program.methods
+        .updateOracle(updateArgs)
+        .accounts({
+          oldOracleOperator: newOperator.publicKey,
+          newOracleOperator: oracle.operator,
+        })
+        .signers([newOperator, oracle.operatorKeypair])
+        .rpc();
+    };
+
+    try {
+      await expectAnchorError(
+        testUtils.game.joinGame(
+          gameData.gamePDA,
+          candidate.player,
+          oracle.operatorKeypair
+        ),
+        "PrivateGameAccessDenied",
+        {
+          fallbackSubstring: "PrivateGameAccessDenied",
+          message: "Old operator should not authorize private join",
+        }
+      );
+
+      await testUtils.game.joinGame(
+        gameData.gamePDA,
+        candidate.player,
+        newOperator
+      );
+
+      const gameAfter = await testUtils.game.fetchGame(gameData.gamePDA);
+      expect(gameAfter.ticketsCount).to.equal(2);
+    } finally {
+      await restore().catch(() => {});
+    }
+  }).timeout(120000);
 
   it("should transfer operator and enforce new authority for completion and withdraw", async () => {
     const { oracle, mint, players } = await testUtils.quickSetup();
