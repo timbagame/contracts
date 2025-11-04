@@ -69,7 +69,15 @@ describe("Participant Hash Collision Stress", () => {
     expect(gameAccount.ticketsCount).to.equal(joinCount + 1);
     expect(gameAccount.participantHashes.length).to.equal(joinCount + 1);
 
-    const seen = new Map<string, number>();
+    console.log("ticket amount", gameAccount.ticketAmount.toString());
+    console.log("tickets count", gameAccount.ticketsCount.toString());
+    console.log(
+      "participant hashes length",
+      gameAccount.participantHashes.length
+    );
+    console.log("total amount", gameAccount.totalAmount.toString());
+
+  const seen = new Map<string, number>();
     gameAccount.participantHashes.forEach((hash, index) => {
       const key = hash.toString();
       if (seen.has(key)) {
