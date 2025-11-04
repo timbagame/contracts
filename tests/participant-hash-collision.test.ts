@@ -69,12 +69,19 @@ describe("Participant Hash Collision Stress", () => {
     expect(gameAccount.ticketsCount).to.equal(joinCount + 1);
     expect(gameAccount.participantHashes.length).to.equal(joinCount + 1);
 
-    const seen = new Set<string>();
-    for (const hash of gameAccount.participantHashes) {
+    const seen = new Map<string, number>();
+    gameAccount.participantHashes.forEach((hash, index) => {
       const key = hash.toString();
+      if (seen.has(key)) {
+        console.log("duplicate participant hash detected", {
+          hash: key,
+          firstIndex: seen.get(key),
+          duplicateIndex: index,
+        });
+      }
       expect(seen.has(key)).to.be.false;
-      seen.add(key);
-    }
+      seen.set(key, index);
+    });
     expect(seen.size).to.equal(joinCount + 1);
 
     const derived = await deriveGameAccounts(env.program, gameData.gamePDA, {
@@ -97,6 +104,10 @@ describe("Participant Hash Collision Stress", () => {
       gameTokenCtx.gameTokenAccount
     );
     const expectedPot = ticketAmount.mul(new anchor.BN(joinCount + 1));
+    console.log("vault balance check", {
+      actual: vaultBalance.value.amount,
+      expected: expectedPot.toString(),
+    });
     expect(new anchor.BN(vaultBalance.value.amount).eq(expectedPot)).to.be.true;
   }).timeout(180_000);
 });
