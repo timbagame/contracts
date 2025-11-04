@@ -14,9 +14,9 @@ pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
     // VALIDATION
     // ===============================
 
-    // Late unjoin only allowed after: (timeout + oracle buffer). Prevents strategic exits.
+    // Allow unjoin once the buffer elapsed or the game no longer needs the oracle.
     require!(
-        game.is_buffer_expired(oracle.oracle_buffer_time, current_time),
+        game.can_unjoin(oracle.oracle_buffer_time, current_time),
         ErrorCode::OracleBufferNotExpired
     );
 
