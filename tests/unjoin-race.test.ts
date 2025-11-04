@@ -1,0 +1,133 @@
+import { expect } from "chai";
+import * as anchor from "@coral-xyz/anchor";
+import {
+  TestUtils,
+  TestEnvironment,
+  coinflipGameConfig,
+  deriveGameAccounts,
+  toGameTokenContext,
+} from "./test-helpers";
+
+async function buildSignedUnjoinTx(
+  env: TestEnvironment,
+  game: anchor.web3.PublicKey,
+  player: anchor.web3.Keypair,
+  tokenMint: anchor.web3.PublicKey
+): Promise<anchor.web3.Transaction> {
+  const derived = await deriveGameAccounts(env.program, game, {
+    player: player.publicKey,
+    tokenMint,
+  });
+
+  if (!derived.playerTokenAccount) {
+    throw new Error("Missing player token account for unjoin race test");
+  }
+
+  const ix = await env.program.methods
+    .unjoinGame()
+    .accountsStrict({
+      game,
+      player: player.publicKey,
+      authority: player.publicKey,
+      oracle: derived.oracle,
+      playerTokenAccount: derived.playerTokenAccount,
+      gameTokenCtx: toGameTokenContext(derived),
+      systemProgram: anchor.web3.SystemProgram.programId,
+    })
+    .instruction();
+
+  const { blockhash, lastValidBlockHeight } =
+    await env.provider.connection.getLatestBlockhash();
+
+  const tx = new anchor.web3.Transaction({
+    feePayer: player.publicKey,
+    blockhash,
+    lastValidBlockHeight,
+  });
+
+  tx.add(ix);
+  tx.sign(player);
+  return tx;
+}
+
+describe("Unjoin Race Conditions", () => {
+  let testUtils: TestUtils;
+  let env: TestEnvironment;
+
+  before(async () => {
+    env = TestEnvironment.getInstance();
+    testUtils = new TestUtils();
+    if (!env.oracle) {
+      await env.initialize();
+    }
+  });
+
+  it("settles exactly once when two unjoin attempts race", async () => {
+    const setup = await testUtils.quickSetup();
+    const { mint, players } = setup;
+    const [creator, participant] = players;
+
+    const ticketAmount = new anchor.BN(1_200_000);
+    const gameConfig = coinflipGameConfig({
+      amount: ticketAmount,
+      timeout: 240,
+    });
+
+    const gameData = await testUtils.game.createGame(
+      gameConfig,
+      creator.player,
+      mint.mint
+    );
+
+    await testUtils.game.joinGame(gameData.gamePDA, creator.player);
+    await testUtils.game.joinGame(gameData.gamePDA, participant.player);
+
+    const balanceBefore = await env.provider.connection.getTokenAccountBalance(
+      participant.playerTokenAccount.address
+    );
+
+    const [txA, txB] = await Promise.all([
+      buildSignedUnjoinTx(env, gameData.gamePDA, participant.player, mint.mint),
+      buildSignedUnjoinTx(env, gameData.gamePDA, participant.player, mint.mint),
+    ]);
+
+    const sendTx = async (tx: anchor.web3.Transaction) => {
+      const serialized = tx.serialize();
+      try {
+        const signature = await env.provider.connection.sendRawTransaction(
+          serialized,
+          {
+            skipPreflight: false,
+          }
+        );
+        await env.provider.connection.confirmTransaction(signature, "confirmed");
+        return { ok: true, signature } as const;
+      } catch (error) {
+        return { ok: false, error } as const;
+      }
+    };
+
+    const [resA, resB] = await Promise.all([sendTx(txA), sendTx(txB)]);
+    const successes = [resA, resB].filter((result) => result.ok);
+    expect(successes.length).to.equal(1);
+
+    const balanceAfter = await env.provider.connection.getTokenAccountBalance(
+      participant.playerTokenAccount.address
+    );
+
+    const delta = new anchor.BN(balanceAfter.value.amount).sub(
+      new anchor.BN(balanceBefore.value.amount)
+    );
+    expect(delta.eq(ticketAmount)).to.be.true;
+
+    const gameAccount = await testUtils.game.fetchGame(gameData.gamePDA);
+    expect(gameAccount.ticketsCount).to.equal(1);
+
+    if (!resA.ok) {
+      expect((resA.error as Error).toString()).to.include("UnauthorizedPlayer");
+    }
+    if (!resB.ok) {
+      expect((resB.error as Error).toString()).to.include("UnauthorizedPlayer");
+    }
+  }).timeout(180_000);
+});
