@@ -287,17 +287,15 @@ impl GameToken {
             self.token_mint.as_ref(),
             &[self.vault_bump],
         ];
-        close_account(
-            CpiContext::new_with_signer(
-                token_program,
-                CloseAccount {
-                    account: vault_account,
-                    destination,
-                    authority: vault_authority,
-                },
-                &[signer_seeds],
-            ),
-        )?;
+        close_account(CpiContext::new_with_signer(
+            token_program,
+            CloseAccount {
+                account: vault_account,
+                destination,
+                authority: vault_authority,
+            },
+            &[signer_seeds],
+        ))?;
         Ok(())
     }
 }
@@ -423,6 +421,12 @@ impl Game {
         };
 
         self.is_ready_for_completion(current_time) && still_waiting
+    }
+
+    /// Determines if players can unjoin at the current moment.
+    pub fn can_unjoin(&self, oracle_buffer_time: u64, current_time: u64) -> bool {
+        self.is_buffer_expired(oracle_buffer_time, current_time)
+            || !self.waiting_for_oracle(oracle_buffer_time, current_time)
     }
 
     /// Marks the game as completed by setting total_amount to zero
