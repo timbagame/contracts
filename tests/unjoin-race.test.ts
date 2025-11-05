@@ -1,13 +1,17 @@
 import { expect } from "chai";
 import * as anchor from "@coral-xyz/anchor";
-import { ComputeBudgetProgram } from "@solana/web3.js";
 import {
   TestUtils,
   TestEnvironment,
   coinflipGameConfig,
   deriveGameAccounts,
+  expectAnchorError,
   toGameTokenContext,
 } from "./test-helpers";
+
+const MEMO_PROGRAM_ID = new anchor.web3.PublicKey(
+  "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr"
+);
 
 async function buildSignedUnjoinTx(
   env: TestEnvironment,
@@ -49,8 +53,10 @@ async function buildSignedUnjoinTx(
 
   if (uniqueSeed !== 0) {
     tx.add(
-      ComputeBudgetProgram.setComputeUnitPrice({
-        microLamports: uniqueSeed,
+      new anchor.web3.TransactionInstruction({
+        programId: MEMO_PROGRAM_ID,
+        keys: [],
+        data: Buffer.from(`race-${uniqueSeed}`),
       })
     );
   }
@@ -131,11 +137,13 @@ describe("Unjoin Race Conditions", () => {
       }
     };
 
-  const [resA, resB] = await Promise.all([sendTx(txA), sendTx(txB)]);
-  console.log("race outcomes", resA, resB);
-    const successes = [resA, resB].filter((result) => result.ok);
-  console.log("success count", successes.length);
+    const [resA, resB] = await Promise.all([sendTx(txA), sendTx(txB)]);
+    const outcomes = [resA, resB];
+    const successes = outcomes.filter((result) => result.ok);
+    const failures = outcomes.filter((result) => !result.ok);
+
     expect(successes.length).to.equal(1);
+    expect(failures.length).to.equal(1);
 
     const balanceAfter = await env.provider.connection.getTokenAccountBalance(
       participant.playerTokenAccount.address
@@ -149,11 +157,10 @@ describe("Unjoin Race Conditions", () => {
     const gameAccount = await testUtils.game.fetchGame(gameData.gamePDA);
     expect(gameAccount.ticketsCount).to.equal(1);
 
-    if (!resA.ok) {
-      expect((resA.error as Error).toString()).to.include("UnauthorizedPlayer");
-    }
-    if (!resB.ok) {
-      expect((resB.error as Error).toString()).to.include("UnauthorizedPlayer");
+    for (const failure of failures) {
+      await expectAnchorError(Promise.reject(failure.error), "UnauthorizedPlayer", {
+        fallbackSubstring: '"Custom":7001',
+      });
     }
   }).timeout(180_000);
 });
