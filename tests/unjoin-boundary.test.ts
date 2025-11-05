@@ -5,6 +5,9 @@ import {
   TestEnvironment,
   coinflipGameConfig,
   getClockUnixTimestamp,
+  calculateWinnerIndex,
+  getWinnerFromPlayers,
+  expectAnchorError,
 } from "./test-helpers";
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -74,7 +77,7 @@ describe("Unjoin Buffer Boundary", () => {
     await testUtils.game.joinGame(gameData.gamePDA, creator.player);
     await testUtils.game.joinGame(gameData.gamePDA, participant.player);
 
-    const gameAccount = await testUtils.game.fetchGame(gameData.gamePDA);
+  const gameAccount = await testUtils.game.fetchGame(gameData.gamePDA);
 
     const createdAtSeconds = gameAccount.createdAt.toNumber();
     const timeoutSecondsValue = (gameConfig.timeout as anchor.BN).toNumber();
@@ -91,6 +94,30 @@ describe("Unjoin Buffer Boundary", () => {
     }
 
     await waitForExactTimestamp(connection, targetTimestamp);
+
+    const boundarySnapshot = await testUtils.game.fetchGame(gameData.gamePDA);
+    const participants = [creator, participant];
+    const winnerIndex = calculateWinnerIndex(
+      boundarySnapshot.ticketsCount,
+      gameData.secretKey,
+      Number(boundarySnapshot.lastSlot)
+    );
+    const deterministicWinner = getWinnerFromPlayers(participants, winnerIndex);
+
+    await expectAnchorError(
+      testUtils.game.completeGame(
+        gameData,
+        deterministicWinner.player.publicKey,
+        creator.player.publicKey,
+        oracle.operator,
+        winnerIndex
+      ),
+      "GameNotReadyForOracle",
+      {
+        fallbackSubstring: "Oracle not ready",
+        message: "Completion should be blocked exactly at buffer expiry",
+      }
+    );
 
     const balanceBefore = await connection.getTokenAccountBalance(
       participant.playerTokenAccount.address
