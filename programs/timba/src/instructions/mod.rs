@@ -15,8 +15,7 @@ pub mod close_game;
 pub mod complete_game;
 pub mod initialize_game;
 pub mod join_game;
-
-pub mod unjoin_game; // updated for single-ticket model
+pub mod unjoin_game;
 
 // Fee management
 pub mod withdraw_token_fee;
