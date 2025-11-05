@@ -130,6 +130,69 @@ describe("Token Administration Instructions", () => {
     }
   });
 
+  it("should reject initialize_token when token program is unsupported", async () => {
+    const connection = env.provider.connection;
+
+    const mintAuthority = anchor.web3.Keypair.generate();
+    const fakeTokenProgram = anchor.web3.Keypair.generate();
+
+    const airdrops = await Promise.all([
+      connection.requestAirdrop(
+        mintAuthority.publicKey,
+        2 * anchor.web3.LAMPORTS_PER_SOL
+      ),
+      connection.requestAirdrop(
+        fakeTokenProgram.publicKey,
+        anchor.web3.LAMPORTS_PER_SOL
+      ),
+    ]);
+    await Promise.all(
+      airdrops.map((sig) => connection.confirmTransaction(sig, "confirmed"))
+    );
+
+    const mint = await createMint(
+      connection,
+      mintAuthority,
+      mintAuthority.publicKey,
+      null,
+      6
+    );
+
+    const { gameToken, gameVault, gameTokenAccount } = computeGameTokenContext(
+      env.program,
+      mint,
+      TOKEN_PROGRAM_ID
+    );
+
+    await getOrCreateAssociatedTokenAccount(
+      connection,
+      mintAuthority,
+      mint,
+      gameVault,
+      true
+    );
+
+    await expectAnchorError(
+      env.program.methods
+        .initializeToken({ minAmount: new anchor.BN(5_000), enabled: true })
+        .accountsStrict({
+          gameToken,
+          tokenMint: mint,
+          gameVault,
+          gameTokenAccount,
+          oracle: env.oracle!.oraclePDA,
+          oracleOperator: env.oracle!.operator,
+          systemProgram: SystemProgram.programId,
+          tokenProgram: fakeTokenProgram.publicKey,
+          associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+        })
+        .signers([env.oracle!.operatorKeypair])
+        .rpc(),
+      "UnsupportedTokenProgram",
+      { fallbackSubstring: "Token program unsupported" }
+    );
+  });
+
   it("should reject update_token when signer is not oracle operator", async () => {
     const mint = await mintManager.createMint();
     const fakeOperator = anchor.web3.Keypair.generate();
