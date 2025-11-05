@@ -1,5 +1,6 @@
 import { expect } from "chai";
 import * as anchor from "@coral-xyz/anchor";
+import { ComputeBudgetProgram } from "@solana/web3.js";
 import {
   TestUtils,
   TestEnvironment,
@@ -12,7 +13,8 @@ async function buildSignedUnjoinTx(
   env: TestEnvironment,
   game: anchor.web3.PublicKey,
   player: anchor.web3.Keypair,
-  tokenMint: anchor.web3.PublicKey
+  tokenMint: anchor.web3.PublicKey,
+  uniqueSeed: number
 ): Promise<anchor.web3.Transaction> {
   const derived = await deriveGameAccounts(env.program, game, {
     player: player.publicKey,
@@ -44,6 +46,14 @@ async function buildSignedUnjoinTx(
     blockhash,
     lastValidBlockHeight,
   });
+
+  if (uniqueSeed !== 0) {
+    tx.add(
+      ComputeBudgetProgram.setComputeUnitPrice({
+        microLamports: uniqueSeed,
+      })
+    );
+  }
 
   tx.add(ix);
   tx.sign(player);
@@ -89,8 +99,8 @@ describe("Unjoin Race Conditions", () => {
     );
 
     const [txA, txB] = await Promise.all([
-      buildSignedUnjoinTx(env, gameData.gamePDA, participant.player, mint.mint),
-      buildSignedUnjoinTx(env, gameData.gamePDA, participant.player, mint.mint),
+      buildSignedUnjoinTx(env, gameData.gamePDA, participant.player, mint.mint, 0),
+      buildSignedUnjoinTx(env, gameData.gamePDA, participant.player, mint.mint, 1),
     ]);
 
     const sendTx = async (tx: anchor.web3.Transaction) => {
@@ -122,7 +132,9 @@ describe("Unjoin Race Conditions", () => {
     };
 
   const [resA, resB] = await Promise.all([sendTx(txA), sendTx(txB)]);
+  console.log("race outcomes", resA, resB);
     const successes = [resA, resB].filter((result) => result.ok);
+  console.log("success count", successes.length);
     expect(successes.length).to.equal(1);
 
     const balanceAfter = await env.provider.connection.getTokenAccountBalance(
