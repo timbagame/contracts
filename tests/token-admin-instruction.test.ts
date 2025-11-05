@@ -130,7 +130,7 @@ describe("Token Administration Instructions", () => {
     }
   });
 
-  it("should reject initialize_token when token program is unsupported", async () => {
+  it("should reject initialize_token when token program account is invalid", async () => {
     const connection = env.provider.connection;
 
     const mintAuthority = anchor.web3.Keypair.generate();
@@ -188,8 +188,7 @@ describe("Token Administration Instructions", () => {
         })
         .signers([env.oracle!.operatorKeypair])
         .rpc(),
-      "UnsupportedTokenProgram",
-      { fallbackSubstring: "Token program unsupported" }
+      "InvalidProgramId"
     );
   });
 
@@ -284,7 +283,7 @@ describe("Token Administration Instructions", () => {
     }
   });
 
-  it("should reject initialize_token when token program is unsupported", async () => {
+  it("should surface InvalidProgramId before unsupported token guard", async () => {
     const connection = env.provider.connection;
     const mintAuthority = anchor.web3.Keypair.generate();
 

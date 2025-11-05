@@ -128,13 +128,18 @@ describe("Giveaway Completion", () => {
       oracle.config.feePercentage
     );
 
-    await testUtils.game.completeGame(
-      gameData,
-      soloPlayer.player.publicKey,
-      creator.player.publicKey,
-      oracle.operator,
-      winnerIndex
-    );
+    try {
+      await testUtils.game.completeGame(
+        gameData,
+        soloPlayer.player.publicKey,
+        creator.player.publicKey,
+        oracle.operator,
+        winnerIndex
+      );
+    } catch (error) {
+      console.error("completeGame failure logs", error);
+      throw error;
+    }
 
     const postWinner = await env.provider.connection.getTokenAccountBalance(
       soloPlayer.playerTokenAccount.address
