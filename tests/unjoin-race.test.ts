@@ -71,6 +71,8 @@ describe("Unjoin Race Conditions", () => {
     const gameConfig = coinflipGameConfig({
       amount: ticketAmount,
       timeout: 240,
+      minTickets: 3,
+      maxTickets: 3,
     });
 
     const gameData = await testUtils.game.createGame(
@@ -100,14 +102,26 @@ describe("Unjoin Race Conditions", () => {
             skipPreflight: false,
           }
         );
-        await env.provider.connection.confirmTransaction(signature, "confirmed");
-        return { ok: true, signature } as const;
+        const confirmation = await env.provider.connection.confirmTransaction(
+          signature,
+          "confirmed"
+        );
+        if (confirmation.value.err) {
+          const errorMessage = JSON.stringify(confirmation.value.err);
+          return {
+            ok: false as const,
+            error: new Error(
+              `Transaction ${signature} failed: ${errorMessage}`
+            ),
+          };
+        }
+        return { ok: true as const, signature };
       } catch (error) {
         return { ok: false, error } as const;
       }
     };
 
-    const [resA, resB] = await Promise.all([sendTx(txA), sendTx(txB)]);
+  const [resA, resB] = await Promise.all([sendTx(txA), sendTx(txB)]);
     const successes = [resA, resB].filter((result) => result.ok);
     expect(successes.length).to.equal(1);
 
