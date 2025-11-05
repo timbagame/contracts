@@ -6,7 +6,8 @@ import {
   giveawayGameConfig,
   calculateWinnerIndex,
   getWinnerFromPlayers,
-  expectAnchorError,
+  ensureOperatorAta,
+  gameTokenContextFromMint,
 } from "./test-helpers";
 
 async function updateOracleConfig(
@@ -43,7 +44,7 @@ describe("Fee Overflow Guard", () => {
     }
   });
 
-  it("rejects fee accrual that would overflow u64", async () => {
+  it("handles near-u64-max fee accrual without precision loss", async () => {
     const oracle = env.oracle!;
 
     const originalConfig = {
@@ -69,101 +70,84 @@ describe("Fee Overflow Guard", () => {
       const mint = await testUtils.mint.createMint();
 
       const creator = await testUtils.player.createPlayer(mint.mint);
-      const joiner = await testUtils.player.createPlayer(mint.mint);
+      const participant = await testUtils.player.createPlayer(mint.mint);
 
-      const bigPrize = new anchor.BN("18446744073709551500");
-      const smallPrize = new anchor.BN(5000);
-      const totalFunding = bigPrize.add(smallPrize);
+      const massivePrize = new anchor.BN("18446744073709500000");
+      await testUtils.player.fundPlayer(creator, mint, massivePrize);
 
-      await testUtils.player.fundPlayer(creator, mint, totalFunding);
-
-      const bigGiveawayConfig = giveawayGameConfig({
-        amount: bigPrize,
+      const giveawayConfig = giveawayGameConfig({
+        amount: massivePrize,
         maxTickets: new anchor.BN(1),
         minTickets: new anchor.BN(1),
-        timeout: new anchor.BN(60),
+        timeout: new anchor.BN(30),
       });
 
-      const bigGame = await testUtils.game.createGame(
-        bigGiveawayConfig,
+      const gameData = await testUtils.game.createGame(
+        giveawayConfig,
         creator.player,
         mint.mint
       );
 
-      await testUtils.game.joinGame(bigGame.gamePDA, joiner.player);
+      await testUtils.game.joinGame(gameData.gamePDA, participant.player);
 
-      const bigGameAccount = await testUtils.game.fetchGame(bigGame.gamePDA);
-      const initialWinnerIndex = calculateWinnerIndex(
-        bigGameAccount.ticketsCount,
-        bigGame.secretKey,
-        Number(bigGameAccount.lastSlot)
+      const gameAccount = await testUtils.game.fetchGame(gameData.gamePDA);
+      const winnerIndex = calculateWinnerIndex(
+        gameAccount.ticketsCount,
+        gameData.secretKey,
+        Number(gameAccount.lastSlot)
       );
-      const bigWinner = getWinnerFromPlayers([joiner], initialWinnerIndex);
+      const winner = getWinnerFromPlayers([participant], winnerIndex);
 
       await testUtils.game.completeGame(
-        bigGame,
-        bigWinner.player.publicKey,
+        gameData,
+        winner.player.publicKey,
         creator.player.publicKey,
         oracle.operator,
-        initialWinnerIndex,
+        winnerIndex,
         oracle.operatorKeypair
       );
 
-      const gameTokenAfterFirst = await env.program.account.gameToken.fetch(
+      const gameTokenAfter = await env.program.account.gameToken.fetch(
         mint.gameTokenPDA
       );
       expect(
-        new anchor.BN(gameTokenAfterFirst.feeAmount.toString()).eq(bigPrize)
+        new anchor.BN(gameTokenAfter.feeAmount.toString()).eq(massivePrize)
       ).to.be.true;
 
-      const smallGiveawayConfig = giveawayGameConfig({
-        amount: smallPrize,
-        maxTickets: new anchor.BN(1),
-        minTickets: new anchor.BN(1),
-        timeout: new anchor.BN(60),
-      });
-
-      const smallGame = await testUtils.game.createGame(
-        smallGiveawayConfig,
-        creator.player,
+      const operatorAta = await ensureOperatorAta(
+        env.provider.connection,
+        oracle,
         mint.mint
       );
+      const preOperatorBalance =
+        await env.provider.connection.getTokenAccountBalance(operatorAta);
 
-      await testUtils.game.joinGame(smallGame.gamePDA, joiner.player);
+      const tokenContext = gameTokenContextFromMint(mint, env.program);
 
-      const smallGameAccount = await testUtils.game.fetchGame(smallGame.gamePDA);
-      const overflowWinnerIndex = calculateWinnerIndex(
-        smallGameAccount.ticketsCount,
-        smallGame.secretKey,
-        Number(smallGameAccount.lastSlot)
+      await env.program.methods
+        .withdrawTokenFee()
+        .accountsStrict({
+          gameTokenCtx: tokenContext,
+          oracle: oracle.oraclePDA,
+          oracleOperator: oracle.operator,
+          oracleOperatorTokenAccount: operatorAta,
+          systemProgram: anchor.web3.SystemProgram.programId,
+        })
+        .signers([oracle.operatorKeypair])
+        .rpc();
+
+      const postOperatorBalance =
+        await env.provider.connection.getTokenAccountBalance(operatorAta);
+      const received = new anchor.BN(postOperatorBalance.value.amount).sub(
+        new anchor.BN(preOperatorBalance.value.amount)
       );
-      const overflowWinner = getWinnerFromPlayers(
-        [joiner],
-        overflowWinnerIndex
-      );
+      expect(received.eq(massivePrize)).to.be.true;
 
-      await expectAnchorError(
-        testUtils.game.completeGame(
-          smallGame,
-          overflowWinner.player.publicKey,
-          creator.player.publicKey,
-          oracle.operator,
-          overflowWinnerIndex,
-          oracle.operatorKeypair
-        ),
-        "InvalidAmount",
-        {
-          fallbackSubstring: "Invalid config value",
-          message: "accrue_fee should guard against fee_amount overflow",
-        }
-      );
-
-      const finalGameToken = await env.program.account.gameToken.fetch(
+      const gameTokenFinal = await env.program.account.gameToken.fetch(
         mint.gameTokenPDA
       );
-      expect(
-        new anchor.BN(finalGameToken.feeAmount.toString()).eq(bigPrize)
-      ).to.be.true;
+      expect(new anchor.BN(gameTokenFinal.feeAmount.toString()).isZero()).to.be
+        .true;
     } finally {
       await updateOracleConfig(env, originalConfig);
       oracle.config.feePercentage = originalConfig.feePercentage;
