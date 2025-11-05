@@ -5,13 +5,14 @@ use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 use crate::error::ErrorCode;
 use crate::state::*;
 use crate::utils::is_supported_token_program;
+use crate::OracleConfig;
 
 // =============================================================================
 // ORACLE MANAGEMENT
 // =============================================================================
 
 #[derive(Accounts)]
-#[instruction(fee_percentage: u8, oracle_buffer_time: u64, max_tickets: u32, max_timeout: u64, min_timeout: u64)]
+#[instruction(config: OracleConfig)]
 pub struct InitializeOracle<'info> {
     #[account(
         init,
@@ -19,10 +20,10 @@ pub struct InitializeOracle<'info> {
         space = ORACLE_SIZE,
         seeds = [ORACLE_SEED],
         bump,
-        constraint = Oracle::is_valid_fee_percentage(fee_percentage) @ ErrorCode::InvalidAmount,
-        constraint = Oracle::is_valid_buffer_time(oracle_buffer_time) @ ErrorCode::OracleBufferTooSmall,
-        constraint = Oracle::is_valid_timeout(max_timeout, min_timeout) @ ErrorCode::InvalidTimeout,
-        constraint = Oracle::is_valid_tickets_count(max_tickets) @ ErrorCode::InvalidTicketsCount,
+        constraint = Oracle::is_valid_fee_percentage(config.fee_percentage) @ ErrorCode::InvalidAmount,
+        constraint = Oracle::is_valid_buffer_time(config.oracle_buffer_time) @ ErrorCode::OracleBufferTooSmall,
+        constraint = Oracle::is_valid_timeout(config.max_timeout, config.min_timeout) @ ErrorCode::InvalidTimeout,
+        constraint = Oracle::is_valid_tickets_count(config.max_tickets) @ ErrorCode::InvalidTicketsCount,
     )]
     pub oracle: Account<'info, Oracle>,
 
@@ -33,17 +34,17 @@ pub struct InitializeOracle<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(fee_percentage: u8, oracle_buffer_time: u64, max_tickets: u32, max_timeout: u64, min_timeout: u64)]
+#[instruction(config: OracleConfig)]
 pub struct UpdateOracle<'info> {
     #[account(
         mut,
         seeds = [ORACLE_SEED],
         bump,
         constraint = oracle.is_authorized_operator(&old_oracle_operator.key()) @ ErrorCode::UnauthorizedOperator,
-        constraint = Oracle::is_valid_fee_percentage(fee_percentage) @ ErrorCode::InvalidAmount,
-        constraint = Oracle::is_valid_buffer_time(oracle_buffer_time) @ ErrorCode::OracleBufferTooSmall,
-        constraint = Oracle::is_valid_timeout(max_timeout, min_timeout) @ ErrorCode::InvalidTimeout,
-        constraint = Oracle::is_valid_tickets_count(max_tickets) @ ErrorCode::InvalidTicketsCount,
+        constraint = Oracle::is_valid_fee_percentage(config.fee_percentage) @ ErrorCode::InvalidAmount,
+        constraint = Oracle::is_valid_buffer_time(config.oracle_buffer_time) @ ErrorCode::OracleBufferTooSmall,
+        constraint = Oracle::is_valid_timeout(config.max_timeout, config.min_timeout) @ ErrorCode::InvalidTimeout,
+        constraint = Oracle::is_valid_tickets_count(config.max_tickets) @ ErrorCode::InvalidTicketsCount,
     )]
     pub oracle: Account<'info, Oracle>,
 
