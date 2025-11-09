@@ -2,22 +2,29 @@ name: Contracts TypeScript CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   contracts-types:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-      - uses: oven-sh/setup-bun@v1
+      - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
+      - name: Restore Bun cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-install-${{ runner.os }}-${{ hashFiles('bun.lock', 'package.json') }}
+          restore-keys: |
+            bun-install-${{ runner.os }}-
       - name: Install dependencies
         run: bun install --frozen-lockfile
-      - name: Typecheck tests
-        run: bunx tsc -p tsconfig.json --noEmit
+      - name: Typecheck
+        run: bun x tsc -p tsconfig.json --noEmit
