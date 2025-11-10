@@ -50,10 +50,10 @@ module.exports = async function (provider: anchor.AnchorProvider) {
     // Initialize Oracle parameters
     const config = {
       feePercentage: 1, // 1% fee
-  oracleBufferTime: 900, // 15 minutes in seconds
+      oracleBufferTime: 1800, // 30 minutes in seconds
       maxTickets: 100,
       maxTimeout: 86400, // 1 day in seconds
-      minTimeout: 60, // 1 minute in seconds
+      minTimeout: 300, // 5 minutes in seconds
     };
 
     const oracleOperatorPubkey =
