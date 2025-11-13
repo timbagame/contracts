@@ -54,7 +54,7 @@ assert(calculatedHash === originalCommittedHash);
 **When can you recover funds?**
 
 - If a game is not completed by the oracle within the buffer time
-- Typical buffer time: 2-5 minutes after game timeout (configurable on the oracle)
+ - Typical buffer time: 24 hours after game timeout (configurable on the oracle)
 - Only available for games that haven't been completed
 
 **How to recover:**
