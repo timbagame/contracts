@@ -8,8 +8,10 @@ import {
   awaitBufferExpiry,
   awaitOracleCompletionReady,
   giveawayGameConfig,
+  getClockUnixTimestamp,
   getOraclePublicKey,
   expectAnchorError,
+  toNumber,
 } from "./test-helpers";
 
 // Verifies that closing an unused giveaway refunds the prize to creator
@@ -129,6 +131,80 @@ describe("Giveaway Close Refund", () => {
       )
     ).to.be.true;
   }).timeout(45000);
+
+  it("allows creator to close giveaway before timeout when min tickets not reached", async () => {
+    const { oracle, mint, players } = await testUtils.quickSetup();
+    const [creator, participant] = players;
+
+    const prizeAmount = new anchor.BN(3_000_000);
+    const timeoutSeconds = 60;
+    const minTickets = 3;
+
+    const gameConfig = giveawayGameConfig({
+      amount: prizeAmount,
+      maxTickets: 5,
+      minTickets,
+      timeout: timeoutSeconds,
+    });
+
+    const beforeBal = await env.provider.connection.getTokenAccountBalance(
+      creator.playerTokenAccount.address
+    );
+
+    const gameData = await testUtils.game.createGame(
+      gameConfig,
+      creator.player,
+      mint.mint
+    );
+
+    await testUtils.game.joinGame(gameData.gamePDA, participant.player);
+
+    const gameAccount = await testUtils.game.fetchGame(gameData.gamePDA);
+    expect(gameAccount.ticketsCount).to.equal(1);
+    expect(toNumber(gameAccount.minTickets)).to.equal(minTickets);
+
+    const now = await getClockUnixTimestamp(env.provider.connection);
+    const timeoutAt = toNumber(gameAccount.createdAt) + timeoutSeconds;
+    expect(now).to.be.lessThan(timeoutAt);
+
+    const oraclePubkey = getOraclePublicKey(oracle);
+    const derived = await deriveGameAccounts(env.program, gameData.gamePDA, {
+      player: creator.player.publicKey,
+      tokenMint: mint.mint,
+    });
+
+    if (!derived.playerTokenAccount) {
+      throw new Error("Missing creator token account for giveaway early close");
+    }
+
+    await env.program.methods
+      .closeGame()
+      .accountsStrict({
+        game: gameData.gamePDA,
+        creator: creator.player.publicKey,
+        oracle: oraclePubkey,
+        gameTokenCtx: toGameTokenContext(derived),
+        creatorTokenAccount: derived.playerTokenAccount,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .signers([creator.player])
+      .rpc();
+
+    const afterBal = await env.provider.connection.getTokenAccountBalance(
+      creator.playerTokenAccount.address
+    );
+
+    expect(
+      new anchor.BN(afterBal.value.amount).eq(
+        new anchor.BN(beforeBal.value.amount)
+      )
+    ).to.be.true;
+
+    const closed = await env.provider.connection.getAccountInfo(
+      gameData.gamePDA
+    );
+    expect(closed).to.be.null;
+  }).timeout(60000);
 
   it("should allow closing a giveaway with active players once the buffer expires", async () => {
     const { oracle, mint, players } = await testUtils.quickSetup();
