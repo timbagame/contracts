@@ -10,7 +10,7 @@ export type Timba = {
     "name": "timba",
     "version": "0.1.3",
     "spec": "0.1.0",
-    "description": "Created with Anchor"
+    "description": "Timba on-chain game contracts built with Anchor"
   },
   "instructions": [
     {
