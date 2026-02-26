@@ -176,7 +176,7 @@ assert(calculatedHash === originalCommittedHash);
 
 - **Private key compromise** → Use secure wallets and good practices
 - **Phishing attacks** → Always verify you're using the official interface
-- **Impermanent loss** → Only risk the amount of your stake, nothing more
+- **Loss of stake** → Only risk the amount of your stake, nothing more
 
 ## Getting Help
 

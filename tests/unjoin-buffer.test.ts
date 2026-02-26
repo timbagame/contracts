@@ -45,8 +45,6 @@ describe("Unjoin Buffer Behavior", () => {
     // Rejoin so we can confirm the post-buffer path still works as expected
     await testUtils.game.joinGame(gameData.gamePDA, creator.player);
 
-    updatedGameAccount = await testUtils.game.fetchGame(gameData.gamePDA);
-
     // Fast-forward time by manipulating Clock via sleep to exceed timeout + buffer
     const gameAccount = await testUtils.game.fetchGame(gameData.gamePDA);
     await awaitBufferExpiry(gameAccount, oracle.config);
