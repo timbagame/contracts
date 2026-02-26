@@ -60,7 +60,7 @@ anchor migrate
 
 ## 5. Post-Deployment Checklist
 
-- `solana program show BpdzqWdNJfgeVCsFHppS4WgeRZSRxt5iSj6xH4QdeR7t`
+- `solana program show 32Jr4JnXWvqq9GqPQynkooHsszaucUUvZfNLh2hdX2L5`
 - Confirm the oracle account was created with the intended operator:
   ```bash
   anchor account oracle $(anchor keys list timba --program-id)
@@ -118,6 +118,6 @@ When you need to retire the program, follow this sequence to halt new activity, 
 
 5. **Close the program (upgradeable loader)**
    ```
-   solana program close BpdzqWdNJfgeVCsFHppS4WgeRZSRxt5iSj6xH4QdeR7t --recipient <SAFE_RECIPIENT_PUBKEY>
+   solana program close 32Jr4JnXWvqq9GqPQynkooHsszaucUUvZfNLh2hdX2L5 --recipient <SAFE_RECIPIENT_PUBKEY>
    ```
    The recipient address receives the reclaimed rent from remaining program accounts. Run this from the workstation holding the deployer/upgrade authority key, then remove that key from the machine and return it to offline storage.
