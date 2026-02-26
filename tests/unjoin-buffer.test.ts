@@ -7,6 +7,9 @@ import {
   coinflipGameConfig,
 } from "./test-helpers";
 
+const SHORT_TIMEOUT_SECONDS = 5;
+const TEST_TIMEOUT_MS = 60000;
+
 // Tests unjoin behavior relative to oracle buffer expiration
 
 describe("Unjoin Buffer Behavior", () => {
@@ -23,7 +26,7 @@ describe("Unjoin Buffer Behavior", () => {
     const { oracle, mint, players } = await testUtils.quickSetup();
     const [creator] = players;
 
-    const shortTimeout = new anchor.BN(5); // timeout is in seconds
+    const shortTimeout = new anchor.BN(SHORT_TIMEOUT_SECONDS); // timeout is in seconds
 
     const gameConfig = coinflipGameConfig({
       timeout: shortTimeout,
@@ -55,13 +58,13 @@ describe("Unjoin Buffer Behavior", () => {
     await testUtils.game.unjoinGame(gameData.gamePDA, creator.player);
     updatedGameAccount = await testUtils.game.fetchGame(gameData.gamePDA);
     expect(updatedGameAccount.ticketsCount).to.equal(0);
-  }).timeout(60000);
+  }).timeout(TEST_TIMEOUT_MS);
 
   it("should reject unjoin before buffer for a full game, then allow sequential unjoins after buffer", async () => {
     const { oracle, mint, players } = await testUtils.quickSetup();
     const [creator, secondPlayer] = players;
 
-    const shortTimeout = new anchor.BN(5); // timeout is in seconds
+    const shortTimeout = new anchor.BN(SHORT_TIMEOUT_SECONDS); // timeout is in seconds
 
     const gameConfig = coinflipGameConfig({
       timeout: shortTimeout,
@@ -99,13 +102,13 @@ describe("Unjoin Buffer Behavior", () => {
     await testUtils.game.unjoinGame(gameData.gamePDA, secondPlayer.player);
     gameAccount = await testUtils.game.fetchGame(gameData.gamePDA);
     expect(gameAccount.ticketsCount).to.equal(0);
-  }).timeout(60000);
+  }).timeout(TEST_TIMEOUT_MS);
 
   it("should allow one player to unjoin before buffer in underfilled state and another after buffer", async () => {
     const { oracle, mint, players } = await testUtils.quickSetup();
     const [creator, secondPlayer] = players;
 
-    const shortTimeout = new anchor.BN(5); // timeout is in seconds
+    const shortTimeout = new anchor.BN(SHORT_TIMEOUT_SECONDS); // timeout is in seconds
 
     const gameConfig = coinflipGameConfig({
       timeout: shortTimeout,
@@ -132,5 +135,5 @@ describe("Unjoin Buffer Behavior", () => {
     await testUtils.game.unjoinGame(gameData.gamePDA, secondPlayer.player);
     gameAccount = await testUtils.game.fetchGame(gameData.gamePDA);
     expect(gameAccount.ticketsCount).to.equal(0);
-  }).timeout(60000);
+  }).timeout(TEST_TIMEOUT_MS);
 });
