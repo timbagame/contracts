@@ -104,12 +104,6 @@ assert(calculatedHash === originalCommittedHash);
 - **Fairness**: Winner selected randomly from all participants
 - **Payout**: Winner receives creator's contributed amount (minus fees)
 
-### Snowball Games (Progressive)
-
-- **Risk**: Players can join multiple times, increasing total pot
-- **Fairness**: More entries = higher chance to win (but not guaranteed)
-- **Payout**: Winner receives entire accumulated pot (minus fees)
-
 ## Fee Structure
 
 **Platform Fees:**
