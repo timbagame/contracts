@@ -62,3 +62,4 @@ bun run lint:fix
 
 - [MAINNET_DEPLOYMENT.md](./MAINNET_DEPLOYMENT.md) - deployment and shutdown checklist.
 - [SECURITY.md](./SECURITY.md) - security model and user guidance.
+- [LICENSE](./LICENSE) - Business Source License 1.1 (BUSL-1.1).

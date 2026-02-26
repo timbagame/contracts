@@ -2,6 +2,7 @@
 name         = "timba"
 version      = "0.1.3"
 description  = "Timba on-chain game contracts built with Anchor"
+license      = "BUSL-1.1"
 edition      = "2021"
 
 [lib]
