@@ -5,8 +5,10 @@ import {
   TestEnvironment,
   awaitBufferExpiry,
   coinflipGameConfig,
+  expectAnchorError,
 } from "./test-helpers";
 
+// Test game timeouts are configured in seconds.
 const SHORT_TIMEOUT_SECONDS = 5;
 const TEST_TIMEOUT_MS = 60000;
 
@@ -26,7 +28,7 @@ describe("Unjoin Buffer Behavior", () => {
     const { oracle, mint, players } = await testUtils.quickSetup();
     const [creator] = players;
 
-    const shortTimeout = new anchor.BN(SHORT_TIMEOUT_SECONDS); // timeout is in seconds
+    const shortTimeout = new anchor.BN(SHORT_TIMEOUT_SECONDS);
 
     const gameConfig = coinflipGameConfig({
       timeout: shortTimeout,
@@ -64,7 +66,7 @@ describe("Unjoin Buffer Behavior", () => {
     const { oracle, mint, players } = await testUtils.quickSetup();
     const [creator, secondPlayer] = players;
 
-    const shortTimeout = new anchor.BN(SHORT_TIMEOUT_SECONDS); // timeout is in seconds
+    const shortTimeout = new anchor.BN(SHORT_TIMEOUT_SECONDS);
 
     const gameConfig = coinflipGameConfig({
       timeout: shortTimeout,
@@ -81,14 +83,14 @@ describe("Unjoin Buffer Behavior", () => {
     await testUtils.game.joinGame(gameData.gamePDA, creator.player);
     await testUtils.game.joinGame(gameData.gamePDA, secondPlayer.player);
 
-    await testUtils.game
-      .unjoinGame(gameData.gamePDA, creator.player)
-      .then(() =>
-        expect.fail("Full game should block unjoin before timeout + buffer")
-      )
-      .catch((e) => {
-        expect(e.toString()).to.include("OracleBufferNotExpired");
-      });
+    await expectAnchorError(
+      testUtils.game.unjoinGame(gameData.gamePDA, creator.player),
+      "OracleBufferNotExpired",
+      {
+        fallbackSubstring: "OracleBufferNotExpired",
+        message: "Full game should block unjoin before timeout + buffer",
+      }
+    );
 
     let gameAccount = await testUtils.game.fetchGame(gameData.gamePDA);
     expect(gameAccount.ticketsCount).to.equal(2);
@@ -108,7 +110,7 @@ describe("Unjoin Buffer Behavior", () => {
     const { oracle, mint, players } = await testUtils.quickSetup();
     const [creator, secondPlayer] = players;
 
-    const shortTimeout = new anchor.BN(SHORT_TIMEOUT_SECONDS); // timeout is in seconds
+    const shortTimeout = new anchor.BN(SHORT_TIMEOUT_SECONDS);
 
     const gameConfig = coinflipGameConfig({
       timeout: shortTimeout,
