@@ -23,7 +23,7 @@ describe("Unjoin Buffer Behavior", () => {
     const { oracle, mint, players } = await testUtils.quickSetup();
     const [creator] = players;
 
-    const shortTimeout = new anchor.BN(5); // very short timeout
+    const shortTimeout = new anchor.BN(5); // timeout is in seconds
 
     const gameConfig = coinflipGameConfig({
       timeout: shortTimeout,
@@ -37,7 +37,9 @@ describe("Unjoin Buffer Behavior", () => {
 
     await testUtils.game.joinGame(gameData.gamePDA, creator.player);
 
-    // Attempt unjoin before timeout+buffer – should succeed because game cannot be completed
+    // This succeeds before timeout+buffer because the game is underfilled, so it
+    // is not waiting for oracle completion. For completion-ready games, unjoin is
+    // blocked until timeout + oracle buffer has elapsed.
     await testUtils.game.unjoinGame(gameData.gamePDA, creator.player);
     let updatedGameAccount = await testUtils.game.fetchGame(gameData.gamePDA);
     expect(updatedGameAccount.ticketsCount).to.equal(0);
@@ -53,5 +55,82 @@ describe("Unjoin Buffer Behavior", () => {
     await testUtils.game.unjoinGame(gameData.gamePDA, creator.player);
     updatedGameAccount = await testUtils.game.fetchGame(gameData.gamePDA);
     expect(updatedGameAccount.ticketsCount).to.equal(0);
+  }).timeout(60000);
+
+  it("should reject unjoin before buffer for a full game, then allow sequential unjoins after buffer", async () => {
+    const { oracle, mint, players } = await testUtils.quickSetup();
+    const [creator, secondPlayer] = players;
+
+    const shortTimeout = new anchor.BN(5); // timeout is in seconds
+
+    const gameConfig = coinflipGameConfig({
+      timeout: shortTimeout,
+      minTickets: 2,
+      maxTickets: 2,
+    });
+
+    const gameData = await testUtils.game.createGame(
+      gameConfig,
+      creator.player,
+      mint.mint
+    );
+
+    await testUtils.game.joinGame(gameData.gamePDA, creator.player);
+    await testUtils.game.joinGame(gameData.gamePDA, secondPlayer.player);
+
+    await testUtils.game
+      .unjoinGame(gameData.gamePDA, creator.player)
+      .then(() =>
+        expect.fail("Full game should block unjoin before timeout + buffer")
+      )
+      .catch((e) => {
+        expect(e.toString()).to.include("OracleBufferNotExpired");
+      });
+
+    let gameAccount = await testUtils.game.fetchGame(gameData.gamePDA);
+    expect(gameAccount.ticketsCount).to.equal(2);
+
+    await awaitBufferExpiry(gameAccount, oracle.config);
+
+    await testUtils.game.unjoinGame(gameData.gamePDA, creator.player);
+    gameAccount = await testUtils.game.fetchGame(gameData.gamePDA);
+    expect(gameAccount.ticketsCount).to.equal(1);
+
+    await testUtils.game.unjoinGame(gameData.gamePDA, secondPlayer.player);
+    gameAccount = await testUtils.game.fetchGame(gameData.gamePDA);
+    expect(gameAccount.ticketsCount).to.equal(0);
+  }).timeout(60000);
+
+  it("should allow one player to unjoin before buffer in underfilled state and another after buffer", async () => {
+    const { oracle, mint, players } = await testUtils.quickSetup();
+    const [creator, secondPlayer] = players;
+
+    const shortTimeout = new anchor.BN(5); // timeout is in seconds
+
+    const gameConfig = coinflipGameConfig({
+      timeout: shortTimeout,
+      minTickets: 3,
+      maxTickets: 3,
+    });
+
+    const gameData = await testUtils.game.createGame(
+      gameConfig,
+      creator.player,
+      mint.mint
+    );
+
+    await testUtils.game.joinGame(gameData.gamePDA, creator.player);
+    await testUtils.game.joinGame(gameData.gamePDA, secondPlayer.player);
+
+    // Underfilled (2 < min 3), so early unjoin is allowed.
+    await testUtils.game.unjoinGame(gameData.gamePDA, creator.player);
+    let gameAccount = await testUtils.game.fetchGame(gameData.gamePDA);
+    expect(gameAccount.ticketsCount).to.equal(1);
+
+    await awaitBufferExpiry(gameAccount, oracle.config);
+
+    await testUtils.game.unjoinGame(gameData.gamePDA, secondPlayer.player);
+    gameAccount = await testUtils.game.fetchGame(gameData.gamePDA);
+    expect(gameAccount.ticketsCount).to.equal(0);
   }).timeout(60000);
 });
