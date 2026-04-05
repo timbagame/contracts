@@ -1,37 +1,45 @@
-# Repository Guidelines
+## Approach
 
-## Project Structure & Module Organization
+- Think before acting. Read existing files before writing code.
+- Be concise in output but thorough in reasoning.
+- Prefer editing over rewriting whole files.
+- Do not re-read files you have already read unless the file may have changed.
+- Test your code before declaring done.
+- No sycophantic openers or closing fluff.
+- Keep solutions simple and direct.
+- User instructions always override this file.
 
-- programs/timba/src: Rust/Anchor program (lib.rs, state.rs, error.rs, events.rs, instructions/).
-- tests: TypeScript test suites run via Anchor + ts-mocha (e.g., core.test.ts, security.test.ts).
-- scripts: Dev helpers (update-idl.ts).
-- migrations, .anchor, target: Anchor artifacts (IDL in target/idl, generated types in target/types).
-- Anchor.toml: Program IDs, provider, and test runner config.
+## Output
 
-## Build, Test, and Development Commands
+- Return code first. Explanation after, only if non-obvious.
+- No inline prose. Use comments sparingly - only where logic is unclear.
+- No boilerplate unless explicitly requested.
 
-- Build: `anchor build` — compiles the on-chain program and regenerates IDL/types.
-- Test: `anchor test` — runs ts-mocha with config from `Anchor.toml` against `tests/**/*.test.ts`.
-- Sync IDL: `bun run update-idl` — copies `target/idl` and `target/types` to sibling consumers.
+## Code Rules
 
-## Coding Style & Naming Conventions
+- Simplest working solution. No over-engineering.
+- No abstractions for single-use operations.
+- No speculative features or "you might also want..."
+- Read the file before modifying it. Never edit blind.
+- No docstrings or type annotations on code not being changed.
+- No error handling for scenarios that cannot happen.
+- Three similar lines is better than a premature abstraction.
 
-- Rust: follow rustfmt defaults (snake_case modules/functions, CamelCase types). Prefer small, focused instruction handlers under `instructions/`. Run `cargo fmt` locally before committing.
-- TypeScript: Prettier with 2-space indent. Run `bun run lint` (check) and `bun run lint:fix` (write). Use camelCase for variables/functions and PascalCase for types.
-- Files: tests as `*.test.ts`; instruction files as verb_noun.rs (e.g., `initialize_oracle.rs`).
+## Review Rules
 
-## Testing Guidelines
+- State the bug. Show the fix. Stop.
+- No suggestions beyond the scope of the review.
+- No compliments on the code before or after the review.
 
-- Framework: ts-mocha + chai configured via `Anchor.toml`.
-- Scope: keep unit-like helpers in `tests/test-helpers.ts`; add scenario tests alongside existing suites (core, security, game-types, edge-cases, advanced).
-- Run: `anchor test`. Long timeouts are preconfigured; avoid adding `.only` in committed tests.
+## Debugging Rules
 
-## Commit & Pull Request Guidelines
+- Never speculate about a bug without reading the relevant code first.
+- State what you found, where, and the fix. One pass.
+- If cause is unclear: say so. Do not guess.
 
-- Commits: imperative, clear summaries (e.g., “Refactor player games initialization; simplify filter checks”). Group related changes; avoid noisy reformat-only commits.
-- PRs: include description, rationale, and links to issues; list commands run (`anchor build`, `anchor test`), and any state migrations. Attach logs or screenshots for notable behavior changes.
-- Requirements: updated docs when touching program IDs, instruction interfaces, or security-sensitive logic (see `SECURITY.md`).
+## Simple Formatting
 
-## Security & Configuration Tips
-
-- Program IDs and cluster/wallet are set in `Anchor.toml` (`[provider]`). Do not commit private keys. For non-local clusters, verify PDAs and addresses before deploy (`anchor deploy --no-idl`).
+- No em dashes, smart quotes, or decorative Unicode symbols.
+- Plain hyphens and straight quotes only.
+- Natural language characters (accented letters, CJK, etc.) are fine when the content requires them.
+- Code output must be copy-paste safe.
