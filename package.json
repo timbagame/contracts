@@ -19,7 +19,7 @@
     "@types/mocha": "^10.0.10",
     "chai": "^4.5.0",
     "fast-check": "^4.5.3",
-    "mocha": "^10.8.2",
+    "mocha": "^11.7.5",
     "prettier": "^2.8.8",
     "ts-mocha": "^10.1.0",
     "ts-node": "^10.9.2",
