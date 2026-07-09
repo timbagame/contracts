@@ -5,7 +5,7 @@ use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 use crate::error::ErrorCode;
 use crate::state::*;
 use crate::utils::is_supported_token_program;
-use crate::OracleConfig;
+use crate::{GameConfig, OracleConfig, TokenConfig};
 
 // =============================================================================
 // ORACLE MANAGEMENT
@@ -57,7 +57,7 @@ pub struct UpdateOracle<'info> {
 // =============================================================================
 
 #[derive(Accounts)]
-#[instruction(min_amount: u64, enabled: bool)]
+#[instruction(config: TokenConfig)]
 pub struct InitializeToken<'info> {
     #[account(
         init,
@@ -100,7 +100,7 @@ pub struct InitializeToken<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(min_amount: u64, enabled: bool)]
+#[instruction(config: TokenConfig)]
 pub struct UpdateToken<'info> {
     #[account(
         mut,
@@ -241,7 +241,7 @@ impl<'info> GameTokenContext<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(game_type: GameType, amount: u64, max_tickets: u32, min_tickets: u32, timeout: u64, is_private: bool, random_hash: [u8; 32])]
+#[instruction(config: GameConfig, random_hash: [u8; 32])]
 pub struct InitializeGame<'info> {
     #[account(
         init,
@@ -249,14 +249,14 @@ pub struct InitializeGame<'info> {
         // Base + participant_hashes vec prefix + 8 bytes per ticket
         space = GAME_BASE_SIZE
             + 4
-            + (max_tickets as usize * 8),
+            + (config.max_tickets as usize * 8),
         seeds = [GAME_SEED, random_hash.as_ref()],
         bump,
         constraint = game_token_ctx.game_token.is_enabled() @ ErrorCode::TokenNotEnabled,
-        constraint = game_token_ctx.game_token.meets_min_amount(amount) @ ErrorCode::InvalidAmount,
-        constraint = oracle.is_valid_timeout_range(timeout) @ ErrorCode::InvalidTimeout,
-        constraint = Game::is_valid_tickets_count(max_tickets, min_tickets, oracle.max_tickets) @ ErrorCode::InvalidTicketsCount,
-        constraint = Game::is_valid_game_type_tickets(game_type, max_tickets, min_tickets) @ ErrorCode::InvalidTicketsCount,
+        constraint = game_token_ctx.game_token.meets_min_amount(config.amount) @ ErrorCode::InvalidAmount,
+        constraint = oracle.is_valid_timeout_range(config.timeout) @ ErrorCode::InvalidTimeout,
+        constraint = Game::is_valid_tickets_count(config.max_tickets, config.min_tickets, oracle.max_tickets) @ ErrorCode::InvalidTicketsCount,
+        constraint = Game::is_valid_game_type_tickets(config.game_type, config.max_tickets, config.min_tickets) @ ErrorCode::InvalidTicketsCount,
     )]
     pub game: Account<'info, Game>,
     #[account(mut)]

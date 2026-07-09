@@ -244,7 +244,7 @@ impl GameToken {
             ];
             transfer_checked(
                 CpiContext::new_with_signer(
-                    token_program,
+                    token_program.key(),
                     TransferChecked {
                         from,
                         mint: token_mint,
@@ -259,7 +259,7 @@ impl GameToken {
         } else {
             transfer_checked(
                 CpiContext::new(
-                    token_program,
+                    token_program.key(),
                     TransferChecked {
                         from,
                         mint: token_mint,
@@ -288,7 +288,7 @@ impl GameToken {
             &[self.vault_bump],
         ];
         close_account(CpiContext::new_with_signer(
-            token_program,
+            token_program.key(),
             CloseAccount {
                 account: vault_account,
                 destination,
