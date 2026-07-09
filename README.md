@@ -23,7 +23,7 @@ For the full trust model and security details, see [SECURITY.md](./SECURITY.md).
 
 - Rust
 - Solana CLI
-- Anchor CLI (`0.32.1`)
+- Anchor CLI
 - Node.js
 - Bun
 

@@ -4,8 +4,8 @@ Follow this checklist when deploying the Anchor program to Solana mainnet-beta.
 
 ## Prerequisites
 
-- Anchor CLI `v0.32.1` (matches `Anchor.toml`)
-- Solana CLI `v2.3.13` configured with a funded mainnet wallet
+- Anchor CLI
+- Solana CLI configured with a funded mainnet wallet
 - Program keypair generated and recorded in `Anchor.toml`
 - Oracle operator keypair JSON file (distinct from deployer if desired)
 - Fresh mainnet deployer keypair created solely for production; store the secret key offline (hardware wallet or encrypted cold storage) and keep redundant, secure backups
