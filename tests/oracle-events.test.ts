@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import * as anchor from "@coral-xyz/anchor";
+import * as anchor from "@anchor-lang/core";
 import { TestEnvironment, TestUtils, captureEvent } from "./test-helpers";
 
 describe("Oracle Events", () => {

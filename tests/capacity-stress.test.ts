@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import * as anchor from "@coral-xyz/anchor";
+import * as anchor from "@anchor-lang/core";
 import { TestUtils, TestEnvironment, coinflipGameConfig } from "./test-helpers";
 
 // Ensures large participant sets do not exhaust on-chain Vec capacity

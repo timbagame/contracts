@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import * as anchor from "@coral-xyz/anchor";
+import * as anchor from "@anchor-lang/core";
 import { TestUtils, TestEnvironment, coinflipGameConfig } from "./test-helpers";
 
 // Config validation constraints (tickets and timeout) and invalid oracle updates
