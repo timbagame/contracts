@@ -15,6 +15,9 @@ cpi = ["no-entrypoint"]
 no-entrypoint = []
 no-idl = []
 no-log-ix-name = []
+anchor-debug = []
+custom-heap = []
+custom-panic = []
 idl-build = [
   "anchor-lang/idl-build",
   "anchor-spl/idl-build",
@@ -25,3 +28,6 @@ idl-build = [
 anchor-lang = { workspace = true }
 anchor-spl  = { workspace = true, features = ["token", "associated_token", "token_2022"] }
 solana-sha256-hasher = { workspace = true }
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(target_os, values("solana"))'] }
