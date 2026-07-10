@@ -9,7 +9,7 @@ use anchor_lang::prelude::*;
 // =============================================================================
 
 mod error;
-mod events;
+pub mod events;
 mod instructions;
 pub mod state;
 pub mod utils;
