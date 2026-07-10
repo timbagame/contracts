@@ -12,7 +12,7 @@ pub fn handler(ctx: Context<super::CloseToken>) -> Result<()> {
     ctx.accounts.game_token.close_vault_account(
         ctx.accounts.game_token_account.to_account_info(),
         ctx.accounts.oracle_operator.to_account_info(),
-        ctx.accounts.game_vault.clone(),
+        ctx.accounts.game_vault.to_account_info(),
         ctx.accounts.token_program.to_account_info(),
     )?;
 
