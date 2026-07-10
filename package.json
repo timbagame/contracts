@@ -1,6 +1,6 @@
 {
   "name": "@timbagame/contracts",
-  "version": "0.1.4",
+  "version": "0.2.0",
   "devDependencies": {
     "@solana/spl-token": "^0.4.15",
     "@types/bn.js": "^5.2.0",

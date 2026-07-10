@@ -1,7 +1,7 @@
 use anchor_lang::prelude::Pubkey;
 use timba::{
     state::{Game, GameToken, GameType, Oracle},
-    utils::{is_supported_token_program, participant_hash},
+    utils::is_supported_token_program,
     GameConfig,
 };
 
@@ -156,32 +156,28 @@ fn participant_accounting_guards_overflow_and_capacity() {
         max_tickets: 4,
         ..Game::default()
     };
-    for hash in 1..=3 {
-        game.add_player_to_game(hash).unwrap();
+    let players: Vec<_> = (0..3).map(|_| Pubkey::new_unique()).collect();
+    for player in &players {
+        game.add_player_to_game(*player).unwrap();
     }
-    assert!(game.add_player_to_game(4).is_err());
-    assert_eq!(game.remove_participant(2).unwrap(), 1);
-    assert!(!game.contains_participant(2));
+    assert!(game.add_player_to_game(Pubkey::new_unique()).is_err());
+    assert_eq!(game.remove_participant(&players[1]).unwrap(), 1);
+    assert!(!game.contains_participant(&players[1]));
 
     let mut capacity = Game {
         ticket_amount: 750_000,
         max_tickets: 1_024,
         ..Game::default()
     };
-    for hash in 1..=1_024 {
-        capacity.add_player_to_game(hash).unwrap();
+    for _ in 0..1_024 {
+        capacity.add_player_to_game(Pubkey::new_unique()).unwrap();
     }
     assert_eq!(capacity.total_amount, 768_000_000);
-    assert!(capacity.add_player_to_game(1_025).is_err());
+    assert!(capacity.add_player_to_game(Pubkey::new_unique()).is_err());
 }
 
 #[test]
-fn participant_hash_and_token_program_helpers_are_stable() {
-    let game = Pubkey::new_unique();
-    let player = Pubkey::new_unique();
-    let hash = participant_hash(&game, &player);
-    assert_eq!(hash, participant_hash(&game, &player));
-    assert_ne!(hash, participant_hash(&game, &Pubkey::new_unique()));
+fn token_program_helpers_are_stable() {
     assert!(is_supported_token_program(&anchor_spl::token::ID));
     assert!(is_supported_token_program(&anchor_spl::token_2022::ID));
     assert!(!is_supported_token_program(&Pubkey::new_unique()));

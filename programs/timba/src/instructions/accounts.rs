@@ -246,10 +246,10 @@ pub struct InitializeGame<'info> {
     #[account(
         init,
         payer = creator,
-        // Base + participant_hashes vec prefix + 8 bytes per ticket
+        // Base + participants vec prefix + 32 bytes per ticket
         space = GAME_BASE_SIZE
             + 4
-            + (config.max_tickets as usize * 8),
+            + (config.max_tickets as usize * 32),
         seeds = [GAME_SEED, random_hash.as_ref()],
         bump,
         constraint = game_token_ctx.game_token.is_enabled() @ ErrorCode::TokenNotEnabled,
@@ -324,7 +324,7 @@ pub struct CompleteGame<'info> {
     )]
     pub oracle: Account<'info, Oracle>,
     pub oracle_operator: Signer<'info>,
-    /// CHECK: Validated by merkle proof verification
+    /// CHECK: Validated against the exact participant at the winner index
     #[account(mut)]
     pub winner: UncheckedAccount<'info>,
     /// CHECK: Game creator for rent refund

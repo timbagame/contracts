@@ -2306,8 +2306,8 @@ export type Timba = {
     },
     {
       "code": 7204,
-      "name": "winnerPubkeyHashMismatch",
-      "msg": "Winner hash mismatch"
+      "name": "winnerPubkeyMismatch",
+      "msg": "Winner mismatch"
     },
     {
       "code": 7205,
@@ -2373,6 +2373,11 @@ export type Timba = {
       "code": 7404,
       "name": "tokenFeesOutstanding",
       "msg": "Token fees outstanding"
+    },
+    {
+      "code": 7405,
+      "name": "unsupportedTokenExtension",
+      "msg": "Token extension unsupported"
     }
   ],
   "types": [
@@ -2470,12 +2475,12 @@ export type Timba = {
             "type": "u64"
           },
           {
-            "name": "participantHashes",
+            "name": "participants",
             "docs": [
-              "Exact participant hash list (first 8 bytes of SHA256(\"timba:part:v1\" || game_key || pubkey))"
+              "Exact participant public keys in canonical join order"
             ],
             "type": {
-              "vec": "u64"
+              "vec": "pubkey"
             }
           }
         ]
@@ -2783,7 +2788,7 @@ export type Timba = {
           {
             "name": "feePercentage",
             "docs": [
-              "Percentage of game amount taken as fee (0-100)"
+              "Percentage of game amount taken as fee (0-10)"
             ],
             "type": "u8"
           },
@@ -2829,7 +2834,7 @@ export type Timba = {
           {
             "name": "feePercentage",
             "docs": [
-              "Fee percentage taken from game winnings (0-100)"
+              "Fee percentage taken from game winnings (0-10)"
             ],
             "type": "u8"
           },
@@ -2882,7 +2887,7 @@ export type Timba = {
           {
             "name": "feePercentage",
             "docs": [
-              "Fee percentage taken from game winnings (0-100)"
+              "Fee percentage taken from game winnings (0-10)"
             ],
             "type": "u8"
           },

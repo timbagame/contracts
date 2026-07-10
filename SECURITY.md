@@ -91,10 +91,9 @@ Ready for completion means: max tickets filled, **or** min tickets reached **and
 
 **Participation Tracking:**
 
-- Efficient tracking of player participation without storing full lists
-- Collision mitigation via explicit participant hash list (first 8 bytes of SHA256("timba:part:v1" || game_key || pubkey))
-- Per-game salting prevents cross-game precomputation against player keys
-- Simplified single-mode design (no special alternate states)
+- Exact participant public keys stored in canonical join order
+- Direct public-key comparisons prevent truncated-identity collisions
+- Single participation per public key is enforced on-chain
 
 ## Game Types and Risk Profiles
 
@@ -182,7 +181,7 @@ The deployment procedure and verification commands are documented in [MAINNET_DE
 - **Code bugs** → Comprehensive testing and audits minimize this risk
 - **Upgrade risks** → Program upgrades require proper governance
 - **Solana network issues** → Would affect all Solana applications equally
-- **Token-2022 extensions** → Fee-on-transfer or transfer hooks can break shared-vault accounting; prefer simple enabled mints
+- **Token-2022 extensions** → Mints with extensions are rejected during token initialization; legacy SPL Token and extension-free Token-2022 mints are supported
 - **Shared vault** → All games for a mint share one vault; solvency depends on correct per-game and fee accounting
 
 ### User Risks:

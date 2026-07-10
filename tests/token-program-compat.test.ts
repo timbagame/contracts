@@ -1,6 +1,15 @@
 import { expect } from "chai";
 import * as anchor from "@anchor-lang/core";
-import { TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID } from "@solana/spl-token";
+import {
+  ASSOCIATED_TOKEN_PROGRAM_ID,
+  ExtensionType,
+  TOKEN_PROGRAM_ID,
+  TOKEN_2022_PROGRAM_ID,
+  createInitializeMintInstruction,
+  createInitializeTransferFeeConfigInstruction,
+  getMintLen,
+  getOrCreateAssociatedTokenAccount,
+} from "@solana/spl-token";
 import {
   TestEnvironment,
   TestUtils,
@@ -8,6 +17,8 @@ import {
   getWinnerFromPlayers,
   calculatePayoutBreakdown,
   coinflipGameConfig,
+  expectAnchorError,
+  gameTokenContextFromMint,
 } from "./test-helpers";
 
 // Ensures both legacy SPL Token and token-2022 mints exercise full game flows
@@ -104,5 +115,87 @@ describe("Token program compatibility", () => {
 
   it("supports token-2022 mint flows", async () => {
     await runCoinflipFlow(TOKEN_2022_PROGRAM_ID);
+  });
+
+  it("rejects token-2022 mints with extensions", async () => {
+    const payer = anchor.web3.Keypair.generate();
+    const mint = anchor.web3.Keypair.generate();
+    const mintLength = getMintLen([ExtensionType.TransferFeeConfig]);
+    const rent =
+      await env.provider.connection.getMinimumBalanceForRentExemption(
+        mintLength
+      );
+
+    await env.provider.connection.confirmTransaction(
+      await env.provider.connection.requestAirdrop(
+        payer.publicKey,
+        anchor.web3.LAMPORTS_PER_SOL
+      ),
+      "confirmed"
+    );
+
+    await env.provider.sendAndConfirm(
+      new anchor.web3.Transaction().add(
+        anchor.web3.SystemProgram.createAccount({
+          fromPubkey: payer.publicKey,
+          newAccountPubkey: mint.publicKey,
+          lamports: rent,
+          space: mintLength,
+          programId: TOKEN_2022_PROGRAM_ID,
+        }),
+        createInitializeTransferFeeConfigInstruction(
+          mint.publicKey,
+          payer.publicKey,
+          payer.publicKey,
+          100,
+          1_000n,
+          TOKEN_2022_PROGRAM_ID
+        ),
+        createInitializeMintInstruction(
+          mint.publicKey,
+          6,
+          payer.publicKey,
+          null,
+          TOKEN_2022_PROGRAM_ID
+        )
+      ),
+      [payer, mint]
+    );
+
+    const tokenMint = {
+      mint: mint.publicKey,
+      mintAuthority: payer,
+      gameVaultPDA: anchor.web3.PublicKey.default,
+      gameTokenPDA: anchor.web3.PublicKey.default,
+      tokenProgram: TOKEN_2022_PROGRAM_ID,
+      decimals: 6,
+    };
+    const context = gameTokenContextFromMint(tokenMint, env.program);
+
+    await getOrCreateAssociatedTokenAccount(
+      env.provider.connection,
+      payer,
+      mint.publicKey,
+      context.gameVault,
+      true,
+      undefined,
+      undefined,
+      TOKEN_2022_PROGRAM_ID
+    );
+
+    await expectAnchorError(
+      env.program.methods
+        .initializeToken({ minAmount: new anchor.BN(1_000), enabled: true })
+        .accountsStrict({
+          ...context,
+          oracle: env.oracle!.oraclePDA,
+          oracleOperator: env.oracle!.operator,
+          systemProgram: anchor.web3.SystemProgram.programId,
+          associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+        })
+        .signers([env.oracle!.operatorKeypair])
+        .rpc(),
+      "UnsupportedTokenExtension"
+    );
   });
 });

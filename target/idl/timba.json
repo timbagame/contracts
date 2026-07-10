@@ -2300,8 +2300,8 @@
     },
     {
       "code": 7204,
-      "name": "WinnerPubkeyHashMismatch",
-      "msg": "Winner hash mismatch"
+      "name": "WinnerPubkeyMismatch",
+      "msg": "Winner mismatch"
     },
     {
       "code": 7205,
@@ -2367,6 +2367,11 @@
       "code": 7404,
       "name": "TokenFeesOutstanding",
       "msg": "Token fees outstanding"
+    },
+    {
+      "code": 7405,
+      "name": "UnsupportedTokenExtension",
+      "msg": "Token extension unsupported"
     }
   ],
   "types": [
@@ -2464,12 +2469,12 @@
             "type": "u64"
           },
           {
-            "name": "participant_hashes",
+            "name": "participants",
             "docs": [
-              "Exact participant hash list (first 8 bytes of SHA256(\"timba:part:v1\" || game_key || pubkey))"
+              "Exact participant public keys in canonical join order"
             ],
             "type": {
-              "vec": "u64"
+              "vec": "pubkey"
             }
           }
         ]
@@ -2777,7 +2782,7 @@
           {
             "name": "fee_percentage",
             "docs": [
-              "Percentage of game amount taken as fee (0-100)"
+              "Percentage of game amount taken as fee (0-10)"
             ],
             "type": "u8"
           },
@@ -2823,7 +2828,7 @@
           {
             "name": "fee_percentage",
             "docs": [
-              "Fee percentage taken from game winnings (0-100)"
+              "Fee percentage taken from game winnings (0-10)"
             ],
             "type": "u8"
           },
@@ -2876,7 +2881,7 @@
           {
             "name": "fee_percentage",
             "docs": [
-              "Fee percentage taken from game winnings (0-100)"
+              "Fee percentage taken from game winnings (0-10)"
             ],
             "type": "u8"
           },

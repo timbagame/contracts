@@ -1,6 +1,6 @@
 use crate::error::ErrorCode;
 use crate::events::PlayerJoined;
-use crate::utils::{get_clock_snapshot, participant_hash};
+use crate::utils::get_clock_snapshot;
 use anchor_lang::prelude::*;
 
 pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
@@ -14,10 +14,9 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
 
     require!(!game.is_expired(current_time), ErrorCode::GameExpired);
 
-    // Duplicate prevention: scan exact salted hash list (per-game uniqueness)
-    let player_hash = participant_hash(&game.key(), &player_key);
+    // Duplicate prevention: scan the exact participant list.
     require!(
-        !game.contains_participant(player_hash),
+        !game.contains_participant(&player_key),
         ErrorCode::AlreadyJoined
     );
 
@@ -26,7 +25,7 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
     // ===============================
 
     // Add player to game and update counters
-    let ticket_index = game.add_player_to_game(player_hash)?;
+    let ticket_index = game.add_player_to_game(player_key)?;
     game.last_slot = current_slot;
 
     // ===============================

@@ -91,9 +91,9 @@ pub enum ErrorCode {
     #[msg("Winner index out of range")]
     WinnerIndexOutOfRange = 1203,
 
-    /// Winner pubkey hash at provided index does not match participant_hashes entry
-    #[msg("Winner hash mismatch")]
-    WinnerPubkeyHashMismatch = 1204,
+    /// Winner pubkey does not match the participant at the provided index
+    #[msg("Winner mismatch")]
+    WinnerPubkeyMismatch = 1204,
 
     /// Player not authorized for private game
     #[msg("Private access denied")]
@@ -148,4 +148,7 @@ pub enum ErrorCode {
     /// Fees must be withdrawn before closing token
     #[msg("Token fees outstanding")]
     TokenFeesOutstanding = 1404,
+    /// Token-2022 mint contains unsupported extensions
+    #[msg("Token extension unsupported")]
+    UnsupportedTokenExtension = 1405,
 }

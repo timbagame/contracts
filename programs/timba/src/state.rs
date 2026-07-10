@@ -329,8 +329,8 @@ pub struct Game {
     pub is_private: bool,
     /// Total accumulated prize
     pub total_amount: u64,
-    /// Exact participant hash list (first 8 bytes of SHA256("timba:part:v1" || game_key || pubkey))
-    pub participant_hashes: Vec<u64>,
+    /// Exact participant public keys in canonical join order
+    pub participants: Vec<Pubkey>,
 }
 
 impl Game {
@@ -369,7 +369,7 @@ impl Game {
             }
         }
 
-        self.participant_hashes.clear();
+        self.participants.clear();
     }
 
     /// Checks if the game has exceeded its timeout duration
@@ -494,7 +494,7 @@ impl Game {
     // =============================================================================
 
     /// Add player to the game and update counters
-    pub fn add_player_to_game(&mut self, participant_hash: u64) -> Result<u32> {
+    pub fn add_player_to_game(&mut self, participant: Pubkey) -> Result<u32> {
         if self.tickets_count >= self.max_tickets {
             return err!(ErrorCode::InvalidAmount);
         }
@@ -502,7 +502,7 @@ impl Game {
         self.ensure_participant_capacity()?;
 
         let ticket_index = self.tickets_count;
-        self.participant_hashes.push(participant_hash);
+        self.participants.push(participant);
 
         let new_tickets_count = self
             .tickets_count
@@ -522,15 +522,15 @@ impl Game {
 
     fn ensure_participant_capacity(&mut self) -> Result<()> {
         let required = self.max_tickets as usize;
-        if self.participant_hashes.capacity() >= required {
+        if self.participants.capacity() >= required {
             return Ok(());
         }
 
         let additional = required
-            .checked_sub(self.participant_hashes.capacity())
+            .checked_sub(self.participants.capacity())
             .ok_or(ErrorCode::ParticipantStorageExceeded)?;
 
-        self.participant_hashes
+        self.participants
             .try_reserve(additional)
             .map_err(|_| ErrorCode::ParticipantStorageExceeded)?;
 
@@ -542,11 +542,11 @@ impl Game {
             return err!(ErrorCode::InvalidTicketsCount);
         }
 
-        if index >= self.participant_hashes.len() {
+        if index >= self.participants.len() {
             return err!(ErrorCode::InvalidAmount);
         }
 
-        self.participant_hashes.swap_remove(index);
+        self.participants.swap_remove(index);
 
         self.tickets_count = self
             .tickets_count
@@ -561,34 +561,31 @@ impl Game {
         Ok(())
     }
 
-    pub fn active_participants(&self) -> &[u64] {
-        let len = self
-            .participant_hashes
-            .len()
-            .min(self.tickets_count as usize);
-        &self.participant_hashes[..len]
+    pub fn active_participants(&self) -> &[Pubkey] {
+        let len = self.participants.len().min(self.tickets_count as usize);
+        &self.participants[..len]
     }
 
-    /// Returns true if the participant hash already exists in the active set.
-    pub fn contains_participant(&self, participant_hash: u64) -> bool {
-        self.participant_index(participant_hash).is_some()
+    /// Returns true if the participant already exists in the active set.
+    pub fn contains_participant(&self, participant: &Pubkey) -> bool {
+        self.participant_index(participant).is_some()
     }
 
-    /// Returns the index of the participant hash if it is present.
-    pub fn participant_index(&self, participant_hash: u64) -> Option<usize> {
+    /// Returns the index of the participant if it is present.
+    pub fn participant_index(&self, participant: &Pubkey) -> Option<usize> {
         self.active_participants()
             .iter()
-            .position(|existing| *existing == participant_hash)
+            .position(|existing| existing == participant)
     }
 
-    /// Removes the participant identified by the provided hash and returns the index removed.
-    pub fn remove_participant(&mut self, participant_hash: u64) -> Result<usize> {
+    /// Removes the participant and returns the index removed.
+    pub fn remove_participant(&mut self, participant: &Pubkey) -> Result<usize> {
         if self.tickets_count == 0 {
             return err!(ErrorCode::InvalidTicketsCount);
         }
 
         let index = self
-            .participant_index(participant_hash)
+            .participant_index(participant)
             .ok_or(ErrorCode::UnauthorizedPlayer)?;
         self.remove_player_at(index)?;
         Ok(index)
