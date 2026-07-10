@@ -11,7 +11,7 @@ Follow this checklist for every initial deployment or upgrade of the Timba progr
 - A clean commit pushed to the public `timbagame/contracts` repository
 - Solana CLI configured with a funded mainnet upgrade-authority wallet
 - The existing program keypair and upgrade authority for an upgrade, or a newly generated program keypair for an initial deployment
-- Oracle operator keypair JSON file (distinct from deployer if desired)
+- Oracle operator keypair JSON file (distinct from the upgrade authority if desired and funded to create the oracle account)
 - Fresh mainnet deployer keypair created solely for production; store the secret key offline (hardware wallet or encrypted cold storage) and keep redundant, secure backups
 
 ## 1. Prepare the Signing Authorities
@@ -32,7 +32,7 @@ Record its public key:
 solana-keygen pubkey /tmp/timba-mainnet-deployer.json
 ```
 
-The deployer wallet pays for and authorizes deployment; its address is not the program ID and must not replace the program address in `Anchor.toml`. Immediately move the JSON file into secure, offline storage and delete any plaintext copy from the online workstation once deployment is complete.
+The deployer wallet pays for and authorizes deployment; its address is not the program ID and must not replace the program address in `Anchor.toml`. On an initial deployment, the current program upgrade authority must also sign `initialize_oracle`. The program verifies that authority against its upgradeable-loader `ProgramData` account, preventing another signer from claiming the global oracle PDA. Immediately move the JSON file into secure, offline storage and delete any plaintext copy from the online workstation once deployment and initialization are complete.
 
 ## 2. Configure Environment
 
@@ -44,6 +44,7 @@ export ORACLE_OPERATOR_KEYPAIR_PATH=/path/to/oracle-operator.json
 ```
 
 > `ORACLE_OPERATOR_KEYPAIR_PATH` ensures the migration script assigns oracle authority to a dedicated key instead of the deployer.
+> The provider wallet must be the program's current upgrade authority for initial oracle initialization. The configured oracle operator also signs and pays the oracle account rent.
 > Bring the deployer key onto a locked-down machine only long enough to sign the deployment, then remove it from the online system once the program is live.
 
 ## 3. Test and Freeze the Release
@@ -138,6 +139,13 @@ anchor idl fetch \
 
 Run the migration only when deploying a new program whose oracle state has not been initialized. Do not run it for a routine program upgrade.
 
+The migration initializes the oracle with a 1% fee, a 10-minute oracle buffer, a maximum of 100 tickets, and game timeouts between 5 minutes and 24 hours. The contract accepts oracle buffers from 1 second through a hard maximum of 3,600 seconds; initialization and later updates reject larger values.
+
+Initialization requires signatures from both roles:
+
+- The provider wallet, verified on-chain as the current program upgrade authority.
+- The intended oracle operator, which becomes the runtime authority and pays for the oracle PDA. When no separate operator path is provided, the provider fills both roles with one signature.
+
 ```bash
 ORACLE_OPERATOR_KEYPAIR_PATH=/path/to/oracle-operator.json \
   anchor migrate \
@@ -156,6 +164,7 @@ ORACLE_OPERATOR_KEYPAIR_PATH=/path/to/oracle-operator.json \
   anchor account oracle $(anchor keys list timba --program-id)
   ```
 - Ensure both oracle and bot wallets are funded for fees.
+- Confirm the oracle buffer is 600 seconds and does not exceed the on-chain 3,600-second limit.
 - Archive the deployer key backups in offline storage after confirming the deployment; ongoing operations should not require this key.
 
 ## 10. Optional: Token Initialisation
