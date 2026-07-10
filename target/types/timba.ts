@@ -8,7 +8,7 @@ export type Timba = {
   "address": "32Jr4JnXWvqq9GqPQynkooHsszaucUUvZfNLh2hdX2L5",
   "metadata": {
     "name": "timba",
-    "version": "0.1.3",
+    "version": "0.1.4",
     "spec": "0.1.0",
     "description": "Timba on-chain game contracts built with Anchor"
   },
