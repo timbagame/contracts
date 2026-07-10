@@ -68,3 +68,27 @@ fn transaction_with_two_final_seat_joins_is_atomic() {
     assert!(!fixture.send(&instructions, &[&operator, &second, &third]));
     assert_eq!(state(&fixture, game).tickets_count, 1);
 }
+
+#[test]
+fn rejects_join_with_insufficient_token_balance() {
+    let mut fixture = common::TimbaFixture::new();
+    let token = fixture.token_fixture();
+    let (creator, creator_ata) = fixture.funded_player(token.mint.pubkey(), 10_000);
+    let (poor_player, poor_ata) = fixture.empty_player(token.mint.pubkey());
+    let game = fixture.initialize_game(
+        &token,
+        &creator,
+        creator_ata,
+        GameConfig {
+            game_type: GameType::Coinflip,
+            amount: 1_000,
+            max_tickets: 2,
+            min_tickets: 2,
+            timeout: 30,
+            is_private: false,
+        },
+        [53; 32],
+    );
+    assert!(!fixture.join_game(&token, game, &poor_player, poor_ata));
+    assert_eq!(state(&fixture, game).tickets_count, 0);
+}

@@ -4050,6 +4050,7 @@ version = "0.1.3"
 dependencies = [
  "anchor-lang",
  "anchor-spl",
+ "base64 0.21.7",
  "litesvm",
  "solana-keypair",
  "solana-message",
