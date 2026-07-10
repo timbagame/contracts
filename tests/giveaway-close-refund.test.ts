@@ -68,7 +68,7 @@ describe("Giveaway Close Refund", () => {
     const gameConfig = giveawayGameConfig({
       amount: prizeAmount, // total prize
       maxTickets: 10,
-      timeout: 30, // short timeout
+      timeout: 3, // short timeout
     });
 
     // Record creator balance before funding

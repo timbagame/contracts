@@ -22,6 +22,16 @@ export const toNumber = (value: anchor.BN | number): number =>
 
 const DEFAULT_BUFFER_POLL_INTERVAL_MS = 750;
 const DEFAULT_BUFFER_MAX_WAIT_MS = 120_000;
+const CLOCK_STALL_POLLS_BEFORE_TICK = 2;
+const TOKEN_ACCOUNT_READ_RETRIES = 4;
+
+function disableBlockhashCaching(connection: anchor.web3.Connection): void {
+  // Surfpool's transaction-driven blocks can expire web3.js's cached hash
+  // during a long setup loop. The flag is an internal web3.js test escape hatch.
+  (
+    connection as unknown as { _disableBlockhashCaching: boolean }
+  )._disableBlockhashCaching = true;
+}
 
 const ORACLE_SEED = Buffer.from("oracle");
 
@@ -98,7 +108,14 @@ export async function subscribeEvent<TEvent extends TimbaEventName>(
   const dispose = async () => {
     clearTimeout(timer);
     if (listenerId !== undefined) {
-      await program.removeEventListener(listenerId);
+      try {
+        await program.removeEventListener(listenerId);
+      } catch (error) {
+        // Surfpool may remove a completed subscription before client cleanup.
+        if (!errorToString(error).includes("doesn't exist")) {
+          throw error;
+        }
+      }
     }
   };
 
@@ -275,6 +292,23 @@ export async function getClockUnixTimestamp(
   return Number(clockInfo.data.readBigInt64LE(32));
 }
 
+/**
+ * Surfpool only advances its Clock sysvar when a transaction produces a block.
+ * A zero-lamport self-transfer is state-neutral, while letting timeout tests
+ * make progress on transaction-driven validators.
+ */
+async function tickClock(provider: anchor.AnchorProvider): Promise<void> {
+  const transaction = new anchor.web3.Transaction().add(
+    anchor.web3.SystemProgram.transfer({
+      fromPubkey: provider.wallet.publicKey,
+      toPubkey: provider.wallet.publicKey,
+      lamports: 0,
+    })
+  );
+
+  await provider.sendAndConfirm(transaction);
+}
+
 function resolveTimeoutSeconds(gameAccount: BufferReadyGameAccount): number {
   if (gameAccount.timeout !== undefined) {
     return toNumber(gameAccount.timeout);
@@ -314,6 +348,8 @@ export async function awaitBufferExpiry(
 
   let start = Date.now();
   let extended = false;
+  let previousClockTimestamp: number | undefined;
+  let stalledPolls = 0;
 
   while (true) {
     const clockTimestamp = await getClockUnixTimestamp(connection);
@@ -321,6 +357,17 @@ export async function awaitBufferExpiry(
     if (clockTimestamp >= adjustedTarget) {
       return;
     }
+
+    if (clockTimestamp === previousClockTimestamp) {
+      stalledPolls += 1;
+      if (stalledPolls >= CLOCK_STALL_POLLS_BEFORE_TICK) {
+        await tickClock(TestEnvironment.getInstance().provider);
+        stalledPolls = 0;
+      }
+    } else {
+      stalledPolls = 0;
+    }
+    previousClockTimestamp = clockTimestamp;
 
     if (Date.now() - start > maxWaitMs) {
       if (!extended) {
@@ -477,6 +524,7 @@ export class TestEnvironment {
 
   private constructor() {
     this.provider = anchor.AnchorProvider.env();
+    disableBlockhashCaching(this.provider.connection);
     anchor.setProvider(this.provider);
     this.program = anchor.workspace.Timba as anchor.Program<Timba>;
   }
@@ -1007,21 +1055,33 @@ export class PlayerManager {
       3 * anchor.web3.LAMPORTS_PER_SOL
     );
 
-    const playerTokenAccount = await getOrCreateAssociatedTokenAccount(
-      this.provider.connection,
-      player,
-      mint,
-      player.publicKey,
-      undefined,
-      undefined,
-      undefined,
-      resolvedTokenProgram
-    );
+    for (let attempt = 0; attempt < TOKEN_ACCOUNT_READ_RETRIES; attempt += 1) {
+      try {
+        const playerTokenAccount = await getOrCreateAssociatedTokenAccount(
+          this.provider.connection,
+          player,
+          mint,
+          player.publicKey,
+          undefined,
+          undefined,
+          undefined,
+          resolvedTokenProgram
+        );
 
-    return {
-      player,
-      playerTokenAccount,
-    };
+        return { player, playerTokenAccount };
+      } catch (error) {
+        const isDelayedAccountRead =
+          error instanceof Error && error.name === "TokenAccountNotFoundError";
+
+        if (!isDelayedAccountRead || attempt === TOKEN_ACCOUNT_READ_RETRIES - 1) {
+          throw error;
+        }
+
+        await tickClock(this.provider);
+      }
+    }
+
+    throw new Error("Player token account setup exhausted without returning");
   }
 
   async createPlayer(mint: PublicKey): Promise<TestPlayer> {
@@ -1042,11 +1102,17 @@ export class PlayerManager {
       mint
     );
 
-    return Promise.all(
-      players.map((player) =>
-        this.preparePlayerAccount(player, mint, tokenProgram)
-      )
-    );
+    const preparedPlayers: TestPlayer[] = [];
+
+    // Surfpool can return an account read before a concurrent ATA creation is
+    // visible. Player setup is not the capacity under test, so keep it serial.
+    for (const player of players) {
+      preparedPlayers.push(
+        await this.preparePlayerAccount(player, mint, tokenProgram)
+      );
+    }
+
+    return preparedPlayers;
   }
 
   async fundPlayer(
@@ -1220,7 +1286,7 @@ export class GameManager {
     gamePDA: PublicKey,
     player: anchor.web3.Keypair,
     authority?: anchor.web3.Keypair
-  ): Promise<void> {
+  ): Promise<string> {
     const derived = await deriveGameAccounts(this.program, gamePDA, {
       player: player.publicKey,
     });
@@ -1231,7 +1297,7 @@ export class GameManager {
 
     const authoritySigner = authority ?? player;
 
-    await this.program.methods
+    return this.program.methods
       .unjoinGame()
       .accountsStrict({
         game: gamePDA,
@@ -1441,8 +1507,51 @@ export function calculatePayoutBreakdown(
   return { fee, winnerAmount };
 }
 
+const ANCHOR_ERROR_CODE_BY_NUMBER: Record<number, string> = {
+  7000: "UnauthorizedOperator",
+  7001: "UnauthorizedPlayer",
+  7002: "InvalidCreator",
+  7100: "GameFull",
+  7101: "GameWaitingForOracle",
+  7102: "GameNotReadyForOracle",
+  7103: "GameHasActivePlayers",
+  7104: "GameNotCompleted",
+};
+
+function extractNumericProgramError(error: unknown): number | undefined {
+  const message = getErrorMessage(error);
+
+  const hexMatch = /custom program error:\s*0x([0-9a-fA-F]+)/i.exec(message);
+  if (hexMatch?.[1]) {
+    return Number.parseInt(hexMatch[1], 16);
+  }
+
+  const customMatch = /"Custom"\s*:\s*(\d+)/.exec(message);
+  if (customMatch?.[1]) {
+    return Number.parseInt(customMatch[1], 10);
+  }
+
+  const instructionMatch =
+    /InstructionError\D+(\d+)\D+Custom\D+(\d+)/i.exec(message);
+  if (instructionMatch?.[2]) {
+    return Number.parseInt(instructionMatch[2], 10);
+  }
+
+  return undefined;
+}
+
 export function getErrorCode(error: unknown): string | undefined {
-  return (error as any)?.error?.errorCode?.code;
+  const anchorCode = (error as any)?.error?.errorCode?.code;
+  if (typeof anchorCode === "string" && anchorCode.length > 0) {
+    return anchorCode;
+  }
+
+  const numeric = extractNumericProgramError(error);
+  if (numeric === undefined) {
+    return undefined;
+  }
+
+  return ANCHOR_ERROR_CODE_BY_NUMBER[numeric];
 }
 
 export function getErrorMessage(error: unknown): string {
