@@ -72,7 +72,7 @@ pub struct InitializeToken<'info> {
 
     /// CHECK: PDA authority for game's token accounts
     #[account(seeds = [GAME_VAULT_SEED, token_mint.key().as_ref()], bump)]
-    pub game_vault: AccountInfo<'info>,
+    pub game_vault: UncheckedAccount<'info>,
 
     #[account(
         associated_token::mint = token_mint,
@@ -138,7 +138,7 @@ pub struct CloseToken<'info> {
 
     /// CHECK: PDA authority for the vault ATA, validated by seeds and bump
     #[account(seeds = [GAME_VAULT_SEED, token_mint.key().as_ref()], bump = game_token.vault_bump)]
-    pub game_vault: AccountInfo<'info>,
+    pub game_vault: UncheckedAccount<'info>,
 
     #[account(
         mut,
@@ -185,7 +185,7 @@ pub struct GameTokenContext<'info> {
 
     /// CHECK: PDA authority for game's token accounts
     #[account(seeds = [GAME_VAULT_SEED, token_mint.key().as_ref()], bump = game_token.vault_bump)]
-    pub game_vault: AccountInfo<'info>,
+    pub game_vault: UncheckedAccount<'info>,
 
     #[account(
         mut,
@@ -230,7 +230,7 @@ impl<'info> GameTokenContext<'info> {
         self.game_token.handle_token_transfer(
             self.game_token_account.to_account_info(),
             destination_token_account.to_account_info(),
-            self.game_vault.clone(),
+            self.game_vault.to_account_info(),
             self.token_program.to_account_info(),
             self.token_mint.to_account_info(),
             amount,
@@ -326,10 +326,10 @@ pub struct CompleteGame<'info> {
     pub oracle_operator: Signer<'info>,
     /// CHECK: Validated by merkle proof verification
     #[account(mut)]
-    pub winner: AccountInfo<'info>,
+    pub winner: UncheckedAccount<'info>,
     /// CHECK: Game creator for rent refund
     #[account(mut)]
-    pub creator: AccountInfo<'info>,
+    pub creator: UncheckedAccount<'info>,
     #[account(
         mut,
         associated_token::mint = game_token_ctx.token_mint,
@@ -349,7 +349,7 @@ pub struct UnjoinGame<'info> {
     pub game: Account<'info, Game>,
     /// CHECK: Player key is validated against the game participants list
     #[account(mut)]
-    pub player: AccountInfo<'info>,
+    pub player: UncheckedAccount<'info>,
     #[account(
         constraint = game.is_creator(&authority.key())
             || authority.key() == player.key() @ ErrorCode::UnauthorizedPlayer,
