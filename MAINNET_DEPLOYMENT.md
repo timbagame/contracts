@@ -1,30 +1,38 @@
 # Timba Contracts — Mainnet Deployment Guide
 
-Follow this checklist when deploying the Anchor program to Solana mainnet-beta.
+Follow this checklist for every initial deployment or upgrade of the Timba program on Solana mainnet-beta. Mainnet releases must use a reproducible build from a public commit, deploy that exact artifact, publish the matching IDL, and complete remote source verification.
 
 ## Prerequisites
 
-- Anchor CLI
-- Solana CLI configured with a funded mainnet wallet
-- Program keypair generated and recorded in `Anchor.toml`
+- Anchor CLI 1.1.2
+- Solana CLI 3.1.10
+- `solana-verify`
+- Docker, required for reproducible builds
+- A clean commit pushed to the public `timbagame/contracts` repository
+- Solana CLI configured with a funded mainnet upgrade-authority wallet
+- The existing program keypair and upgrade authority for an upgrade, or a newly generated program keypair for an initial deployment
 - Oracle operator keypair JSON file (distinct from deployer if desired)
 - Fresh mainnet deployer keypair created solely for production; store the secret key offline (hardware wallet or encrypted cold storage) and keep redundant, secure backups
 
-## 1. Generate the Deployer Keypair
+## 1. Prepare the Signing Authorities
 
-Create the deployer key on an air-gapped or otherwise trusted machine:
+For an upgrade, use the existing upgrade authority. Do not generate a new program keypair or change the program ID.
+
+For an initial deployment only, create the program keypair separately from the deployer wallet and confirm that its public key matches `declare_id!` and every `[programs.*]` entry in `Anchor.toml`.
+
+If a dedicated deployer or upgrade-authority key is required, create it on an air-gapped or otherwise trusted machine:
 
 ```bash
 solana-keygen new --outfile /tmp/timba-mainnet-deployer.json --no-bip39-passphrase
 ```
 
-Record the public key (you will copy this into `Anchor.toml`):
+Record its public key:
 
 ```bash
 solana-keygen pubkey /tmp/timba-mainnet-deployer.json
 ```
 
-Immediately move the JSON file into secure, offline storage (hardware wallet export, encrypted drive, or sealed USB) and delete any plaintext copy from the online workstation once the deployment is complete.
+The deployer wallet pays for and authorizes deployment; its address is not the program ID and must not replace the program address in `Anchor.toml`. Immediately move the JSON file into secure, offline storage and delete any plaintext copy from the online workstation once deployment is complete.
 
 ## 2. Configure Environment
 
@@ -38,29 +46,109 @@ export ORACLE_OPERATOR_KEYPAIR_PATH=/path/to/oracle-operator.json
 > `ORACLE_OPERATOR_KEYPAIR_PATH` ensures the migration script assigns oracle authority to a dedicated key instead of the deployer.
 > Bring the deployer key onto a locked-down machine only long enough to sign the deployment, then remove it from the online system once the program is live.
 
-## 3. Build and Deploy
+## 3. Test and Freeze the Release
 
 ```bash
-anchor build
-anchor deploy --no-idl
+anchor test
+git diff --exit-code
+git diff --cached --exit-code
+git push origin HEAD
+export COMMIT_SHA=$(git rev-parse HEAD)
 ```
 
-If you rely on Anchor migrations (e.g., `migrations/deploy.ts`) run:
+Use the exact value of `COMMIT_SHA` for remote verification. Do not deploy uncommitted code or amend the commit after building.
+
+## 4. Build Reproducibly
 
 ```bash
-anchor migrate
+cd programs/timba
+anchor build --verifiable --solana-version 3.1.10
+cd ../..
+solana-verify get-executable-hash target/verifiable/timba.so
 ```
 
-## 4. Distribute the IDL
+This build runs in a pinned container and writes the deployable program to `target/verifiable/timba.so`. Do not run `anchor build` or `cargo-build-sbf` between this step and deployment; those commands can replace the artifact with a binary that has a different hash.
+
+## 5. Deploy the Verifiable Artifact and IDL
+
+```bash
+anchor deploy \
+  --verifiable \
+  --program-name timba \
+  --provider.cluster mainnet \
+  --provider.wallet /path/to/deployer.json
+```
+
+Anchor 1.1.2 uploads `target/idl/timba.json` by default through the Program Metadata Program. Do not pass `--no-idl`.
+
+If the existing deployment has a legacy pre-v1 Anchor IDL account, close that legacy account with Anchor 0.32.1 before the first Anchor v1 upgrade. This is a one-time migration; confirm the account and authority before closing it.
+
+## 6. Verify the Deployed Program Remotely
+
+Verify the deployed executable against the exact public commit:
+
+```bash
+solana-verify verify-from-repo \
+  -u https://api.mainnet-beta.solana.com \
+  --program-id 32Jr4JnXWvqq9GqPQynkooHsszaucUUvZfNLh2hdX2L5 \
+  https://github.com/timbagame/contracts \
+  --commit-hash "$COMMIT_SHA" \
+  --library-name timba \
+  --mount-path programs/timba
+```
+
+Accept the prompt to publish the verification record on-chain, then submit the remote verification job. The uploader is normally the upgrade-authority address:
+
+```bash
+solana-verify remote submit-job \
+  --program-id 32Jr4JnXWvqq9GqPQynkooHsszaucUUvZfNLh2hdX2L5 \
+  --uploader <UPGRADE_AUTHORITY_ADDRESS>
+
+solana-verify remote get-job --job-id <JOB_ID>
+```
+
+Wait for the remote job to succeed and confirm that explorers report the program as verified.
+
+References:
+
+- [Anchor verifiable builds](https://www.anchor-lang.com/docs/references/verifiable-builds)
+- [Solana verified builds and remote verification](https://solana.com/docs/programs/verified-builds)
+- [Anchor v1 IDL migration](https://www.anchor-lang.com/docs/updates/release-notes/1-0-0)
+
+## 7. Confirm and Distribute the IDL
+
+Confirm that Anchor can fetch the published mainnet IDL:
+
+```bash
+anchor idl fetch \
+  --provider.cluster mainnet \
+  --out /tmp/timba-mainnet-idl.json \
+  32Jr4JnXWvqq9GqPQynkooHsszaucUUvZfNLh2hdX2L5
+```
 
 1. Copy `target/idl/timba.json` to:
    - `../bot/idl/idl.json`
    - `../oracle/idl/idl.json`
-2. Commit the updated IDL if appropriate.
+2. Regenerate and copy `target/types/timba.ts` to clients that use the generated Anchor type.
+3. Commit and release the updated client artifacts with the same program release.
 
-## 5. Post-Deployment Checklist
+## 8. Initialize Program State on the First Deployment
+
+Run the migration only when deploying a new program whose oracle state has not been initialized. Do not run it for a routine program upgrade.
+
+```bash
+ORACLE_OPERATOR_KEYPAIR_PATH=/path/to/oracle-operator.json \
+  anchor migrate \
+  --provider.cluster mainnet \
+  --provider.wallet /path/to/deployer.json
+```
+
+## 9. Post-Deployment Checklist
 
 - `solana program show 32Jr4JnXWvqq9GqPQynkooHsszaucUUvZfNLh2hdX2L5`
+- Confirm the executable hash matches the reproducible artifact.
+- Confirm the remote verification job succeeded.
+- Confirm the published IDL is fetchable and matches the release commit.
 - Confirm the oracle account was created with the intended operator:
   ```bash
   anchor account oracle $(anchor keys list timba --program-id)
@@ -68,7 +156,7 @@ anchor migrate
 - Ensure both oracle and bot wallets are funded for fees.
 - Archive the deployer key backups in offline storage after confirming the deployment; ongoing operations should not require this key.
 
-## 6. Optional: Token Initialisation
+## 10. Optional: Token Initialisation
 
 Run the bot utility scripts from the project root after services are configured:
 
@@ -79,7 +167,7 @@ ORACLE_OPERATOR_KEYPAIR_PATH=/path/to/oracle-operator.json bun run scripts/initi
 
 This registers the mainnet TIMBA and WSOL tokens with the on-chain oracle configuration.
 
-## 7. Decommission & Program Shutdown
+## 11. Decommission & Program Shutdown
 
 When you need to retire the program, follow this sequence to halt new activity, settle outstanding games, and recover funds before closing the program.
 
