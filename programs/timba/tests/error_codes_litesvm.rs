@@ -3,7 +3,7 @@ mod common;
 use {
     solana_keypair::Keypair,
     solana_signer::Signer,
-    timba::{state::GameType, GameConfig, TokenConfig},
+    timba::{error::ErrorCode, state::GameType, GameConfig, TokenConfig},
 };
 
 #[test]
@@ -28,7 +28,7 @@ fn preserves_named_configuration_token_and_authorization_errors() {
     let payer = fixture.operator.insecure_clone();
     assert_eq!(
         common::custom_error_code(fixture.send_result(&[invalid_config], &[&payer, &creator])),
-        7_300
+        common::anchor_error(ErrorCode::InvalidTicketsCount)
     );
 
     let operator = fixture.operator.insecure_clone();
@@ -57,7 +57,7 @@ fn preserves_named_configuration_token_and_authorization_errors() {
     let payer = fixture.operator.insecure_clone();
     assert_eq!(
         common::custom_error_code(fixture.send_result(&[disabled], &[&payer, &creator])),
-        7_400
+        common::anchor_error(ErrorCode::TokenNotEnabled)
     );
 
     let outsider = Keypair::new();
@@ -70,7 +70,7 @@ fn preserves_named_configuration_token_and_authorization_errors() {
     let payer = fixture.operator.insecure_clone();
     assert_eq!(
         common::custom_error_code(fixture.send_result(&[withdraw], &[&payer, &outsider])),
-        7_000
+        common::anchor_error(ErrorCode::UnauthorizedOperator)
     );
 }
 
@@ -99,14 +99,14 @@ fn preserves_join_and_buffer_error_codes() {
     let payer = fixture.operator.insecure_clone();
     assert_eq!(
         common::custom_error_code(fixture.send_result(&[poor_join], &[&payer, &poor])),
-        7_201
+        common::anchor_error(ErrorCode::InsufficientBalance)
     );
     assert!(fixture.join_game(&token, game, &creator, creator_ata));
     let duplicate = fixture.join_instruction(&token, game, creator.pubkey(), creator_ata);
     let payer = fixture.operator.insecure_clone();
     assert_eq!(
         common::custom_error_code(fixture.send_result(&[duplicate], &[&payer, &creator])),
-        7_200
+        common::anchor_error(ErrorCode::AlreadyJoined)
     );
     assert!(fixture.join_game(&token, game, &second, second_ata));
     let early_unjoin = fixture.unjoin_instruction(
@@ -119,6 +119,6 @@ fn preserves_join_and_buffer_error_codes() {
     let payer = fixture.operator.insecure_clone();
     assert_eq!(
         common::custom_error_code(fixture.send_result(&[early_unjoin], &[&payer, &creator])),
-        7_108
+        common::anchor_error(ErrorCode::OracleBufferNotExpired)
     );
 }

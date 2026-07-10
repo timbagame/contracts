@@ -7,8 +7,11 @@ use anchor_lang::prelude::*;
 // =============================================================================
 // MODULE DECLARATIONS
 // =============================================================================
+//
+// `error`, `events`, `state`, and `utils` are public so integration tests
+// (LiteSVM) can assert against program types without duplicating logic.
 
-mod error;
+pub mod error;
 pub mod events;
 mod instructions;
 pub mod state;
