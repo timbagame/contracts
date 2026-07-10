@@ -1,3 +1,5 @@
+mod common;
+
 use {
     anchor_lang::{
         prelude::Pubkey,
@@ -26,6 +28,7 @@ struct Fixture {
     svm: LiteSVM,
     operator: Keypair,
     oracle: Pubkey,
+    program_data: Pubkey,
 }
 
 impl Fixture {
@@ -38,11 +41,14 @@ impl Fixture {
             include_bytes!(concat!(env!("CARGO_TARGET_TMPDIR"), "/../deploy/timba.so")),
         )
         .unwrap();
+        let program_data =
+            common::set_program_upgrade_authority(&mut svm, timba::id(), operator.pubkey());
         svm.airdrop(&operator.pubkey(), 10_000_000_000).unwrap();
         Self {
             svm,
             operator,
             oracle,
+            program_data,
         }
     }
 
@@ -58,6 +64,15 @@ impl Fixture {
     }
 
     fn initialize(&mut self, oracle_config: OracleConfig) -> bool {
+        let operator = self.operator.insecure_clone();
+        self.initialize_with_authority(oracle_config, &operator)
+    }
+
+    fn initialize_with_authority(
+        &mut self,
+        oracle_config: OracleConfig,
+        upgrade_authority: &Keypair,
+    ) -> bool {
         let instruction = Instruction::new_with_bytes(
             timba::id(),
             &timba::instruction::InitializeOracle {
@@ -67,12 +82,19 @@ impl Fixture {
             timba::accounts::InitializeOracle {
                 oracle: self.oracle,
                 oracle_operator: self.operator.pubkey(),
+                upgrade_authority: upgrade_authority.pubkey(),
+                program: timba::id(),
+                program_data: self.program_data,
                 system_program: system_program::ID,
             }
             .to_account_metas(None),
         );
         let operator = self.operator.insecure_clone();
-        self.send(instruction, &[&operator])
+        if operator.pubkey() == upgrade_authority.pubkey() {
+            self.send(instruction, &[&operator])
+        } else {
+            self.send(instruction, &[&operator, upgrade_authority])
+        }
     }
 
     fn oracle_state(&self) -> Oracle {
@@ -100,6 +122,14 @@ impl Fixture {
 }
 
 #[test]
+fn rejects_initialization_by_non_upgrade_authority() {
+    let mut fixture = Fixture::new();
+    let attacker = Keypair::new();
+    assert!(!fixture.initialize_with_authority(config(), &attacker));
+    assert!(fixture.svm.get_account(&fixture.oracle).is_none());
+}
+
+#[test]
 fn initializes_oracle_and_persists_configuration() {
     let mut fixture = Fixture::new();
     let expected = config();
@@ -122,6 +152,10 @@ fn rejects_invalid_oracle_configurations() {
         },
         OracleConfig {
             oracle_buffer_time: 0,
+            ..config()
+        },
+        OracleConfig {
+            oracle_buffer_time: timba::state::MAX_ORACLE_BUFFER_TIME + 1,
             ..config()
         },
         OracleConfig {
@@ -152,6 +186,10 @@ fn rejects_invalid_updates_without_mutating_oracle() {
         },
         OracleConfig {
             oracle_buffer_time: 0,
+            ..config()
+        },
+        OracleConfig {
+            oracle_buffer_time: timba::state::MAX_ORACLE_BUFFER_TIME + 1,
             ..config()
         },
         OracleConfig {

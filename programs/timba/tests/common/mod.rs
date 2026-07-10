@@ -3,7 +3,12 @@
 use {
     anchor_lang::{
         prelude::{Pubkey, Rent},
-        solana_program::{instruction::Instruction, program_pack::Pack, system_program},
+        solana_program::{
+            bpf_loader_upgradeable::{self, UpgradeableLoaderState},
+            instruction::Instruction,
+            program_pack::Pack,
+            system_program,
+        },
         InstructionData, ToAccountMetas,
     },
     litesvm::{types::TransactionResult, LiteSVM},
@@ -46,10 +51,31 @@ pub fn custom_error_code(result: TransactionResult) -> u32 {
     }
 }
 
+pub fn set_program_upgrade_authority(
+    svm: &mut LiteSVM,
+    program_id: Pubkey,
+    authority: Pubkey,
+) -> Pubkey {
+    let program_data =
+        Pubkey::find_program_address(&[program_id.as_ref()], &bpf_loader_upgradeable::ID).0;
+    let mut account = svm
+        .get_account(&program_data)
+        .expect("upgradeable program data must exist");
+    let metadata = bincode::serialize(&UpgradeableLoaderState::ProgramData {
+        slot: svm.get_sysvar::<anchor_lang::prelude::Clock>().slot,
+        upgrade_authority_address: Some(authority),
+    })
+    .unwrap();
+    account.data[..metadata.len()].copy_from_slice(&metadata);
+    svm.set_account(program_data, account).unwrap();
+    program_data
+}
+
 pub struct TimbaFixture {
     pub svm: LiteSVM,
     pub operator: Keypair,
     pub oracle: Pubkey,
+    pub program_data: Pubkey,
 }
 
 impl TimbaFixture {
@@ -62,11 +88,13 @@ impl TimbaFixture {
             include_bytes!(concat!(env!("CARGO_TARGET_TMPDIR"), "/../deploy/timba.so")),
         )
         .unwrap();
+        let program_data = set_program_upgrade_authority(&mut svm, timba::id(), operator.pubkey());
         svm.airdrop(&operator.pubkey(), 100_000_000_000).unwrap();
         let mut fixture = Self {
             svm,
             operator,
             oracle,
+            program_data,
         };
         fixture.initialize_oracle();
         fixture
@@ -115,6 +143,9 @@ impl TimbaFixture {
             timba::accounts::InitializeOracle {
                 oracle: self.oracle,
                 oracle_operator: self.operator.pubkey(),
+                upgrade_authority: self.operator.pubkey(),
+                program: timba::id(),
+                program_data: self.program_data,
                 system_program: system_program::ID,
             }
             .to_account_metas(None),

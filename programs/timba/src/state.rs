@@ -33,6 +33,8 @@ pub const GAME_VAULT_SEED: &[u8] = b"game_vault";
 pub const MIN_COMPETITIVE_PLAYERS: u32 = 2;
 /// Minimum players required for giveaway games
 pub const MIN_GIVEAWAY_PLAYERS: u32 = 1;
+/// Longest period the oracle may exclusively settle a ready game.
+pub const MAX_ORACLE_BUFFER_TIME: u64 = 60 * 60;
 pub const GAME_TOKEN_SIZE: usize = 8 + 32 + 1 + 8 + 8 + 1;
 /// Base size of Game excluding variable-length Vec data
 pub const GAME_BASE_SIZE: usize = 8
@@ -122,7 +124,7 @@ impl Oracle {
     /// Validates oracle buffer time is strictly positive
     #[must_use]
     pub fn is_valid_buffer_time(oracle_buffer_time: u64) -> bool {
-        oracle_buffer_time > 0
+        (1..=MAX_ORACLE_BUFFER_TIME).contains(&oracle_buffer_time)
     }
 
     /// Validates timeout parameters are in correct order

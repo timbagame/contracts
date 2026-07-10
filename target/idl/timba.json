@@ -995,6 +995,17 @@
           "signer": true
         },
         {
+          "name": "upgrade_authority",
+          "signer": true
+        },
+        {
+          "name": "program",
+          "address": "32Jr4JnXWvqq9GqPQynkooHsszaucUUvZfNLh2hdX2L5"
+        },
+        {
+          "name": "program_data"
+        },
+        {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
         }

@@ -680,6 +680,13 @@ export class OracleManager {
         .initializeOracle(configForProgram)
         .accounts({
           oracleOperator: operatorKeypair.publicKey,
+          upgradeAuthority: this.provider.publicKey,
+          programData: anchor.web3.PublicKey.findProgramAddressSync(
+            [this.program.programId.toBuffer()],
+            new anchor.web3.PublicKey(
+              "BPFLoaderUpgradeab1e11111111111111111111111"
+            )
+          )[0],
         })
         .signers([operatorKeypair])
         .rpc();

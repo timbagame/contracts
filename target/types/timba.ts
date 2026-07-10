@@ -1001,6 +1001,17 @@ export type Timba = {
           "signer": true
         },
         {
+          "name": "upgradeAuthority",
+          "signer": true
+        },
+        {
+          "name": "program",
+          "address": "32Jr4JnXWvqq9GqPQynkooHsszaucUUvZfNLh2hdX2L5"
+        },
+        {
+          "name": "programData"
+        },
+        {
           "name": "systemProgram",
           "address": "11111111111111111111111111111111"
         }
