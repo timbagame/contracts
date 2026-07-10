@@ -31,20 +31,12 @@ pub fn handler(ctx: Context<super::InitializeToken>, config: TokenConfig) -> Res
     let game_token = &mut ctx.accounts.game_token;
     let token_mint_key = ctx.accounts.token_mint.key();
 
-    // ===============================
-    // STATE INITIALIZATION
-    // ===============================
-
     game_token.initialize(
         token_mint_key,
         ctx.bumps.game_vault,
         config.min_amount,
         config.enabled,
     );
-
-    // ===============================
-    // EVENT EMISSION
-    // ===============================
 
     emit!(TokenInitialized::from_config(token_mint_key, &config));
 

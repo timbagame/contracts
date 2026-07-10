@@ -105,8 +105,20 @@ describe("Unjoin Race Conditions", () => {
     );
 
     const [txA, txB] = await Promise.all([
-      buildSignedUnjoinTx(env, gameData.gamePDA, participant.player, mint.mint, 0),
-      buildSignedUnjoinTx(env, gameData.gamePDA, participant.player, mint.mint, 1),
+      buildSignedUnjoinTx(
+        env,
+        gameData.gamePDA,
+        participant.player,
+        mint.mint,
+        0
+      ),
+      buildSignedUnjoinTx(
+        env,
+        gameData.gamePDA,
+        participant.player,
+        mint.mint,
+        1
+      ),
     ]);
 
     const sendTx = async (tx: anchor.web3.Transaction) => {
@@ -158,10 +170,14 @@ describe("Unjoin Race Conditions", () => {
     expect(gameAccount.ticketsCount).to.equal(1);
 
     for (const failure of failures) {
-      await expectAnchorError(Promise.reject(failure.error), "UnauthorizedPlayer", {
-        // Preflight simulation uses hex (`0x1b59`); confirm path may use JSON Custom.
-        fallbackSubstring: "0x1b59",
-      });
+      await expectAnchorError(
+        Promise.reject(failure.error),
+        "UnauthorizedPlayer",
+        {
+          // Preflight simulation uses hex (`0x1b59`); confirm path may use JSON Custom.
+          fallbackSubstring: "0x1b59",
+        }
+      );
     }
   }).timeout(180_000);
 });

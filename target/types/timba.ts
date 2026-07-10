@@ -8,7 +8,7 @@ export type Timba = {
   "address": "32Jr4JnXWvqq9GqPQynkooHsszaucUUvZfNLh2hdX2L5",
   "metadata": {
     "name": "timba",
-    "version": "0.1.4",
+    "version": "0.2.0",
     "spec": "0.1.0",
     "description": "Timba on-chain game contracts built with Anchor"
   },
@@ -2320,6 +2320,21 @@ export type Timba = {
       "msg": "Randomness failed"
     },
     {
+      "code": 7207,
+      "name": "participantNotFound",
+      "msg": "Participant not found"
+    },
+    {
+      "code": 7208,
+      "name": "participantIndexOutOfRange",
+      "msg": "Participant index out of range"
+    },
+    {
+      "code": 7209,
+      "name": "arithmeticOverflow",
+      "msg": "Arithmetic overflow"
+    },
+    {
       "code": 7300,
       "name": "invalidTicketsCount",
       "msg": "Invalid config value"
@@ -2477,7 +2492,7 @@ export type Timba = {
           {
             "name": "participants",
             "docs": [
-              "Exact participant public keys in canonical join order"
+              "Exact participant public keys in canonical current-vector order"
             ],
             "type": {
               "vec": "pubkey"
@@ -3084,6 +3099,15 @@ export type Timba = {
               "Ticket index associated with this unjoin operation"
             ],
             "type": "u32"
+          },
+          {
+            "name": "movedParticipant",
+            "docs": [
+              "Participant moved into `ticket_index` by O(1) removal, if any"
+            ],
+            "type": {
+              "option": "pubkey"
+            }
           },
           {
             "name": "lastSlot",

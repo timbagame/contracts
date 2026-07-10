@@ -1,12 +1,20 @@
 #![deny(unused_must_use)]
 #![forbid(unsafe_code)]
 #![warn(clippy::all, clippy::pedantic)]
+// Anchor entrypoints must own their Context and configuration arguments, and every
+// instruction uses Result even when its current handler body is infallible.
+#![allow(
+    clippy::missing_errors_doc,
+    clippy::needless_pass_by_value,
+    clippy::pub_underscore_fields,
+    clippy::unnecessary_wraps,
+    clippy::used_underscore_binding,
+    clippy::wildcard_imports
+)]
 
 use anchor_lang::prelude::*;
 
-// =============================================================================
 // MODULE DECLARATIONS
-// =============================================================================
 //
 // `error`, `events`, `state`, and `utils` are public so integration tests
 // (LiteSVM) can assert against program types without duplicating logic.
@@ -20,15 +28,11 @@ pub mod utils;
 use crate::instructions::*;
 use crate::state::GameType;
 
-// =============================================================================
 // PROGRAM ID
-// =============================================================================
 
 declare_id!("32Jr4JnXWvqq9GqPQynkooHsszaucUUvZfNLh2hdX2L5");
 
-// =============================================================================
 // CONFIGURATION STRUCTS
-// =============================================================================
 
 /// Configuration parameters for oracle initialization and updates
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -71,17 +75,11 @@ pub struct GameConfig {
     pub is_private: bool,
 }
 
-// =============================================================================
 // PROGRAM ENTRY POINTS
-// =============================================================================
 
 #[program]
 pub mod timba {
     use super::*;
-
-    // =========================================================================
-    // ORACLE MANAGEMENT
-    // =========================================================================
 
     /// Initializes the global oracle account with fee settings and constraints
     pub fn initialize_oracle(ctx: Context<InitializeOracle>, config: OracleConfig) -> Result<()> {
@@ -92,10 +90,6 @@ pub mod timba {
     pub fn update_oracle(ctx: Context<UpdateOracle>, config: OracleConfig) -> Result<()> {
         instructions::update_oracle::handler(ctx, config)
     }
-
-    // =========================================================================
-    // TOKEN MANAGEMENT
-    // =========================================================================
 
     /// Initializes a new token for use in games with minimum amount and enabled status
     pub fn initialize_token(ctx: Context<InitializeToken>, config: TokenConfig) -> Result<()> {
@@ -111,14 +105,6 @@ pub mod timba {
     pub fn close_token(ctx: Context<CloseToken>) -> Result<()> {
         instructions::close_token::handler(ctx)
     }
-
-    // =========================================================================
-    // PLAYER MANAGEMENT
-    // =========================================================================
-
-    // =========================================================================
-    // GAME MANAGEMENT
-    // =========================================================================
 
     /// Creates a new game with specified configuration
     pub fn initialize_game(
@@ -153,10 +139,6 @@ pub mod timba {
     ) -> Result<()> {
         instructions::complete_game::handler(ctx, _random_hash, secret_key, winner_index)
     }
-
-    // =========================================================================
-    // FEE MANAGEMENT
-    // =========================================================================
 
     /// Allows oracle operator to withdraw accumulated fees for a token
     pub fn withdraw_token_fee(ctx: Context<WithdrawTokenFee>) -> Result<()> {

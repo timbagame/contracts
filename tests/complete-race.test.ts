@@ -57,9 +57,7 @@ async function buildSignedCompleteTx(
   return tx;
 }
 
-type TxOutcome =
-  | { ok: true; signature: string }
-  | { ok: false; error: Error };
+type TxOutcome = { ok: true; signature: string } | { ok: false; error: Error };
 
 async function sendTx(
   env: TestEnvironment,
@@ -128,9 +126,10 @@ describe("Complete Game Race", () => {
     const participants = [creator, challenger];
     const winner = getWinnerFromPlayers(participants, winnerIndex);
 
-    const preWinnerBalance = await env.provider.connection.getTokenAccountBalance(
-      winner.playerTokenAccount.address
-    );
+    const preWinnerBalance =
+      await env.provider.connection.getTokenAccountBalance(
+        winner.playerTokenAccount.address
+      );
 
     const totalPot = new anchor.BN(gameAccount.totalAmount.toString());
     const { fee: expectedFee, winnerAmount: expectedWinnerAmount } =
@@ -172,7 +171,10 @@ describe("Complete Game Race", () => {
 
     const outcomes = [badOutcome, goodOutcome];
     const successes = outcomes.filter((o) => o.ok);
-    const failures = outcomes.filter((o) => !o.ok) as Array<{ ok: false; error: Error }>;
+    const failures = outcomes.filter((o) => !o.ok) as Array<{
+      ok: false;
+      error: Error;
+    }>;
 
     expect(successes.length).to.equal(1);
     expect(failures.length).to.equal(1);
@@ -183,9 +185,10 @@ describe("Complete Game Race", () => {
         failureMessage.includes("AccountNotInitialized")
     ).to.be.true;
 
-    const postWinnerBalance = await env.provider.connection.getTokenAccountBalance(
-      winner.playerTokenAccount.address
-    );
+    const postWinnerBalance =
+      await env.provider.connection.getTokenAccountBalance(
+        winner.playerTokenAccount.address
+      );
     const winnerDelta = new anchor.BN(postWinnerBalance.value.amount).sub(
       new anchor.BN(preWinnerBalance.value.amount)
     );
@@ -199,8 +202,7 @@ describe("Complete Game Race", () => {
     const gameTokenAccount = await env.program.account.gameToken.fetch(
       mint.gameTokenPDA
     );
-    expect(
-      new anchor.BN(gameTokenAccount.feeAmount.toString()).eq(expectedFee)
-    ).to.be.true;
+    expect(new anchor.BN(gameTokenAccount.feeAmount.toString()).eq(expectedFee))
+      .to.be.true;
   }).timeout(180_000);
 });

@@ -3,13 +3,12 @@ use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
 use crate::error::ErrorCode;
+#[allow(clippy::wildcard_imports)]
 use crate::state::*;
 use crate::utils::is_supported_token_program;
 use crate::{GameConfig, OracleConfig, TokenConfig};
 
-// =============================================================================
 // ORACLE MANAGEMENT
-// =============================================================================
 
 #[derive(Accounts)]
 #[instruction(config: OracleConfig)]
@@ -52,9 +51,7 @@ pub struct UpdateOracle<'info> {
     pub new_oracle_operator: Signer<'info>,
 }
 
-// =============================================================================
 // TOKEN MANAGEMENT
-// =============================================================================
 
 #[derive(Accounts)]
 #[instruction(config: TokenConfig)]
@@ -167,9 +164,7 @@ pub struct CloseToken<'info> {
     pub oracle_operator: Signer<'info>,
 }
 
-// =============================================================================
 // GAME MANAGEMENT
-// =============================================================================
 
 #[derive(Accounts)]
 pub struct GameTokenContext<'info> {
@@ -210,7 +205,7 @@ impl<'info> GameTokenContext<'info> {
         player: &Signer<'info>,
         amount: u64,
     ) -> Result<()> {
-        self.game_token.handle_token_transfer(
+        self.game_token.transfer_from_player(
             player_token_account.to_account_info(),
             self.game_token_account.to_account_info(),
             player.to_account_info(),
@@ -218,7 +213,6 @@ impl<'info> GameTokenContext<'info> {
             self.token_mint.to_account_info(),
             amount,
             self.token_mint.decimals,
-            false,
         )
     }
 
@@ -227,7 +221,7 @@ impl<'info> GameTokenContext<'info> {
         destination_token_account: &InterfaceAccount<'info, TokenAccount>,
         amount: u64,
     ) -> Result<()> {
-        self.game_token.handle_token_transfer(
+        self.game_token.transfer_from_vault(
             self.game_token_account.to_account_info(),
             destination_token_account.to_account_info(),
             self.game_vault.to_account_info(),
@@ -235,7 +229,6 @@ impl<'info> GameTokenContext<'info> {
             self.token_mint.to_account_info(),
             amount,
             self.token_mint.decimals,
-            true,
         )
     }
 }
@@ -393,9 +386,7 @@ pub struct CloseGame<'info> {
     pub system_program: Program<'info, System>,
 }
 
-// =============================================================================
 // FEE MANAGEMENT
-// =============================================================================
 
 #[derive(Accounts)]
 pub struct WithdrawTokenFee<'info> {

@@ -9,10 +9,6 @@ pub fn handler(ctx: Context<super::InitializeGame>, config: GameConfig) -> Resul
     let token_mint = &ctx.accounts.game_token_ctx.token_mint;
     let token_mint_key = token_mint.key();
 
-    // ===============================
-    // STATE INITIALIZATION
-    // ===============================
-
     game.initialize(
         creator_key,
         token_mint_key,
@@ -20,10 +16,6 @@ pub fn handler(ctx: Context<super::InitializeGame>, config: GameConfig) -> Resul
         current_time,
         current_slot,
     );
-
-    // ===============================
-    // TOKEN TRANSFER
-    // ===============================
 
     // Transfer tokens for giveaway games
     if game.ticket_amount == 0 {
@@ -33,10 +25,6 @@ pub fn handler(ctx: Context<super::InitializeGame>, config: GameConfig) -> Resul
             config.amount,
         )?;
     }
-
-    // ===============================
-    // EVENT EMISSION
-    // ===============================
 
     emit!(GameInitialized::new(game, creator_key));
 

@@ -8,18 +8,10 @@ pub fn handler(ctx: Context<super::CloseGame>) -> Result<()> {
     let oracle = &ctx.accounts.oracle;
     let current_time = get_current_time()?;
 
-    // ===============================
-    // VALIDATION
-    // ===============================
-
     require!(
         !game.waiting_for_oracle(oracle.oracle_buffer_time, current_time),
         ErrorCode::GameWaitingForOracle
     );
-
-    // ===============================
-    // STATE UPDATES
-    // ===============================
 
     // Refund creator for giveaway games with remaining funds
     if game.ticket_amount == 0 && game.total_amount > 0 {
@@ -27,10 +19,6 @@ pub fn handler(ctx: Context<super::CloseGame>) -> Result<()> {
             .game_token_ctx
             .transfer_from_vault(&ctx.accounts.creator_token_account, game.total_amount)?;
     }
-
-    // ===============================
-    // EVENT EMISSION
-    // ===============================
 
     emit!(GameClosed::new(game, current_time));
 

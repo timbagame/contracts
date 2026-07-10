@@ -4,6 +4,7 @@ use {
     anchor_lang::AccountDeserialize,
     solana_signer::Signer,
     timba::{
+        error::ErrorCode,
         state::{Game, GameType},
         GameConfig,
     },
@@ -12,6 +13,38 @@ use {
 fn state(fixture: &common::TimbaFixture, game: anchor_lang::prelude::Pubkey) -> Game {
     let account = fixture.svm.get_account(&game).unwrap();
     Game::try_deserialize(&mut account.data.as_slice()).unwrap()
+}
+
+#[test]
+fn full_game_returns_game_full() {
+    let mut fixture = common::TimbaFixture::new();
+    let token = fixture.token_fixture();
+    let (first, first_ata) = fixture.funded_player(token.mint.pubkey(), 10_000);
+    let (second, second_ata) = fixture.funded_player(token.mint.pubkey(), 10_000);
+    let (third, third_ata) = fixture.funded_player(token.mint.pubkey(), 10_000);
+    let game = fixture.initialize_game(
+        &token,
+        &first,
+        first_ata,
+        GameConfig {
+            game_type: GameType::Coinflip,
+            amount: 1_000,
+            max_tickets: 2,
+            min_tickets: 2,
+            timeout: 30,
+            is_private: false,
+        },
+        [57; 32],
+    );
+    assert!(fixture.join_game(&token, game, &first, first_ata));
+    assert!(fixture.join_game(&token, game, &second, second_ata));
+
+    let instruction = fixture.join_instruction(&token, game, third.pubkey(), third_ata);
+    let operator = fixture.operator.insecure_clone();
+    assert_eq!(
+        common::custom_error_code(fixture.send_result(&[instruction], &[&operator, &third])),
+        common::anchor_error(ErrorCode::GameFull)
+    );
 }
 
 #[test]

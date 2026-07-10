@@ -2,7 +2,7 @@ mod common;
 
 use {
     solana_signer::Signer,
-    timba::{state::GameType, GameConfig},
+    timba::{error::ErrorCode, state::GameType, GameConfig},
 };
 
 #[test]
@@ -34,7 +34,10 @@ fn rejects_nonparticipant_and_empty_game_unjoins() {
         outsider_ata,
     );
     let operator = fixture.operator.insecure_clone();
-    assert!(!fixture.send(&[instruction], &[&operator, &outsider]));
+    assert_eq!(
+        common::custom_error_code(fixture.send_result(&[instruction], &[&operator, &outsider])),
+        common::anchor_error(ErrorCode::ParticipantNotFound)
+    );
 
     let empty_game = fixture.initialize_game(
         &token,
@@ -58,5 +61,8 @@ fn rejects_nonparticipant_and_empty_game_unjoins() {
         outsider_ata,
     );
     let operator = fixture.operator.insecure_clone();
-    assert!(!fixture.send(&[instruction], &[&operator, &outsider]));
+    assert_eq!(
+        common::custom_error_code(fixture.send_result(&[instruction], &[&operator, &outsider])),
+        common::anchor_error(ErrorCode::ParticipantNotFound)
+    );
 }
