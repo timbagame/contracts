@@ -4,37 +4,11 @@ import {
   TestUtils,
   TestEnvironment,
   coinflipGameConfig,
-  getClockUnixTimestamp,
+  awaitBufferExpiry,
   calculateWinnerIndex,
   getWinnerFromPlayers,
   expectAnchorError,
 } from "./test-helpers";
-
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-async function waitForExactTimestamp(
-  connection: anchor.web3.Connection,
-  targetTimestamp: number,
-  { pollMs = 40, maxDriftSeconds = 1 }: { pollMs?: number; maxDriftSeconds?: number } = {}
-): Promise<void> {
-  while (true) {
-    const current = await getClockUnixTimestamp(connection);
-
-    if (current === targetTimestamp) {
-      return;
-    }
-
-    if (current > targetTimestamp) {
-      const drift = current - targetTimestamp;
-      if (drift <= maxDriftSeconds) {
-        return;
-      }
-      throw new Error(`Missed target timestamp by ${drift} seconds`);
-    }
-
-    await sleep(pollMs);
-  }
-}
 
 describe("Unjoin Buffer Boundary", () => {
   let testUtils: TestUtils;
@@ -77,24 +51,14 @@ describe("Unjoin Buffer Boundary", () => {
     await testUtils.game.joinGame(gameData.gamePDA, creator.player);
     await testUtils.game.joinGame(gameData.gamePDA, participant.player);
 
-  const gameAccount = await testUtils.game.fetchGame(gameData.gamePDA);
+    const gameAccount = await testUtils.game.fetchGame(gameData.gamePDA);
 
-    const createdAtSeconds = gameAccount.createdAt.toNumber();
-    const timeoutSecondsValue = (gameConfig.timeout as anchor.BN).toNumber();
-
-    const targetTimestamp =
-      createdAtSeconds + timeoutSecondsValue + oracle.config.oracleBufferTime;
+    // Surfpool only advances Clock when txs land; awaitBufferExpiry ticks on stall.
+    await awaitBufferExpiry(gameAccount, oracle.config, 0, {
+      pollIntervalMs: 100,
+    });
 
     const connection = env.provider.connection;
-    const now = await getClockUnixTimestamp(connection);
-
-    const leadTime = targetTimestamp - now - 1;
-    if (leadTime > 0) {
-      await sleep(leadTime * 1_000);
-    }
-
-    await waitForExactTimestamp(connection, targetTimestamp);
-
     const boundarySnapshot = await testUtils.game.fetchGame(gameData.gamePDA);
     const participants = [creator, participant];
     const winnerIndex = calculateWinnerIndex(

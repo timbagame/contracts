@@ -28,7 +28,7 @@ describe("Game Lifecycle Instruction Events", () => {
     player: anchor.web3.Keypair,
     gameAccount: any,
     oracleConfig: any
-  ): Promise<void> => {
+  ): Promise<string> => {
     const maxAttempts = 12;
 
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
@@ -36,8 +36,7 @@ describe("Game Lifecycle Instruction Events", () => {
       await awaitBufferExpiry(gameAccount, oracleConfig, slackSeconds);
 
       try {
-        await testUtils.game.unjoinGame(gamePDA, player);
-        return;
+        return await testUtils.game.unjoinGame(gamePDA, player);
       } catch (error) {
         const message = getErrorMessage(error);
         const isBufferError = message.includes("Oracle buffer active");
@@ -64,6 +63,8 @@ describe("Game Lifecycle Instruction Events", () => {
         }
       }
     }
+
+    throw new Error("Unjoin retry loop ended without a transaction signature");
   };
 
   before(async () => {
@@ -177,23 +178,27 @@ describe("Game Lifecycle Instruction Events", () => {
     const gameAccount = await testUtils.game.fetchGame(gameData.gamePDA);
 
     try {
-      const event = await captureEvent(
-        env.program,
-        "playerUnjoined",
-        async () => {
-          await unjoinWithRetry(
-            gameData.gamePDA,
-            p1.player,
-            gameAccount,
-            oracle.config
-          );
-        },
-        { timeoutMs: 20_000 }
+      const signature = await unjoinWithRetry(
+        gameData.gamePDA,
+        p1.player,
+        gameAccount,
+        oracle.config
       );
 
-      expect(event.player).to.deep.equal(p1.player.publicKey);
-      expect(event.ticketsCount).to.equal(0);
-      expect(Number(event.totalAmount)).to.equal(0);
+      const transaction = await env.provider.connection.getTransaction(signature, {
+        commitment: "confirmed",
+        maxSupportedTransactionVersion: 0,
+      });
+      const parser = new anchor.EventParser(env.program.programId, env.program.coder);
+      const event = Array.from(parser.parseLogs(transaction?.meta?.logMessages ?? [])).find(
+        ({ name }) => name === "playerUnjoined"
+      )?.data;
+
+      expect(event, "PlayerUnjoined event missing from transaction logs").to.exist;
+
+      expect(event!.player).to.deep.equal(p1.player.publicKey);
+      expect(event!.ticketsCount).to.equal(0);
+      expect(Number(event!.totalAmount)).to.equal(0);
 
       const account = await testUtils.game.fetchGame(gameData.gamePDA);
       expect(account.ticketsCount).to.equal(0);
