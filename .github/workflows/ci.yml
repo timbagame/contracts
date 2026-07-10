@@ -73,14 +73,14 @@ jobs:
       - name: Install JS dependencies
         run: bun install --frozen-lockfile
 
+      - name: Typecheck
+        run: bun x tsc -p tsconfig.json --noEmit
+
       - name: Create test wallet
         run: solana-keygen new --no-bip39-passphrase --silent --force --outfile ~/.config/solana/id.json
 
       - name: Build SBF program
-        run: anchor build
-
-      - name: Typecheck
-        run: bun x tsc -p tsconfig.json --noEmit
+        run: cargo-build-sbf --manifest-path programs/timba/Cargo.toml
 
       - name: Run test suite
         run: anchor test --skip-build

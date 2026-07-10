@@ -8,7 +8,7 @@ This document explains the security architecture and trust model of the TimbaGam
 
 **How it works:**
 
-- The oracle generates the secret and provides the commitment hash to the creator for `initialize_game`
+- The oracle generates the secret and provides the commitment hash to the creator for `initialize_game`; the program cannot verify who generated a commitment
 - Players join the game knowing only the hash, not the secret value
 - After the game fills or times out, the oracle reveals the secret key
 - The winner is calculated using both the secret key AND the blockchain slot number when the last player joined
@@ -16,7 +16,7 @@ This document explains the security architecture and trust model of the TimbaGam
 
 **Security guarantees:**
 
-- ✅ **Game creators cannot predict winners** - They receive only the hash; the oracle holds the secret
+- ✅ **Game creators cannot predict winners under the intended flow** - They receive only the hash from an honest oracle, which retains the secret
 - ✅ **Players cannot influence outcomes** - They join before knowing the secret
 - ✅ **Cryptographically verifiable** - Anyone can verify the secret matches the original hash
 - ✅ **Unbiased selection** - Uses mathematical algorithms to eliminate modulo bias
@@ -41,14 +41,15 @@ assert(calculatedHash === originalCommittedHash);
 
 - ⚠️ **Oracle must be honest** - The platform operator controls the oracle
 - ⚠️ **Oracle must be available** - Games depend on oracle completion
-- ✅ **Oracle cannot steal player funds** - All fund transfers are cryptographically protected
-- ✅ **Oracle cannot manipulate winners** - Randomness includes unpredictable slot numbers
+- ✅ **Oracle cannot arbitrarily redirect game payouts or refunds** - Token destinations and calculated amounts are constrained on-chain, although the live fee can be changed up to its 10% cap
+- ⚠️ **The oracle remains trusted for liveness and commitment issuance** - It can refuse to settle a game, and the program cannot prove that a commitment came from the official oracle
+- ✅ **A submitted settlement cannot choose an arbitrary winner** - The program verifies the reveal and recomputes the winner from the committed secret, final participant vector, and last participant-action slot
 
 **What if the oracle fails?**
 
 - Once a game is ready for completion, unjoin is blocked until the oracle buffer ends
 - After that buffer, players can recover coinflip stakes if the game was not completed
-- No funds are ever permanently locked
+- The live oracle buffer applies to open games, but it is constrained on-chain to 1–3,600 seconds, preventing an operator from configuring an indefinite wait
 
 ### 3. Unjoin Rules
 
@@ -59,7 +60,7 @@ assert(calculatedHash === originalCommittedHash);
 - **After buffer expiry** without completion: unjoin is allowed again
 - Completed games close on settlement, so there is no post-completion unjoin
 
-Ready for completion means: max tickets filled, **or** min tickets reached **and** game timeout elapsed. The buffer ends at `created_at + timeout + oracle_buffer_time` (oracle-configurable).
+Ready for completion means: max tickets filled, **or** min tickets reached **and** game timeout elapsed. The recovery boundary is `created_at + timeout + oracle_buffer_time`. The buffer is read from the current global oracle configuration rather than snapshotted per game, so an authorized update affects open games, but its hard on-chain range is 1–3,600 seconds.
 
 **How to recover after a stalled ready game:**
 
@@ -91,7 +92,7 @@ Ready for completion means: max tickets filled, **or** min tickets reached **and
 
 **Participation Tracking:**
 
-- Exact participant public keys stored in canonical join order
+- Exact participant public keys stored in the canonical current-vector order; unjoin uses `swap_remove`, so a removal can move the final participant into the removed position
 - Direct public-key comparisons prevent truncated-identity collisions
 - Single participation per public key is enforced on-chain
 
@@ -122,6 +123,7 @@ Ready for completion means: max tickets filled, **or** min tickets reached **and
 
 - Fee percentages are stored on-chain and publicly visible
 - Settlement uses the current oracle fee (not snapshotted per game); updates apply to open games, still capped at 10%
+- Oracle buffer updates likewise apply to open games, with a hard maximum of one hour
 - All fee calculations are performed on-chain and verifiable
 
 ## Best Practices for Users
@@ -173,8 +175,10 @@ The deployment procedure and verification commands are documented in [MAINNET_DE
 ### Oracle-Related Risks:
 
 - **Oracle downtime** → After a ready game’s buffer ends, players can unjoin (earlier unjoin still works if the game never became ready)
-- **Oracle manipulation** → Cryptographic verification + slot-based entropy prevents this
-- **Oracle key compromise** → Would require new deployment; existing funds in games still protected by program logic
+- **Oracle censorship** → The operator can withhold settlement, but cannot keep the exclusive settlement window above the one-hour on-chain cap; coinflip participants can subsequently unjoin
+- **Invalid winner submission** → Cryptographic reveal verification and slot-based entropy prevent the operator from naming a winner that does not match the on-chain calculation
+- **Oracle key compromise** → The attacker can rotate the operator, change live configuration within its caps, complete games with known valid reveals, administer supported tokens, and withdraw accrued protocol fees. Game payout and refund constraints still apply; rotate the key immediately through `update_oracle` if control remains available
+- **Initialization takeover** → Initial oracle creation requires the intended operator plus the program upgrade authority verified through the upgradeable-loader `ProgramData` account
 
 ### Smart Contract Risks:
 
@@ -201,7 +205,7 @@ The deployment procedure and verification commands are documented in [MAINNET_DE
 
 **Red flags to watch for:**
 
-- Games that never complete (should become unjoinable after buffer expiry)
+- Games that never complete (coinflip stakes should become refundable after the recovery boundary)
 - Unexpected fee deductions above 10% (hard cap; fee is the live oracle value at complete)
 - Winners that don't match cryptographic verification
 - Any requests for additional payments or "gas fees"
