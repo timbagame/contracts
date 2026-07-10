@@ -15,8 +15,8 @@ For the full trust model and security details, see [SECURITY.md](./SECURITY.md).
 ## Repository layout
 
 - `programs/timba/src` - on-chain program (instructions, state, events, errors).
-- `programs/timba/tests` - primary test suite (LiteSVM + pure unit tests via `cargo test`).
-- `tests` - residual Anchor/TypeScript client tests (`anchor test`): smoke, races, Token-2022.
+- `programs/timba/tests` - Rust unit and LiteSVM integration tests (`cargo test`).
+- `tests` - Anchor/TypeScript integration tests (`anchor test`) for the generated client, validator concurrency, and token compatibility.
 - `scripts/update-idl.ts` - copies generated IDL/types to sibling consumers.
 - `target/idl` and `target/types` - generated artifacts committed for downstream tooling.
 
@@ -35,16 +35,16 @@ The repo also includes a `.devcontainer` for containerized setup in VS Code/Curs
 ```bash
 bun install
 anchor build
-cargo test -p timba   # program logic (primary)
-anchor test           # TypeScript client residual
+cargo test -p timba   # Rust unit and LiteSVM tests
+anchor test           # Anchor client and validator tests
 ```
 
 ## Testing
 
 | Suite | Command | Coverage |
 |-------|---------|----------|
-| **LiteSVM / unit (primary)** | `cargo test -p timba` | Guards, fees, giveaway, oracle, unjoin, winners, events, error codes |
-| **Anchor TS (residual)** | `anchor test` | Generated client smoke, complete/unjoin races, Token-2022 |
+| **Rust / LiteSVM** | `cargo test -p timba` | State logic, instruction guards, fees, giveaways, oracle flows, events, and error codes |
+| **Anchor / TypeScript** | `anchor test` | Generated client lifecycle, validator race behavior, SPL Token, and Token-2022 compatibility |
 
 Build the SBF binary before LiteSVM tests (loads `target/deploy/timba.so`):
 
@@ -67,10 +67,10 @@ cargo test -p timba unjoin
 # Build program and regenerate IDL/types
 anchor build
 
-# Primary program tests
+# Rust unit and LiteSVM tests
 cargo test -p timba
 
-# Residual TypeScript client tests (local validator)
+# Anchor client and local-validator tests
 anchor test
 
 # Sync generated IDL/types to sibling repos
