@@ -9,6 +9,8 @@ on:
 env:
   SOLANA_VERSION: 3.1.10
   ANCHOR_VERSION: 1.1.2
+  ANCHOR_BUILD_RUST_VERSION: 1.91.0
+  SURFPOOL_VERSION: v1.4.0
 
 jobs:
   contracts:
@@ -52,9 +54,15 @@ jobs:
           sh -c "$(curl -sSfL https://release.anza.xyz/v${SOLANA_VERSION}/install)"
           echo "$HOME/.local/share/solana/install/active_release/bin" >> "$GITHUB_PATH"
 
+      - name: Install Surfpool
+        run: |
+          curl -sL https://run.surfpool.run/ | VERSION=${SURFPOOL_VERSION} bash
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
       - name: Install Anchor CLI
         run: |
-          cargo install --git https://github.com/coral-xyz/anchor --tag v${ANCHOR_VERSION} anchor-cli --locked --force
+          rustup toolchain install ${ANCHOR_BUILD_RUST_VERSION} --profile minimal
+          cargo +${ANCHOR_BUILD_RUST_VERSION} install --git https://github.com/coral-xyz/anchor --tag v${ANCHOR_VERSION} anchor-cli --locked --force
           echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
 
       - name: Install JS dependencies
@@ -73,4 +81,4 @@ jobs:
         run: cargo test -p timba
 
       - name: Run Anchor client tests
-        run: anchor test --skip-build --validator legacy
+        run: anchor test --skip-build
