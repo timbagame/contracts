@@ -192,12 +192,12 @@ export type Timba = {
               },
               {
                 "kind": "account",
-                "path": "game_token_ctx.token_program",
+                "path": "gameTokenCtx.tokenProgram",
                 "account": "gameTokenContext"
               },
               {
                 "kind": "account",
-                "path": "game_token_ctx.token_mint",
+                "path": "gameTokenCtx.tokenMint",
                 "account": "gameTokenContext"
               }
             ],
@@ -612,12 +612,12 @@ export type Timba = {
               },
               {
                 "kind": "account",
-                "path": "game_token_ctx.token_program",
+                "path": "gameTokenCtx.tokenProgram",
                 "account": "gameTokenContext"
               },
               {
                 "kind": "account",
-                "path": "game_token_ctx.token_mint",
+                "path": "gameTokenCtx.tokenMint",
                 "account": "gameTokenContext"
               }
             ],
@@ -887,12 +887,12 @@ export type Timba = {
               },
               {
                 "kind": "account",
-                "path": "game_token_ctx.token_program",
+                "path": "gameTokenCtx.tokenProgram",
                 "account": "gameTokenContext"
               },
               {
                 "kind": "account",
-                "path": "game_token_ctx.token_mint",
+                "path": "gameTokenCtx.tokenMint",
                 "account": "gameTokenContext"
               }
             ],
@@ -1356,12 +1356,12 @@ export type Timba = {
               },
               {
                 "kind": "account",
-                "path": "game_token_ctx.token_program",
+                "path": "gameTokenCtx.tokenProgram",
                 "account": "gameTokenContext"
               },
               {
                 "kind": "account",
-                "path": "game_token_ctx.token_mint",
+                "path": "gameTokenCtx.tokenMint",
                 "account": "gameTokenContext"
               }
             ],
@@ -1611,12 +1611,12 @@ export type Timba = {
               },
               {
                 "kind": "account",
-                "path": "game_token_ctx.token_program",
+                "path": "gameTokenCtx.tokenProgram",
                 "account": "gameTokenContext"
               },
               {
                 "kind": "account",
-                "path": "game_token_ctx.token_mint",
+                "path": "gameTokenCtx.tokenMint",
                 "account": "gameTokenContext"
               }
             ],
@@ -1976,12 +1976,12 @@ export type Timba = {
               },
               {
                 "kind": "account",
-                "path": "game_token_ctx.token_program",
+                "path": "gameTokenCtx.tokenProgram",
                 "account": "gameTokenContext"
               },
               {
                 "kind": "account",
-                "path": "game_token_ctx.token_mint",
+                "path": "gameTokenCtx.tokenMint",
                 "account": "gameTokenContext"
               }
             ],

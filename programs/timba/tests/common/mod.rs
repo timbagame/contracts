@@ -7,11 +7,13 @@ use {
         InstructionData, ToAccountMetas,
     },
     litesvm::{types::TransactionResult, LiteSVM},
+    solana_instruction::error::InstructionError,
     solana_keypair::Keypair,
     solana_message::{Message, VersionedMessage},
     solana_signer::Signer,
     solana_system_interface::instruction as system_instruction,
     solana_transaction::versioned::VersionedTransaction,
+    solana_transaction_error::TransactionError,
     spl_associated_token_account_interface::{
         address::get_associated_token_address_with_program_id,
         instruction::create_associated_token_account, program::ID as ASSOCIATED_TOKEN_PROGRAM_ID,
@@ -21,7 +23,7 @@ use {
         state::{Account as TokenAccount, Mint},
         ID as TOKEN_PROGRAM_ID,
     },
-    timba::{GameConfig, OracleConfig, TokenConfig},
+    timba::{error::ErrorCode, GameConfig, OracleConfig, TokenConfig},
 };
 
 pub struct TokenFixture {
@@ -31,17 +33,17 @@ pub struct TokenFixture {
     pub vault_ata: Pubkey,
 }
 
+/// On-chain custom error number for an Anchor `ErrorCode` (includes offset).
+pub fn anchor_error(code: ErrorCode) -> u32 {
+    u32::from(code)
+}
+
+/// Extract a program `Custom(u32)` from a failed LiteSVM transaction.
 pub fn custom_error_code(result: TransactionResult) -> u32 {
-    let error = format!("{:?}", result.expect_err("transaction should fail").err);
-    let start = error
-        .find("Custom(")
-        .expect("expected custom program error")
-        + "Custom(".len();
-    let end = error[start..]
-        .find(')')
-        .map(|offset| start + offset)
-        .expect("unterminated custom program error");
-    error[start..end].parse().expect("numeric custom error")
+    match result.expect_err("transaction should fail").err {
+        TransactionError::InstructionError(_, InstructionError::Custom(code)) => code,
+        other => panic!("expected InstructionError::Custom, got {other:?}"),
+    }
 }
 
 pub struct TimbaFixture {

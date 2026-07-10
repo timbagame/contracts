@@ -1,4 +1,4 @@
-name: Contracts TypeScript CI
+name: Contracts CI
 
 on:
   push:
@@ -6,17 +6,39 @@ on:
   pull_request:
     branches: [main]
 
+env:
+  SOLANA_VERSION: 3.1.10
+  ANCHOR_VERSION: 1.1.2
+
 jobs:
-  contracts-types:
+  contracts:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.89.0
+
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: latest
+
+      - name: Cache Cargo
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cargo/bin
+            target
+          key: cargo-contracts-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', 'rust-toolchain.toml') }}
+          restore-keys: |
+            cargo-contracts-${{ runner.os }}-
+
       - name: Restore Bun cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -24,7 +46,31 @@ jobs:
           key: bun-install-${{ runner.os }}-${{ hashFiles('bun.lock', 'package.json') }}
           restore-keys: |
             bun-install-${{ runner.os }}-
-      - name: Install dependencies
+
+      - name: Install Solana CLI
+        run: |
+          sh -c "$(curl -sSfL https://release.anza.xyz/v${SOLANA_VERSION}/install)"
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> "$GITHUB_PATH"
+
+      - name: Install Anchor CLI
+        run: |
+          cargo install --git https://github.com/coral-xyz/anchor --tag v${ANCHOR_VERSION} anchor-cli --locked --force
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+
+      - name: Install JS dependencies
         run: bun install --frozen-lockfile
+
       - name: Typecheck
         run: bun x tsc -p tsconfig.json --noEmit
+
+      - name: Create test wallet
+        run: solana-keygen new --no-bip39-passphrase --silent --force --outfile ~/.config/solana/id.json
+
+      - name: Build SBF program
+        run: cargo-build-sbf --manifest-path programs/timba/Cargo.toml
+
+      - name: Run LiteSVM program tests
+        run: cargo test -p timba
+
+      - name: Run Anchor client tests
+        run: anchor test --skip-build --validator legacy
