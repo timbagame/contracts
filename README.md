@@ -35,16 +35,15 @@ The repo also includes a `.devcontainer` for containerized setup in VS Code/Curs
 ```bash
 bun install
 anchor build
-cargo test -p timba   # Rust unit and LiteSVM tests
-anchor test           # Anchor client and validator tests
+anchor test           # Complete Rust and TypeScript test suite
 ```
 
 ## Testing
 
 | Suite | Command | Coverage |
 |-------|---------|----------|
-| **Rust / LiteSVM** | `cargo test -p timba` | State logic, instruction guards, fees, giveaways, oracle flows, events, and error codes |
-| **Anchor / TypeScript** | `anchor test` | Generated client lifecycle, validator race behavior, SPL Token, and Token-2022 compatibility |
+| **Complete suite** | `anchor test` | All Rust/LiteSVM and Anchor/TypeScript tests |
+| **Rust / LiteSVM only** | `cargo test -p timba` | State logic, instruction guards, fees, giveaways, oracle flows, events, and error codes |
 
 Build the SBF binary before LiteSVM tests (loads `target/deploy/timba.so`):
 
@@ -67,11 +66,11 @@ cargo test -p timba unjoin
 # Build program and regenerate IDL/types
 anchor build
 
-# Rust unit and LiteSVM tests
-cargo test -p timba
-
-# Anchor client and local-validator tests
+# Complete Rust and TypeScript test suite
 anchor test
+
+# Rust unit and LiteSVM tests only
+cargo test -p timba
 
 # Sync generated IDL/types to sibling repos
 bun run update-idl
