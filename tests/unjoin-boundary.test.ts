@@ -22,7 +22,7 @@ describe("Unjoin Buffer Boundary", () => {
     }
   });
 
-  it("allows unjoin exactly at oracle buffer expiry second", async () => {
+  it("allows unjoin once the oracle buffer expires", async () => {
     const setup = await testUtils.quickSetup();
     const { oracle, mint, players } = setup;
     const [creator, participant] = players;
@@ -79,7 +79,7 @@ describe("Unjoin Buffer Boundary", () => {
       "GameNotReadyForOracle",
       {
         fallbackSubstring: "Oracle not ready",
-        message: "Completion should be blocked exactly at buffer expiry",
+        message: "Completion should be blocked once the buffer expires",
       }
     );
 

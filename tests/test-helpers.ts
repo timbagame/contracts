@@ -264,9 +264,11 @@ type BufferReadyGameAccount = {
 
 export interface AwaitBufferExpiryOptions {
   /**
-   * Override the connection used for fetching the clock sysvar.
-   * Defaults to the shared Anchor provider connection.
+   * Override the provider used for fetching and advancing the clock.
+   * Prefer this over `connection` so both operations target the same validator.
    */
+  provider?: anchor.AnchorProvider;
+  /** Override only the connection used for fetching the clock sysvar. */
   connection?: anchor.web3.Connection;
   /** Custom polling cadence in milliseconds. */
   pollIntervalMs?: number;
@@ -330,8 +332,10 @@ export async function awaitBufferExpiry(
   extraSlackSeconds = 2,
   options: AwaitBufferExpiryOptions = {}
 ): Promise<void> {
+  const provider =
+    options.provider ?? TestEnvironment.getInstance().provider;
   const connection =
-    options.connection ?? TestEnvironment.getInstance().provider.connection;
+    options.connection ?? provider.connection;
   const pollIntervalMs =
     options.pollIntervalMs ?? DEFAULT_BUFFER_POLL_INTERVAL_MS;
   const maxWaitMs = options.maxWaitMs ?? DEFAULT_BUFFER_MAX_WAIT_MS;
@@ -361,7 +365,12 @@ export async function awaitBufferExpiry(
     if (clockTimestamp === previousClockTimestamp) {
       stalledPolls += 1;
       if (stalledPolls >= CLOCK_STALL_POLLS_BEFORE_TICK) {
-        await tickClock(TestEnvironment.getInstance().provider);
+        if (options.connection && !options.provider) {
+          throw new Error(
+            "Clock stalled on a custom connection; pass its provider so the same validator can be advanced."
+          );
+        }
+        await tickClock(provider);
         stalledPolls = 0;
       }
     } else {
