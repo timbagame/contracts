@@ -9,11 +9,13 @@ on:
 env:
   SOLANA_VERSION: 3.1.10
   ANCHOR_VERSION: 1.1.2
+  ANCHOR_SHA256: fdea9979629e9416e5f5e5622ff6c11b8c691d1e559581ece368e903c0c980c1
   SURFPOOL_VERSION: v1.4.0
+  SURFPOOL_SHA256: b65e3e18da8e97a0558e04693d76a12aa31111c7d74958da7cee0fd2eeb4cae8
 
 jobs:
   contracts:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
     steps:
@@ -34,7 +36,6 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-            ~/.cargo/bin
             target
           key: cargo-contracts-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', 'rust-toolchain.toml') }}
           restore-keys: |
@@ -55,13 +56,17 @@ jobs:
 
       - name: Install Surfpool
         run: |
-          curl -sL https://run.surfpool.run/ | VERSION=${SURFPOOL_VERSION} bash
+          curl -fsSL "https://github.com/solana-foundation/surfpool/releases/download/${SURFPOOL_VERSION}/surfpool-linux-x64.tar.gz" -o /tmp/surfpool.tar.gz
+          echo "${SURFPOOL_SHA256}  /tmp/surfpool.tar.gz" | sha256sum --check
+          tar -xzf /tmp/surfpool.tar.gz -C /tmp
+          install -Dm755 /tmp/surfpool "$HOME/.local/bin/surfpool"
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - name: Install Anchor CLI
         run: |
-          cargo install --git https://github.com/coral-xyz/anchor --tag v${ANCHOR_VERSION} anchor-cli --locked --force
-          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+          curl -fsSL "https://github.com/solana-foundation/anchor/releases/download/v${ANCHOR_VERSION}/anchor-${ANCHOR_VERSION}-x86_64-unknown-linux-gnu" -o /tmp/anchor
+          echo "${ANCHOR_SHA256}  /tmp/anchor" | sha256sum --check
+          install -Dm755 /tmp/anchor "$HOME/.local/bin/anchor"
 
       - name: Install JS dependencies
         run: bun install --frozen-lockfile
