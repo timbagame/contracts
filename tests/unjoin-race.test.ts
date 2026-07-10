@@ -172,11 +172,7 @@ describe("Unjoin Race Conditions", () => {
     for (const failure of failures) {
       await expectAnchorError(
         Promise.reject(failure.error),
-        "UnauthorizedPlayer",
-        {
-          // Preflight simulation uses hex (`0x1b59`); confirm path may use JSON Custom.
-          fallbackSubstring: "0x1b59",
-        }
+        "ParticipantNotFound"
       );
     }
   }).timeout(180_000);

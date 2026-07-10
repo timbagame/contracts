@@ -1526,6 +1526,7 @@ const ANCHOR_ERROR_CODE_BY_NUMBER: Record<number, string> = {
   7102: "GameNotReadyForOracle",
   7103: "GameHasActivePlayers",
   7104: "GameNotCompleted",
+  7207: "ParticipantNotFound",
 };
 
 function extractNumericProgramError(error: unknown): number | undefined {
