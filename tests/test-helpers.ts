@@ -332,10 +332,8 @@ export async function awaitBufferExpiry(
   extraSlackSeconds = 2,
   options: AwaitBufferExpiryOptions = {}
 ): Promise<void> {
-  const provider =
-    options.provider ?? TestEnvironment.getInstance().provider;
-  const connection =
-    options.connection ?? provider.connection;
+  const provider = options.provider ?? TestEnvironment.getInstance().provider;
+  const connection = options.connection ?? provider.connection;
   const pollIntervalMs =
     options.pollIntervalMs ?? DEFAULT_BUFFER_POLL_INTERVAL_MS;
   const maxWaitMs = options.maxWaitMs ?? DEFAULT_BUFFER_MAX_WAIT_MS;
@@ -1082,7 +1080,10 @@ export class PlayerManager {
         const isDelayedAccountRead =
           error instanceof Error && error.name === "TokenAccountNotFoundError";
 
-        if (!isDelayedAccountRead || attempt === TOKEN_ACCOUNT_READ_RETRIES - 1) {
+        if (
+          !isDelayedAccountRead ||
+          attempt === TOKEN_ACCOUNT_READ_RETRIES - 1
+        ) {
           throw error;
         }
 
@@ -1540,8 +1541,9 @@ function extractNumericProgramError(error: unknown): number | undefined {
     return Number.parseInt(customMatch[1], 10);
   }
 
-  const instructionMatch =
-    /InstructionError\D+(\d+)\D+Custom\D+(\d+)/i.exec(message);
+  const instructionMatch = /InstructionError\D+(\d+)\D+Custom\D+(\d+)/i.exec(
+    message
+  );
   if (instructionMatch?.[2]) {
     return Number.parseInt(instructionMatch[2], 10);
   }

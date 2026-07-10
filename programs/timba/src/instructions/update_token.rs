@@ -5,15 +5,7 @@ pub fn handler(ctx: Context<super::UpdateToken>, config: TokenConfig) -> Result<
     let game_token = &mut ctx.accounts.game_token;
     let token_mint_key = ctx.accounts.token_mint.key();
 
-    // ===============================
-    // STATE UPDATES
-    // ===============================
-
     game_token.update_config(config.min_amount, config.enabled);
-
-    // ===============================
-    // EVENT EMISSION
-    // ===============================
 
     emit!(TokenUpdated::from_config(token_mint_key, &config));
 

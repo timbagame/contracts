@@ -2,13 +2,9 @@ use crate::state::{Game, GameType};
 use crate::{OracleConfig, TokenConfig};
 use anchor_lang::prelude::*;
 
-// =============================================================================
 // EVENT DEFINITIONS
-// =============================================================================
 
-// =============================================================================
 // ORACLE EVENTS
-// =============================================================================
 
 /// Emitted when the global oracle account is initialized
 #[event]
@@ -98,9 +94,7 @@ impl OracleUpdated {
     }
 }
 
-// =============================================================================
 // TOKEN EVENTS
-// =============================================================================
 
 /// Emitted when a new token is initialized for games
 #[event]
@@ -206,9 +200,7 @@ impl TokenClosed {
     }
 }
 
-// =============================================================================
 // PLAYER EVENTS
-// =============================================================================
 
 /// Emitted when a player joins a game
 #[event]
@@ -253,8 +245,8 @@ impl PlayerEventFields {
 
 impl PlayerJoined {
     #[must_use]
-    pub fn new<'info>(
-        game: &Account<'info, Game>,
+    pub fn new(
+        game: &Account<'_, Game>,
         player: Pubkey,
         ticket_index: u32,
         last_slot: u64,
@@ -286,6 +278,8 @@ pub struct PlayerUnjoined {
     pub tickets_count: u32,
     /// Ticket index associated with this unjoin operation
     pub ticket_index: u32,
+    /// Participant moved into `ticket_index` by O(1) removal, if any
+    pub moved_participant: Option<Pubkey>,
     /// Last slot for entropy
     pub last_slot: u64,
     /// Timestamp of the unjoin
@@ -294,10 +288,11 @@ pub struct PlayerUnjoined {
 
 impl PlayerUnjoined {
     #[must_use]
-    pub fn new<'info>(
-        game: &Account<'info, Game>,
+    pub fn new(
+        game: &Account<'_, Game>,
         player: Pubkey,
         ticket_index: u32,
+        moved_participant: Option<Pubkey>,
         last_slot: u64,
         timestamp: u64,
     ) -> Self {
@@ -308,15 +303,14 @@ impl PlayerUnjoined {
             total_amount: fields.total_amount,
             tickets_count: fields.tickets_count,
             ticket_index,
+            moved_participant,
             last_slot,
             timestamp,
         }
     }
 }
 
-// =============================================================================
 // GAME EVENTS
-// =============================================================================
 
 /// Emitted when a new game is created
 #[event]
@@ -347,7 +341,7 @@ pub struct GameInitialized {
 
 impl GameInitialized {
     #[must_use]
-    pub fn new<'info>(game: &Account<'info, Game>, creator: Pubkey) -> Self {
+    pub fn new(game: &Account<'_, Game>, creator: Pubkey) -> Self {
         Self {
             game_key: game.key(),
             creator,
@@ -383,8 +377,8 @@ pub struct GameCompleted {
 
 impl GameCompleted {
     #[must_use]
-    pub fn new<'info>(
-        game: &Account<'info, Game>,
+    pub fn new(
+        game: &Account<'_, Game>,
         winner: Pubkey,
         winner_amount: u64,
         fee_amount: u64,
@@ -412,7 +406,7 @@ pub struct GameClosed {
 
 impl GameClosed {
     #[must_use]
-    pub fn new<'info>(game: &Account<'info, Game>, timestamp: u64) -> Self {
+    pub fn new(game: &Account<'_, Game>, timestamp: u64) -> Self {
         Self {
             game_key: game.key(),
             timestamp,

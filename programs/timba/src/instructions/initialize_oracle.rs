@@ -6,15 +6,7 @@ pub fn handler(ctx: Context<super::InitializeOracle>, config: OracleConfig) -> R
     let oracle = &mut ctx.accounts.oracle;
     let operator_key = ctx.accounts.oracle_operator.key();
 
-    // ===============================
-    // STATE INITIALIZATION
-    // ===============================
-
     update_oracle_configuration(oracle, &config, operator_key);
-
-    // ===============================
-    // EVENT EMISSION
-    // ===============================
 
     emit!(OracleInitialized::from_config(operator_key, &config));
 

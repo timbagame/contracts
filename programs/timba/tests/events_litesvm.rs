@@ -115,6 +115,7 @@ fn emits_initialize_join_unjoin_and_close_events() {
     let token = fixture.token_fixture();
     let (creator, creator_ata) = fixture.funded_player(token.mint.pubkey(), 10_000);
     let (second, second_ata) = fixture.funded_player(token.mint.pubkey(), 10_000);
+    let (third, third_ata) = fixture.funded_player(token.mint.pubkey(), 10_000);
     let config = GameConfig {
         game_type: GameType::Coinflip,
         amount: 1_000,
@@ -153,6 +154,9 @@ fn emits_initialize_join_unjoin_and_close_events() {
     let second_join = fixture.join_instruction(&token, game, second.pubkey(), second_ata);
     let payer = fixture.operator.insecure_clone();
     assert!(fixture.send(&[second_join], &[&payer, &second]));
+    let third_join = fixture.join_instruction(&token, game, third.pubkey(), third_ata);
+    let payer = fixture.operator.insecure_clone();
+    assert!(fixture.send(&[third_join], &[&payer, &third]));
     let account = fixture.svm.get_account(&game).unwrap();
     let game_state = Game::try_deserialize(&mut account.data.as_slice()).unwrap();
     let mut clock = fixture.svm.get_sysvar::<Clock>();
@@ -166,10 +170,12 @@ fn emits_initialize_join_unjoin_and_close_events() {
     let unjoined: PlayerUnjoined = event(&metadata);
     assert_eq!(unjoined.player, second.pubkey());
     assert_eq!(unjoined.ticket_index, 1);
-    assert_eq!(unjoined.tickets_count, 1);
-    assert_eq!(unjoined.total_amount, 1_000);
+    assert_eq!(unjoined.moved_participant, Some(third.pubkey()));
+    assert_eq!(unjoined.tickets_count, 2);
+    assert_eq!(unjoined.total_amount, 2_000);
 
     assert!(fixture.unjoin_game(&token, game, &creator, creator_ata));
+    assert!(fixture.unjoin_game(&token, game, &third, third_ata));
 
     let close = fixture.close_game_instruction(&token, game, creator.pubkey(), creator_ata);
     let payer = fixture.operator.insecure_clone();

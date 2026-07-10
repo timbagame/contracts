@@ -1,8 +1,6 @@
 use anchor_lang::prelude::*;
 
-// =============================================================================
 // ERROR DEFINITIONS
-// =============================================================================
 
 /// Custom error codes for the timba program.
 ///
@@ -14,9 +12,7 @@ use anchor_lang::prelude::*;
 /// - 1400-1499: Token Errors
 #[error_code]
 pub enum ErrorCode {
-    // =========================================================================
     // OPERATOR AND PERMISSION ERRORS (1000-1099)
-    // =========================================================================
     /// The provided operator does not match the required operator
     #[msg("Unauthorized access")]
     UnauthorizedOperator = 1000,
@@ -29,9 +25,7 @@ pub enum ErrorCode {
     #[msg("Creator mismatch")]
     InvalidCreator = 1002,
 
-    // =========================================================================
     // GAME STATE ERRORS (1100-1199)
-    // =========================================================================
     /// Game has reached maximum player capacity
     #[msg("Game full")]
     GameFull = 1100,
@@ -72,9 +66,7 @@ pub enum ErrorCode {
     #[msg("Participant store full")]
     ParticipantStorageExceeded = 1109,
 
-    // =========================================================================
     // PLAYER ACTION ERRORS (1200-1299)
-    // =========================================================================
     /// Player has already joined this game
     #[msg("Already joined")]
     AlreadyJoined = 1200,
@@ -103,9 +95,19 @@ pub enum ErrorCode {
     #[msg("Randomness failed")]
     RandomnessGenerationFailed = 1206,
 
-    // =========================================================================
+    /// Player is not present in the current participant set
+    #[msg("Participant not found")]
+    ParticipantNotFound = 1207,
+
+    /// Participant index is outside the current participant set
+    #[msg("Participant index out of range")]
+    ParticipantIndexOutOfRange = 1208,
+
+    /// Arithmetic operation would overflow or underflow
+    #[msg("Arithmetic overflow")]
+    ArithmeticOverflow = 1209,
+
     // CONFIGURATION ERRORS (1300-1399)
-    // =========================================================================
     /// Ticket count configuration is invalid
     #[msg("Invalid config value")]
     InvalidTicketsCount = 1300,
@@ -130,9 +132,7 @@ pub enum ErrorCode {
     #[msg("Oracle buffer short")]
     OracleBufferTooSmall = 1305,
 
-    // =========================================================================
     // TOKEN ERRORS (1400-1499)
-    // =========================================================================
     /// Token is not enabled for game operations
     #[msg("Token disabled")]
     TokenNotEnabled = 1400,

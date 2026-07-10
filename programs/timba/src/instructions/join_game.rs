@@ -8,10 +8,6 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
     let (current_time, current_slot) = get_clock_snapshot()?;
     let player_key = ctx.accounts.player.key();
 
-    // ===============================
-    // VALIDATION
-    // ===============================
-
     require!(!game.is_expired(current_time), ErrorCode::GameExpired);
 
     // Duplicate prevention: scan the exact participant list.
@@ -20,27 +16,15 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
         ErrorCode::AlreadyJoined
     );
 
-    // ===============================
-    // STATE UPDATES
-    // ===============================
-
     // Add player to game and update counters
     let ticket_index = game.add_player_to_game(player_key)?;
     game.last_slot = current_slot;
-
-    // ===============================
-    // TOKEN TRANSFER
-    // ===============================
 
     ctx.accounts.game_token_ctx.transfer_from_player(
         &ctx.accounts.player_token_account,
         &ctx.accounts.player,
         game.ticket_amount,
     )?;
-
-    // ===============================
-    // EVENT EMISSION
-    // ===============================
 
     emit!(PlayerJoined::new(
         game,

@@ -161,8 +161,15 @@ fn participant_accounting_guards_overflow_and_capacity() {
         game.add_player_to_game(*player).unwrap();
     }
     assert!(game.add_player_to_game(Pubkey::new_unique()).is_err());
-    assert_eq!(game.remove_participant(&players[1]).unwrap(), 1);
+    let removal = game.remove_participant(&players[1]).unwrap();
+    assert_eq!(removal.removed_index, 1);
+    assert_eq!(removal.moved_participant, Some(players[2]));
+    assert_eq!(game.participants, vec![players[0], players[2]]);
     assert!(!game.contains_participant(&players[1]));
+
+    let last_removal = game.remove_participant(&players[2]).unwrap();
+    assert_eq!(last_removal.removed_index, 1);
+    assert_eq!(last_removal.moved_participant, None);
 
     let mut capacity = Game {
         ticket_amount: 750_000,

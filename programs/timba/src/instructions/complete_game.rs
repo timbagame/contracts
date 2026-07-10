@@ -13,18 +13,10 @@ pub fn handler(
     let oracle = &ctx.accounts.oracle;
     let current_time = get_current_time()?;
 
-    // ===============================
-    // VALIDATION
-    // ===============================
-
     require!(
         game.waiting_for_oracle(oracle.oracle_buffer_time, current_time),
         ErrorCode::GameNotReadyForOracle
     );
-
-    // ===============================
-    // WINNER VERIFICATION
-    // ===============================
 
     // 1. Recompute winner index deterministically from secret key + game state (append order canonical)
     let calculated_winner_index = game
@@ -51,11 +43,7 @@ pub fn handler(
         ErrorCode::WinnerPubkeyMismatch
     );
 
-    // ===============================
-    // STATE UPDATES
-    // ===============================
-
-    let fee_percentage = oracle.fee_percentage as u64;
+    let fee_percentage = u64::from(oracle.fee_percentage);
     let (winner_amount, fee_amount) = game.calculate_amounts(fee_percentage);
 
     // Update fee amount and transfer directly to winner
@@ -67,18 +55,10 @@ pub fn handler(
     // Mark game as completed
     game.complete();
 
-    // ===============================
-    // TOKEN TRANSFER
-    // ===============================
-
     // Transfer winner amount directly to winner's token account
     ctx.accounts
         .game_token_ctx
         .transfer_from_vault(&ctx.accounts.winner_token_account, winner_amount)?;
-
-    // ===============================
-    // EVENT EMISSION
-    // ===============================
 
     emit!(GameCompleted::new(
         game,
