@@ -33,7 +33,7 @@ declare_id!("32Jr4JnXWvqq9GqPQynkooHsszaucUUvZfNLh2hdX2L5");
 /// Configuration parameters for oracle initialization and updates
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct OracleConfig {
-    /// Fee percentage taken from game winnings (0-100)
+    /// Fee percentage taken from game winnings (0-10)
     pub fee_percentage: u8,
     /// Buffer time in seconds after game timeout before cancellation
     pub oracle_buffer_time: u64,
