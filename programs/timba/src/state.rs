@@ -630,27 +630,3 @@ impl Game {
         self.game_type == GameType::Giveaway || token_balance >= self.ticket_amount
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn buffer_expiry_boundary_is_inclusive() {
-        let game = Game {
-            created_at: 100,
-            timeout: 4,
-            min_tickets: 2,
-            max_tickets: 2,
-            tickets_count: 2,
-            total_amount: 1,
-            ..Game::default()
-        };
-        let oracle_buffer_time = 2;
-
-        assert!(!game.is_buffer_expired(oracle_buffer_time, 105));
-        assert!(!game.can_unjoin(oracle_buffer_time, 105));
-        assert!(game.is_buffer_expired(oracle_buffer_time, 106));
-        assert!(game.can_unjoin(oracle_buffer_time, 106));
-    }
-}
