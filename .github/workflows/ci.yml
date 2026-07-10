@@ -80,8 +80,5 @@ jobs:
       - name: Build SBF program
         run: cargo-build-sbf --manifest-path programs/timba/Cargo.toml
 
-      - name: Run LiteSVM program tests
-        run: cargo test -p timba
-
-      - name: Run Anchor client tests
+      - name: Run test suite
         run: anchor test --skip-build

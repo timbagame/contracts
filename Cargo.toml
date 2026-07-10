@@ -17,7 +17,7 @@ codegen-units   = 1
 strip           = true
 debug           = false
 panic           = "abort"
-overflow-checks = false          # was true → wastes compute in prod
+overflow-checks = true
 
 [profile.release.build-override]
 opt-level       = "z"
