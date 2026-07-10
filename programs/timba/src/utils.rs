@@ -3,7 +3,6 @@ use crate::OracleConfig;
 use anchor_lang::prelude::*;
 use anchor_spl::token::ID as TOKEN_PROGRAM_ID;
 use anchor_spl::token_2022::ID as TOKEN_2022_PROGRAM_ID;
-use solana_sha256_hasher::hashv;
 
 // =============================================================================
 // COMMON UTILITIES
@@ -44,25 +43,6 @@ pub fn update_oracle_configuration(
         config.min_timeout,
         operator_key,
     );
-}
-
-// =============================================================================
-// PARTICIPANT HASHING
-// =============================================================================
-
-/// Domain tag for participant hash computation (versioned for future evolution)
-const PARTICIPANT_HASH_DOMAIN: &[u8] = b"timba:part:v1";
-
-/// Computes the per-game salted participant hash as the first 8 bytes of
-/// SHA256("timba:part:v1" || game_key || player_pubkey)
-pub fn participant_hash(game_key: &Pubkey, player_key: &Pubkey) -> u64 {
-    let digest = hashv(&[
-        PARTICIPANT_HASH_DOMAIN,
-        game_key.as_ref(),
-        player_key.as_ref(),
-    ])
-    .to_bytes();
-    u64::from_le_bytes(digest[0..8].try_into().unwrap())
 }
 
 // =============================================================================

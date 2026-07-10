@@ -48,6 +48,8 @@ export ORACLE_OPERATOR_KEYPAIR_PATH=/path/to/oracle-operator.json
 
 ## 3. Test and Freeze the Release
 
+Version 0.2.0 changes the `Game` account layout and intentionally provides no backward compatibility. Before upgrading an existing deployment, disable new games and settle or close every existing game account. Do not deploy version 0.2.0 while an old-layout game remains active.
+
 ```bash
 anchor test
 git diff --exit-code

@@ -1,6 +1,6 @@
 [package]
 name         = "timba"
-version      = "0.1.4"
+version      = "0.2.0"
 description  = "Timba on-chain game contracts built with Anchor"
 license      = "BUSL-1.1"
 edition      = "2021"

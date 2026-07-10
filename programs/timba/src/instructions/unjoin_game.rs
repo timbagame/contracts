@@ -1,6 +1,6 @@
 use crate::error::ErrorCode;
 use crate::events::PlayerUnjoined;
-use crate::utils::{get_clock_snapshot, participant_hash};
+use crate::utils::get_clock_snapshot;
 use anchor_lang::prelude::*;
 
 pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
@@ -26,9 +26,8 @@ pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
     // STATE UPDATES
     // ===============================
 
-    // Find salted participant hash and remove if present (single ticket per player)
-    let player_hash = participant_hash(&game.key(), &player_key);
-    let removed_index = game.remove_participant(player_hash)?;
+    // Find and remove the exact participant (single ticket per player).
+    let removed_index = game.remove_participant(&player_key)?;
     game.last_slot = current_slot;
 
     // Refund player directly

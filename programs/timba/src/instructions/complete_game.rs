@@ -1,7 +1,6 @@
 use crate::error::ErrorCode;
 use crate::events::GameCompleted;
 use crate::utils::get_current_time;
-use crate::utils::participant_hash;
 use anchor_lang::prelude::*;
 
 pub fn handler(
@@ -42,15 +41,14 @@ pub fn handler(
         ErrorCode::WinnerIndexOutOfRange
     );
 
-    // 3. Direct positional hash check: append order is canonical participant ordering
+    // 3. Direct positional identity check: append order is canonical participant ordering
     let winner_key = ctx.accounts.winner.key();
-    let supplied_hash = participant_hash(&game.key(), &winner_key);
 
-    // Safety: participant_hashes length should equal tickets_count; rely on index already checked
-    let expected_hash = game.participant_hashes[winner_index as usize];
+    // Safety: participants length should equal tickets_count; rely on index already checked
+    let expected_winner = game.participants[winner_index as usize];
     require!(
-        expected_hash == supplied_hash,
-        ErrorCode::WinnerPubkeyHashMismatch
+        expected_winner == winner_key,
+        ErrorCode::WinnerPubkeyMismatch
     );
 
     // ===============================
