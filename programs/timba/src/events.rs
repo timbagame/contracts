@@ -15,7 +15,7 @@ use anchor_lang::prelude::*;
 pub struct OracleInitialized {
     /// Operator that controls the oracle
     pub operator: Pubkey,
-    /// Fee percentage taken from game winnings (0-100)
+    /// Fee percentage taken from game winnings (0-10)
     pub fee_percentage: u8,
     /// Buffer time in seconds after game timeout
     pub oracle_buffer_time: u64,

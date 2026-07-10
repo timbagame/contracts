@@ -84,7 +84,7 @@ fn near_u64_max_fee_is_exact_and_withdrawable_while_disabled() {
     assert!(fixture.update_oracle(
         &operator,
         OracleConfig {
-            fee_percentage: 100,
+            fee_percentage: 10,
             oracle_buffer_time: 5,
             max_tickets: 2_048,
             max_timeout: 86_400,
@@ -118,8 +118,9 @@ fn near_u64_max_fee_is_exact_and_withdrawable_while_disabled() {
         participant_ata,
         creator.pubkey(),
     ));
-    assert_eq!(fixture.token_balance(participant_ata), 0);
-    assert_eq!(token_state(&fixture, &token).fee_amount, prize);
+    let fee = prize / 10;
+    assert_eq!(fixture.token_balance(participant_ata), prize - fee);
+    assert_eq!(token_state(&fixture, &token).fee_amount, fee);
     let operator = fixture.operator.insecure_clone();
     assert!(fixture.update_token(
         &token,
@@ -132,7 +133,7 @@ fn near_u64_max_fee_is_exact_and_withdrawable_while_disabled() {
     let operator_ata = fixture.create_ata(fixture.operator.pubkey(), token.mint.pubkey());
     let operator = fixture.operator.insecure_clone();
     assert!(fixture.withdraw_fees(&token, &operator, operator_ata));
-    assert_eq!(fixture.token_balance(operator_ata), prize);
+    assert_eq!(fixture.token_balance(operator_ata), fee);
 }
 
 #[test]

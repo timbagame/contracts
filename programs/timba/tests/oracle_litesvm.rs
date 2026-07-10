@@ -117,7 +117,7 @@ fn initializes_oracle_and_persists_configuration() {
 fn rejects_invalid_oracle_configurations() {
     let invalid = [
         OracleConfig {
-            fee_percentage: 101,
+            fee_percentage: 11,
             ..config()
         },
         OracleConfig {
@@ -147,7 +147,7 @@ fn rejects_invalid_updates_without_mutating_oracle() {
     assert!(fixture.initialize(config()));
     let invalid = [
         OracleConfig {
-            fee_percentage: 101,
+            fee_percentage: 11,
             ..config()
         },
         OracleConfig {

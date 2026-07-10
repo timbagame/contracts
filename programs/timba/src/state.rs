@@ -84,7 +84,7 @@ impl Default for GameType {
 pub struct Oracle {
     /// Operator that can update oracle settings and claim fees
     pub operator: Pubkey,
-    /// Percentage of game amount taken as fee (0-100)
+    /// Percentage of game amount taken as fee (0-10)
     pub fee_percentage: u8,
     /// Buffer time in seconds after game timeout before cancellation is allowed
     pub oracle_buffer_time: u64,
@@ -127,9 +127,9 @@ impl Oracle {
         timeout >= self.min_timeout && timeout <= self.max_timeout
     }
 
-    /// Validates fee percentage is within valid range (0-100)
+    /// Validates fee percentage is within valid range (0-10)
     pub fn is_valid_fee_percentage(fee_percentage: u8) -> bool {
-        fee_percentage <= 100
+        fee_percentage <= 10
     }
 
     /// Validates oracle buffer time is strictly positive

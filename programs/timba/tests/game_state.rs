@@ -25,8 +25,8 @@ fn buffer_expiry_boundary_is_inclusive() {
 #[test]
 fn oracle_configuration_validation_covers_boundaries() {
     assert!(Oracle::is_valid_fee_percentage(0));
-    assert!(Oracle::is_valid_fee_percentage(100));
-    assert!(!Oracle::is_valid_fee_percentage(101));
+    assert!(Oracle::is_valid_fee_percentage(10));
+    assert!(!Oracle::is_valid_fee_percentage(11));
     assert!(!Oracle::is_valid_buffer_time(0));
     assert!(Oracle::is_valid_buffer_time(1));
     assert!(Oracle::is_valid_timeout(10, 10));
