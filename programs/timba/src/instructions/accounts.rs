@@ -29,6 +29,20 @@ pub struct InitializeOracle<'info> {
     #[account(mut)]
     pub oracle_operator: Signer<'info>,
 
+    pub upgrade_authority: Signer<'info>,
+
+    #[account(
+        constraint = program.programdata_address()? == Some(program_data.key())
+            @ ErrorCode::UnauthorizedOperator,
+    )]
+    pub program: Program<'info, crate::program::Timba>,
+
+    #[account(
+        constraint = program_data.upgrade_authority_address == Some(upgrade_authority.key())
+            @ ErrorCode::UnauthorizedOperator,
+    )]
+    pub program_data: Account<'info, ProgramData>,
+
     pub system_program: Program<'info, System>,
 }
 

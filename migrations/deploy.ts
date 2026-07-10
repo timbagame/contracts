@@ -50,7 +50,7 @@ module.exports = async function (provider: anchor.AnchorProvider) {
     // Initialize Oracle parameters
     const config = {
       feePercentage: 1, // 1% fee
-      oracleBufferTime: 86400, // 24 hours in seconds
+      oracleBufferTime: 600, // 10 minutes in seconds
       maxTickets: 100,
       maxTimeout: 86400, // 1 day in seconds
       minTimeout: 300, // 5 minutes in seconds
@@ -64,6 +64,13 @@ module.exports = async function (provider: anchor.AnchorProvider) {
       .initializeOracle(config)
       .accounts({
         oracleOperator: oracleOperatorPubkey,
+        upgradeAuthority: provider.wallet.publicKey,
+        programData: anchor.web3.PublicKey.findProgramAddressSync(
+          [program.programId.toBuffer()],
+          new anchor.web3.PublicKey(
+            "BPFLoaderUpgradeab1e11111111111111111111111"
+          )
+        )[0],
       })
       .signers(oracleOperator ? [oracleOperator] : [])
       .rpc({ commitment: "confirmed" });

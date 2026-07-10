@@ -1,6 +1,6 @@
 use anchor_lang::prelude::Pubkey;
 use timba::{
-    state::{Game, GameToken, GameType, Oracle},
+    state::{Game, GameToken, GameType, Oracle, MAX_ORACLE_BUFFER_TIME},
     utils::is_supported_token_program,
     GameConfig,
 };
@@ -29,6 +29,8 @@ fn oracle_configuration_validation_covers_boundaries() {
     assert!(!Oracle::is_valid_fee_percentage(11));
     assert!(!Oracle::is_valid_buffer_time(0));
     assert!(Oracle::is_valid_buffer_time(1));
+    assert!(Oracle::is_valid_buffer_time(MAX_ORACLE_BUFFER_TIME));
+    assert!(!Oracle::is_valid_buffer_time(MAX_ORACLE_BUFFER_TIME + 1));
     assert!(Oracle::is_valid_timeout(10, 10));
     assert!(!Oracle::is_valid_timeout(9, 10));
     assert!(!Oracle::is_valid_tickets_count(0));
