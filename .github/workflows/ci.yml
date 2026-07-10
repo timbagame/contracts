@@ -9,7 +9,6 @@ on:
 env:
   SOLANA_VERSION: 3.1.10
   ANCHOR_VERSION: 1.1.2
-  ANCHOR_BUILD_RUST_VERSION: 1.91.0
   SURFPOOL_VERSION: v1.4.0
 
 jobs:
@@ -23,7 +22,7 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: 1.89.0
+          toolchain: 1.97.0
 
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
@@ -61,8 +60,7 @@ jobs:
 
       - name: Install Anchor CLI
         run: |
-          rustup toolchain install ${ANCHOR_BUILD_RUST_VERSION} --profile minimal
-          cargo +${ANCHOR_BUILD_RUST_VERSION} install --git https://github.com/coral-xyz/anchor --tag v${ANCHOR_VERSION} anchor-cli --locked --force
+          cargo install --git https://github.com/coral-xyz/anchor --tag v${ANCHOR_VERSION} anchor-cli --locked --force
           echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
 
       - name: Install JS dependencies
