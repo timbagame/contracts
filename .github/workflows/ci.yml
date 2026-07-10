@@ -37,6 +37,8 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
+            !target/idl
+            !target/types
           key: cargo-contracts-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', 'rust-toolchain.toml') }}
           restore-keys: |
             cargo-contracts-${{ runner.os }}-
@@ -71,14 +73,14 @@ jobs:
       - name: Install JS dependencies
         run: bun install --frozen-lockfile
 
-      - name: Typecheck
-        run: bun x tsc -p tsconfig.json --noEmit
-
       - name: Create test wallet
         run: solana-keygen new --no-bip39-passphrase --silent --force --outfile ~/.config/solana/id.json
 
       - name: Build SBF program
-        run: cargo-build-sbf --manifest-path programs/timba/Cargo.toml
+        run: anchor build
+
+      - name: Typecheck
+        run: bun x tsc -p tsconfig.json --noEmit
 
       - name: Run test suite
         run: anchor test --skip-build
