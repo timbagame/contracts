@@ -40,9 +40,9 @@ anchor test           # Complete Rust and TypeScript test suite
 
 ## Testing
 
-| Suite | Command | Coverage |
-|-------|---------|----------|
-| **Complete suite** | `anchor test` | All Rust/LiteSVM and Anchor/TypeScript tests |
+| Suite                   | Command               | Coverage                                                                                |
+| ----------------------- | --------------------- | --------------------------------------------------------------------------------------- |
+| **Complete suite**      | `anchor test`         | All Rust/LiteSVM and Anchor/TypeScript tests                                            |
 | **Rust / LiteSVM only** | `cargo test -p timba` | State logic, instruction guards, fees, giveaways, oracle flows, events, and error codes |
 
 Build the SBF binary before LiteSVM tests (loads `target/deploy/timba.so`):
@@ -80,12 +80,18 @@ bun run lint
 bun run lint:fix
 ```
 
+## Mainnet deployment
+
+Mainnet releases must use a reproducible build from a clean, public commit. Deploy the exact verifiable artifact, allow Anchor to upload the IDL, and complete remote source verification afterward. Do not deploy a normal `anchor build` or `cargo-build-sbf` artifact to mainnet.
+
+See [MAINNET_DEPLOYMENT.md](./MAINNET_DEPLOYMENT.md) for the complete release and verification checklist.
+
 ## Program ID
 
 `32Jr4JnXWvqq9GqPQynkooHsszaucUUvZfNLh2hdX2L5`
 
 ## Additional docs
 
-- [MAINNET_DEPLOYMENT.md](./MAINNET_DEPLOYMENT.md) - deployment and shutdown checklist.
+- [MAINNET_DEPLOYMENT.md](./MAINNET_DEPLOYMENT.md) - reproducible deployment, remote verification, IDL publication, and shutdown checklist.
 - [SECURITY.md](./SECURITY.md) - security model and user guidance.
 - [LICENSE](./LICENSE) - Business Source License 1.1 (BUSL-1.1).

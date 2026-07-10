@@ -54,7 +54,7 @@ assert(calculatedHash === originalCommittedHash);
 **When can you recover funds?**
 
 - If a game is not completed by the oracle within the buffer time
- - Typical buffer time: 24 hours after game timeout (configurable on the oracle)
+- Typical buffer time: 24 hours after game timeout (configurable on the oracle)
 - Only available for games that haven't been completed
 
 **How to recover:**
@@ -156,7 +156,11 @@ assert(calculatedHash === originalCommittedHash);
 
 - All code is open source and auditable
 - On-chain state is publicly verifiable
+- Mainnet releases should be built reproducibly from a published commit and remotely verified against the deployed executable
+- The matching Anchor IDL should be published on-chain so clients and explorers can inspect the program interface
 - Event logs provide complete game history
+
+The deployment procedure and verification commands are documented in [MAINNET_DEPLOYMENT.md](./MAINNET_DEPLOYMENT.md).
 
 ## What Could Go Wrong?
 
