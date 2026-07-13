@@ -20,7 +20,7 @@ pub struct InitializeOracle<'info> {
         seeds = [ORACLE_SEED],
         bump,
         constraint = Oracle::is_valid_fee_percentage(config.fee_percentage) @ ErrorCode::InvalidAmount,
-        constraint = Oracle::is_valid_buffer_time(config.oracle_buffer_time) @ ErrorCode::OracleBufferTooSmall,
+        constraint = Oracle::is_valid_buffer_time(config.oracle_buffer_time) @ ErrorCode::InvalidOracleBufferTime,
         constraint = Oracle::is_valid_timeout(config.max_timeout, config.min_timeout) @ ErrorCode::InvalidTimeout,
         constraint = Oracle::is_valid_tickets_count(config.max_tickets) @ ErrorCode::InvalidTicketsCount,
     )]
@@ -55,7 +55,7 @@ pub struct UpdateOracle<'info> {
         bump,
         constraint = oracle.is_authorized_operator(&old_oracle_operator.key()) @ ErrorCode::UnauthorizedOperator,
         constraint = Oracle::is_valid_fee_percentage(config.fee_percentage) @ ErrorCode::InvalidAmount,
-        constraint = Oracle::is_valid_buffer_time(config.oracle_buffer_time) @ ErrorCode::OracleBufferTooSmall,
+        constraint = Oracle::is_valid_buffer_time(config.oracle_buffer_time) @ ErrorCode::InvalidOracleBufferTime,
         constraint = Oracle::is_valid_timeout(config.max_timeout, config.min_timeout) @ ErrorCode::InvalidTimeout,
         constraint = Oracle::is_valid_tickets_count(config.max_tickets) @ ErrorCode::InvalidTicketsCount,
     )]
@@ -260,6 +260,7 @@ pub struct InitializeGame<'info> {
         seeds = [GAME_SEED, random_hash.as_ref()],
         bump,
         constraint = game_token_ctx.game_token.is_enabled() @ ErrorCode::TokenNotEnabled,
+        constraint = config.amount > 0 @ ErrorCode::InvalidAmount,
         constraint = game_token_ctx.game_token.meets_min_amount(config.amount) @ ErrorCode::InvalidAmount,
         constraint = oracle.is_valid_timeout_range(config.timeout) @ ErrorCode::InvalidTimeout,
         constraint = Game::is_valid_tickets_count(config.max_tickets, config.min_tickets, oracle.max_tickets) @ ErrorCode::InvalidTicketsCount,
@@ -310,7 +311,6 @@ pub struct JoinGame<'info> {
     pub player_token_account: InterfaceAccount<'info, TokenAccount>,
     #[account(seeds = [ORACLE_SEED], bump)]
     pub oracle: Account<'info, Oracle>,
-    pub system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
@@ -336,7 +336,6 @@ pub struct CompleteGame<'info> {
     pub oracle: Account<'info, Oracle>,
     pub oracle_operator: Signer<'info>,
     /// CHECK: Validated against the exact participant at the winner index
-    #[account(mut)]
     pub winner: UncheckedAccount<'info>,
     /// CHECK: Game creator for rent refund
     #[account(mut)]
@@ -348,7 +347,6 @@ pub struct CompleteGame<'info> {
         associated_token::token_program = game_token_ctx.token_program,
     )]
     pub winner_token_account: InterfaceAccount<'info, TokenAccount>,
-    pub system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
@@ -359,7 +357,6 @@ pub struct UnjoinGame<'info> {
     )]
     pub game: Account<'info, Game>,
     /// CHECK: Player key is validated against the game participants list
-    #[account(mut)]
     pub player: UncheckedAccount<'info>,
     #[account(
         constraint = game.is_creator(&authority.key())
@@ -376,7 +373,6 @@ pub struct UnjoinGame<'info> {
         associated_token::token_program = game_token_ctx.token_program,
     )]
     pub player_token_account: InterfaceAccount<'info, TokenAccount>,
-    pub system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
@@ -401,7 +397,6 @@ pub struct CloseGame<'info> {
         associated_token::token_program = game_token_ctx.token_program,
     )]
     pub creator_token_account: InterfaceAccount<'info, TokenAccount>,
-    pub system_program: Program<'info, System>,
 }
 
 // FEE MANAGEMENT
@@ -423,5 +418,4 @@ pub struct WithdrawTokenFee<'info> {
         associated_token::token_program = game_token_ctx.token_program,
     )]
     pub oracle_operator_token_account: InterfaceAccount<'info, TokenAccount>,
-    pub system_program: Program<'info, System>,
 }

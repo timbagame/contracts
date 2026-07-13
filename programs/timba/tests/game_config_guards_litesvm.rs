@@ -2,7 +2,7 @@ mod common;
 
 use {
     solana_signer::Signer,
-    timba::{state::GameType, GameConfig},
+    timba::{state::GameType, GameConfig, TokenConfig},
 };
 
 fn rejected(config: GameConfig, seed: u8) {
@@ -17,6 +17,40 @@ fn rejected(config: GameConfig, seed: u8) {
         [seed; 32],
     );
     let operator = fixture.operator.insecure_clone();
+    assert!(!fixture.send(&[instruction], &[&operator, &creator]));
+    assert!(fixture.svm.get_account(&game).is_none());
+}
+
+#[test]
+fn rejects_zero_amount_even_when_token_minimum_is_zero() {
+    let mut fixture = common::TimbaFixture::new();
+    let token = fixture.token_fixture();
+    let operator = fixture.operator.insecure_clone();
+    assert!(fixture.update_token(
+        &token,
+        &operator,
+        TokenConfig {
+            min_amount: 0,
+            enabled: true,
+        },
+    ));
+
+    let (creator, creator_ata) = fixture.funded_player(token.mint.pubkey(), 10_000);
+    let (game, instruction) = fixture.initialize_game_instruction(
+        &token,
+        creator.pubkey(),
+        creator_ata,
+        GameConfig {
+            game_type: GameType::Coinflip,
+            amount: 0,
+            max_tickets: 2,
+            min_tickets: 2,
+            timeout: 60,
+            is_private: false,
+        },
+        [28; 32],
+    );
+
     assert!(!fixture.send(&[instruction], &[&operator, &creator]));
     assert!(fixture.svm.get_account(&game).is_none());
 }

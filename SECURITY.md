@@ -9,6 +9,7 @@ This document explains the security architecture and trust model of the TimbaGam
 **How it works:**
 
 - The oracle generates the secret and provides the commitment hash to the creator for `initialize_game`; the current oracle operator must co-sign game initialization, so the program only accepts commitments approved by that operator
+- The client builds a recent-blockhash transaction with the creator as fee payer, the oracle validates and partially signs it, and the creator signs and submits the same transaction; neither private key leaves its device
 - Players join the game knowing only the hash, not the secret value
 - After the game fills or times out, the oracle reveals the secret key
 - The winner is calculated using both the secret key AND the blockchain slot number when the last player joined
@@ -34,6 +35,7 @@ assert(calculatedHash === originalCommittedHash);
 **What the Oracle does:**
 
 - Generates cryptographically random secrets for games
+- Validates and partially signs initialization transactions tied to unused oracle commitments
 - Completes games by revealing secrets after conditions are met
 - Collects platform fees as configured
 

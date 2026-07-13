@@ -38,7 +38,6 @@ async function buildSignedUnjoinTx(
       oracle: derived.oracle,
       playerTokenAccount: derived.playerTokenAccount,
       gameTokenCtx: toGameTokenContext(derived),
-      systemProgram: anchor.web3.SystemProgram.programId,
     })
     .instruction();
 

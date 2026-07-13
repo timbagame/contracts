@@ -233,10 +233,6 @@
               ]
             }
           }
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
         }
       ],
       "args": []
@@ -588,8 +584,7 @@
           "signer": true
         },
         {
-          "name": "winner",
-          "writable": true
+          "name": "winner"
         },
         {
           "name": "creator",
@@ -653,10 +648,6 @@
               ]
             }
           }
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
         }
       ],
       "args": [
@@ -1429,10 +1420,6 @@
               }
             ]
           }
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
         }
       ],
       "args": []
@@ -1458,8 +1445,7 @@
           "writable": true
         },
         {
-          "name": "player",
-          "writable": true
+          "name": "player"
         },
         {
           "name": "authority",
@@ -1666,10 +1652,6 @@
               ]
             }
           }
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
         }
       ],
       "args": []
@@ -2030,10 +2012,6 @@
               ]
             }
           }
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
         }
       ],
       "args": []
@@ -2262,16 +2240,6 @@
       "msg": "Active players remain"
     },
     {
-      "code": 7104,
-      "name": "GameNotCompleted",
-      "msg": "Game incomplete"
-    },
-    {
-      "code": 7105,
-      "name": "InvalidGameType",
-      "msg": "Invalid game type"
-    },
-    {
       "code": 7106,
       "name": "GameExpired",
       "msg": "Game expired"
@@ -2362,14 +2330,9 @@
       "msg": "Secret key mismatch"
     },
     {
-      "code": 7304,
-      "name": "InvalidConfiguration",
-      "msg": "Bad configuration"
-    },
-    {
       "code": 7305,
-      "name": "OracleBufferTooSmall",
-      "msg": "Oracle buffer short"
+      "name": "InvalidOracleBufferTime",
+      "msg": "Invalid oracle buffer time"
     },
     {
       "code": 7400,

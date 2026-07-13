@@ -239,10 +239,6 @@ export type Timba = {
               ]
             }
           }
-        },
-        {
-          "name": "systemProgram",
-          "address": "11111111111111111111111111111111"
         }
       ],
       "args": []
@@ -594,8 +590,7 @@ export type Timba = {
           "signer": true
         },
         {
-          "name": "winner",
-          "writable": true
+          "name": "winner"
         },
         {
           "name": "creator",
@@ -659,10 +654,6 @@ export type Timba = {
               ]
             }
           }
-        },
-        {
-          "name": "systemProgram",
-          "address": "11111111111111111111111111111111"
         }
       ],
       "args": [
@@ -1435,10 +1426,6 @@ export type Timba = {
               }
             ]
           }
-        },
-        {
-          "name": "systemProgram",
-          "address": "11111111111111111111111111111111"
         }
       ],
       "args": []
@@ -1464,8 +1451,7 @@ export type Timba = {
           "writable": true
         },
         {
-          "name": "player",
-          "writable": true
+          "name": "player"
         },
         {
           "name": "authority",
@@ -1672,10 +1658,6 @@ export type Timba = {
               ]
             }
           }
-        },
-        {
-          "name": "systemProgram",
-          "address": "11111111111111111111111111111111"
         }
       ],
       "args": []
@@ -2036,10 +2018,6 @@ export type Timba = {
               ]
             }
           }
-        },
-        {
-          "name": "systemProgram",
-          "address": "11111111111111111111111111111111"
         }
       ],
       "args": []
@@ -2268,16 +2246,6 @@ export type Timba = {
       "msg": "Active players remain"
     },
     {
-      "code": 7104,
-      "name": "gameNotCompleted",
-      "msg": "Game incomplete"
-    },
-    {
-      "code": 7105,
-      "name": "invalidGameType",
-      "msg": "Invalid game type"
-    },
-    {
       "code": 7106,
       "name": "gameExpired",
       "msg": "Game expired"
@@ -2368,14 +2336,9 @@ export type Timba = {
       "msg": "Secret key mismatch"
     },
     {
-      "code": 7304,
-      "name": "invalidConfiguration",
-      "msg": "Bad configuration"
-    },
-    {
       "code": 7305,
-      "name": "oracleBufferTooSmall",
-      "msg": "Oracle buffer short"
+      "name": "invalidOracleBufferTime",
+      "msg": "Invalid oracle buffer time"
     },
     {
       "code": 7400,
