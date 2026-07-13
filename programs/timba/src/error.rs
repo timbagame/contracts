@@ -44,19 +44,19 @@ pub enum ErrorCode {
 
     /// Game has exceeded its timeout duration
     #[msg("Game expired")]
-    GameExpired = 1106,
+    GameExpired = 1104,
 
     /// Game has already been completed
     #[msg("Game already settled")]
-    GameAlreadyCompleted = 1107,
+    GameAlreadyCompleted = 1105,
 
     /// Oracle buffer time has not expired yet for late unjoin / close operations
     #[msg("Oracle buffer active")]
-    OracleBufferNotExpired = 1108,
+    OracleBufferNotExpired = 1106,
 
     /// Program cannot allocate space for additional participants
     #[msg("Participant store full")]
-    ParticipantStorageExceeded = 1109,
+    ParticipantStorageExceeded = 1107,
 
     // PLAYER ACTION ERRORS (1200-1299)
     /// Player has already joined this game
@@ -118,7 +118,7 @@ pub enum ErrorCode {
 
     /// Oracle buffer time is outside the supported range
     #[msg("Invalid oracle buffer time")]
-    InvalidOracleBufferTime = 1305,
+    InvalidOracleBufferTime = 1304,
 
     // TOKEN ERRORS (1400-1499)
     /// Token is not enabled for game operations
