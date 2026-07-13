@@ -33,7 +33,7 @@ fn rotated_operator_controls_private_join_completion_and_withdrawal() {
     let (second, second_ata) = fixture.funded_player(token.mint.pubkey(), 10_000);
     let secret = [49; 32];
     let random_hash = hash(&secret).to_bytes();
-    let game = fixture.initialize_game(
+    let game = fixture.initialize_game_with_operator(
         &token,
         &creator,
         creator_ata,
@@ -46,6 +46,7 @@ fn rotated_operator_controls_private_join_completion_and_withdrawal() {
             is_private: true,
         },
         random_hash,
+        &new_operator,
     );
     assert!(!fixture.join_game(&token, game, &creator, creator_ata));
     let wrong = fixture.join_instruction_with_operator(

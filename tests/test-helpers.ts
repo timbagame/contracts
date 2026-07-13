@@ -1204,7 +1204,8 @@ export class GameManager {
     gameData: TestGame,
     config: GameConfig,
     creator: anchor.web3.Keypair,
-    tokenMint: PublicKey
+    tokenMint: PublicKey,
+    oracleOperator: anchor.web3.Keypair = DEFAULT_OPERATOR_KEYPAIR
   ): Promise<void> {
     const tokenProgram = await this.resolveTokenProgram(tokenMint);
     const oracle = deriveOraclePda(this.program.programId);
@@ -1243,11 +1244,12 @@ export class GameManager {
         game: gameData.gamePDA,
         creator: creator.publicKey,
         oracle,
+        oracleOperator: oracleOperator.publicKey,
         gameTokenCtx,
         creatorTokenAccount,
         systemProgram: anchor.web3.SystemProgram.programId,
       })
-      .signers([creator])
+      .signers([creator, oracleOperator])
       .rpc();
 
     gameTokenCache.set(gameData.gamePDA.toBase58(), {

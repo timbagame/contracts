@@ -734,7 +734,6 @@ export type Timba = {
         },
         {
           "name": "oracle",
-          "writable": true,
           "pda": {
             "seeds": [
               {
@@ -750,6 +749,10 @@ export type Timba = {
               }
             ]
           }
+        },
+        {
+          "name": "oracleOperator",
+          "signer": true
         },
         {
           "name": "gameTokenCtx",
@@ -1955,7 +1958,6 @@ export type Timba = {
         },
         {
           "name": "oracle",
-          "writable": true,
           "pda": {
             "seeds": [
               {

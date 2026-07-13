@@ -8,11 +8,11 @@ This document explains the security architecture and trust model of the TimbaGam
 
 **How it works:**
 
-- The oracle generates the secret and provides the commitment hash to the creator for `initialize_game`; the program cannot verify who generated a commitment
+- The oracle generates the secret and provides the commitment hash to the creator for `initialize_game`; the current oracle operator must co-sign game initialization, so the program only accepts commitments approved by that operator
 - Players join the game knowing only the hash, not the secret value
 - After the game fills or times out, the oracle reveals the secret key
 - The winner is calculated using both the secret key AND the blockchain slot number when the last player joined
-- An honest oracle only completes games whose secrets it issued (self-made commits are not settled)
+- Self-made commitments cannot initialize games because they lack the current oracle operator's approval signature
 
 **Security guarantees:**
 
@@ -42,7 +42,7 @@ assert(calculatedHash === originalCommittedHash);
 - ⚠️ **Oracle must be honest** - The platform operator controls the oracle
 - ⚠️ **Oracle must be available** - Games depend on oracle completion
 - ✅ **Oracle cannot arbitrarily redirect game payouts or refunds** - Token destinations and calculated amounts are constrained on-chain, although the live fee can be changed up to its 10% cap
-- ⚠️ **The oracle remains trusted for liveness and commitment issuance** - It can refuse to settle a game, and the program cannot prove that a commitment came from the official oracle
+- ⚠️ **The oracle remains trusted for liveness and commitment issuance** - It can refuse to settle a game, while its required initialization signature proves that the current operator approved the commitment
 - ✅ **A submitted settlement cannot choose an arbitrary winner** - The program verifies the reveal and recomputes the winner from the committed secret, final participant vector, and last participant-action slot
 
 **What if the oracle fails?**

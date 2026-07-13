@@ -534,17 +534,8 @@ impl Game {
     }
 
     fn ensure_participant_capacity(&mut self) -> Result<()> {
-        let required = self.max_tickets as usize;
-        if self.participants.capacity() >= required {
-            return Ok(());
-        }
-
-        let additional = required
-            .checked_sub(self.participants.capacity())
-            .ok_or(ErrorCode::ParticipantStorageExceeded)?;
-
         self.participants
-            .try_reserve(additional)
+            .try_reserve_exact(1)
             .map_err(|_| ErrorCode::ParticipantStorageExceeded)?;
 
         Ok(())
