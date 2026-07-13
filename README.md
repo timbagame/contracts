@@ -6,6 +6,7 @@ Anchor-based Solana smart contracts for the Timba game platform.
 
 - Runs token-based **Coinflip** and **Giveaway** games.
 - Uses a commit-reveal flow for verifiable randomness.
+- Requires both the game creator and current oracle operator to sign game initialization; the creator remains the fee payer.
 - Settles payouts on-chain and accrues protocol fees per token config.
 - Supports both SPL Token and Token-2022 flows.
 - Provides timeout + oracle-buffer protections so players can recover funds if completion stalls.
@@ -78,7 +79,14 @@ bun run update-idl
 # Formatting checks
 bun run lint
 bun run lint:fix
+
+# TypeScript generated-client check
+bun x tsc -p tsconfig.json --noEmit
 ```
+
+## Game initialization signing flow
+
+The oracle creates and stores the secret, then returns only its commitment hash. The creator builds an `initialize_game` transaction with itself as fee payer and sends the serialized transaction to the oracle. The oracle validates the commitment and transaction accounts, partially signs with its own key, and returns it. The creator then signs and submits the same transaction. Neither private key leaves its device.
 
 ## Mainnet deployment
 
