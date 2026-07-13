@@ -2,9 +2,7 @@ import { readFileSync, writeFileSync, mkdirSync } from "fs";
 import { resolve } from "path";
 
 /**
- * Copies generated IDL and types from contracts to bot/ and oracle/.
- * - contracts/target/idl/timba.json -> bot/idl/idl.json and oracle/idl/idl.json
- * - contracts/target/types/timba.ts -> bot/idl/idlType.ts and oracle/idl/idlType.ts
+ * Copies generated IDL and types to every production consumer.
  * No patching or address rewriting is performed.
  */
 async function main() {
@@ -21,6 +19,7 @@ async function main() {
   const targets = [
     resolve(workspaceRoot, "bot", "idl"),
     resolve(workspaceRoot, "oracle", "idl"),
+    resolve(workspaceRoot, "timba-web-cf", "lib", "solana"),
   ];
 
   for (const dir of targets) {
@@ -29,7 +28,7 @@ async function main() {
     writeFileSync(resolve(dir, "idlType.ts"), typesContent);
   }
 
-  console.log("Copied IDL and types to bot/idl and oracle/idl.");
+  console.log("Copied IDL and types to bot, oracle, and web clients.");
 }
 
 main().catch((err) => {

@@ -42,14 +42,6 @@ pub enum ErrorCode {
     #[msg("Active players remain")]
     GameHasActivePlayers = 1103,
 
-    /// Game has not been completed yet
-    #[msg("Game incomplete")]
-    GameNotCompleted = 1104,
-
-    /// Invalid game type for this operation
-    #[msg("Invalid game type")]
-    InvalidGameType = 1105,
-
     /// Game has exceeded its timeout duration
     #[msg("Game expired")]
     GameExpired = 1106,
@@ -124,13 +116,9 @@ pub enum ErrorCode {
     #[msg("Secret key mismatch")]
     InvalidSecretKey = 1303,
 
-    /// Oracle configuration parameters are invalid
-    #[msg("Bad configuration")]
-    InvalidConfiguration = 1304,
-
-    /// Oracle buffer time is below the minimum supported value
-    #[msg("Oracle buffer short")]
-    OracleBufferTooSmall = 1305,
+    /// Oracle buffer time is outside the supported range
+    #[msg("Invalid oracle buffer time")]
+    InvalidOracleBufferTime = 1305,
 
     // TOKEN ERRORS (1400-1499)
     /// Token is not enabled for game operations

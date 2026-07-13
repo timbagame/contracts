@@ -467,7 +467,6 @@ impl TimbaFixture {
                 },
                 player_token_account: player_ata,
                 oracle: self.oracle,
-                system_program: system_program::ID,
             }
             .to_account_metas(None),
         )
@@ -511,7 +510,6 @@ impl TimbaFixture {
                     associated_token_program: ASSOCIATED_TOKEN_PROGRAM_ID,
                 },
                 player_token_account: player_ata,
-                system_program: system_program::ID,
             }
             .to_account_metas(None),
         )
@@ -579,7 +577,6 @@ impl TimbaFixture {
                 winner,
                 creator,
                 winner_token_account: winner_ata,
-                system_program: system_program::ID,
             }
             .to_account_metas(None),
         )
@@ -620,7 +617,6 @@ impl TimbaFixture {
                     associated_token_program: ASSOCIATED_TOKEN_PROGRAM_ID,
                 },
                 creator_token_account: creator_ata,
-                system_program: system_program::ID,
             }
             .to_account_metas(None),
         )
@@ -733,7 +729,6 @@ impl TimbaFixture {
                 oracle: self.oracle,
                 oracle_operator: signer,
                 oracle_operator_token_account: destination,
-                system_program: system_program::ID,
             }
             .to_account_metas(None),
         )

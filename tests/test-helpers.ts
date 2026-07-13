@@ -1165,7 +1165,6 @@ type CompleteGameAccounts = {
   winner: PublicKey;
   creator: PublicKey;
   winnerTokenAccount: PublicKey;
-  systemProgram: PublicKey;
 };
 
 export class GameManager {
@@ -1278,7 +1277,6 @@ export class GameManager {
       playerTokenAccount: derived.playerTokenAccount,
       gameTokenCtx,
       oracle: derived.oracle,
-      systemProgram: anchor.web3.SystemProgram.programId,
     };
 
     if (oracleOperator) {
@@ -1325,7 +1323,6 @@ export class GameManager {
         oracle: derived.oracle,
         playerTokenAccount: derived.playerTokenAccount,
         gameTokenCtx: toGameTokenContext(derived),
-        systemProgram: anchor.web3.SystemProgram.programId,
       })
       .signers([authoritySigner])
       .rpc();
@@ -1381,7 +1378,6 @@ export class GameManager {
       winner,
       creator,
       winnerTokenAccount: derived.winnerTokenAccount,
-      systemProgram: anchor.web3.SystemProgram.programId,
     };
 
     return { ...baseAccounts, ...overrides };
@@ -1534,7 +1530,6 @@ const ANCHOR_ERROR_CODE_BY_NUMBER: Record<number, string> = {
   7101: "GameWaitingForOracle",
   7102: "GameNotReadyForOracle",
   7103: "GameHasActivePlayers",
-  7104: "GameNotCompleted",
   7207: "ParticipantNotFound",
 };
 
@@ -1718,7 +1713,6 @@ export class TestUtils {
           oracle: oracleAddress,
           oracleOperator: oracle.operator,
           oracleOperatorTokenAccount: operatorTokenAccount,
-          systemProgram: anchor.web3.SystemProgram.programId,
         })
         .signers([oracle.operatorKeypair])
         .rpc();
