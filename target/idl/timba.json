@@ -728,7 +728,6 @@
         },
         {
           "name": "oracle",
-          "writable": true,
           "pda": {
             "seeds": [
               {
@@ -744,6 +743,10 @@
               }
             ]
           }
+        },
+        {
+          "name": "oracle_operator",
+          "signer": true
         },
         {
           "name": "game_token_ctx",
@@ -1949,7 +1952,6 @@
         },
         {
           "name": "oracle",
-          "writable": true,
           "pda": {
             "seeds": [
               {

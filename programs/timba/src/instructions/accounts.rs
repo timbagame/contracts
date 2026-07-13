@@ -269,8 +269,12 @@ pub struct InitializeGame<'info> {
     #[account(mut)]
     pub creator: Signer<'info>,
 
-    #[account(mut, seeds = [ORACLE_SEED], bump)]
+    #[account(seeds = [ORACLE_SEED], bump)]
     pub oracle: Account<'info, Oracle>,
+    #[account(
+        constraint = oracle.is_authorized_operator(&oracle_operator.key()) @ ErrorCode::UnauthorizedOperator,
+    )]
+    pub oracle_operator: Signer<'info>,
     pub game_token_ctx: GameTokenContext<'info>,
     #[account(
         mut,
@@ -406,7 +410,6 @@ pub struct CloseGame<'info> {
 pub struct WithdrawTokenFee<'info> {
     pub game_token_ctx: GameTokenContext<'info>,
     #[account(
-        mut,
         seeds = [ORACLE_SEED],
         bump,
         constraint = oracle.is_authorized_operator(&oracle_operator.key()) @ ErrorCode::UnauthorizedOperator,

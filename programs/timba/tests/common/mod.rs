@@ -326,15 +326,41 @@ impl TimbaFixture {
         config: GameConfig,
         random_hash: [u8; 32],
     ) -> Pubkey {
-        let (game, instruction) = self.initialize_game_instruction(
+        let oracle_operator = self.operator.insecure_clone();
+        self.initialize_game_with_operator(
+            token,
+            creator,
+            creator_ata,
+            config,
+            random_hash,
+            &oracle_operator,
+        )
+    }
+
+    pub fn initialize_game_with_operator(
+        &mut self,
+        token: &TokenFixture,
+        creator: &Keypair,
+        creator_ata: Pubkey,
+        config: GameConfig,
+        random_hash: [u8; 32],
+        oracle_operator: &Keypair,
+    ) -> Pubkey {
+        let (game, instruction) = self.initialize_game_instruction_with_operator(
             token,
             creator.pubkey(),
             creator_ata,
             config,
             random_hash,
+            oracle_operator.pubkey(),
         );
-        let operator = self.operator.insecure_clone();
-        assert!(self.send(&[instruction], &[&operator, creator]));
+        let payer = self.operator.insecure_clone();
+        let signers = if payer.pubkey() == oracle_operator.pubkey() {
+            vec![&payer, creator]
+        } else {
+            vec![&payer, creator, oracle_operator]
+        };
+        assert!(self.send(&[instruction], &signers));
         game
     }
 
@@ -345,6 +371,25 @@ impl TimbaFixture {
         creator_ata: Pubkey,
         config: GameConfig,
         random_hash: [u8; 32],
+    ) -> (Pubkey, Instruction) {
+        self.initialize_game_instruction_with_operator(
+            token,
+            creator,
+            creator_ata,
+            config,
+            random_hash,
+            self.operator.pubkey(),
+        )
+    }
+
+    pub fn initialize_game_instruction_with_operator(
+        &self,
+        token: &TokenFixture,
+        creator: Pubkey,
+        creator_ata: Pubkey,
+        config: GameConfig,
+        random_hash: [u8; 32],
+        oracle_operator: Pubkey,
     ) -> (Pubkey, Instruction) {
         let game = Pubkey::find_program_address(&[b"game", &random_hash], &timba::id()).0;
         let instruction = Instruction::new_with_bytes(
@@ -358,6 +403,7 @@ impl TimbaFixture {
                 game,
                 creator,
                 oracle: self.oracle,
+                oracle_operator,
                 game_token_ctx: timba::accounts::GameTokenContext {
                     token_mint: token.mint.pubkey(),
                     game_token: token.game_token,
