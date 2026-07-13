@@ -7,6 +7,58 @@ use {
 };
 
 #[test]
+fn error_codes_are_sequential_within_each_category() {
+    let categories = [
+        vec![
+            ErrorCode::UnauthorizedOperator as u32,
+            ErrorCode::UnauthorizedPlayer as u32,
+            ErrorCode::InvalidCreator as u32,
+        ],
+        vec![
+            ErrorCode::GameFull as u32,
+            ErrorCode::GameWaitingForOracle as u32,
+            ErrorCode::GameNotReadyForOracle as u32,
+            ErrorCode::GameHasActivePlayers as u32,
+            ErrorCode::GameExpired as u32,
+            ErrorCode::GameAlreadyCompleted as u32,
+            ErrorCode::OracleBufferNotExpired as u32,
+            ErrorCode::ParticipantStorageExceeded as u32,
+        ],
+        vec![
+            ErrorCode::AlreadyJoined as u32,
+            ErrorCode::InsufficientBalance as u32,
+            ErrorCode::WinnerIndexMismatch as u32,
+            ErrorCode::WinnerIndexOutOfRange as u32,
+            ErrorCode::WinnerPubkeyMismatch as u32,
+            ErrorCode::PrivateGameAccessDenied as u32,
+            ErrorCode::RandomnessGenerationFailed as u32,
+            ErrorCode::ParticipantNotFound as u32,
+            ErrorCode::ParticipantIndexOutOfRange as u32,
+            ErrorCode::ArithmeticOverflow as u32,
+        ],
+        vec![
+            ErrorCode::InvalidTicketsCount as u32,
+            ErrorCode::InvalidTimeout as u32,
+            ErrorCode::InvalidAmount as u32,
+            ErrorCode::InvalidSecretKey as u32,
+            ErrorCode::InvalidOracleBufferTime as u32,
+        ],
+        vec![
+            ErrorCode::TokenNotEnabled as u32,
+            ErrorCode::InvalidTokenMint as u32,
+            ErrorCode::UnsupportedTokenProgram as u32,
+            ErrorCode::TokenVaultNotEmpty as u32,
+            ErrorCode::TokenFeesOutstanding as u32,
+            ErrorCode::UnsupportedTokenExtension as u32,
+        ],
+    ];
+
+    for codes in categories {
+        assert!(codes.windows(2).all(|pair| pair[1] == pair[0] + 1));
+    }
+}
+
+#[test]
 fn preserves_named_configuration_token_and_authorization_errors() {
     let mut fixture = common::TimbaFixture::new();
     let token = fixture.token_fixture();
