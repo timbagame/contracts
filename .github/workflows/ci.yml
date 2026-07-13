@@ -30,19 +30,6 @@ jobs:
         with:
           bun-version: latest
 
-      - name: Cache Cargo
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-            !target/idl
-            !target/types
-          key: cargo-contracts-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', 'rust-toolchain.toml') }}
-          restore-keys: |
-            cargo-contracts-${{ runner.os }}-
-
       - name: Restore Bun cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -75,6 +62,19 @@ jobs:
 
       - name: Typecheck
         run: bun x tsc -p tsconfig.json --noEmit
+
+      - name: Cache Cargo
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+            !target/idl
+            !target/types
+          key: cargo-contracts-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', 'rust-toolchain.toml') }}
+          restore-keys: |
+            cargo-contracts-${{ runner.os }}-
 
       - name: Create test wallet
         run: solana-keygen new --no-bip39-passphrase --silent --force --outfile ~/.config/solana/id.json
