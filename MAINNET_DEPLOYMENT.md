@@ -1,126 +1,80 @@
-# Timba Contracts — Mainnet Deployment Guide
+# Timba Contracts — Mainnet Release Guide
 
-Follow this checklist for every initial deployment or upgrade of the Timba program on Solana mainnet-beta. Mainnet releases must use a reproducible build from a public commit, deploy that exact artifact, publish the matching IDL, and complete remote source verification.
+This public guide covers contract release requirements. Production service rollout, operator key custody, host configuration, incident recovery, and cross-project orchestration belong in private operations documentation.
 
-## Prerequisites
+Program ID:
+
+```text
+32Jr4JnXWvqq9GqPQynkooHsszaucUUvZfNLh2hdX2L5
+```
+
+## Toolchain
+
+Use the versions pinned by the repository:
 
 - Anchor CLI 1.1.2
 - Solana CLI 3.1.10
+- Bun 1.3.14
 - `solana-verify`
-- Docker, required for reproducible builds
-- A clean commit pushed to the public `timbagame/contracts` repository
-- Solana CLI configured with a funded mainnet upgrade-authority wallet
-- The existing program keypair and upgrade authority for an upgrade, or a newly generated program keypair for an initial deployment
-- Oracle operator keypair JSON file (distinct from the upgrade authority if desired and funded to create the oracle account)
-- Fresh mainnet deployer keypair created solely for production; store the secret key offline (hardware wallet or encrypted cold storage) and keep redundant, secure backups
+- A container runtime supported by Anchor verifiable builds
 
-## 1. Prepare the Signing Authorities
+Release from a clean public commit. Generated `target/idl/timba.json` and `target/types/timba.ts` must match that commit.
 
-For an upgrade, use the existing upgrade authority. Do not generate a new program keypair or change the program ID.
+## Compatibility gate
 
-For an initial deployment only, create the program keypair separately from the deployer wallet and confirm that its public key matches `declare_id!` and every `[programs.*]` entry in `Anchor.toml`.
+Version 0.2.0 changes the `Game` account layout and does not migrate existing Game accounts. Before upgrading an existing deployment, independently prove that every old-layout Game account is inert: it must have no tickets, participant hashes, or funds.
 
-If a dedicated deployer or upgrade-authority key is required, create it on an air-gapped or otherwise trusted machine:
+An executable upgrade does not resize or rewrite program-owned accounts. The global Oracle and GameToken layouts remain compatible with 0.2.0; drained legacy Game accounts retain their original allocation and remain inert.
+
+## Test and freeze
 
 ```bash
-solana-keygen new --outfile /tmp/timba-mainnet-deployer.json --no-bip39-passphrase
-```
-
-Record its public key:
-
-```bash
-solana-keygen pubkey /tmp/timba-mainnet-deployer.json
-```
-
-The deployer wallet pays for and authorizes deployment; its address is not the program ID and must not replace the program address in `Anchor.toml`. On an initial deployment, the current program upgrade authority must also sign `initialize_oracle`. The program verifies that authority against its upgradeable-loader `ProgramData` account, preventing another signer from claiming the global oracle PDA. Immediately move the JSON file into secure, offline storage and delete any plaintext copy from the online workstation once deployment and initialization are complete.
-
-## 2. Configure Environment
-
-```bash
-cd contracts
-solana config set --url https://api.mainnet-beta.solana.com
-solana config set --keypair /path/to/deployer.json
-export ORACLE_OPERATOR_KEYPAIR_PATH=/path/to/oracle-operator.json
-```
-
-> `ORACLE_OPERATOR_KEYPAIR_PATH` ensures the migration script assigns oracle authority to a dedicated key instead of the deployer.
-> The provider wallet must be the program's current upgrade authority for initial oracle initialization. The configured oracle operator also signs and pays the oracle account rent.
-> Bring the deployer key onto a locked-down machine only long enough to sign the deployment, then remove it from the online system once the program is live.
-
-## 3. Test and Freeze the Release
-
-Version 0.2.0 changes the `Game` account layout and intentionally provides no backward compatibility. Before upgrading an existing deployment, disable new games and settle or close every existing game account. Do not deploy version 0.2.0 while an old-layout game remains active.
-
-```bash
+bun install --frozen-lockfile
 anchor test
+bun run format:check
+bun run lint
+bun run typecheck
 git diff --exit-code
 git diff --cached --exit-code
-git push origin HEAD
-export COMMIT_SHA=$(git rev-parse HEAD)
 ```
 
-Use the exact value of `COMMIT_SHA` for remote verification. Do not deploy uncommitted code or amend the commit after building.
-
-## 4. Build Reproducibly
+Record the exact public commit used for the release:
 
 ```bash
-cd programs/timba
+git rev-parse HEAD
+```
+
+## Reproducible build
+
+```bash
 anchor build --verifiable --solana-version 3.1.10
-cd ../..
 solana-verify get-executable-hash target/verifiable/timba.so
 ```
 
-This build runs in a pinned container and writes the deployable program to `target/verifiable/timba.so`. Do not run `anchor build` or `cargo-build-sbf` between this step and deployment; those commands can replace the artifact with a binary that has a different hash.
+Do not substitute `target/deploy/timba.so` for the verifiable artifact in a production release. Record the executable and IDL hashes before deployment.
 
-## 5. Deploy the Verifiable Artifact and IDL
+## Deploy
+
+Confirm the target cluster, program ID, current upgrade authority, expected balance impact, and executable hash before signing. Upgrade the existing program ID; never generate a replacement program for a routine upgrade.
+
+Anchor deployment may be run with `--no-idl` when IDL publication is handled as a separate verified gate:
 
 ```bash
 anchor deploy \
   --verifiable \
+  --no-idl \
   --program-name timba \
   --provider.cluster mainnet \
-  --provider.wallet /path/to/deployer.json
+  --provider.wallet <UPGRADE_AUTHORITY_KEYPAIR>
 ```
 
-Anchor 1.1.2 uploads `target/idl/timba.json` by default through the Program Metadata Program. Do not pass `--no-idl`.
+Dump the deployed executable and require its hash to match the frozen verifiable artifact before continuing.
 
-If the existing deployment has a legacy pre-v1 Anchor IDL account, close that legacy account with Anchor 0.32.1 before the first Anchor v1 upgrade. This is a one-time migration; confirm the account and authority before closing it.
+## Publish the IDL
 
-## 6. Verify the Deployed Program Remotely
+Publish the canonical IDL only after the executable matches. For a program with no existing Anchor v1 IDL account, initialize it; otherwise upgrade the existing IDL account.
 
-Verify the deployed executable against the exact public commit:
-
-```bash
-solana-verify verify-from-repo \
-  -u https://api.mainnet-beta.solana.com \
-  --program-id 32Jr4JnXWvqq9GqPQynkooHsszaucUUvZfNLh2hdX2L5 \
-  https://github.com/timbagame/contracts \
-  --commit-hash "$COMMIT_SHA" \
-  --library-name timba \
-  --mount-path programs/timba
-```
-
-Accept the prompt to publish the verification record on-chain, then submit the remote verification job. The uploader is normally the upgrade-authority address:
-
-```bash
-solana-verify remote submit-job \
-  --program-id 32Jr4JnXWvqq9GqPQynkooHsszaucUUvZfNLh2hdX2L5 \
-  --uploader <UPGRADE_AUTHORITY_ADDRESS>
-
-solana-verify remote get-job --job-id <JOB_ID>
-```
-
-Wait for the remote job to succeed and confirm that explorers report the program as verified.
-
-References:
-
-- [Anchor verifiable builds](https://www.anchor-lang.com/docs/references/verifiable-builds)
-- [Solana verified builds and remote verification](https://solana.com/docs/programs/verified-builds)
-- [Anchor v1 IDL migration](https://www.anchor-lang.com/docs/updates/release-notes/1-0-0)
-
-## 7. Confirm and Distribute the IDL
-
-Confirm that Anchor can fetch the published mainnet IDL:
+Fetch the published IDL and compare it byte-for-byte with `target/idl/timba.json`:
 
 ```bash
 anchor idl fetch \
@@ -129,94 +83,55 @@ anchor idl fetch \
   32Jr4JnXWvqq9GqPQynkooHsszaucUUvZfNLh2hdX2L5
 ```
 
-1. Copy `target/idl/timba.json` to:
-   - `../bot/idl/idl.json`
-   - `../oracle/idl/idl.json`
-2. Regenerate and copy `target/types/timba.ts` to clients that use the generated Anchor type.
-3. Commit and release the updated client artifacts with the same program release.
+## Verify source
 
-## 8. Initialize Program State on the First Deployment
-
-Run the migration only when deploying a new program whose oracle state has not been initialized. Do not run it for a routine program upgrade.
-
-The migration initializes the oracle with a 1% fee, a 1-hour oracle buffer, a maximum of 100 tickets, and game timeouts between 5 minutes and 24 hours. The contract accepts oracle buffers from 1 second through a hard maximum of 3,600 seconds; initialization and later updates reject larger values.
-
-Initialization requires signatures from both roles:
-
-- The provider wallet, verified on-chain as the current program upgrade authority.
-- The intended oracle operator, which becomes the runtime authority and pays for the oracle PDA. When no separate operator path is provided, the provider fills both roles with one signature.
+Verify the deployed executable against the exact public commit:
 
 ```bash
-ORACLE_OPERATOR_KEYPAIR_PATH=/path/to/oracle-operator.json \
-  anchor migrate \
-  --provider.cluster mainnet \
-  --provider.wallet /path/to/deployer.json
+solana-verify verify-from-repo \
+  -u https://api.mainnet-beta.solana.com \
+  --program-id 32Jr4JnXWvqq9GqPQynkooHsszaucUUvZfNLh2hdX2L5 \
+  https://github.com/timbagame/contracts \
+  --commit-hash <COMMIT_SHA> \
+  --library-name timba \
+  --mount-path programs/timba
 ```
 
-## 9. Post-Deployment Checklist
+Complete remote verification and require a successful result. The release is incomplete until the executable hash, published IDL, source commit, and remote verification record all agree.
 
-- `solana program show 32Jr4JnXWvqq9GqPQynkooHsszaucUUvZfNLh2hdX2L5`
-- Confirm the executable hash matches the reproducible artifact.
-- Confirm the remote verification job succeeded.
-- Confirm the published IDL is fetchable and matches the release commit.
-- Confirm the oracle account was created with the intended operator:
-  ```bash
-  anchor account oracle $(anchor keys list timba --program-id)
-  ```
-- Ensure both oracle and bot wallets are funded for fees.
-- Confirm the oracle buffer is 3,600 seconds and matches the on-chain maximum.
-- Archive the deployer key backups in offline storage after confirming the deployment; ongoing operations should not require this key.
+## Initial deployments
 
-## 10. Optional: Token Initialisation
+`initialize_oracle` is only for a fresh program whose Oracle PDA does not exist. It requires signatures from:
 
-Run the bot utility scripts from the project root after services are configured:
+- The current upgrade authority recorded in the program's upgradeable-loader ProgramData account.
+- The intended Oracle operator, which becomes the runtime authority and funds Oracle account creation.
 
-```bash
-cd ../bot
-ORACLE_OPERATOR_KEYPAIR_PATH=/path/to/oracle-operator.json bun run scripts/initialize-game-token.ts
-```
+The canonical initial configuration is:
 
-This registers the mainnet TIMBA and WSOL tokens with the on-chain oracle configuration.
+| Setting         |          Value |
+| --------------- | -------------: |
+| Fee percentage  |             1% |
+| Oracle buffer   |  3,600 seconds |
+| Maximum tickets |            100 |
+| Maximum timeout | 86,400 seconds |
+| Minimum timeout |    300 seconds |
 
-## 11. Decommission & Program Shutdown
+Do not initialize a new Oracle during a routine executable upgrade.
 
-When you need to retire the program, follow this sequence to halt new activity, settle outstanding games, and recover funds before closing the program.
+## Release evidence
 
-1. **Disable new games**
-   From the `bot/` directory, turn off each supported token so players cannot create additional games:
+Retain:
 
-   ```bash
-   cd ../bot
-   ORACLE_OPERATOR_KEYPAIR_PATH=/path/to/oracle-operator.json bun run scripts/disable-game-tokens.ts
-   ```
+- Public commit SHA
+- Verifiable executable and hash
+- IDL and hash
+- Program state before and after deployment
+- Deployment signature
+- Published-IDL comparison
+- Local and remote verification results
+- Account-compatibility evidence
 
-2. **Force completion/cancellation of existing games**
-   Run a manual scan with the oracle service (repeat until completed/not ready both return zero):
+References:
 
-   ```bash
-   cd ../oracle
-   bun run scripts/manual-shutdown.ts
-   ```
-
-   This drives the `scanAndCompleteActiveGames()` loop, refunding players or distributing winnings so vaults empty out. Allow time for timeout-based cancellations to mature if any games remain “not ready”.
-
-3. **Withdraw protocol fees**
-   Use the bot helper to drain accumulated fees into the oracle operator wallet:
-
-   ```bash
-   cd ../bot
-   ORACLE_OPERATOR_KEYPAIR_PATH=/path/to/oracle-operator.json bun run scripts/withdraw-token-fees.ts
-   ```
-
-   The script creates missing ATAs for the operator (if needed) and withdraws fees for each configured token mint.
-
-4. **Verify no state remains**
-
-   - `solana account <game_token_pda>` should report zero lamports for every configured mint.
-   - `anchor account oracle <oracle_pda>` should show zero outstanding balances and the intended operator key.
-
-5. **Close the program (upgradeable loader)**
-   ```
-   solana program close 32Jr4JnXWvqq9GqPQynkooHsszaucUUvZfNLh2hdX2L5 --recipient <SAFE_RECIPIENT_PUBKEY>
-   ```
-   The recipient address receives the reclaimed rent from remaining program accounts. Run this from the workstation holding the deployer/upgrade authority key, then remove that key from the machine and return it to offline storage.
+- [Anchor verifiable builds](https://www.anchor-lang.com/docs/references/verifiable-builds)
+- [Solana verified builds](https://solana.com/docs/programs/verified-builds)
