@@ -139,7 +139,7 @@ anchor idl fetch \
 
 Run the migration only when deploying a new program whose oracle state has not been initialized. Do not run it for a routine program upgrade.
 
-The migration initializes the oracle with a 1% fee, a 10-minute oracle buffer, a maximum of 100 tickets, and game timeouts between 5 minutes and 24 hours. The contract accepts oracle buffers from 1 second through a hard maximum of 3,600 seconds; initialization and later updates reject larger values.
+The migration initializes the oracle with a 1% fee, a 1-hour oracle buffer, a maximum of 100 tickets, and game timeouts between 5 minutes and 24 hours. The contract accepts oracle buffers from 1 second through a hard maximum of 3,600 seconds; initialization and later updates reject larger values.
 
 Initialization requires signatures from both roles:
 
@@ -164,7 +164,7 @@ ORACLE_OPERATOR_KEYPAIR_PATH=/path/to/oracle-operator.json \
   anchor account oracle $(anchor keys list timba --program-id)
   ```
 - Ensure both oracle and bot wallets are funded for fees.
-- Confirm the oracle buffer is 600 seconds and does not exceed the on-chain 3,600-second limit.
+- Confirm the oracle buffer is 3,600 seconds and matches the on-chain maximum.
 - Archive the deployer key backups in offline storage after confirming the deployment; ongoing operations should not require this key.
 
 ## 10. Optional: Token Initialisation
