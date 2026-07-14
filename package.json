@@ -26,8 +26,7 @@
     "format": "prettier . --write",
     "format:check": "prettier . --check",
     "lint": "eslint . --max-warnings 0",
-    "lint:fix": "eslint . --fix",
-    "update-idl": "ts-node scripts/update-idl.ts"
+    "lint:fix": "eslint . --fix"
   },
   "dependencies": {
     "@anchor-lang/core": "1.1.2"

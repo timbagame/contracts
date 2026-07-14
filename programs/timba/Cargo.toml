@@ -4,9 +4,10 @@ version      = "0.2.0"
 description  = "Timba on-chain game contracts built with Anchor"
 license      = "BUSL-1.1"
 edition      = "2021"
+autotests    = false
 
 [lib]
-crate-type = ["cdylib", "lib"]
+crate-type = ["cdylib"]
 name = "timba"
 
 [features]
@@ -27,20 +28,6 @@ idl-build = [
 anchor-lang = { workspace = true }
 anchor-spl  = { workspace = true, features = ["token", "associated_token", "token_2022"] }
 solana-sha256-hasher = { workspace = true }
-
-[dev-dependencies]
-litesvm = "0.10.0"
-solana-instruction = "3.0"
-solana-keypair = "3.0.1"
-solana-message = "3.0.1"
-solana-signer = "3.0.0"
-solana-transaction = "3.0.2"
-solana-transaction-error = "3.0"
-solana-system-interface = { version = "2.0.0", features = ["bincode"] }
-spl-associated-token-account-interface = "2.0.0"
-spl-token-interface = "2.0.0"
-base64 = "0.21.7"
-bincode = "1.3"
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(target_os, values("solana"))'] }
