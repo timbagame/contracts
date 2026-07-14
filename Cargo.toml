@@ -1,5 +1,5 @@
 [workspace]
-members  = ["programs/*"]
+members  = ["programs/*", "test-harness"]
 resolver = "2"
 
 [workspace.dependencies]

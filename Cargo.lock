@@ -4050,6 +4050,15 @@ version = "0.2.0"
 dependencies = [
  "anchor-lang",
  "anchor-spl",
+ "solana-sha256-hasher",
+]
+
+[[package]]
+name = "timba-test-harness"
+version = "0.2.0"
+dependencies = [
+ "anchor-lang",
+ "anchor-spl",
  "base64 0.21.7",
  "bincode",
  "litesvm",

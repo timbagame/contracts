@@ -16,9 +16,9 @@ For the full trust model and security details, see [SECURITY.md](./SECURITY.md).
 ## Repository layout
 
 - `programs/timba/src` - on-chain program (instructions, state, events, errors).
-- `programs/timba/tests` - Rust unit and LiteSVM integration tests (`cargo test`).
+- `programs/timba/tests` - Rust unit and LiteSVM integration test sources.
+- `test-harness` - host-side `rlib` harness that compiles the same program source for Rust tests while the deployable program remains LTO-enabled.
 - `tests` - Anchor/TypeScript integration tests (`anchor test`) for the generated client, validator concurrency, and token compatibility.
-- `scripts/update-idl.ts` - copies generated IDL/types to sibling consumers.
 - `target/idl` and `target/types` - generated artifacts committed for downstream tooling.
 
 ## Prerequisites
@@ -41,24 +41,24 @@ anchor test           # Complete Rust and TypeScript test suite
 
 ## Testing
 
-| Suite                   | Command               | Coverage                                                                                |
-| ----------------------- | --------------------- | --------------------------------------------------------------------------------------- |
-| **Complete suite**      | `anchor test`         | All Rust/LiteSVM and Anchor/TypeScript tests                                            |
-| **Rust / LiteSVM only** | `cargo test -p timba` | State logic, instruction guards, fees, giveaways, oracle flows, events, and error codes |
+| Suite                   | Command                            | Coverage                                                                                |
+| ----------------------- | ---------------------------------- | --------------------------------------------------------------------------------------- |
+| **Complete suite**      | `anchor test`                      | All Rust/LiteSVM and Anchor/TypeScript tests                                            |
+| **Rust / LiteSVM only** | `cargo test -p timba-test-harness` | State logic, instruction guards, fees, giveaways, oracle flows, events, and error codes |
 
 Build the SBF binary before LiteSVM tests (loads `target/deploy/timba.so`):
 
 ```bash
 cargo-build-sbf --manifest-path programs/timba/Cargo.toml
 # or: anchor build
-cargo test -p timba
+cargo test -p timba-test-harness
 ```
 
 Filter examples:
 
 ```bash
-cargo test -p timba --test fees_litesvm
-cargo test -p timba unjoin
+cargo test -p timba-test-harness --test fees_litesvm
+cargo test -p timba-test-harness unjoin
 ```
 
 ## Common commands
@@ -71,10 +71,7 @@ anchor build
 anchor test
 
 # Rust unit and LiteSVM tests only
-cargo test -p timba
-
-# Sync generated IDL/types to sibling repos
-bun run update-idl
+cargo test -p timba-test-harness
 
 # Formatting checks
 bun run lint
