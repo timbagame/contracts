@@ -7,9 +7,7 @@
   "postCreateCommand": "bash -i .devcontainer/post-create.sh",
   "customizations": {
     "vscode": {
-      "extensions": [
-        "fill-labs.dependi"
-      ],
+      "extensions": ["fill-labs.dependi"],
       "settings": {
         "terminal.integrated.defaultProfile.linux": "bash"
       }

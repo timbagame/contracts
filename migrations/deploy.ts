@@ -9,9 +9,7 @@ import * as path from "path";
 const ORACLE_OPERATOR_KEYPAIR_ENV = "ORACLE_OPERATOR_KEYPAIR_PATH";
 
 const loadKeypairFromFile = (filePath: string): anchor.web3.Keypair => {
-  const resolved = path.isAbsolute(filePath)
-    ? filePath
-    : path.join(process.cwd(), filePath);
+  const resolved = path.isAbsolute(filePath) ? filePath : path.join(process.cwd(), filePath);
   const secret = JSON.parse(fs.readFileSync(resolved, "utf-8"));
   return anchor.web3.Keypair.fromSecretKey(Uint8Array.from(secret));
 };
@@ -32,18 +30,15 @@ module.exports = async function (provider: anchor.AnchorProvider) {
       try {
         oracleOperator = loadKeypairFromFile(keypairPath.trim());
         console.log(
-          `Using oracle operator from ${keypairPath}: ${oracleOperator.publicKey.toBase58()}`
+          `Using oracle operator from ${keypairPath}: ${oracleOperator.publicKey.toBase58()}`,
         );
       } catch (err) {
-        console.error(
-          `Failed to load oracle operator keypair from ${keypairPath}:`,
-          err
-        );
+        console.error(`Failed to load oracle operator keypair from ${keypairPath}:`, err);
         throw err;
       }
     } else {
       console.log(
-        "No ORACLE_OPERATOR_KEYPAIR_PATH provided. Using deployer wallet as oracle operator."
+        "No ORACLE_OPERATOR_KEYPAIR_PATH provided. Using deployer wallet as oracle operator.",
       );
     }
 
@@ -56,8 +51,7 @@ module.exports = async function (provider: anchor.AnchorProvider) {
       minTimeout: 300, // 5 minutes in seconds
     };
 
-    const oracleOperatorPubkey =
-      oracleOperator?.publicKey ?? provider.wallet.publicKey;
+    const oracleOperatorPubkey = oracleOperator?.publicKey ?? provider.wallet.publicKey;
 
     // Initialize Oracle
     const tx = await program.methods
@@ -67,9 +61,7 @@ module.exports = async function (provider: anchor.AnchorProvider) {
         upgradeAuthority: provider.wallet.publicKey,
         programData: anchor.web3.PublicKey.findProgramAddressSync(
           [program.programId.toBuffer()],
-          new anchor.web3.PublicKey(
-            "BPFLoaderUpgradeab1e11111111111111111111111"
-          )
+          new anchor.web3.PublicKey("BPFLoaderUpgradeab1e11111111111111111111111"),
         )[0],
       })
       .signers(oracleOperator ? [oracleOperator] : [])

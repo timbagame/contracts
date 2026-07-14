@@ -28,31 +28,21 @@ const TOKEN_ACCOUNT_READ_RETRIES = 4;
 function disableBlockhashCaching(connection: anchor.web3.Connection): void {
   // Surfpool's transaction-driven blocks can expire web3.js's cached hash
   // during a long setup loop. The flag is an internal web3.js test escape hatch.
-  (
-    connection as unknown as { _disableBlockhashCaching: boolean }
-  )._disableBlockhashCaching = true;
+  (connection as unknown as { _disableBlockhashCaching: boolean })._disableBlockhashCaching = true;
 }
 
 const ORACLE_SEED = Buffer.from("oracle");
 
 const DEFAULT_OPERATOR_SEED = new Uint8Array(32).fill(42);
 
-export const DEFAULT_OPERATOR_KEYPAIR = anchor.web3.Keypair.fromSeed(
-  DEFAULT_OPERATOR_SEED
-);
+export const DEFAULT_OPERATOR_KEYPAIR = anchor.web3.Keypair.fromSeed(DEFAULT_OPERATOR_SEED);
 
 export function deriveOraclePda(programId: PublicKey): PublicKey {
-  const [oraclePda] = PublicKey.findProgramAddressSync(
-    [ORACLE_SEED],
-    programId
-  );
+  const [oraclePda] = PublicKey.findProgramAddressSync([ORACLE_SEED], programId);
   return oraclePda;
 }
 
-const gameTokenCache = new Map<
-  string,
-  { tokenMint: PublicKey; tokenProgram: PublicKey }
->();
+const gameTokenCache = new Map<string, { tokenMint: PublicKey; tokenProgram: PublicKey }>();
 
 const DEFAULT_PLAYER_BALANCE = new anchor.BN(100_000_000);
 const DEFAULT_MIN_TOKEN_AMOUNT = new anchor.BN(1000);
@@ -60,7 +50,7 @@ const DEFAULT_MIN_TOKEN_AMOUNT = new anchor.BN(1000);
 export async function requestAndConfirmAirdrop(
   connection: anchor.web3.Connection,
   pubkey: PublicKey,
-  lamports: number
+  lamports: number,
 ): Promise<anchor.web3.RpcResponseAndContext<anchor.web3.SignatureResult>> {
   const signature = await connection.requestAirdrop(pubkey, lamports);
   return connection.confirmTransaction(signature, "confirmed");
@@ -76,12 +66,11 @@ type TimbaEventName = keyof TimbaEvents;
 export async function subscribeEvent<TEvent extends TimbaEventName>(
   program: anchor.Program<Timba>,
   eventName: TEvent,
-  { timeoutMs = 10_000 }: { timeoutMs?: number } = {}
+  { timeoutMs = 10_000 }: { timeoutMs?: number } = {},
 ): Promise<{
   wait: Promise<TimbaEvents[TEvent]>;
   dispose: () => Promise<void>;
 }> {
-  let listenerId: number | undefined;
   let settled = false;
   let resolveEvent: (value: TimbaEvents[TEvent]) => void;
   let rejectEvent: (reason?: unknown) => void;
@@ -98,7 +87,7 @@ export async function subscribeEvent<TEvent extends TimbaEventName>(
     }
   }, timeoutMs);
 
-  listenerId = await program.addEventListener(eventName, (event) => {
+  const listenerId = await program.addEventListener(eventName, (event) => {
     if (settled) return;
     settled = true;
     clearTimeout(timer);
@@ -130,7 +119,7 @@ export async function captureEvent<TEvent extends TimbaEventName>(
   program: anchor.Program<Timba>,
   eventName: TEvent,
   action: () => Promise<void>,
-  options: { timeoutMs?: number } = {}
+  options: { timeoutMs?: number } = {},
 ): Promise<TimbaEvents[TEvent]> {
   const subscription = await subscribeEvent(program, eventName, options);
 
@@ -185,7 +174,7 @@ export type DerivedGameAccounts = {
 
 async function resolveTokenProgram(
   connection: anchor.web3.Connection,
-  tokenMint: PublicKey
+  tokenMint: PublicKey,
 ): Promise<PublicKey> {
   const accountInfo = await connection.getAccountInfo(tokenMint);
 
@@ -217,9 +206,7 @@ export function getOraclePublicKey(testOracle: TestOracle): PublicKey {
   const oraclePubkey = testOracle.oracle ?? testOracle.oraclePDA;
 
   if (!oraclePubkey) {
-    throw new Error(
-      "Missing oracle public key: expected `oracle` or `oraclePDA` to be defined."
-    );
+    throw new Error("Missing oracle public key: expected `oracle` or `oraclePDA` to be defined.");
   }
 
   return oraclePubkey;
@@ -228,7 +215,7 @@ export function getOraclePublicKey(testOracle: TestOracle): PublicKey {
 export async function ensureOperatorAta(
   connection: anchor.web3.Connection,
   oracle: TestOracle,
-  mint: PublicKey
+  mint: PublicKey,
 ): Promise<PublicKey> {
   const tokenProgram = await resolveTokenProgram(connection, mint);
 
@@ -240,7 +227,7 @@ export async function ensureOperatorAta(
     undefined,
     undefined,
     undefined,
-    tokenProgram
+    tokenProgram,
   );
 
   return account.address;
@@ -280,12 +267,8 @@ export interface AwaitBufferExpiryOptions {
   maxWaitMs?: number;
 }
 
-export async function getClockUnixTimestamp(
-  connection: anchor.web3.Connection
-): Promise<number> {
-  const clockInfo = await connection.getAccountInfo(
-    anchor.web3.SYSVAR_CLOCK_PUBKEY
-  );
+export async function getClockUnixTimestamp(connection: anchor.web3.Connection): Promise<number> {
+  const clockInfo = await connection.getAccountInfo(anchor.web3.SYSVAR_CLOCK_PUBKEY);
 
   if (!clockInfo) {
     throw new Error("Clock sysvar account unavailable");
@@ -305,7 +288,7 @@ async function tickClock(provider: anchor.AnchorProvider): Promise<void> {
       fromPubkey: provider.wallet.publicKey,
       toPubkey: provider.wallet.publicKey,
       lamports: 0,
-    })
+    }),
   );
 
   await provider.sendAndConfirm(transaction);
@@ -321,21 +304,18 @@ function resolveTimeoutSeconds(gameAccount: BufferReadyGameAccount): number {
     return toNumber(configTimeout);
   }
 
-  throw new Error(
-    "Game account missing timeout information required for buffer calculation"
-  );
+  throw new Error("Game account missing timeout information required for buffer calculation");
 }
 
 export async function awaitBufferExpiry(
   gameAccount: BufferReadyGameAccount,
   oracleConfig: OracleConfig,
   extraSlackSeconds = 2,
-  options: AwaitBufferExpiryOptions = {}
+  options: AwaitBufferExpiryOptions = {},
 ): Promise<void> {
   const provider = options.provider ?? TestEnvironment.getInstance().provider;
   const connection = options.connection ?? provider.connection;
-  const pollIntervalMs =
-    options.pollIntervalMs ?? DEFAULT_BUFFER_POLL_INTERVAL_MS;
+  const pollIntervalMs = options.pollIntervalMs ?? DEFAULT_BUFFER_POLL_INTERVAL_MS;
   const maxWaitMs = options.maxWaitMs ?? DEFAULT_BUFFER_MAX_WAIT_MS;
 
   const createdAtSeconds = toNumber(gameAccount.createdAt);
@@ -365,7 +345,7 @@ export async function awaitBufferExpiry(
       if (stalledPolls >= CLOCK_STALL_POLLS_BEFORE_TICK) {
         if (options.connection && !options.provider) {
           throw new Error(
-            "Clock stalled on a custom connection; pass its provider so the same validator can be advanced."
+            "Clock stalled on a custom connection; pass its provider so the same validator can be advanced.",
           );
         }
         await tickClock(provider);
@@ -379,13 +359,13 @@ export async function awaitBufferExpiry(
     if (Date.now() - start > maxWaitMs) {
       if (!extended) {
         console.warn(
-          `[awaitBufferExpiry] Extending wait (clock=${clockTimestamp}, target=${adjustedTarget}).`
+          `[awaitBufferExpiry] Extending wait (clock=${clockTimestamp}, target=${adjustedTarget}).`,
         );
         extended = true;
         start = Date.now();
       } else {
         throw new Error(
-          `Timed out waiting for oracle buffer expiry (target=${adjustedTarget}, clock=${clockTimestamp}).`
+          `Timed out waiting for oracle buffer expiry (target=${adjustedTarget}, clock=${clockTimestamp}).`,
         );
       }
     }
@@ -404,7 +384,7 @@ export async function awaitOracleCompletionReady(
   gameAccount: BufferReadyGameAccount,
   oracleConfig: OracleConfig,
   extraSlackSeconds = 0.5,
-  options: AwaitBufferExpiryOptions = {}
+  options: AwaitBufferExpiryOptions = {},
 ): Promise<void> {
   const bufferSeconds =
     typeof oracleConfig.oracleBufferTime === "number"
@@ -412,9 +392,7 @@ export async function awaitOracleCompletionReady(
       : toNumber(oracleConfig.oracleBufferTime);
 
   const boundedSlack =
-    bufferSeconds > 0
-      ? Math.min(extraSlackSeconds, Math.max(bufferSeconds - 0.25, 0))
-      : 0;
+    bufferSeconds > 0 ? Math.min(extraSlackSeconds, Math.max(bufferSeconds - 0.25, 0)) : 0;
 
   const adjustedSlack = -bufferSeconds + boundedSlack;
 
@@ -439,10 +417,7 @@ type GameConfigOverrides = Partial<{
   isPrivate: boolean;
 }>;
 
-function buildGameConfig(
-  base: GameConfig,
-  overrides: GameConfigOverrides = {}
-): GameConfig {
+function buildGameConfig(base: GameConfig, overrides: GameConfigOverrides = {}): GameConfig {
   const merged: GameConfig = {
     ...base,
     ...overrides,
@@ -457,9 +432,7 @@ function buildGameConfig(
   };
 }
 
-export function coinflipGameConfig(
-  overrides: GameConfigOverrides = {}
-): GameConfig {
+export function coinflipGameConfig(overrides: GameConfigOverrides = {}): GameConfig {
   return buildGameConfig(
     {
       gameType: { coinflip: {} },
@@ -469,13 +442,11 @@ export function coinflipGameConfig(
       timeout: new anchor.BN(3600),
       isPrivate: false,
     },
-    overrides
+    overrides,
   );
 }
 
-export function giveawayGameConfig(
-  overrides: GameConfigOverrides = {}
-): GameConfig {
+export function giveawayGameConfig(overrides: GameConfigOverrides = {}): GameConfig {
   return buildGameConfig(
     {
       gameType: { giveaway: {} },
@@ -485,7 +456,7 @@ export function giveawayGameConfig(
       timeout: new anchor.BN(1800),
       isPrivate: false,
     },
-    overrides
+    overrides,
   );
 }
 
@@ -500,7 +471,7 @@ type StandardSetup = {
 
 async function createStandardSetup(
   program: anchor.Program<Timba>,
-  provider: anchor.AnchorProvider
+  provider: anchor.AnchorProvider,
 ): Promise<StandardSetup> {
   const oracleManager = new OracleManager(program, provider);
   const mintManager = new MintManager(program, provider);
@@ -589,9 +560,7 @@ export class TestEnvironment {
    */
   getPlayers(count: number): TestPlayer[] {
     if (count > this.playerPool.length) {
-      throw new Error(
-        `Requested ${count} players, but only ${this.playerPool.length} available`
-      );
+      throw new Error(`Requested ${count} players, but only ${this.playerPool.length} available`);
     }
     return this.playerPool.slice(0, count);
   }
@@ -635,9 +604,7 @@ export class OracleManager {
     try {
       // Check if oracle already exists and is properly initialized
       try {
-        const existingOracle = await this.program.account.oracle.fetch(
-          oraclePDA
-        );
+        const existingOracle = await this.program.account.oracle.fetch(oraclePDA);
         // Oracle already initialized
         return {
           oraclePDA,
@@ -660,12 +627,12 @@ export class OracleManager {
       await requestAndConfirmAirdrop(
         this.provider.connection,
         this.provider.publicKey,
-        5 * anchor.web3.LAMPORTS_PER_SOL
+        5 * anchor.web3.LAMPORTS_PER_SOL,
       );
       await requestAndConfirmAirdrop(
         this.provider.connection,
         operatorKeypair.publicKey,
-        5 * anchor.web3.LAMPORTS_PER_SOL
+        5 * anchor.web3.LAMPORTS_PER_SOL,
       );
 
       const configForProgram = {
@@ -683,9 +650,7 @@ export class OracleManager {
           upgradeAuthority: this.provider.publicKey,
           programData: anchor.web3.PublicKey.findProgramAddressSync(
             [this.program.programId.toBuffer()],
-            new anchor.web3.PublicKey(
-              "BPFLoaderUpgradeab1e11111111111111111111111"
-            )
+            new anchor.web3.PublicKey("BPFLoaderUpgradeab1e11111111111111111111111"),
           )[0],
         })
         .signers([operatorKeypair])
@@ -742,16 +707,16 @@ type GameTokenDerivation = {
 export function computeGameTokenContext(
   program: anchor.Program<Timba>,
   tokenMint: PublicKey,
-  tokenProgram: PublicKey
+  tokenProgram: PublicKey,
 ): GameTokenDerivation {
   const [gameToken] = PublicKey.findProgramAddressSync(
     [Buffer.from("game_token"), tokenMint.toBuffer()],
-    program.programId
+    program.programId,
   );
 
   const [gameVault] = PublicKey.findProgramAddressSync(
     [Buffer.from("game_vault"), tokenMint.toBuffer()],
-    program.programId
+    program.programId,
   );
 
   const gameTokenAccount = getAssociatedTokenAddressSync(
@@ -759,7 +724,7 @@ export function computeGameTokenContext(
     gameVault,
     true,
     tokenProgram,
-    ASSOCIATED_TOKEN_PROGRAM_ID
+    ASSOCIATED_TOKEN_PROGRAM_ID,
   );
 
   return { gameToken, gameVault, gameTokenAccount };
@@ -774,10 +739,7 @@ export class MintManager {
     this.provider = provider;
   }
 
-  async createMint(options?: {
-    tokenProgram?: PublicKey;
-    decimals?: number;
-  }): Promise<TestMint> {
+  async createMint(options?: { tokenProgram?: PublicKey; decimals?: number }): Promise<TestMint> {
     const mintAuthority = anchor.web3.Keypair.generate();
     const tokenProgram = options?.tokenProgram ?? TOKEN_PROGRAM_ID;
     const decimals = options?.decimals ?? 6;
@@ -786,7 +748,7 @@ export class MintManager {
     await requestAndConfirmAirdrop(
       this.provider.connection,
       mintAuthority.publicKey,
-      5 * anchor.web3.LAMPORTS_PER_SOL
+      5 * anchor.web3.LAMPORTS_PER_SOL,
     );
 
     // Create mint
@@ -798,7 +760,7 @@ export class MintManager {
       decimals,
       undefined,
       undefined,
-      tokenProgram
+      tokenProgram,
     );
 
     // Get PDAs and token accounts
@@ -817,7 +779,7 @@ export class MintManager {
       true,
       undefined,
       undefined,
-      tokenProgram
+      tokenProgram,
     );
 
     await getOrCreateAssociatedTokenAccount(
@@ -828,7 +790,7 @@ export class MintManager {
       undefined,
       undefined,
       undefined,
-      tokenProgram
+      tokenProgram,
     );
 
     // Initialize token config
@@ -867,26 +829,18 @@ export class MintManager {
 
   // Helper getters used in some tests
   getGameTokenPDA(mint: PublicKey): PublicKey {
-    const { gameToken } = computeGameTokenContext(
-      this.program,
-      mint,
-      TOKEN_PROGRAM_ID
-    );
+    const { gameToken } = computeGameTokenContext(this.program, mint, TOKEN_PROGRAM_ID);
     return gameToken;
   }
   getGameVaultPDA(mint: PublicKey): PublicKey {
-    const { gameVault } = computeGameTokenContext(
-      this.program,
-      mint,
-      TOKEN_PROGRAM_ID
-    );
+    const { gameVault } = computeGameTokenContext(this.program, mint, TOKEN_PROGRAM_ID);
     return gameVault;
   }
 
   async mintTokensToAccount(
     mint: TestMint,
     tokenAccount: PublicKey,
-    amount: anchor.BN
+    amount: anchor.BN,
   ): Promise<void> {
     const amountBigInt = BigInt(amount.toString());
     if (amountBigInt === 0n) {
@@ -897,14 +851,12 @@ export class MintManager {
       this.provider.connection,
       mint.mint,
       undefined,
-      mint.tokenProgram
+      mint.tokenProgram,
     );
     const currentSupply = BigInt(mintInfo.supply.toString());
     const maxSupply = 0xffff_ffff_ffff_ffffn; // SPL Token total supply is u64::MAX
-    const availableToMint =
-      maxSupply > currentSupply ? maxSupply - currentSupply : 0n;
-    const mintAmount =
-      amountBigInt <= availableToMint ? amountBigInt : availableToMint;
+    const availableToMint = maxSupply > currentSupply ? maxSupply - currentSupply : 0n;
+    const mintAmount = amountBigInt <= availableToMint ? amountBigInt : availableToMint;
 
     if (mintAmount === 0n) {
       return;
@@ -919,7 +871,7 @@ export class MintManager {
       mintAmount,
       undefined,
       undefined,
-      mint.tokenProgram
+      mint.tokenProgram,
     );
   }
 }
@@ -927,7 +879,7 @@ export class MintManager {
 export async function deriveGameAccounts(
   program: anchor.Program<Timba>,
   gamePDA: PublicKey,
-  options: DerivedGameAccountsOptions = {}
+  options: DerivedGameAccountsOptions = {},
 ): Promise<DerivedGameAccounts> {
   const cacheKey = gamePDA.toBase58();
 
@@ -950,16 +902,11 @@ export async function deriveGameAccounts(
   }
 
   if (!tokenMint) {
-    throw new Error(
-      "Unable to derive game accounts: token mint could not be determined"
-    );
+    throw new Error("Unable to derive game accounts: token mint could not be determined");
   }
 
   if (!tokenProgram) {
-    tokenProgram = await resolveTokenProgram(
-      program.provider.connection,
-      tokenMint
-    );
+    tokenProgram = await resolveTokenProgram(program.provider.connection, tokenMint);
   }
 
   gameTokenCache.set(cacheKey, { tokenMint, tokenProgram });
@@ -969,7 +916,7 @@ export async function deriveGameAccounts(
   const { gameToken, gameVault, gameTokenAccount } = computeGameTokenContext(
     program,
     tokenMint,
-    tokenProgram
+    tokenProgram,
   );
 
   const playerTokenAccount = options.player
@@ -978,7 +925,7 @@ export async function deriveGameAccounts(
         options.player,
         false,
         tokenProgram,
-        ASSOCIATED_TOKEN_PROGRAM_ID
+        ASSOCIATED_TOKEN_PROGRAM_ID,
       )
     : undefined;
 
@@ -988,7 +935,7 @@ export async function deriveGameAccounts(
         options.winner,
         false,
         tokenProgram,
-        ASSOCIATED_TOKEN_PROGRAM_ID
+        ASSOCIATED_TOKEN_PROGRAM_ID,
       )
     : undefined;
 
@@ -1004,9 +951,7 @@ export async function deriveGameAccounts(
   };
 }
 
-export function toGameTokenContext(
-  derived: DerivedGameAccounts
-): GameTokenContextAccounts {
+export function toGameTokenContext(derived: DerivedGameAccounts): GameTokenContextAccounts {
   return {
     tokenMint: derived.tokenMint,
     gameToken: derived.gameToken,
@@ -1019,15 +964,14 @@ export function toGameTokenContext(
 
 export function gameTokenContextFromMint(
   mint: TestMint,
-  program?: anchor.Program<Timba>
+  program?: anchor.Program<Timba>,
 ): GameTokenContextAccounts {
-  const resolvedProgram =
-    program ?? (anchor.workspace.Timba as anchor.Program<Timba>);
+  const resolvedProgram = program ?? (anchor.workspace.Timba as anchor.Program<Timba>);
 
   const { gameToken, gameVault, gameTokenAccount } = computeGameTokenContext(
     resolvedProgram,
     mint.mint,
-    mint.tokenProgram
+    mint.tokenProgram,
   );
 
   return {
@@ -1057,16 +1001,15 @@ export class PlayerManager {
   private async preparePlayerAccount(
     player: anchor.web3.Keypair,
     mint: PublicKey,
-    tokenProgram?: PublicKey
+    tokenProgram?: PublicKey,
   ): Promise<TestPlayer> {
     const resolvedTokenProgram =
-      tokenProgram ??
-      (await resolveTokenProgram(this.provider.connection, mint));
+      tokenProgram ?? (await resolveTokenProgram(this.provider.connection, mint));
 
     await requestAndConfirmAirdrop(
       this.provider.connection,
       player.publicKey,
-      3 * anchor.web3.LAMPORTS_PER_SOL
+      3 * anchor.web3.LAMPORTS_PER_SOL,
     );
 
     for (let attempt = 0; attempt < TOKEN_ACCOUNT_READ_RETRIES; attempt += 1) {
@@ -1079,7 +1022,7 @@ export class PlayerManager {
           undefined,
           undefined,
           undefined,
-          resolvedTokenProgram
+          resolvedTokenProgram,
         );
 
         return { player, playerTokenAccount };
@@ -1087,10 +1030,7 @@ export class PlayerManager {
         const isDelayedAccountRead =
           error instanceof Error && error.name === "TokenAccountNotFoundError";
 
-        if (
-          !isDelayedAccountRead ||
-          attempt === TOKEN_ACCOUNT_READ_RETRIES - 1
-        ) {
+        if (!isDelayedAccountRead || attempt === TOKEN_ACCOUNT_READ_RETRIES - 1) {
           throw error;
         }
 
@@ -1106,42 +1046,24 @@ export class PlayerManager {
     return this.preparePlayerAccount(player, mint);
   }
 
-  async createPlayerPool(
-    count: number,
-    mint: PublicKey
-  ): Promise<TestPlayer[]> {
-    const players = Array.from({ length: count }, () =>
-      anchor.web3.Keypair.generate()
-    );
+  async createPlayerPool(count: number, mint: PublicKey): Promise<TestPlayer[]> {
+    const players = Array.from({ length: count }, () => anchor.web3.Keypair.generate());
 
-    const tokenProgram = await resolveTokenProgram(
-      this.provider.connection,
-      mint
-    );
+    const tokenProgram = await resolveTokenProgram(this.provider.connection, mint);
 
     const preparedPlayers: TestPlayer[] = [];
 
     // Surfpool can return an account read before a concurrent ATA creation is
     // visible. Player setup is not the capacity under test, so keep it serial.
     for (const player of players) {
-      preparedPlayers.push(
-        await this.preparePlayerAccount(player, mint, tokenProgram)
-      );
+      preparedPlayers.push(await this.preparePlayerAccount(player, mint, tokenProgram));
     }
 
     return preparedPlayers;
   }
 
-  async fundPlayer(
-    player: TestPlayer,
-    mint: TestMint,
-    amount: anchor.BN
-  ): Promise<void> {
-    await this.mintManager.mintTokensToAccount(
-      mint,
-      player.playerTokenAccount.address,
-      amount
-    );
+  async fundPlayer(player: TestPlayer, mint: TestMint, amount: anchor.BN): Promise<void> {
+    await this.mintManager.mintTokensToAccount(mint, player.playerTokenAccount.address, amount);
   }
 }
 
@@ -1179,17 +1101,14 @@ export class GameManager {
   }
 
   generateGamePDA(): TestGame {
-    const secretKeyBuffer = anchor.web3.Keypair.generate().secretKey.slice(
-      0,
-      32
-    );
+    const secretKeyBuffer = anchor.web3.Keypair.generate().secretKey.slice(0, 32);
     const secretKey = Array.from(secretKeyBuffer);
     const randomHashBuffer = hash(Buffer.from(secretKeyBuffer));
     const randomHash = Array.from(randomHashBuffer);
 
     const [gamePDA] = PublicKey.findProgramAddressSync(
       [Buffer.from("game"), randomHashBuffer],
-      this.program.programId
+      this.program.programId,
     );
 
     return { gamePDA, randomHash, secretKey };
@@ -1204,21 +1123,21 @@ export class GameManager {
     config: GameConfig,
     creator: anchor.web3.Keypair,
     tokenMint: PublicKey,
-    oracleOperator: anchor.web3.Keypair = DEFAULT_OPERATOR_KEYPAIR
+    oracleOperator: anchor.web3.Keypair = DEFAULT_OPERATOR_KEYPAIR,
   ): Promise<void> {
     const tokenProgram = await this.resolveTokenProgram(tokenMint);
     const oracle = deriveOraclePda(this.program.programId);
     const { gameToken, gameVault, gameTokenAccount } = computeGameTokenContext(
       this.program,
       tokenMint,
-      tokenProgram
+      tokenProgram,
     );
     const creatorTokenAccount = getAssociatedTokenAddressSync(
       tokenMint,
       creator.publicKey,
       false,
       tokenProgram,
-      ASSOCIATED_TOKEN_PROGRAM_ID
+      ASSOCIATED_TOKEN_PROGRAM_ID,
     );
     const gameTokenCtx: GameTokenContextAccounts = {
       tokenMint,
@@ -1260,7 +1179,7 @@ export class GameManager {
   async joinGame(
     gamePDA: PublicKey,
     player: anchor.web3.Keypair,
-    oracleOperator?: anchor.web3.Keypair
+    oracleOperator?: anchor.web3.Keypair,
   ): Promise<void> {
     const derived = await deriveGameAccounts(this.program, gamePDA, {
       player: player.publicKey,
@@ -1289,11 +1208,7 @@ export class GameManager {
         .signers([player, oracleOperator])
         .rpc();
     } else {
-      await this.program.methods
-        .joinGame()
-        .accounts(commonAccounts)
-        .signers([player])
-        .rpc();
+      await this.program.methods.joinGame().accounts(commonAccounts).signers([player]).rpc();
     }
   }
 
@@ -1302,7 +1217,7 @@ export class GameManager {
   async unjoinGame(
     gamePDA: PublicKey,
     player: anchor.web3.Keypair,
-    authority?: anchor.web3.Keypair
+    authority?: anchor.web3.Keypair,
   ): Promise<string> {
     const derived = await deriveGameAccounts(this.program, gamePDA, {
       player: player.publicKey,
@@ -1335,7 +1250,7 @@ export class GameManager {
     oracleOperator: PublicKey,
     winnerIndex: number,
     oracleOperatorKeypair?: anchor.web3.Keypair,
-    overrides?: Partial<CompleteGameAccounts>
+    overrides?: Partial<CompleteGameAccounts>,
   ): Promise<void> {
     // Use provided oracle operator keypair or default to deterministic one
     const operatorKeypair = oracleOperatorKeypair || DEFAULT_OPERATOR_KEYPAIR;
@@ -1345,7 +1260,7 @@ export class GameManager {
       winner,
       creator,
       oracleOperator,
-      overrides
+      overrides,
     );
 
     await this.program.methods
@@ -1360,7 +1275,7 @@ export class GameManager {
     winner: PublicKey,
     creator: PublicKey,
     oracleOperator: PublicKey,
-    overrides: Partial<CompleteGameAccounts> = {}
+    overrides: Partial<CompleteGameAccounts> = {},
   ): Promise<CompleteGameAccounts> {
     const derived = await deriveGameAccounts(this.program, gameData.gamePDA, {
       winner,
@@ -1387,7 +1302,7 @@ export class GameManager {
   async createGame(
     config: GameConfig,
     creator: anchor.web3.Keypair,
-    tokenMint: PublicKey
+    tokenMint: PublicKey,
   ): Promise<TestGame> {
     const gameData = this.generateGamePDA();
     await this.initializeGame(gameData, config, creator, tokenMint);
@@ -1399,7 +1314,7 @@ export class GameManager {
     creator: TestPlayer,
     tokenMint: PublicKey,
     participants: TestPlayer[],
-    { joinCreator = true }: { joinCreator?: boolean } = {}
+    { joinCreator = true }: { joinCreator?: boolean } = {},
   ): Promise<TestGame> {
     const gameData = this.generateGamePDA();
     await this.initializeGame(gameData, config, creator.player, tokenMint);
@@ -1416,11 +1331,7 @@ export class GameManager {
   }
 
   // Expose calculation helper for backward compatibility
-  calculateWinnerIndex(
-    ticketsCount: number,
-    secretKey: number[],
-    lastSlot: number
-  ): number {
+  calculateWinnerIndex(ticketsCount: number, secretKey: number[], lastSlot: number): number {
     return calculateWinnerIndex(ticketsCount, secretKey, lastSlot);
   }
 }
@@ -1431,11 +1342,10 @@ export class GameManager {
 export function calculateWinnerIndex(
   ticketsCount: number,
   secretKey: number[],
-  lastSlot: number
+  lastSlot: number,
 ): number {
   // Calculate entries: for Snowball games use total_amount/ticket_amount, for others use player count
-  let nEntries: number;
-  nEntries = ticketsCount;
+  const nEntries = ticketsCount;
 
   if (nEntries === 1) {
     return 0;
@@ -1456,8 +1366,7 @@ export function calculateWinnerIndex(
   const entropyHash = hash(Buffer.from(combinedData));
 
   // Try sliding 8-byte windows through the hashed entropy
-  const maxValid =
-    BigInt("0xFFFFFFFFFFFFFFFF") - (BigInt("0xFFFFFFFFFFFFFFFF") % nPlayers);
+  const maxValid = BigInt("0xFFFFFFFFFFFFFFFF") - (BigInt("0xFFFFFFFFFFFFFFFF") % nPlayers);
 
   for (let startPos = 0; startPos <= 32 - 8; startPos++) {
     const randomBytes = entropyHash.subarray(startPos, startPos + 8);
@@ -1474,14 +1383,9 @@ export function calculateWinnerIndex(
 /**
  * Helper function to get the winner from a list of players
  */
-export function getWinnerFromPlayers(
-  players: TestPlayer[],
-  winnerIndex: number
-): TestPlayer {
+export function getWinnerFromPlayers(players: TestPlayer[], winnerIndex: number): TestPlayer {
   if (winnerIndex >= players.length) {
-    throw new Error(
-      `Winner index ${winnerIndex} is out of bounds for ${players.length} players`
-    );
+    throw new Error(`Winner index ${winnerIndex} is out of bounds for ${players.length} players`);
   }
   return players[winnerIndex];
 }
@@ -1497,7 +1401,7 @@ export interface GameOutcomeContext {
 export async function computeGameOutcome(
   env: TestEnvironment,
   gameData: TestGame,
-  participants: TestPlayer[]
+  participants: TestPlayer[],
 ): Promise<GameOutcomeContext> {
   const gameAccount = env.testUtils
     ? await env.testUtils.game.fetchGame(gameData.gamePDA)
@@ -1505,7 +1409,7 @@ export async function computeGameOutcome(
   const winnerIndex = calculateWinnerIndex(
     gameAccount.ticketsCount,
     gameData.secretKey,
-    Number(gameAccount.lastSlot)
+    Number(gameAccount.lastSlot),
   );
   const winner = getWinnerFromPlayers(participants, winnerIndex);
   const pot = new anchor.BN(gameAccount.totalAmount.toString());
@@ -1515,7 +1419,7 @@ export async function computeGameOutcome(
 
 export function calculatePayoutBreakdown(
   pot: anchor.BN,
-  feePercentage: number
+  feePercentage: number,
 ): { fee: anchor.BN; winnerAmount: anchor.BN } {
   const fee = pot.mul(new anchor.BN(feePercentage)).div(new anchor.BN(100));
   const winnerAmount = pot.sub(fee);
@@ -1546,9 +1450,7 @@ function extractNumericProgramError(error: unknown): number | undefined {
     return Number.parseInt(customMatch[1], 10);
   }
 
-  const instructionMatch = /InstructionError\D+(\d+)\D+Custom\D+(\d+)/i.exec(
-    message
-  );
+  const instructionMatch = /InstructionError\D+(\d+)\D+Custom\D+(\d+)/i.exec(message);
   if (instructionMatch?.[2]) {
     return Number.parseInt(instructionMatch[2], 10);
   }
@@ -1572,14 +1474,11 @@ export function getErrorCode(error: unknown): string | undefined {
 
 export function getErrorMessage(error: unknown): string {
   const err = error as any;
-  const directMessage =
-    err?.error?.errorMessage ?? err?.message ?? err?.toString?.();
+  const directMessage = err?.error?.errorMessage ?? err?.message ?? err?.toString?.();
 
-  const shouldInspectLogs =
-    !directMessage || directMessage === "Unknown action 'undefined'";
+  const shouldInspectLogs = !directMessage || directMessage === "Unknown action 'undefined'";
   if (shouldInspectLogs) {
-    const logs =
-      err?.transactionLogs ?? err?.logs ?? err?.error?.errorLogs ?? undefined;
+    const logs = err?.transactionLogs ?? err?.logs ?? err?.error?.errorLogs ?? undefined;
     if (Array.isArray(logs)) {
       for (const log of logs) {
         const match = /Error Message: (?<msg>[^.]+)/.exec(log);
@@ -1596,10 +1495,7 @@ export function getErrorMessage(error: unknown): string {
 export async function expectAnchorError(
   promise: Promise<unknown>,
   code: string,
-  {
-    fallbackSubstring,
-    message,
-  }: { fallbackSubstring?: string; message?: string } = {}
+  { fallbackSubstring, message }: { fallbackSubstring?: string; message?: string } = {},
 ): Promise<void> {
   try {
     await promise;
@@ -1617,11 +1513,7 @@ export async function expectAnchorError(
       return;
     }
 
-    expect.fail(
-      `Expected Anchor error code ${code} but received: ${getErrorMessage(
-        error
-      )}`
-    );
+    expect.fail(`Expected Anchor error code ${code} but received: ${getErrorMessage(error)}`);
   }
 }
 
@@ -1672,9 +1564,7 @@ export class TestUtils {
     }
 
     const tokenContext = gameTokenContextFromMint(mint, this.env.program);
-    const gameTokenAccount = await this.env.program.account.gameToken.fetch(
-      tokenContext.gameToken
-    );
+    const gameTokenAccount = await this.env.program.account.gameToken.fetch(tokenContext.gameToken);
 
     const desiredMinAmount = DEFAULT_MIN_TOKEN_AMOUNT;
     const desiredEnabled = true;
@@ -1703,7 +1593,7 @@ export class TestUtils {
       const operatorTokenAccount = await ensureOperatorAta(
         this.env.provider.connection,
         oracle,
-        mint.mint
+        mint.mint,
       );
 
       await this.env.program.methods
@@ -1724,7 +1614,7 @@ export class TestUtils {
 
     for (const player of players) {
       const balance = await this.env.provider.connection.getTokenAccountBalance(
-        player.playerTokenAccount.address
+        player.playerTokenAccount.address,
       );
       const currentAmount = new anchor.BN(balance.value.amount);
 
@@ -1797,10 +1687,7 @@ export class RandomUtils {
   /**
    * Generate random token amount for testing
    */
-  static randomTokenAmount(
-    min: number = 1000,
-    max: number = 100_000_000
-  ): anchor.BN {
+  static randomTokenAmount(min: number = 1000, max: number = 100_000_000): anchor.BN {
     return new anchor.BN(this.randomInt(min, max));
   }
 }
