@@ -18,7 +18,7 @@ describe("Anchor TypeScript Client Smoke", () => {
     const gameData = await testUtils.game.createGame(
       coinflipGameConfig(),
       creator.player,
-      mint.mint
+      mint.mint,
     );
     await testUtils.game.joinGame(gameData.gamePDA, creator.player);
     await testUtils.game.joinGame(gameData.gamePDA, participant.player);
@@ -27,29 +27,25 @@ describe("Anchor TypeScript Client Smoke", () => {
     const winnerIndex = calculateWinnerIndex(
       game.ticketsCount,
       gameData.secretKey,
-      Number(game.lastSlot)
+      Number(game.lastSlot),
     );
     const winner = getWinnerFromPlayers([creator, participant], winnerIndex);
     const balanceBefore = await env.provider.connection.getTokenAccountBalance(
-      winner.playerTokenAccount.address
+      winner.playerTokenAccount.address,
     );
     await testUtils.game.completeGame(
       gameData,
       winner.player.publicKey,
       creator.player.publicKey,
       oracle.operator,
-      winnerIndex
+      winnerIndex,
     );
     const balanceAfter = await env.provider.connection.getTokenAccountBalance(
-      winner.playerTokenAccount.address
+      winner.playerTokenAccount.address,
     );
-    expect(
-      BigInt(balanceAfter.value.amount) > BigInt(balanceBefore.value.amount)
-    ).to.equal(true);
-    await expectAnchorError(
-      testUtils.game.fetchGame(gameData.gamePDA),
-      "AccountDoesNotExist",
-      { fallbackSubstring: "Account does not exist" }
-    );
+    expect(BigInt(balanceAfter.value.amount) > BigInt(balanceBefore.value.amount)).to.equal(true);
+    await expectAnchorError(testUtils.game.fetchGame(gameData.gamePDA), "AccountDoesNotExist", {
+      fallbackSubstring: "Account does not exist",
+    });
   });
 });
