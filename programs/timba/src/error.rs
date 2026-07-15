@@ -127,16 +127,10 @@ pub enum ErrorCode {
     /// Token mint account does not match expected value
     #[msg("Token mint mismatch")]
     InvalidTokenMint = 1401,
-    /// Provided token program is not supported
-    #[msg("Token program unsupported")]
-    UnsupportedTokenProgram = 1402,
     /// Vault still holds token funds
     #[msg("Token vault not empty")]
     TokenVaultNotEmpty = 1403,
     /// Fees must be withdrawn before closing token
     #[msg("Token fees outstanding")]
     TokenFeesOutstanding = 1404,
-    /// Token-2022 mint contains unsupported extensions
-    #[msg("Token extension unsupported")]
-    UnsupportedTokenExtension = 1405,
 }

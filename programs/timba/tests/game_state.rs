@@ -1,7 +1,6 @@
 use anchor_lang::prelude::Pubkey;
 use timba::{
     state::{Game, GameToken, GameType, Oracle, MAX_ORACLE_BUFFER_TIME},
-    utils::is_supported_token_program,
     GameConfig,
 };
 
@@ -183,13 +182,6 @@ fn participant_accounting_guards_overflow_and_capacity() {
     }
     assert_eq!(capacity.total_amount, 768_000_000);
     assert!(capacity.add_player_to_game(Pubkey::new_unique()).is_err());
-}
-
-#[test]
-fn token_program_helpers_are_stable() {
-    assert!(is_supported_token_program(&anchor_spl::token::ID));
-    assert!(is_supported_token_program(&anchor_spl::token_2022::ID));
-    assert!(!is_supported_token_program(&Pubkey::new_unique()));
 }
 
 #[test]

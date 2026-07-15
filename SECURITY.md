@@ -187,7 +187,7 @@ The deployment procedure and verification commands are documented in [MAINNET_DE
 - **Code bugs** → Comprehensive testing and audits minimize this risk
 - **Upgrade risks** → Program upgrades require proper governance
 - **Solana network issues** → Would affect all Solana applications equally
-- **Token-2022 extensions** → Mints with extensions are rejected during token initialization; legacy SPL Token and extension-free Token-2022 mints are supported
+- **Unsupported token programs** → Only legacy SPL Token mints are accepted; Token-2022 mints cannot be initialized
 - **Shared vault** → All games for a mint share one vault; solvency depends on correct per-game and fee accounting
 
 ### User Risks:

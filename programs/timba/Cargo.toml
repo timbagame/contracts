@@ -21,12 +21,14 @@ custom-panic = []
 idl-build = [
   "anchor-lang/idl-build",
   "anchor-spl/idl-build",
+  # Anchor SPL 1.1.2's IDL builder references token-interface types
+  # unconditionally. This feature is IDL-only and is not in the SBF build.
   "anchor-spl/token_2022",
 ]
 
 [dependencies]
 anchor-lang = { workspace = true }
-anchor-spl  = { workspace = true, features = ["token", "associated_token", "token_2022"] }
+anchor-spl  = { workspace = true, features = ["token", "associated_token"] }
 solana-sha256-hasher = { workspace = true }
 
 [lints.rust]

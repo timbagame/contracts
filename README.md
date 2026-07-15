@@ -8,7 +8,7 @@ Anchor-based Solana smart contracts for the Timba game platform.
 - Uses a commit-reveal flow for verifiable randomness.
 - Requires both the game creator and current oracle operator to sign game initialization; the creator remains the fee payer.
 - Settles payouts on-chain and accrues protocol fees per token config.
-- Supports both SPL Token and Token-2022 flows.
+- Supports legacy SPL Token flows.
 - Provides timeout + oracle-buffer protections so players can recover funds if completion stalls.
 
 For the full trust model and security details, see [SECURITY.md](./SECURITY.md).
@@ -18,7 +18,7 @@ For the full trust model and security details, see [SECURITY.md](./SECURITY.md).
 - `programs/timba/src` - on-chain program (instructions, state, events, errors).
 - `programs/timba/tests` - Rust unit and LiteSVM integration test sources.
 - `test-harness` - host-side `rlib` harness that compiles the same program source for Rust tests while the deployable program remains LTO-enabled.
-- `tests` - Anchor/TypeScript integration tests (`anchor test`) for the generated client, validator concurrency, and token compatibility.
+- `tests` - Anchor/TypeScript integration tests (`anchor test`) for the generated client and validator concurrency.
 - `target/idl` and `target/types` - generated artifacts committed for downstream tooling.
 
 ## Prerequisites

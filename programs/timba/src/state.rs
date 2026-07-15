@@ -1,6 +1,6 @@
 use crate::{error::ErrorCode, GameConfig};
 use anchor_lang::prelude::*;
-use anchor_spl::token_interface::{close_account, transfer_checked, CloseAccount, TransferChecked};
+use anchor_spl::token::{close_account, transfer_checked, CloseAccount, TransferChecked};
 use solana_sha256_hasher::hashv;
 
 // ACCOUNT SIZE CONSTANTS
