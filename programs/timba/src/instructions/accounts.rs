@@ -1,11 +1,10 @@
 use anchor_lang::prelude::*;
 use anchor_spl::associated_token::AssociatedToken;
-use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
+use anchor_spl::token::{Mint, Token, TokenAccount};
 
 use crate::error::ErrorCode;
 #[allow(clippy::wildcard_imports)]
 use crate::state::*;
-use crate::utils::is_supported_token_program;
 use crate::{GameConfig, OracleConfig, TokenConfig};
 
 // ORACLE MANAGEMENT
@@ -79,7 +78,7 @@ pub struct InitializeToken<'info> {
     )]
     pub game_token: Account<'info, GameToken>,
 
-    pub token_mint: InterfaceAccount<'info, Mint>,
+    pub token_mint: Account<'info, Mint>,
 
     /// CHECK: PDA authority for game's token accounts
     #[account(seeds = [GAME_VAULT_SEED, token_mint.key().as_ref()], bump)]
@@ -90,7 +89,7 @@ pub struct InitializeToken<'info> {
         associated_token::authority = game_vault,
         associated_token::token_program = token_program,
     )]
-    pub game_token_account: InterfaceAccount<'info, TokenAccount>,
+    pub game_token_account: Account<'info, TokenAccount>,
 
     #[account(
         seeds = [ORACLE_SEED],
@@ -103,10 +102,7 @@ pub struct InitializeToken<'info> {
     pub oracle_operator: Signer<'info>,
 
     pub system_program: Program<'info, System>,
-    #[account(
-        constraint = is_supported_token_program(&token_program.key()) @ ErrorCode::UnsupportedTokenProgram,
-    )]
-    pub token_program: Interface<'info, TokenInterface>,
+    pub token_program: Program<'info, Token>,
     pub associated_token_program: Program<'info, AssociatedToken>,
 }
 
@@ -121,7 +117,7 @@ pub struct UpdateToken<'info> {
     )]
     pub game_token: Account<'info, GameToken>,
 
-    pub token_mint: InterfaceAccount<'info, Mint>,
+    pub token_mint: Account<'info, Mint>,
 
     #[account(
         seeds = [ORACLE_SEED],
@@ -135,7 +131,7 @@ pub struct UpdateToken<'info> {
 
 #[derive(Accounts)]
 pub struct CloseToken<'info> {
-    pub token_mint: InterfaceAccount<'info, Mint>,
+    pub token_mint: Account<'info, Mint>,
 
     #[account(
         mut,
@@ -158,12 +154,9 @@ pub struct CloseToken<'info> {
         associated_token::token_program = token_program,
         constraint = game_token_account.amount == 0 @ ErrorCode::TokenVaultNotEmpty,
     )]
-    pub game_token_account: InterfaceAccount<'info, TokenAccount>,
+    pub game_token_account: Account<'info, TokenAccount>,
 
-    #[account(
-        constraint = is_supported_token_program(&token_program.key()) @ ErrorCode::UnsupportedTokenProgram,
-    )]
-    pub token_program: Interface<'info, TokenInterface>,
+    pub token_program: Program<'info, Token>,
 
     pub associated_token_program: Program<'info, AssociatedToken>,
 
@@ -182,7 +175,7 @@ pub struct CloseToken<'info> {
 
 #[derive(Accounts)]
 pub struct GameTokenContext<'info> {
-    pub token_mint: InterfaceAccount<'info, Mint>,
+    pub token_mint: Account<'info, Mint>,
 
     #[account(
         mut,
@@ -202,12 +195,9 @@ pub struct GameTokenContext<'info> {
         associated_token::authority = game_vault,
         associated_token::token_program = token_program,
     )]
-    pub game_token_account: InterfaceAccount<'info, TokenAccount>,
+    pub game_token_account: Account<'info, TokenAccount>,
 
-    #[account(
-        constraint = is_supported_token_program(&token_program.key()) @ ErrorCode::UnsupportedTokenProgram,
-    )]
-    pub token_program: Interface<'info, TokenInterface>,
+    pub token_program: Program<'info, Token>,
 
     pub associated_token_program: Program<'info, AssociatedToken>,
 }
@@ -215,7 +205,7 @@ pub struct GameTokenContext<'info> {
 impl<'info> GameTokenContext<'info> {
     pub fn transfer_from_player(
         &self,
-        player_token_account: &InterfaceAccount<'info, TokenAccount>,
+        player_token_account: &Account<'info, TokenAccount>,
         player: &Signer<'info>,
         amount: u64,
     ) -> Result<()> {
@@ -232,7 +222,7 @@ impl<'info> GameTokenContext<'info> {
 
     pub fn transfer_from_vault(
         &self,
-        destination_token_account: &InterfaceAccount<'info, TokenAccount>,
+        destination_token_account: &Account<'info, TokenAccount>,
         amount: u64,
     ) -> Result<()> {
         self.game_token.transfer_from_vault(
@@ -283,7 +273,7 @@ pub struct InitializeGame<'info> {
         associated_token::authority = creator,
         associated_token::token_program = game_token_ctx.token_program,
     )]
-    pub creator_token_account: InterfaceAccount<'info, TokenAccount>,
+    pub creator_token_account: Account<'info, TokenAccount>,
     pub system_program: Program<'info, System>,
 }
 
@@ -308,7 +298,7 @@ pub struct JoinGame<'info> {
         associated_token::authority = player,
         associated_token::token_program = game_token_ctx.token_program,
     )]
-    pub player_token_account: InterfaceAccount<'info, TokenAccount>,
+    pub player_token_account: Account<'info, TokenAccount>,
     #[account(seeds = [ORACLE_SEED], bump)]
     pub oracle: Account<'info, Oracle>,
 }
@@ -346,7 +336,7 @@ pub struct CompleteGame<'info> {
         associated_token::authority = winner,
         associated_token::token_program = game_token_ctx.token_program,
     )]
-    pub winner_token_account: InterfaceAccount<'info, TokenAccount>,
+    pub winner_token_account: Account<'info, TokenAccount>,
 }
 
 #[derive(Accounts)]
@@ -372,7 +362,7 @@ pub struct UnjoinGame<'info> {
         associated_token::authority = player,
         associated_token::token_program = game_token_ctx.token_program,
     )]
-    pub player_token_account: InterfaceAccount<'info, TokenAccount>,
+    pub player_token_account: Account<'info, TokenAccount>,
 }
 
 #[derive(Accounts)]
@@ -396,7 +386,7 @@ pub struct CloseGame<'info> {
         associated_token::authority = creator,
         associated_token::token_program = game_token_ctx.token_program,
     )]
-    pub creator_token_account: InterfaceAccount<'info, TokenAccount>,
+    pub creator_token_account: Account<'info, TokenAccount>,
 }
 
 // FEE MANAGEMENT
@@ -417,5 +407,5 @@ pub struct WithdrawTokenFee<'info> {
         associated_token::authority = oracle_operator,
         associated_token::token_program = game_token_ctx.token_program,
     )]
-    pub oracle_operator_token_account: InterfaceAccount<'info, TokenAccount>,
+    pub oracle_operator_token_account: Account<'info, TokenAccount>,
 }

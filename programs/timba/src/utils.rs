@@ -1,8 +1,6 @@
 use crate::state::Oracle;
 use crate::OracleConfig;
 use anchor_lang::prelude::*;
-use anchor_spl::token::ID as TOKEN_PROGRAM_ID;
-use anchor_spl::token_2022::ID as TOKEN_2022_PROGRAM_ID;
 
 // COMMON UTILITIES
 
@@ -42,12 +40,4 @@ pub fn update_oracle_configuration(
         config.min_timeout,
         operator_key,
     );
-}
-
-// TOKEN PROGRAM UTILITIES
-
-/// Returns `true` if the provided program is one of the supported SPL token programs.
-#[must_use]
-pub fn is_supported_token_program(program: &Pubkey) -> bool {
-    program.eq(&TOKEN_PROGRAM_ID) || program.eq(&TOKEN_2022_PROGRAM_ID)
 }

@@ -43,19 +43,16 @@ fn error_codes_are_sequential_within_each_category() {
             ErrorCode::InvalidSecretKey as u32,
             ErrorCode::InvalidOracleBufferTime as u32,
         ],
-        vec![
-            ErrorCode::TokenNotEnabled as u32,
-            ErrorCode::InvalidTokenMint as u32,
-            ErrorCode::UnsupportedTokenProgram as u32,
-            ErrorCode::TokenVaultNotEmpty as u32,
-            ErrorCode::TokenFeesOutstanding as u32,
-            ErrorCode::UnsupportedTokenExtension as u32,
-        ],
     ];
 
     for codes in categories {
         assert!(codes.windows(2).all(|pair| pair[1] == pair[0] + 1));
     }
+
+    assert_eq!(ErrorCode::TokenNotEnabled as u32, 1400);
+    assert_eq!(ErrorCode::InvalidTokenMint as u32, 1401);
+    assert_eq!(ErrorCode::TokenVaultNotEmpty as u32, 1403);
+    assert_eq!(ErrorCode::TokenFeesOutstanding as u32, 1404);
 }
 
 #[test]

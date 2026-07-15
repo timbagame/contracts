@@ -4,7 +4,6 @@ import { Timba } from "../target/types/timba";
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
-  TOKEN_2022_PROGRAM_ID,
   createMint,
   getAssociatedTokenAddressSync,
   getMint,
@@ -182,15 +181,11 @@ async function resolveTokenProgram(
     throw new Error(`Token mint ${tokenMint.toBase58()} not found`);
   }
 
-  if (accountInfo.owner.equals(TOKEN_PROGRAM_ID)) {
-    return TOKEN_PROGRAM_ID;
+  if (!accountInfo.owner.equals(TOKEN_PROGRAM_ID)) {
+    throw new Error(`SPL Token mint ${tokenMint.toBase58()} has an invalid owner`);
   }
 
-  if (accountInfo.owner.equals(TOKEN_2022_PROGRAM_ID)) {
-    return TOKEN_2022_PROGRAM_ID;
-  }
-
-  throw new Error(`Token program unsupported for mint ${tokenMint.toBase58()}`);
+  return TOKEN_PROGRAM_ID;
 }
 
 export interface TestOracle {
@@ -739,10 +734,10 @@ export class MintManager {
     this.provider = provider;
   }
 
-  async createMint(options?: { tokenProgram?: PublicKey; decimals?: number }): Promise<TestMint> {
+  async createMint(): Promise<TestMint> {
     const mintAuthority = anchor.web3.Keypair.generate();
-    const tokenProgram = options?.tokenProgram ?? TOKEN_PROGRAM_ID;
-    const decimals = options?.decimals ?? 6;
+    const tokenProgram = TOKEN_PROGRAM_ID;
+    const decimals = 6;
 
     // Airdrop SOL to mint authority
     await requestAndConfirmAirdrop(

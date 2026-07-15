@@ -22,7 +22,7 @@ idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
 
 [dependencies]
 anchor-lang = { workspace = true }
-anchor-spl = { workspace = true, features = ["token", "associated_token", "token_2022"] }
+anchor-spl = { workspace = true, features = ["token", "associated_token"] }
 solana-sha256-hasher = { workspace = true }
 
 [dev-dependencies]
