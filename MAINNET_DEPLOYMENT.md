@@ -57,7 +57,7 @@ Do not substitute `target/deploy/timba.so` for the verifiable artifact in a prod
 
 Confirm the target cluster, program ID, current upgrade authority, expected balance impact, and executable hash before signing. Upgrade the existing program ID; never generate a replacement program for a routine upgrade.
 
-Anchor deployment may be run with `--no-idl` when IDL publication is handled as a separate verified gate:
+Deploy with `--no-idl`. The canonical generated IDL stays off-chain to avoid creating a rent-funded IDL account:
 
 ```bash
 anchor deploy \
@@ -70,18 +70,9 @@ anchor deploy \
 
 Dump the deployed executable and require its hash to match the frozen verifiable artifact before continuing.
 
-## Publish the IDL
+## Keep the IDL off-chain
 
-Publish the canonical IDL only after the executable matches. For a program with no existing Anchor v1 IDL account, initialize it; otherwise upgrade the existing IDL account.
-
-Fetch the published IDL and compare it byte-for-byte with `target/idl/timba.json`:
-
-```bash
-anchor idl fetch \
-  --provider.cluster mainnet \
-  --out /tmp/timba-mainnet-idl.json \
-  32Jr4JnXWvqq9GqPQynkooHsszaucUUvZfNLh2hdX2L5
-```
+Do not run `anchor idl init` or `anchor idl upgrade`. Keep `target/idl/timba.json` and `target/types/timba.ts` committed, hash the generated IDL as release evidence, and require downstream clients to bundle the identical artifact.
 
 ## Verify source
 
@@ -97,7 +88,7 @@ solana-verify verify-from-repo \
   --mount-path programs/timba
 ```
 
-Complete remote verification and require a successful result. The release is incomplete until the executable hash, published IDL, source commit, and remote verification record all agree.
+Complete remote verification and require a successful result. The release is incomplete until the executable hash, local generated IDL, source commit, downstream client artifacts, and remote verification record all agree.
 
 ## Initial deployments
 
@@ -127,7 +118,7 @@ Retain:
 - IDL and hash
 - Program state before and after deployment
 - Deployment signature
-- Published-IDL comparison
+- Downstream local-IDL comparison
 - Local and remote verification results
 - Account-compatibility evidence
 

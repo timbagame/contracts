@@ -167,7 +167,7 @@ Ready for completion means: max tickets filled, **or** min tickets reached **and
 - All code is open source and auditable
 - On-chain state is publicly verifiable
 - Mainnet releases should be built reproducibly from a published commit and remotely verified against the deployed executable
-- The matching Anchor IDL should be published on-chain so clients and explorers can inspect the program interface
+- The matching Anchor IDL is committed publicly and synchronized into clients; on-chain IDL publication is intentionally skipped to avoid its account rent
 - Event logs provide complete game history
 
 The deployment procedure and verification commands are documented in [MAINNET_DEPLOYMENT.md](./MAINNET_DEPLOYMENT.md).

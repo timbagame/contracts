@@ -87,7 +87,7 @@ The oracle creates and stores the secret, then returns only its commitment hash.
 
 ## Mainnet deployment
 
-Mainnet releases must use a reproducible build from a clean, public commit. Deploy the exact verifiable artifact, allow Anchor to upload the IDL, and complete remote source verification afterward. Do not deploy a normal `anchor build` or `cargo-build-sbf` artifact to mainnet.
+Mainnet releases must use a reproducible build from a clean, public commit. Deploy the exact verifiable artifact with `--no-idl`, keep the generated IDL and types committed and synchronized with clients, and complete remote source verification afterward. Do not deploy a normal `anchor build` or `cargo-build-sbf` artifact to mainnet.
 
 See [MAINNET_DEPLOYMENT.md](./MAINNET_DEPLOYMENT.md) for the complete release and verification checklist.
 
@@ -97,6 +97,6 @@ See [MAINNET_DEPLOYMENT.md](./MAINNET_DEPLOYMENT.md) for the complete release an
 
 ## Additional docs
 
-- [MAINNET_DEPLOYMENT.md](./MAINNET_DEPLOYMENT.md) - reproducible deployment, remote verification, IDL publication, and shutdown checklist.
+- [MAINNET_DEPLOYMENT.md](./MAINNET_DEPLOYMENT.md) - reproducible deployment, remote verification, off-chain IDL handling, and shutdown checklist.
 - [SECURITY.md](./SECURITY.md) - security model and user guidance.
 - [LICENSE](./LICENSE) - Business Source License 1.1 (BUSL-1.1).
