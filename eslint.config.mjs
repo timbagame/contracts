@@ -8,16 +8,14 @@ export default tseslint.config(
     ignores: ["node_modules/**", "target/**", "tests/fixtures/**"],
   },
   js.configs.recommended,
-  ...tseslint.configs.recommended,
+  ...tseslint.configs.strict,
   {
     languageOptions: {
       globals: { ...globals.node, ...globals.mocha },
     },
     rules: {
-      "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/no-empty-object-type": "off",
       "@typescript-eslint/no-require-imports": "off",
-      "@typescript-eslint/no-unused-vars": "off",
       "@typescript-eslint/no-unsafe-function-type": "off",
       "no-empty": ["error", { allowEmptyCatch: true }],
       "no-constant-binary-expression": "error",
