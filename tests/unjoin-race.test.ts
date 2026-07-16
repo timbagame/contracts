@@ -7,7 +7,7 @@ import {
   deriveGameAccounts,
   expectAnchorError,
   toGameTokenContext,
-} from "./test-helpers";
+} from "./test-helpers.ts";
 
 const MEMO_PROGRAM_ID = new anchor.web3.PublicKey("MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr");
 

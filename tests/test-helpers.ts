@@ -1,6 +1,6 @@
 import * as anchor from "@anchor-lang/core";
 import { expect } from "chai";
-import { Timba } from "../target/types/timba";
+import type { Timba } from "../target/types/timba.ts";
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
