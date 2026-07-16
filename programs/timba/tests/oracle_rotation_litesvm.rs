@@ -120,3 +120,4 @@ fn rotated_operator_controls_private_join_completion_and_withdrawal() {
     assert!(!fixture.withdraw_fees(&token, &old_operator, old_operator_ata));
     assert!(fixture.withdraw_fees(&token, &new_operator, new_operator_ata));
 }
+use timba_test_harness as timba;

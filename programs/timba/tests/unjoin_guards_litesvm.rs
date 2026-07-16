@@ -66,3 +66,4 @@ fn rejects_nonparticipant_and_empty_game_unjoins() {
         common::anchor_error(ErrorCode::ParticipantNotFound)
     );
 }
+use timba_test_harness as timba;

@@ -52,3 +52,4 @@ fn rejects_wrong_token_context_for_join_complete_and_unjoin() {
     let operator = fixture.operator.insecure_clone();
     assert!(!fixture.send(&[instruction], &[&operator, &creator]));
 }
+use timba_test_harness as timba;

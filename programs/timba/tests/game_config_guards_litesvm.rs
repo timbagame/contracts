@@ -97,3 +97,4 @@ fn rejects_invalid_giveaway_ticket_count_and_prize() {
         27,
     );
 }
+use timba_test_harness as timba;

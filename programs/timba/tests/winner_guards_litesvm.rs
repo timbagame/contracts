@@ -205,3 +205,4 @@ fn valid_completion_closes_game_and_cannot_settle_twice() {
         setup.creator.pubkey(),
     ));
 }
+use timba_test_harness as timba;

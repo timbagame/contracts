@@ -125,3 +125,4 @@ fn rejects_join_with_insufficient_token_balance() {
     assert!(!fixture.join_game(&token, game, &poor_player, poor_ata));
     assert_eq!(state(&fixture, game).tickets_count, 0);
 }
+use timba_test_harness as timba;

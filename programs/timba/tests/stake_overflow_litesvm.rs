@@ -46,3 +46,4 @@ fn fourth_large_stake_cannot_overflow_game_total() {
     assert_eq!(after.total_amount, u64::MAX);
     assert_eq!(after.tickets_count, 3);
 }
+use timba_test_harness as timba;

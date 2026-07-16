@@ -163,3 +163,4 @@ fn single_player_giveaway_completes_after_timeout_and_unjoin_preserves_prize() {
     ));
     assert_eq!(fixture.token_balance(participant_ata), 9_500);
 }
+use timba_test_harness as timba;

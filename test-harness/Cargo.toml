@@ -7,7 +7,7 @@ publish = false
 # Compile the exact program source as an rlib for host-side LiteSVM tests.
 # The deployable package stays cdylib-only so its release profile can use LTO.
 [lib]
-name = "timba"
+name = "timba_test_harness"
 path = "../programs/timba/src/lib.rs"
 
 [features]
