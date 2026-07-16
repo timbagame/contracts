@@ -93,3 +93,4 @@ fn underfilled_game_allows_unjoin_without_waiting() {
     assert!(fixture.unjoin_game(&token, game, &player, player_ata));
     assert_eq!(game_state(&fixture, game).tickets_count, 0);
 }
+use timba_test_harness as timba;

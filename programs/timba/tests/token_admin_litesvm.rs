@@ -190,3 +190,4 @@ fn rejects_close_when_fees_are_outstanding() {
     let operator = fixture.operator.insecure_clone();
     assert!(!fixture.close_token(&token, &operator));
 }
+use timba_test_harness as timba;

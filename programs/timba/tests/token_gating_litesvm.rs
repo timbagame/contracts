@@ -117,3 +117,4 @@ fn disabling_token_blocks_additional_joins() {
     ));
     assert!(!fixture.join_game(&token, game, &second, second_ata));
 }
+use timba_test_harness as timba;

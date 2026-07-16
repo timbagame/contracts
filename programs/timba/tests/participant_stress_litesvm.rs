@@ -43,3 +43,4 @@ fn fills_high_capacity_game_with_exact_ordered_participants() {
         assert_eq!(state.participants[index], player.pubkey());
     }
 }
+use timba_test_harness as timba;

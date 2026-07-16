@@ -86,3 +86,4 @@ fn rejects_completion_before_minimum_participants_join() {
     ));
     assert_eq!(state(&fixture, game).total_amount, 2_000);
 }
+use timba_test_harness as timba;

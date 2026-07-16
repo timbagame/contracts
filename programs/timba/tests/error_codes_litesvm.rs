@@ -171,3 +171,4 @@ fn preserves_join_and_buffer_error_codes() {
         common::anchor_error(ErrorCode::OracleBufferNotExpired)
     );
 }
+use timba_test_harness as timba;

@@ -192,3 +192,4 @@ fn single_ticket_always_selects_first_participant() {
     };
     assert_eq!(game.calculate_winner_index([1; 32]), Some(0));
 }
+use timba_test_harness as timba;

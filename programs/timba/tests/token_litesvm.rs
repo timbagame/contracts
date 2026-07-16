@@ -48,3 +48,4 @@ fn initializes_coinflip_game_with_real_token_accounts() {
     assert_eq!(state.tickets_count, 0);
     assert_eq!(state.total_amount, 0);
 }
+use timba_test_harness as timba;

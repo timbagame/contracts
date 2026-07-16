@@ -212,3 +212,4 @@ fn rejects_invalid_updates_without_mutating_oracle() {
     assert_eq!(state.max_timeout, config().max_timeout);
     assert_eq!(state.min_timeout, config().min_timeout);
 }
+use timba_test_harness as timba;

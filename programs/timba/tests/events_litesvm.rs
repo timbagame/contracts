@@ -245,3 +245,4 @@ fn emits_completion_and_fee_withdrawal_events() {
     assert_eq!(withdrawn.token_mint, token.mint.pubkey());
     assert_eq!(withdrawn.amount, 100);
 }
+use timba_test_harness as timba;
