@@ -9,6 +9,7 @@ import {
   getMint,
   getOrCreateAssociatedTokenAccount,
   mintTo,
+  type Account,
 } from "@solana/spl-token";
 import { PublicKey } from "@solana/web3.js";
 import { createHash } from "crypto";
@@ -136,7 +137,7 @@ export async function captureEvent<TEvent extends TimbaEventName>(
 
 export interface TestPlayer {
   player: anchor.web3.Keypair;
-  playerTokenAccount: any;
+  playerTokenAccount: Account;
 }
 
 export interface TestMint {
@@ -395,7 +396,7 @@ export async function awaitOracleCompletionReady(
 }
 
 export interface GameConfig {
-  gameType: any;
+  gameType: { coinflip: Record<string, never> } | { giveaway: Record<string, never> };
   amount: anchor.BN | number;
   // Permit raw numbers in tests (we'll coerce to proper types where needed)
   maxTickets: anchor.BN | number;
@@ -614,7 +615,7 @@ export class OracleManager {
             minTimeout: existingOracle.minTimeout.toNumber(),
           },
         };
-      } catch (fetchError) {
+      } catch {
         // Oracle doesn't exist, proceed with initialization
       }
 
@@ -941,8 +942,8 @@ export async function deriveGameAccounts(
     gameToken,
     gameVault,
     gameTokenAccount,
-    playerTokenAccount,
-    winnerTokenAccount,
+    ...(playerTokenAccount ? { playerTokenAccount } : {}),
+    ...(winnerTokenAccount ? { winnerTokenAccount } : {}),
   };
 }
 
@@ -1386,7 +1387,7 @@ export function getWinnerFromPlayers(players: TestPlayer[], winnerIndex: number)
 }
 
 export interface GameOutcomeContext {
-  gameAccount: any;
+  gameAccount: anchor.IdlAccounts<Timba>["game"];
   winnerIndex: number;
   winner: TestPlayer;
   participants: TestPlayer[];
@@ -1453,8 +1454,24 @@ function extractNumericProgramError(error: unknown): number | undefined {
   return undefined;
 }
 
+type AnchorErrorLike = {
+  error?: {
+    errorCode?: { code?: unknown };
+    errorMessage?: unknown;
+    errorLogs?: unknown;
+  };
+  message?: unknown;
+  transactionLogs?: unknown;
+  logs?: unknown;
+  toString?: () => string;
+};
+
+function asAnchorError(error: unknown): AnchorErrorLike {
+  return typeof error === "object" && error !== null ? (error as AnchorErrorLike) : {};
+}
+
 export function getErrorCode(error: unknown): string | undefined {
-  const anchorCode = (error as any)?.error?.errorCode?.code;
+  const anchorCode = asAnchorError(error).error?.errorCode?.code;
   if (typeof anchorCode === "string" && anchorCode.length > 0) {
     return anchorCode;
   }
@@ -1468,14 +1485,16 @@ export function getErrorCode(error: unknown): string | undefined {
 }
 
 export function getErrorMessage(error: unknown): string {
-  const err = error as any;
-  const directMessage = err?.error?.errorMessage ?? err?.message ?? err?.toString?.();
+  const err = asAnchorError(error);
+  const rawMessage = err.error?.errorMessage ?? err.message ?? err.toString?.();
+  const directMessage = typeof rawMessage === "string" ? rawMessage : undefined;
 
   const shouldInspectLogs = !directMessage || directMessage === "Unknown action 'undefined'";
   if (shouldInspectLogs) {
     const logs = err?.transactionLogs ?? err?.logs ?? err?.error?.errorLogs ?? undefined;
     if (Array.isArray(logs)) {
       for (const log of logs) {
+        if (typeof log !== "string") continue;
         const match = /Error Message: (?<msg>[^.]+)/.exec(log);
         if (match?.groups?.msg) {
           return match.groups.msg;
@@ -1626,33 +1645,33 @@ export class TestUtils {
 /**
  * Random utility functions for fuzz testing
  */
-export class RandomUtils {
+export const RandomUtils = {
   /**
    * Generate random integer in range [min, max] (inclusive)
    */
-  static randomInt(min: number, max: number): number {
+  randomInt(min: number, max: number): number {
     return Math.floor(Math.random() * (max - min + 1)) + min;
-  }
+  },
 
   /**
    * Generate random boolean with optional probability
    */
-  static randomBoolean(probability: number = 0.5): boolean {
+  randomBoolean(probability: number = 0.5): boolean {
     return Math.random() < probability;
-  }
+  },
 
   /**
    * Generate random game type for testing
    */
-  static randomGameType(): any {
-    const types = [{ coinflip: {} }, { giveaway: {} }];
-    return types[this.randomInt(0, types.length - 1)];
-  }
+  randomGameType(): GameConfig["gameType"] {
+    const types: GameConfig["gameType"][] = [{ coinflip: {} }, { giveaway: {} }];
+    return types[this.randomInt(0, types.length - 1)] ?? { coinflip: {} };
+  },
 
   /**
    * Generate random game configuration for testing
    */
-  static randomGameConfig(maxPlayers: number = 100): GameConfig {
+  randomGameConfig(maxPlayers: number = 100): GameConfig {
     const gameType = this.randomGameType();
     const maxTickets = this.randomInt(2, maxPlayers);
     const minTickets = this.randomInt(1, Math.min(maxTickets, 10));
@@ -1665,24 +1684,24 @@ export class RandomUtils {
       timeout: new anchor.BN(this.randomInt(600, 7200)), // 10 minutes to 2 hours
       isPrivate: this.randomBoolean(0.1), // 10% chance of private game
     };
-  }
+  },
 
   /**
    * Shuffle an array using Fisher-Yates algorithm
    */
-  static shuffle<T>(array: T[]): T[] {
+  shuffle<T>(array: T[]): T[] {
     const shuffled = [...array];
     for (let i = shuffled.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
     }
     return shuffled;
-  }
+  },
 
   /**
    * Generate random token amount for testing
    */
-  static randomTokenAmount(min: number = 1000, max: number = 100_000_000): anchor.BN {
+  randomTokenAmount(min: number = 1000, max: number = 100_000_000): anchor.BN {
     return new anchor.BN(this.randomInt(min, max));
-  }
-}
+  },
+};
