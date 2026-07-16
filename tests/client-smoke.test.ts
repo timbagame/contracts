@@ -6,7 +6,7 @@ import {
   coinflipGameConfig,
   expectAnchorError,
   getWinnerFromPlayers,
-} from "./test-helpers";
+} from "./test-helpers.ts";
 
 describe("Anchor TypeScript Client Smoke", () => {
   it("executes a complete coinflip lifecycle through the generated client", async () => {

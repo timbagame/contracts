@@ -7,8 +7,8 @@ import {
   calculateWinnerIndex,
   calculatePayoutBreakdown,
   getWinnerFromPlayers,
-  TestGame,
-} from "./test-helpers";
+} from "./test-helpers.ts";
+import type { TestGame } from "./test-helpers.ts";
 
 const MEMO_PROGRAM_ID = new anchor.web3.PublicKey("MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr");
 
