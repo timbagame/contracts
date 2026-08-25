@@ -69,6 +69,9 @@ jobs:
       - name: Lint
         run: bun run lint
 
+      - name: Check Rust formatting
+        run: cargo fmt --all -- --check
+
       - name: Cache Cargo
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -88,11 +91,17 @@ jobs:
       - name: Typecheck
         run: bun x tsc -p tsconfig.json --noEmit
 
+      - name: Run Clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
       - name: Create test wallet
         run: solana-keygen new --no-bip39-passphrase --silent --force --outfile ~/.config/solana/id.json
 
-      - name: Build SBF program
-        run: cargo-build-sbf --manifest-path programs/timba/Cargo.toml
+      - name: Build program and generated clients
+        run: anchor build --ignore-keys
+
+      - name: Check generated IDL and TypeScript client drift
+        run: git diff --exit-code -- target/idl target/types
 
       - name: Run test suite
         run: anchor test --skip-build
