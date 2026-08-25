@@ -9,8 +9,8 @@ import {
   getMint,
   getOrCreateAssociatedTokenAccount,
   mintTo,
-  type Account,
-} from "@solana/spl-token";
+  type TokenAccount,
+} from "./token-client.ts";
 import { PublicKey } from "@solana/web3.js";
 import { createHash } from "crypto";
 
@@ -137,7 +137,7 @@ export async function captureEvent<TEvent extends TimbaEventName>(
 
 export interface TestPlayer {
   player: anchor.web3.Keypair;
-  playerTokenAccount: Account;
+  playerTokenAccount: TokenAccount;
 }
 
 export interface TestMint {
