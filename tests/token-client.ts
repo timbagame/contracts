@@ -20,6 +20,9 @@ export const ASSOCIATED_TOKEN_PROGRAM_ID = new PublicKey(
 
 const MINT_SIZE = 82;
 const TOKEN_ACCOUNT_SIZE = 165;
+const MULTISIG_SIZE = 355;
+const ACCOUNT_TYPE_MINT = 1;
+const ACCOUNT_TYPE_TOKEN = 2;
 
 abstract class TokenError extends Error {}
 
@@ -33,6 +36,10 @@ export class TokenInvalidAccountOwnerError extends TokenError {
 
 export class TokenInvalidAccountSizeError extends TokenError {
   public override readonly name = "TokenInvalidAccountSizeError";
+}
+
+export class TokenInvalidAccountError extends TokenError {
+  public override readonly name = "TokenInvalidAccountError";
 }
 
 export class TokenInvalidMintError extends TokenError {
@@ -124,22 +131,33 @@ export function createMintToInstruction(
   mint: PublicKey,
   destination: PublicKey,
   authority: PublicKey,
-  amount: bigint,
+  amount: number | bigint,
+  multiSigners: (Signer | PublicKey)[] = [],
   programId = TOKEN_PROGRAM_ID,
 ): TransactionInstruction {
   const data = Buffer.alloc(9);
   data[0] = 7;
-  data.writeBigUInt64LE(amount, 1);
+  data.writeBigUInt64LE(BigInt(amount), 1);
 
-  return new TransactionInstruction({
-    programId,
-    keys: [
-      { pubkey: mint, isSigner: false, isWritable: true },
-      { pubkey: destination, isSigner: false, isWritable: true },
-      { pubkey: authority, isSigner: true, isWritable: false },
-    ],
-    data,
-  });
+  const keys = [
+    { pubkey: mint, isSigner: false, isWritable: true },
+    { pubkey: destination, isSigner: false, isWritable: true },
+  ];
+
+  if (multiSigners.length === 0) {
+    keys.push({ pubkey: authority, isSigner: true, isWritable: false });
+  } else {
+    keys.push({ pubkey: authority, isSigner: false, isWritable: false });
+    for (const signer of multiSigners) {
+      keys.push({
+        pubkey: signer instanceof PublicKey ? signer : signer.publicKey,
+        isSigner: true,
+        isWritable: false,
+      });
+    }
+  }
+
+  return new TransactionInstruction({ programId, keys, data });
 }
 
 export function unpackMint(
@@ -150,6 +168,14 @@ export function unpackMint(
   if (!info) throw new TokenAccountNotFoundError();
   if (!info.owner.equals(programId)) throw new TokenInvalidAccountOwnerError();
   if (info.data.length < MINT_SIZE) throw new TokenInvalidAccountSizeError();
+  if (info.data.length > MINT_SIZE) {
+    if (info.data.length <= TOKEN_ACCOUNT_SIZE || info.data.length === MULTISIG_SIZE) {
+      throw new TokenInvalidAccountSizeError();
+    }
+    if (info.data[TOKEN_ACCOUNT_SIZE] !== ACCOUNT_TYPE_MINT) {
+      throw new TokenInvalidMintError();
+    }
+  }
 
   return { address, supply: info.data.readBigUInt64LE(36) };
 }
@@ -162,6 +188,12 @@ export function unpackTokenAccount(
   if (!info) throw new TokenAccountNotFoundError();
   if (!info.owner.equals(programId)) throw new TokenInvalidAccountOwnerError();
   if (info.data.length < TOKEN_ACCOUNT_SIZE) throw new TokenInvalidAccountSizeError();
+  if (info.data.length > TOKEN_ACCOUNT_SIZE) {
+    if (info.data.length === MULTISIG_SIZE) throw new TokenInvalidAccountSizeError();
+    if (info.data[TOKEN_ACCOUNT_SIZE] !== ACCOUNT_TYPE_TOKEN) {
+      throw new TokenInvalidAccountError();
+    }
+  }
 
   return {
     address,
@@ -278,18 +310,21 @@ export async function mintTo(
   payer: Signer,
   mint: PublicKey,
   destination: PublicKey,
-  authority: Signer,
-  amount: bigint,
+  authority: Signer | PublicKey,
+  amount: number | bigint,
   multiSigners: Signer[] = [],
   confirmOptions?: ConfirmOptions,
   programId = TOKEN_PROGRAM_ID,
 ): Promise<TransactionSignature> {
+  const authorityPublicKey = authority instanceof PublicKey ? authority : authority.publicKey;
+  const authoritySigners = authority instanceof PublicKey ? multiSigners : [authority];
   const transaction = new Transaction().add(
-    createMintToInstruction(mint, destination, authority.publicKey, amount, programId),
+    createMintToInstruction(mint, destination, authorityPublicKey, amount, multiSigners, programId),
   );
-  const signers = [payer, authority, ...multiSigners].filter(
-    (signer, index, all) =>
-      all.findIndex((candidate) => candidate.publicKey.equals(signer.publicKey)) === index,
+  return sendAndConfirmTransaction(
+    connection,
+    transaction,
+    [payer, ...authoritySigners],
+    confirmOptions,
   );
-  return sendAndConfirmTransaction(connection, transaction, signers, confirmOptions);
 }
