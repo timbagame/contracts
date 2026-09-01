@@ -124,9 +124,6 @@ pub enum ErrorCode {
     /// Token mint account does not match expected value
     #[msg("Token mint mismatch")]
     InvalidTokenMint = 1401,
-    /// Vault still holds token funds
-    #[msg("Token vault not empty")]
-    TokenVaultNotEmpty = 1403,
     /// Fee recipient does not match the configured wallet
     #[msg("Fee recipient mismatch")]
     InvalidFeeRecipient = 1404,

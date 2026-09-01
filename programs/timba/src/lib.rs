@@ -84,16 +84,6 @@ pub mod timba {
         instructions::update_oracle::handler(ctx, config)
     }
 
-    /// Initializes the vault state for a token approved by the oracle service
-    pub fn initialize_token(ctx: Context<InitializeToken>) -> Result<()> {
-        instructions::initialize_token::handler(ctx)
-    }
-
-    /// Closes token vault state after settling funds
-    pub fn close_token(ctx: Context<CloseToken>) -> Result<()> {
-        instructions::close_token::handler(ctx)
-    }
-
     /// Creates a new game with specified configuration
     pub fn initialize_game(
         ctx: Context<InitializeGame>,

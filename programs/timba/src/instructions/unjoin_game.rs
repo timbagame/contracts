@@ -4,6 +4,7 @@ use crate::utils::get_clock_snapshot;
 use anchor_lang::prelude::*;
 
 pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
+    let vault_bump = ctx.bumps.game_vault_ctx.game_vault;
     let game = &mut ctx.accounts.game;
 
     let oracle = &ctx.accounts.oracle;
@@ -23,9 +24,11 @@ pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
     game.last_slot = current_slot;
 
     // Refund player directly
-    ctx.accounts
-        .game_token_ctx
-        .transfer_from_vault(&ctx.accounts.player_token_account, game.ticket_amount)?;
+    ctx.accounts.game_vault_ctx.transfer_from_vault(
+        &ctx.accounts.player_token_account,
+        game.ticket_amount,
+        vault_bump,
+    )?;
 
     emit!(PlayerUnjoined::new(
         game,

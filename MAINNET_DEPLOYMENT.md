@@ -22,9 +22,21 @@ Release from a clean public commit. Generated `target/idl/timba.json` and `targe
 
 ## Compatibility gate
 
-Version 0.2.0 changes the `Game` account layout and does not migrate existing Game accounts. Before upgrading an existing deployment, independently prove that every old-layout Game account is inert: it must have no tickets, participant hashes, or funds.
+Version 0.3.0 is a coordinated breaking migration. Its `Oracle` and `Game` layouts
+are not compatible with 0.2.x, and it removes `GameToken` accounts. Before deployment:
 
-An executable upgrade does not resize or rewrite program-owned accounts. The global Oracle and GameToken layouts remain compatible with 0.2.0; drained legacy Game accounts retain their original allocation and remain inert.
+1. Stop new game creation.
+2. Settle or close every existing game.
+3. Withdraw all accrued 0.2.x fees.
+4. Close every obsolete `GameToken` account and its empty vault where required.
+5. Create and verify each v0.3 mint-derived vault ATA and fee-recipient ATA.
+6. Deploy matching program, IDL, and client releases before re-enabling creation.
+
+An executable upgrade does not resize or rewrite program-owned accounts. Do not
+upgrade the existing program address until the Oracle migration mechanism is
+documented and tested. If v0.3 uses a new program address, update the declared ID,
+deployment configuration, generated artifacts, and every downstream client as one
+release.
 
 ## Test and freeze
 
@@ -99,13 +111,14 @@ Complete remote verification and require a successful result. The release is inc
 
 The canonical initial configuration is:
 
-| Setting         |          Value |
-| --------------- | -------------: |
-| Fee percentage  |             1% |
-| Oracle buffer   |  3,600 seconds |
-| Maximum tickets |            100 |
-| Maximum timeout | 86,400 seconds |
-| Minimum timeout |    300 seconds |
+| Setting         |           Value |
+| --------------- | --------------: |
+| Fee percentage  |              1% |
+| Fee recipient   | Treasury wallet |
+| Oracle buffer   |   3,600 seconds |
+| Maximum tickets |             100 |
+| Maximum timeout |  86,400 seconds |
+| Minimum timeout |     300 seconds |
 
 Do not initialize a new Oracle during a routine executable upgrade.
 

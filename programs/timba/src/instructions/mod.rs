@@ -5,10 +5,6 @@ pub mod accounts;
 pub mod initialize_oracle;
 pub mod update_oracle;
 
-// Token management
-pub mod close_token;
-pub mod initialize_token;
-
 // Game management
 pub mod close_game;
 pub mod complete_game;

@@ -11,8 +11,7 @@ use {
     solana_signer::Signer,
     timba::{
         events::{
-            GameClosed, GameCompleted, GameInitialized, OracleUpdated, PlayerJoined,
-            PlayerUnjoined, TokenInitialized,
+            GameClosed, GameCompleted, GameInitialized, OracleUpdated, PlayerJoined, PlayerUnjoined,
         },
         state::{Game, GameType},
         GameConfig, OracleConfig,
@@ -33,16 +32,8 @@ fn event<E: Event>(metadata: &TransactionMetadata) -> E {
 }
 
 #[test]
-fn emits_token_and_oracle_configuration_events() {
+fn emits_oracle_configuration_event() {
     let mut fixture = common::TimbaFixture::new();
-    let mint = fixture.create_mint();
-    let token = fixture.uninitialized_token_fixture(mint);
-    let init = fixture.initialize_token_instruction(&token);
-    let operator = fixture.operator.insecure_clone();
-    let metadata = fixture.send_result(&[init], &[&operator]).unwrap();
-    let initialized: TokenInitialized = event(&metadata);
-    assert_eq!(initialized.token_mint, token.mint.pubkey());
-
     let new_operator = solana_keypair::Keypair::new();
     fixture
         .svm

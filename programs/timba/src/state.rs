@@ -1,6 +1,5 @@
 use crate::{error::ErrorCode, GameConfig, OracleConfig};
 use anchor_lang::prelude::*;
-use anchor_spl::token::{close_account, transfer_checked, CloseAccount, TransferChecked};
 use solana_sha256_hasher::hashv;
 
 // ACCOUNT SIZE CONSTANTS
@@ -22,8 +21,6 @@ pub const MAX_ENTROPY_WINDOWS: usize = 32 - ENTROPY_WINDOW_SIZE;
 pub const ORACLE_SEED: &[u8] = b"oracle";
 /// Seed for Game PDA
 pub const GAME_SEED: &[u8] = b"game";
-/// Seed for `GameToken` PDA
-pub const GAME_TOKEN_SEED: &[u8] = b"game_token";
 /// Seed for Game Vault PDA
 pub const GAME_VAULT_SEED: &[u8] = b"game_vault";
 
@@ -35,7 +32,6 @@ pub const MIN_COMPETITIVE_PLAYERS: u32 = 2;
 pub const MIN_GIVEAWAY_PLAYERS: u32 = 1;
 /// Longest period the oracle may exclusively settle a ready game.
 pub const MAX_ORACLE_BUFFER_TIME: u64 = 60 * 60;
-pub const GAME_TOKEN_SIZE: usize = 8 + 32 + 1;
 /// Base size of Game excluding variable-length Vec data
 pub const GAME_BASE_SIZE: usize = 8
     + 32 // creator
@@ -141,119 +137,6 @@ impl Oracle {
     }
 }
 
-// GAME TOKEN ACCOUNT
-
-#[account]
-#[derive(Default)]
-pub struct GameToken {
-    /// Token mint for this game vault
-    pub token_mint: Pubkey,
-    /// Vault bump seed for PDA token transfers
-    pub vault_bump: u8,
-}
-
-impl GameToken {
-    /// Initializes vault state for a new token
-    pub fn initialize(&mut self, token_mint: Pubkey, vault_bump: u8) {
-        self.token_mint = token_mint;
-        self.vault_bump = vault_bump;
-    }
-
-    /// Transfers tokens using a player signer as authority.
-    #[allow(clippy::too_many_arguments)]
-    pub fn transfer_from_player<'info>(
-        &self,
-        from: AccountInfo<'info>,
-        to: AccountInfo<'info>,
-        authority: AccountInfo<'info>, // player or PDA
-        token_program: AccountInfo<'info>,
-        token_mint: AccountInfo<'info>,
-        amount: u64,
-        decimals: u8,
-    ) -> Result<()> {
-        if amount == 0 {
-            return Ok(());
-        }
-
-        transfer_checked(
-            CpiContext::new(
-                token_program.key(),
-                TransferChecked {
-                    from,
-                    mint: token_mint,
-                    to,
-                    authority,
-                },
-            ),
-            amount,
-            decimals,
-        )?;
-        Ok(())
-    }
-
-    /// Transfers tokens using the vault PDA as authority.
-    #[allow(clippy::too_many_arguments)]
-    pub fn transfer_from_vault<'info>(
-        &self,
-        from: AccountInfo<'info>,
-        to: AccountInfo<'info>,
-        authority: AccountInfo<'info>,
-        token_program: AccountInfo<'info>,
-        token_mint: AccountInfo<'info>,
-        amount: u64,
-        decimals: u8,
-    ) -> Result<()> {
-        if amount == 0 {
-            return Ok(());
-        }
-
-        let signer_seeds = [
-            GAME_VAULT_SEED,
-            self.token_mint.as_ref(),
-            &[self.vault_bump],
-        ];
-        transfer_checked(
-            CpiContext::new_with_signer(
-                token_program.key(),
-                TransferChecked {
-                    from,
-                    mint: token_mint,
-                    to,
-                    authority,
-                },
-                &[&signer_seeds],
-            ),
-            amount,
-            decimals,
-        )?;
-        Ok(())
-    }
-
-    /// Closes the PDA-owned vault ATA and returns rent to destination.
-    pub fn close_vault_account<'info>(
-        &self,
-        vault_account: AccountInfo<'info>,
-        destination: AccountInfo<'info>,
-        vault_authority: AccountInfo<'info>,
-        token_program: AccountInfo<'info>,
-    ) -> Result<()> {
-        let signer_seeds = &[
-            GAME_VAULT_SEED,
-            self.token_mint.as_ref(),
-            &[self.vault_bump],
-        ];
-        close_account(CpiContext::new_with_signer(
-            token_program.key(),
-            CloseAccount {
-                account: vault_account,
-                destination,
-                authority: vault_authority,
-            },
-            &[signer_seeds],
-        ))?;
-        Ok(())
-    }
-}
 // GAME ACCOUNT
 #[account]
 #[derive(Default)]

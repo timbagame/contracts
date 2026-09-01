@@ -42,7 +42,7 @@ export function deriveOraclePda(programId: PublicKey): PublicKey {
   return oraclePda;
 }
 
-const gameTokenCache = new Map<string, { tokenMint: PublicKey; tokenProgram: PublicKey }>();
+const gameVaultCache = new Map<string, { tokenMint: PublicKey; tokenProgram: PublicKey }>();
 
 const DEFAULT_PLAYER_BALANCE = new anchor.BN(100_000_000);
 
@@ -143,7 +143,6 @@ export interface TestMint {
   mint: PublicKey;
   mintAuthority: anchor.web3.Keypair;
   gameVaultPDA: PublicKey;
-  gameTokenPDA: PublicKey;
   tokenProgram: PublicKey;
   decimals: number;
 }
@@ -164,9 +163,8 @@ export type DerivedGameAccounts = {
   tokenMint: PublicKey;
   tokenProgram: PublicKey;
   oracle: PublicKey;
-  gameToken: PublicKey;
   gameVault: PublicKey;
-  gameTokenAccount: PublicKey;
+  gameVaultTokenAccount: PublicKey;
   playerTokenAccount?: PublicKey;
   winnerTokenAccount?: PublicKey;
 };
@@ -698,28 +696,22 @@ export class OracleManager {
 /**
  * Token and mint management utilities
  */
-type GameTokenDerivation = {
-  gameToken: PublicKey;
+type GameVaultDerivation = {
   gameVault: PublicKey;
-  gameTokenAccount: PublicKey;
+  gameVaultTokenAccount: PublicKey;
 };
 
-export function computeGameTokenContext(
+export function computeGameVaultContext(
   program: anchor.Program<Timba>,
   tokenMint: PublicKey,
   tokenProgram: PublicKey,
-): GameTokenDerivation {
-  const [gameToken] = PublicKey.findProgramAddressSync(
-    [Buffer.from("game_token"), tokenMint.toBuffer()],
-    program.programId,
-  );
-
+): GameVaultDerivation {
   const [gameVault] = PublicKey.findProgramAddressSync(
     [Buffer.from("game_vault"), tokenMint.toBuffer()],
     program.programId,
   );
 
-  const gameTokenAccount = getAssociatedTokenAddressSync(
+  const gameVaultTokenAccount = getAssociatedTokenAddressSync(
     tokenMint,
     gameVault,
     true,
@@ -727,7 +719,7 @@ export function computeGameTokenContext(
     ASSOCIATED_TOKEN_PROGRAM_ID,
   );
 
-  return { gameToken, gameVault, gameTokenAccount };
+  return { gameVault, gameVaultTokenAccount };
 }
 
 export class MintManager {
@@ -764,11 +756,7 @@ export class MintManager {
     );
 
     // Get PDAs and token accounts
-    const {
-      gameToken: gameTokenPDA,
-      gameVault: gameVaultPDA,
-      gameTokenAccount,
-    } = computeGameTokenContext(this.program, mint, tokenProgram);
+    const { gameVault: gameVaultPDA } = computeGameVaultContext(this.program, mint, tokenProgram);
 
     // Create required token accounts
     await getOrCreateAssociatedTokenAccount(
@@ -796,8 +784,6 @@ export class MintManager {
     // Get the oracle operator from the oracle account
     const oraclePDA = deriveOraclePda(this.program.programId);
     const oracleAccount = await this.program.account.oracle.fetch(oraclePDA);
-    const oracleOperatorKeypair = DEFAULT_OPERATOR_KEYPAIR;
-
     await getOrCreateAssociatedTokenAccount(
       this.provider.connection,
       mintAuthority,
@@ -809,39 +795,18 @@ export class MintManager {
       tokenProgram,
     );
 
-    await this.program.methods
-      .initializeToken()
-      .accountsStrict({
-        gameToken: gameTokenPDA,
-        tokenMint: mint,
-        gameVault: gameVaultPDA,
-        gameTokenAccount,
-        oracle: oraclePDA,
-        oracleOperator: oracleAccount.operator,
-        systemProgram: anchor.web3.SystemProgram.programId,
-        tokenProgram,
-        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
-      })
-      .signers([oracleOperatorKeypair])
-      .rpc();
-
     return {
       mint,
       mintAuthority,
       gameVaultPDA,
-      gameTokenPDA,
       tokenProgram,
       decimals,
     };
   }
 
   // Helper getters used in some tests
-  getGameTokenPDA(mint: PublicKey): PublicKey {
-    const { gameToken } = computeGameTokenContext(this.program, mint, TOKEN_PROGRAM_ID);
-    return gameToken;
-  }
   getGameVaultPDA(mint: PublicKey): PublicKey {
-    const { gameVault } = computeGameTokenContext(this.program, mint, TOKEN_PROGRAM_ID);
+    const { gameVault } = computeGameVaultContext(this.program, mint, TOKEN_PROGRAM_ID);
     return gameVault;
   }
 
@@ -899,7 +864,7 @@ export async function deriveGameAccounts(
       const gameAccount = await program.account.game.fetch(gamePDA);
       tokenMint = new PublicKey(gameAccount.tokenMint);
     } catch (error) {
-      const cached = gameTokenCache.get(cacheKey);
+      const cached = gameVaultCache.get(cacheKey);
       if (cached) {
         tokenMint = cached.tokenMint;
         tokenProgram = cached.tokenProgram;
@@ -917,11 +882,11 @@ export async function deriveGameAccounts(
     tokenProgram = await resolveTokenProgram(program.provider.connection, tokenMint);
   }
 
-  gameTokenCache.set(cacheKey, { tokenMint, tokenProgram });
+  gameVaultCache.set(cacheKey, { tokenMint, tokenProgram });
 
   const oracle = deriveOraclePda(program.programId);
 
-  const { gameToken, gameVault, gameTokenAccount } = computeGameTokenContext(
+  const { gameVault, gameVaultTokenAccount } = computeGameVaultContext(
     program,
     tokenMint,
     tokenProgram,
@@ -951,32 +916,30 @@ export async function deriveGameAccounts(
     tokenMint,
     tokenProgram,
     oracle,
-    gameToken,
     gameVault,
-    gameTokenAccount,
+    gameVaultTokenAccount,
     ...(playerTokenAccount ? { playerTokenAccount } : {}),
     ...(winnerTokenAccount ? { winnerTokenAccount } : {}),
   };
 }
 
-export function toGameTokenContext(derived: DerivedGameAccounts): GameTokenContextAccounts {
+export function toGameVaultContext(derived: DerivedGameAccounts): GameVaultContextAccounts {
   return {
     tokenMint: derived.tokenMint,
-    gameToken: derived.gameToken,
     gameVault: derived.gameVault,
-    gameTokenAccount: derived.gameTokenAccount,
+    gameVaultTokenAccount: derived.gameVaultTokenAccount,
     tokenProgram: derived.tokenProgram,
     associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
   };
 }
 
-export function gameTokenContextFromMint(
+export function gameVaultContextFromMint(
   mint: TestMint,
   program?: anchor.Program<Timba>,
-): GameTokenContextAccounts {
+): GameVaultContextAccounts {
   const resolvedProgram = program ?? (anchor.workspace.Timba as anchor.Program<Timba>);
 
-  const { gameToken, gameVault, gameTokenAccount } = computeGameTokenContext(
+  const { gameVault, gameVaultTokenAccount } = computeGameVaultContext(
     resolvedProgram,
     mint.mint,
     mint.tokenProgram,
@@ -984,9 +947,8 @@ export function gameTokenContextFromMint(
 
   return {
     tokenMint: mint.mint,
-    gameToken,
     gameVault,
-    gameTokenAccount,
+    gameVaultTokenAccount,
     tokenProgram: mint.tokenProgram,
     associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
   };
@@ -1078,18 +1040,17 @@ export class PlayerManager {
 /**
  * Game management utilities
  */
-export type GameTokenContextAccounts = {
+export type GameVaultContextAccounts = {
   tokenMint: PublicKey;
-  gameToken: PublicKey;
   gameVault: PublicKey;
-  gameTokenAccount: PublicKey;
+  gameVaultTokenAccount: PublicKey;
   tokenProgram: PublicKey;
   associatedTokenProgram: PublicKey;
 };
 
 type CompleteGameAccounts = {
   game: PublicKey;
-  gameTokenCtx: GameTokenContextAccounts;
+  gameVaultCtx: GameVaultContextAccounts;
   oracle: PublicKey;
   oracleOperator: PublicKey;
   winner: PublicKey;
@@ -1137,7 +1098,7 @@ export class GameManager {
   ): Promise<void> {
     const tokenProgram = await this.resolveTokenProgram(tokenMint);
     const oracle = deriveOraclePda(this.program.programId);
-    const { gameToken, gameVault, gameTokenAccount } = computeGameTokenContext(
+    const { gameVault, gameVaultTokenAccount } = computeGameVaultContext(
       this.program,
       tokenMint,
       tokenProgram,
@@ -1149,11 +1110,10 @@ export class GameManager {
       tokenProgram,
       ASSOCIATED_TOKEN_PROGRAM_ID,
     );
-    const gameTokenCtx: GameTokenContextAccounts = {
+    const gameVaultCtx: GameVaultContextAccounts = {
       tokenMint,
-      gameToken,
       gameVault,
-      gameTokenAccount,
+      gameVaultTokenAccount,
       tokenProgram,
       associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
     };
@@ -1173,14 +1133,14 @@ export class GameManager {
         creator: creator.publicKey,
         oracle,
         oracleOperator: oracleOperator.publicKey,
-        gameTokenCtx,
+        gameVaultCtx,
         creatorTokenAccount,
         systemProgram: anchor.web3.SystemProgram.programId,
       })
       .signers([creator, oracleOperator])
       .rpc();
 
-    gameTokenCache.set(gameData.gamePDA.toBase58(), {
+    gameVaultCache.set(gameData.gamePDA.toBase58(), {
       tokenMint,
       tokenProgram,
     });
@@ -1199,12 +1159,12 @@ export class GameManager {
       throw new Error("Missing player token account for joinGame");
     }
 
-    const gameTokenCtx = toGameTokenContext(derived);
+    const gameVaultCtx = toGameVaultContext(derived);
     const commonAccounts = {
       game: gamePDA,
       player: player.publicKey,
       playerTokenAccount: derived.playerTokenAccount,
-      gameTokenCtx,
+      gameVaultCtx,
       oracle: derived.oracle,
     };
 
@@ -1247,7 +1207,7 @@ export class GameManager {
         authority: authoritySigner.publicKey,
         oracle: derived.oracle,
         playerTokenAccount: derived.playerTokenAccount,
-        gameTokenCtx: toGameTokenContext(derived),
+        gameVaultCtx: toGameVaultContext(derived),
       })
       .signers([authoritySigner])
       .rpc();
@@ -1307,7 +1267,7 @@ export class GameManager {
 
     const baseAccounts: CompleteGameAccounts = {
       game: gameData.gamePDA,
-      gameTokenCtx: toGameTokenContext(derived),
+      gameVaultCtx: toGameVaultContext(derived),
       oracle: derived.oracle,
       oracleOperator,
       winner,

@@ -95,10 +95,6 @@ name = "stake_overflow_litesvm"
 path = "../programs/timba/tests/stake_overflow_litesvm.rs"
 
 [[test]]
-name = "token_admin_litesvm"
-path = "../programs/timba/tests/token_admin_litesvm.rs"
-
-[[test]]
 name = "creation_policy_litesvm"
 path = "../programs/timba/tests/creation_policy_litesvm.rs"
 

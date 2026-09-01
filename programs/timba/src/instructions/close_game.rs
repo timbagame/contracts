@@ -4,6 +4,7 @@ use crate::utils::get_current_time;
 use anchor_lang::prelude::*;
 
 pub fn handler(ctx: Context<super::CloseGame>) -> Result<()> {
+    let vault_bump = ctx.bumps.game_vault_ctx.game_vault;
     let game = &ctx.accounts.game;
     let oracle = &ctx.accounts.oracle;
     let current_time = get_current_time()?;
@@ -15,9 +16,11 @@ pub fn handler(ctx: Context<super::CloseGame>) -> Result<()> {
 
     // Refund creator for giveaway games with remaining funds
     if game.ticket_amount == 0 && game.total_amount > 0 {
-        ctx.accounts
-            .game_token_ctx
-            .transfer_from_vault(&ctx.accounts.creator_token_account, game.total_amount)?;
+        ctx.accounts.game_vault_ctx.transfer_from_vault(
+            &ctx.accounts.creator_token_account,
+            game.total_amount,
+            vault_bump,
+        )?;
     }
 
     emit!(GameClosed::new(game, current_time));

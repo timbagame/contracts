@@ -57,37 +57,10 @@ export type Timba = {
           }
         },
         {
-          "name": "gameTokenCtx",
+          "name": "gameVaultCtx",
           "accounts": [
             {
               "name": "tokenMint"
-            },
-            {
-              "name": "gameToken",
-              "writable": true,
-              "pda": {
-                "seeds": [
-                  {
-                    "kind": "const",
-                    "value": [
-                      103,
-                      97,
-                      109,
-                      101,
-                      95,
-                      116,
-                      111,
-                      107,
-                      101,
-                      110
-                    ]
-                  },
-                  {
-                    "kind": "account",
-                    "path": "tokenMint"
-                  }
-                ]
-              }
             },
             {
               "name": "gameVault",
@@ -116,7 +89,7 @@ export type Timba = {
               }
             },
             {
-              "name": "gameTokenAccount",
+              "name": "gameVaultTokenAccount",
               "writable": true,
               "pda": {
                 "seeds": [
@@ -193,13 +166,13 @@ export type Timba = {
               },
               {
                 "kind": "account",
-                "path": "gameTokenCtx.tokenProgram",
-                "account": "gameTokenContext"
+                "path": "gameVaultCtx.tokenProgram",
+                "account": "gameVaultContext"
               },
               {
                 "kind": "account",
-                "path": "gameTokenCtx.tokenMint",
-                "account": "gameTokenContext"
+                "path": "gameVaultCtx.tokenMint",
+                "account": "gameVaultContext"
               }
             ],
             "program": {
@@ -240,169 +213,6 @@ export type Timba = {
               ]
             }
           }
-        }
-      ],
-      "args": []
-    },
-    {
-      "name": "closeToken",
-      "docs": [
-        "Closes token vault state after settling funds"
-      ],
-      "discriminator": [
-        26,
-        74,
-        236,
-        151,
-        104,
-        64,
-        183,
-        249
-      ],
-      "accounts": [
-        {
-          "name": "tokenMint"
-        },
-        {
-          "name": "gameToken",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  103,
-                  97,
-                  109,
-                  101,
-                  95,
-                  116,
-                  111,
-                  107,
-                  101,
-                  110
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "tokenMint"
-              }
-            ]
-          }
-        },
-        {
-          "name": "gameVault",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  103,
-                  97,
-                  109,
-                  101,
-                  95,
-                  118,
-                  97,
-                  117,
-                  108,
-                  116
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "tokenMint"
-              }
-            ]
-          }
-        },
-        {
-          "name": "gameTokenAccount",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "gameVault"
-              },
-              {
-                "kind": "account",
-                "path": "tokenProgram"
-              },
-              {
-                "kind": "account",
-                "path": "tokenMint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
-        },
-        {
-          "name": "tokenProgram",
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
-        },
-        {
-          "name": "associatedTokenProgram",
-          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
-        },
-        {
-          "name": "oracle",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  111,
-                  114,
-                  97,
-                  99,
-                  108,
-                  101
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "oracleOperator",
-          "writable": true,
-          "signer": true
         }
       ],
       "args": []
@@ -445,37 +255,10 @@ export type Timba = {
           }
         },
         {
-          "name": "gameTokenCtx",
+          "name": "gameVaultCtx",
           "accounts": [
             {
               "name": "tokenMint"
-            },
-            {
-              "name": "gameToken",
-              "writable": true,
-              "pda": {
-                "seeds": [
-                  {
-                    "kind": "const",
-                    "value": [
-                      103,
-                      97,
-                      109,
-                      101,
-                      95,
-                      116,
-                      111,
-                      107,
-                      101,
-                      110
-                    ]
-                  },
-                  {
-                    "kind": "account",
-                    "path": "tokenMint"
-                  }
-                ]
-              }
             },
             {
               "name": "gameVault",
@@ -504,7 +287,7 @@ export type Timba = {
               }
             },
             {
-              "name": "gameTokenAccount",
+              "name": "gameVaultTokenAccount",
               "writable": true,
               "pda": {
                 "seeds": [
@@ -610,13 +393,13 @@ export type Timba = {
               },
               {
                 "kind": "account",
-                "path": "gameTokenCtx.tokenProgram",
-                "account": "gameTokenContext"
+                "path": "gameVaultCtx.tokenProgram",
+                "account": "gameVaultContext"
               },
               {
                 "kind": "account",
-                "path": "gameTokenCtx.tokenMint",
-                "account": "gameTokenContext"
+                "path": "gameVaultCtx.tokenMint",
+                "account": "gameVaultContext"
               }
             ],
             "program": {
@@ -672,13 +455,13 @@ export type Timba = {
               },
               {
                 "kind": "account",
-                "path": "gameTokenCtx.tokenProgram",
-                "account": "gameTokenContext"
+                "path": "gameVaultCtx.tokenProgram",
+                "account": "gameVaultContext"
               },
               {
                 "kind": "account",
-                "path": "gameTokenCtx.tokenMint",
-                "account": "gameTokenContext"
+                "path": "gameVaultCtx.tokenMint",
+                "account": "gameVaultContext"
               }
             ],
             "program": {
@@ -811,37 +594,10 @@ export type Timba = {
           "signer": true
         },
         {
-          "name": "gameTokenCtx",
+          "name": "gameVaultCtx",
           "accounts": [
             {
               "name": "tokenMint"
-            },
-            {
-              "name": "gameToken",
-              "writable": true,
-              "pda": {
-                "seeds": [
-                  {
-                    "kind": "const",
-                    "value": [
-                      103,
-                      97,
-                      109,
-                      101,
-                      95,
-                      116,
-                      111,
-                      107,
-                      101,
-                      110
-                    ]
-                  },
-                  {
-                    "kind": "account",
-                    "path": "tokenMint"
-                  }
-                ]
-              }
             },
             {
               "name": "gameVault",
@@ -870,7 +626,7 @@ export type Timba = {
               }
             },
             {
-              "name": "gameTokenAccount",
+              "name": "gameVaultTokenAccount",
               "writable": true,
               "pda": {
                 "seeds": [
@@ -947,13 +703,13 @@ export type Timba = {
               },
               {
                 "kind": "account",
-                "path": "gameTokenCtx.tokenProgram",
-                "account": "gameTokenContext"
+                "path": "gameVaultCtx.tokenProgram",
+                "account": "gameVaultContext"
               },
               {
                 "kind": "account",
-                "path": "gameTokenCtx.tokenMint",
-                "account": "gameTokenContext"
+                "path": "gameVaultCtx.tokenMint",
+                "account": "gameVaultContext"
               }
             ],
             "program": {
@@ -1088,172 +844,6 @@ export type Timba = {
       ]
     },
     {
-      "name": "initializeToken",
-      "docs": [
-        "Initializes the vault state for a token approved by the oracle service"
-      ],
-      "discriminator": [
-        38,
-        209,
-        150,
-        50,
-        190,
-        117,
-        16,
-        54
-      ],
-      "accounts": [
-        {
-          "name": "gameToken",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  103,
-                  97,
-                  109,
-                  101,
-                  95,
-                  116,
-                  111,
-                  107,
-                  101,
-                  110
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "tokenMint"
-              }
-            ]
-          }
-        },
-        {
-          "name": "tokenMint"
-        },
-        {
-          "name": "gameVault",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  103,
-                  97,
-                  109,
-                  101,
-                  95,
-                  118,
-                  97,
-                  117,
-                  108,
-                  116
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "tokenMint"
-              }
-            ]
-          }
-        },
-        {
-          "name": "gameTokenAccount",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "gameVault"
-              },
-              {
-                "kind": "account",
-                "path": "tokenProgram"
-              },
-              {
-                "kind": "account",
-                "path": "tokenMint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
-        },
-        {
-          "name": "oracle",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  111,
-                  114,
-                  97,
-                  99,
-                  108,
-                  101
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "oracleOperator",
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "systemProgram",
-          "address": "11111111111111111111111111111111"
-        },
-        {
-          "name": "tokenProgram",
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
-        },
-        {
-          "name": "associatedTokenProgram",
-          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
-        }
-      ],
-      "args": []
-    },
-    {
       "name": "joinGame",
       "docs": [
         "Allows a player to join an existing game"
@@ -1284,37 +874,10 @@ export type Timba = {
           "optional": true
         },
         {
-          "name": "gameTokenCtx",
+          "name": "gameVaultCtx",
           "accounts": [
             {
               "name": "tokenMint"
-            },
-            {
-              "name": "gameToken",
-              "writable": true,
-              "pda": {
-                "seeds": [
-                  {
-                    "kind": "const",
-                    "value": [
-                      103,
-                      97,
-                      109,
-                      101,
-                      95,
-                      116,
-                      111,
-                      107,
-                      101,
-                      110
-                    ]
-                  },
-                  {
-                    "kind": "account",
-                    "path": "tokenMint"
-                  }
-                ]
-              }
             },
             {
               "name": "gameVault",
@@ -1343,7 +906,7 @@ export type Timba = {
               }
             },
             {
-              "name": "gameTokenAccount",
+              "name": "gameVaultTokenAccount",
               "writable": true,
               "pda": {
                 "seeds": [
@@ -1420,13 +983,13 @@ export type Timba = {
               },
               {
                 "kind": "account",
-                "path": "gameTokenCtx.tokenProgram",
-                "account": "gameTokenContext"
+                "path": "gameVaultCtx.tokenProgram",
+                "account": "gameVaultContext"
               },
               {
                 "kind": "account",
-                "path": "gameTokenCtx.tokenMint",
-                "account": "gameTokenContext"
+                "path": "gameVaultCtx.tokenMint",
+                "account": "gameVaultContext"
               }
             ],
             "program": {
@@ -1535,37 +1098,10 @@ export type Timba = {
           }
         },
         {
-          "name": "gameTokenCtx",
+          "name": "gameVaultCtx",
           "accounts": [
             {
               "name": "tokenMint"
-            },
-            {
-              "name": "gameToken",
-              "writable": true,
-              "pda": {
-                "seeds": [
-                  {
-                    "kind": "const",
-                    "value": [
-                      103,
-                      97,
-                      109,
-                      101,
-                      95,
-                      116,
-                      111,
-                      107,
-                      101,
-                      110
-                    ]
-                  },
-                  {
-                    "kind": "account",
-                    "path": "tokenMint"
-                  }
-                ]
-              }
             },
             {
               "name": "gameVault",
@@ -1594,7 +1130,7 @@ export type Timba = {
               }
             },
             {
-              "name": "gameTokenAccount",
+              "name": "gameVaultTokenAccount",
               "writable": true,
               "pda": {
                 "seeds": [
@@ -1671,13 +1207,13 @@ export type Timba = {
               },
               {
                 "kind": "account",
-                "path": "gameTokenCtx.tokenProgram",
-                "account": "gameTokenContext"
+                "path": "gameVaultCtx.tokenProgram",
+                "account": "gameVaultContext"
               },
               {
                 "kind": "account",
-                "path": "gameTokenCtx.tokenMint",
-                "account": "gameTokenContext"
+                "path": "gameVaultCtx.tokenMint",
+                "account": "gameVaultContext"
               }
             ],
             "program": {
@@ -1793,19 +1329,6 @@ export type Timba = {
       ]
     },
     {
-      "name": "gameToken",
-      "discriminator": [
-        146,
-        160,
-        167,
-        120,
-        232,
-        217,
-        240,
-        63
-      ]
-    },
-    {
       "name": "oracle",
       "discriminator": [
         139,
@@ -1909,32 +1432,6 @@ export type Timba = {
         20,
         237,
         73
-      ]
-    },
-    {
-      "name": "tokenClosed",
-      "discriminator": [
-        237,
-        76,
-        164,
-        114,
-        61,
-        65,
-        0,
-        152
-      ]
-    },
-    {
-      "name": "tokenInitialized",
-      "discriminator": [
-        77,
-        70,
-        233,
-        124,
-        236,
-        92,
-        204,
-        0
       ]
     }
   ],
@@ -2073,11 +1570,6 @@ export type Timba = {
       "code": 7401,
       "name": "invalidTokenMint",
       "msg": "Token mint mismatch"
-    },
-    {
-      "code": 7403,
-      "name": "tokenVaultNotEmpty",
-      "msg": "Token vault not empty"
     },
     {
       "code": 7404,
@@ -2428,28 +1920,6 @@ export type Timba = {
               "Game timeout duration"
             ],
             "type": "u64"
-          }
-        ]
-      }
-    },
-    {
-      "name": "gameToken",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "tokenMint",
-            "docs": [
-              "Token mint for this game vault"
-            ],
-            "type": "pubkey"
-          },
-          {
-            "name": "vaultBump",
-            "docs": [
-              "Vault bump seed for PDA token transfers"
-            ],
-            "type": "u8"
           }
         ]
       }
@@ -2833,49 +2303,6 @@ export type Timba = {
               "Timestamp of the unjoin"
             ],
             "type": "u64"
-          }
-        ]
-      }
-    },
-    {
-      "name": "tokenClosed",
-      "docs": [
-        "Emitted when token vault state is closed"
-      ],
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "operator",
-            "docs": [
-              "Operator closing the token"
-            ],
-            "type": "pubkey"
-          },
-          {
-            "name": "tokenMint",
-            "docs": [
-              "Token mint that was removed"
-            ],
-            "type": "pubkey"
-          }
-        ]
-      }
-    },
-    {
-      "name": "tokenInitialized",
-      "docs": [
-        "Emitted when a new token is initialized for games"
-      ],
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "tokenMint",
-            "docs": [
-              "Token mint address"
-            ],
-            "type": "pubkey"
           }
         ]
       }

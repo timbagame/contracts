@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 use anchor_spl::associated_token::AssociatedToken;
-use anchor_spl::token::{Mint, Token, TokenAccount};
+use anchor_spl::token::{transfer_checked, Mint, Token, TokenAccount, TransferChecked};
 
 use crate::error::ErrorCode;
 #[allow(clippy::wildcard_imports)]
@@ -66,19 +66,10 @@ pub struct UpdateOracle<'info> {
     pub new_oracle_operator: Signer<'info>,
 }
 
-// TOKEN MANAGEMENT
+// GAME MANAGEMENT
 
 #[derive(Accounts)]
-pub struct InitializeToken<'info> {
-    #[account(
-        init,
-        payer = oracle_operator,
-        space = GAME_TOKEN_SIZE,
-        seeds = [GAME_TOKEN_SEED, token_mint.key().as_ref()],
-        bump,
-    )]
-    pub game_token: Account<'info, GameToken>,
-
+pub struct GameVaultContext<'info> {
     pub token_mint: Account<'info, Mint>,
 
     /// CHECK: PDA authority for game's token accounts
@@ -86,112 +77,39 @@ pub struct InitializeToken<'info> {
     pub game_vault: UncheckedAccount<'info>,
 
     #[account(
-        associated_token::mint = token_mint,
-        associated_token::authority = game_vault,
-        associated_token::token_program = token_program,
-    )]
-    pub game_token_account: Account<'info, TokenAccount>,
-
-    #[account(
-        seeds = [ORACLE_SEED],
-        bump,
-        constraint = oracle.is_authorized_operator(&oracle_operator.key()) @ ErrorCode::UnauthorizedOperator,
-    )]
-    pub oracle: Account<'info, Oracle>,
-
-    #[account(mut)]
-    pub oracle_operator: Signer<'info>,
-
-    pub system_program: Program<'info, System>,
-    pub token_program: Program<'info, Token>,
-    pub associated_token_program: Program<'info, AssociatedToken>,
-}
-
-#[derive(Accounts)]
-pub struct CloseToken<'info> {
-    pub token_mint: Account<'info, Mint>,
-
-    #[account(
-        mut,
-        close = oracle_operator,
-        seeds = [GAME_TOKEN_SEED, token_mint.key().as_ref()],
-        bump,
-        constraint = game_token.token_mint == token_mint.key() @ ErrorCode::InvalidTokenMint,
-    )]
-    pub game_token: Account<'info, GameToken>,
-
-    /// CHECK: PDA authority for the vault ATA, validated by seeds and bump
-    #[account(seeds = [GAME_VAULT_SEED, token_mint.key().as_ref()], bump = game_token.vault_bump)]
-    pub game_vault: UncheckedAccount<'info>,
-
-    #[account(
-        mut,
-        associated_token::mint = token_mint,
-        associated_token::authority = game_vault,
-        associated_token::token_program = token_program,
-        constraint = game_token_account.amount == 0 @ ErrorCode::TokenVaultNotEmpty,
-    )]
-    pub game_token_account: Account<'info, TokenAccount>,
-
-    pub token_program: Program<'info, Token>,
-
-    pub associated_token_program: Program<'info, AssociatedToken>,
-
-    #[account(
-        seeds = [ORACLE_SEED],
-        bump,
-        constraint = oracle.is_authorized_operator(&oracle_operator.key()) @ ErrorCode::UnauthorizedOperator,
-    )]
-    pub oracle: Account<'info, Oracle>,
-
-    #[account(mut)]
-    pub oracle_operator: Signer<'info>,
-}
-
-// GAME MANAGEMENT
-
-#[derive(Accounts)]
-pub struct GameTokenContext<'info> {
-    pub token_mint: Account<'info, Mint>,
-
-    #[account(
-        mut,
-        seeds = [GAME_TOKEN_SEED, token_mint.key().as_ref()],
-        bump,
-        constraint = game_token.token_mint == token_mint.key() @ ErrorCode::InvalidTokenMint,
-    )]
-    pub game_token: Account<'info, GameToken>,
-
-    /// CHECK: PDA authority for game's token accounts
-    #[account(seeds = [GAME_VAULT_SEED, token_mint.key().as_ref()], bump = game_token.vault_bump)]
-    pub game_vault: UncheckedAccount<'info>,
-
-    #[account(
         mut,
         associated_token::mint = token_mint,
         associated_token::authority = game_vault,
         associated_token::token_program = token_program,
     )]
-    pub game_token_account: Account<'info, TokenAccount>,
+    pub game_vault_token_account: Account<'info, TokenAccount>,
 
     pub token_program: Program<'info, Token>,
 
     pub associated_token_program: Program<'info, AssociatedToken>,
 }
 
-impl<'info> GameTokenContext<'info> {
+impl<'info> GameVaultContext<'info> {
     pub fn transfer_from_player(
         &self,
         player_token_account: &Account<'info, TokenAccount>,
         player: &Signer<'info>,
         amount: u64,
     ) -> Result<()> {
-        self.game_token.transfer_from_player(
-            player_token_account.to_account_info(),
-            self.game_token_account.to_account_info(),
-            player.to_account_info(),
-            self.token_program.to_account_info(),
-            self.token_mint.to_account_info(),
+        if amount == 0 {
+            return Ok(());
+        }
+
+        transfer_checked(
+            CpiContext::new(
+                self.token_program.key(),
+                TransferChecked {
+                    from: player_token_account.to_account_info(),
+                    mint: self.token_mint.to_account_info(),
+                    to: self.game_vault_token_account.to_account_info(),
+                    authority: player.to_account_info(),
+                },
+            ),
             amount,
             self.token_mint.decimals,
         )
@@ -201,13 +119,27 @@ impl<'info> GameTokenContext<'info> {
         &self,
         destination_token_account: &Account<'info, TokenAccount>,
         amount: u64,
+        vault_bump: u8,
     ) -> Result<()> {
-        self.game_token.transfer_from_vault(
-            self.game_token_account.to_account_info(),
-            destination_token_account.to_account_info(),
-            self.game_vault.to_account_info(),
-            self.token_program.to_account_info(),
-            self.token_mint.to_account_info(),
+        if amount == 0 {
+            return Ok(());
+        }
+
+        let mint_key = self.token_mint.key();
+        let vault_bump_seed = [vault_bump];
+        let signer_seeds = [GAME_VAULT_SEED, mint_key.as_ref(), &vault_bump_seed];
+
+        transfer_checked(
+            CpiContext::new_with_signer(
+                self.token_program.key(),
+                TransferChecked {
+                    from: self.game_vault_token_account.to_account_info(),
+                    mint: self.token_mint.to_account_info(),
+                    to: destination_token_account.to_account_info(),
+                    authority: self.game_vault.to_account_info(),
+                },
+                &[&signer_seeds],
+            ),
             amount,
             self.token_mint.decimals,
         )
@@ -241,12 +173,12 @@ pub struct InitializeGame<'info> {
         constraint = oracle.is_authorized_operator(&oracle_operator.key()) @ ErrorCode::UnauthorizedOperator,
     )]
     pub oracle_operator: Signer<'info>,
-    pub game_token_ctx: GameTokenContext<'info>,
+    pub game_vault_ctx: GameVaultContext<'info>,
     #[account(
         mut,
-        associated_token::mint = game_token_ctx.token_mint,
+        associated_token::mint = game_vault_ctx.token_mint,
         associated_token::authority = creator,
-        associated_token::token_program = game_token_ctx.token_program,
+        associated_token::token_program = game_vault_ctx.token_program,
     )]
     pub creator_token_account: Account<'info, TokenAccount>,
     pub system_program: Program<'info, System>,
@@ -259,18 +191,18 @@ pub struct JoinGame<'info> {
         constraint = game.is_not_full() @ ErrorCode::GameFull,
         constraint = game.can_join_private(oracle_operator.as_ref(), &oracle.operator) @ ErrorCode::PrivateGameAccessDenied,
         constraint = game.has_sufficient_balance_for_join(player_token_account.amount) @ ErrorCode::InsufficientBalance,
-        constraint = game.token_mint == game_token_ctx.token_mint.key() @ ErrorCode::InvalidTokenMint,
+        constraint = game.token_mint == game_vault_ctx.token_mint.key() @ ErrorCode::InvalidTokenMint,
     )]
     pub game: Account<'info, Game>,
     #[account(mut)]
     pub player: Signer<'info>,
     pub oracle_operator: Option<Signer<'info>>,
-    pub game_token_ctx: GameTokenContext<'info>,
+    pub game_vault_ctx: GameVaultContext<'info>,
     #[account(
         mut,
-        associated_token::mint = game_token_ctx.token_mint,
+        associated_token::mint = game_vault_ctx.token_mint,
         associated_token::authority = player,
-        associated_token::token_program = game_token_ctx.token_program,
+        associated_token::token_program = game_vault_ctx.token_program,
     )]
     pub player_token_account: Account<'info, TokenAccount>,
     #[account(seeds = [ORACLE_SEED], bump)]
@@ -288,10 +220,10 @@ pub struct CompleteGame<'info> {
         constraint = game.is_creator(&creator.key()) @ ErrorCode::InvalidCreator,
         constraint = Game::verify_secret_key(random_hash, secret_key) @ ErrorCode::InvalidSecretKey,
         constraint = game.total_amount > 0 @ ErrorCode::GameAlreadyCompleted,
-        constraint = game.token_mint == game_token_ctx.token_mint.key() @ ErrorCode::InvalidTokenMint,
+        constraint = game.token_mint == game_vault_ctx.token_mint.key() @ ErrorCode::InvalidTokenMint,
     )]
     pub game: Account<'info, Game>,
-    pub game_token_ctx: GameTokenContext<'info>,
+    pub game_vault_ctx: GameVaultContext<'info>,
     #[account(
         seeds = [ORACLE_SEED],
         bump,
@@ -306,9 +238,9 @@ pub struct CompleteGame<'info> {
     pub creator: UncheckedAccount<'info>,
     #[account(
         mut,
-        associated_token::mint = game_token_ctx.token_mint,
+        associated_token::mint = game_vault_ctx.token_mint,
         associated_token::authority = winner,
-        associated_token::token_program = game_token_ctx.token_program,
+        associated_token::token_program = game_vault_ctx.token_program,
     )]
     pub winner_token_account: Account<'info, TokenAccount>,
     /// CHECK: Address must match the recipient stored in the Oracle account.
@@ -316,9 +248,9 @@ pub struct CompleteGame<'info> {
     pub fee_recipient: UncheckedAccount<'info>,
     #[account(
         mut,
-        associated_token::mint = game_token_ctx.token_mint,
+        associated_token::mint = game_vault_ctx.token_mint,
         associated_token::authority = fee_recipient,
-        associated_token::token_program = game_token_ctx.token_program,
+        associated_token::token_program = game_vault_ctx.token_program,
     )]
     pub fee_recipient_token_account: Account<'info, TokenAccount>,
 }
@@ -327,7 +259,7 @@ pub struct CompleteGame<'info> {
 pub struct UnjoinGame<'info> {
     #[account(
         mut,
-        constraint = game.token_mint == game_token_ctx.token_mint.key() @ ErrorCode::InvalidTokenMint,
+        constraint = game.token_mint == game_vault_ctx.token_mint.key() @ ErrorCode::InvalidTokenMint,
     )]
     pub game: Account<'info, Game>,
     /// CHECK: Player key is validated against the game participants list
@@ -339,12 +271,12 @@ pub struct UnjoinGame<'info> {
     pub authority: Signer<'info>,
     #[account(seeds = [ORACLE_SEED], bump)]
     pub oracle: Account<'info, Oracle>,
-    pub game_token_ctx: GameTokenContext<'info>,
+    pub game_vault_ctx: GameVaultContext<'info>,
     #[account(
         mut,
-        associated_token::mint = game_token_ctx.token_mint,
+        associated_token::mint = game_vault_ctx.token_mint,
         associated_token::authority = player,
-        associated_token::token_program = game_token_ctx.token_program,
+        associated_token::token_program = game_vault_ctx.token_program,
     )]
     pub player_token_account: Account<'info, TokenAccount>,
 }
@@ -356,19 +288,19 @@ pub struct CloseGame<'info> {
         close = creator,
         constraint = game.is_creator(&creator.key()) @ ErrorCode::InvalidCreator,
         constraint = game.ticket_amount == 0 || game.tickets_count == 0 @ ErrorCode::GameHasActivePlayers,
-        constraint = game.token_mint == game_token_ctx.token_mint.key() @ ErrorCode::InvalidTokenMint,
+        constraint = game.token_mint == game_vault_ctx.token_mint.key() @ ErrorCode::InvalidTokenMint,
     )]
     pub game: Account<'info, Game>,
     #[account(mut)]
     pub creator: Signer<'info>,
     #[account(seeds = [ORACLE_SEED], bump)]
     pub oracle: Account<'info, Oracle>,
-    pub game_token_ctx: GameTokenContext<'info>,
+    pub game_vault_ctx: GameVaultContext<'info>,
     #[account(
         mut,
-        associated_token::mint = game_token_ctx.token_mint,
+        associated_token::mint = game_vault_ctx.token_mint,
         associated_token::authority = creator,
-        associated_token::token_program = game_token_ctx.token_program,
+        associated_token::token_program = game_vault_ctx.token_program,
     )]
     pub creator_token_account: Account<'info, TokenAccount>,
 }

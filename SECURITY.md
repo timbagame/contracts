@@ -184,7 +184,7 @@ The deployment procedure and verification commands are documented in [MAINNET_DE
 - **Oracle downtime** → After a ready game’s buffer ends, players can unjoin (earlier unjoin still works if the game never became ready)
 - **Oracle censorship** → The operator can withhold settlement, but cannot keep the exclusive settlement window above the one-hour on-chain cap; coinflip participants can subsequently unjoin
 - **Invalid winner submission** → Cryptographic reveal verification and slot-based entropy prevent the operator from naming a winner that does not match the on-chain calculation
-- **Oracle key compromise** → The attacker can rotate the operator, change configuration for new games within its caps, change the direct fee recipient, approve new games outside the off-chain token policy, initialize token vault state, and complete games with known valid reveals. Existing games keep their snapshotted fee percentages, and winner payout and refund constraints still apply; rotate the key immediately through `update_oracle` if control remains available
+- **Oracle key compromise** → The attacker can rotate the operator, change configuration for new games within its caps, change the direct fee recipient, approve new games outside the off-chain token policy when their canonical vaults exist, and complete games with known valid reveals. Existing games keep their snapshotted fee percentages, and winner payout and refund constraints still apply; rotate the key immediately through `update_oracle` if control remains available
 - **Initialization takeover** → Initial oracle creation requires the intended operator plus the program upgrade authority verified through the upgradeable-loader `ProgramData` account
 
 ### Smart Contract Risks:
@@ -192,7 +192,7 @@ The deployment procedure and verification commands are documented in [MAINNET_DE
 - **Code bugs** → Comprehensive testing and audits minimize this risk
 - **Upgrade risks** → Program upgrades require proper governance
 - **Solana network issues** → Would affect all Solana applications equally
-- **Unsupported token programs** → Only legacy SPL Token mints are accepted; Token-2022 mints cannot be initialized
+- **Unsupported token programs** → Only legacy SPL Token mints are accepted; Token-2022 mints cannot be used
 - **Shared vault** → All games for a mint share one vault; solvency depends on correct per-game accounting and atomic settlement transfers
 
 ### User Risks:

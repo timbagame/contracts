@@ -102,41 +102,6 @@ impl OracleUpdated {
     }
 }
 
-// TOKEN EVENTS
-
-/// Emitted when a new token is initialized for games
-#[event]
-pub struct TokenInitialized {
-    /// Token mint address
-    pub token_mint: Pubkey,
-}
-
-impl TokenInitialized {
-    #[must_use]
-    pub fn new(token_mint: Pubkey) -> Self {
-        Self { token_mint }
-    }
-}
-
-/// Emitted when token vault state is closed
-#[event]
-pub struct TokenClosed {
-    /// Operator closing the token
-    pub operator: Pubkey,
-    /// Token mint that was removed
-    pub token_mint: Pubkey,
-}
-
-impl TokenClosed {
-    #[must_use]
-    pub fn new(operator: Pubkey, token_mint: Pubkey) -> Self {
-        Self {
-            operator,
-            token_mint,
-        }
-    }
-}
-
 // PLAYER EVENTS
 
 /// Emitted when a player joins a game

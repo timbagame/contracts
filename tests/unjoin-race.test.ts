@@ -6,7 +6,7 @@ import {
   coinflipGameConfig,
   deriveGameAccounts,
   expectAnchorError,
-  toGameTokenContext,
+  toGameVaultContext,
 } from "./test-helpers.ts";
 
 const MEMO_PROGRAM_ID = new anchor.web3.PublicKey("MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr");
@@ -35,7 +35,7 @@ async function buildSignedUnjoinTx(
       authority: player.publicKey,
       oracle: derived.oracle,
       playerTokenAccount: derived.playerTokenAccount,
-      gameTokenCtx: toGameTokenContext(derived),
+      gameVaultCtx: toGameVaultContext(derived),
     })
     .instruction();
 

@@ -33,7 +33,6 @@ use {
 
 pub struct TokenFixture {
     pub mint: Keypair,
-    pub game_token: Pubkey,
     pub game_vault: Pubkey,
     pub vault_ata: Pubkey,
 }
@@ -193,87 +192,22 @@ impl TimbaFixture {
         ata
     }
 
-    pub fn initialize_token(&mut self, mint: Pubkey) -> (Pubkey, Pubkey, Pubkey) {
-        let game_token =
-            Pubkey::find_program_address(&[b"game_token", mint.as_ref()], &timba::id()).0;
-        let game_vault =
-            Pubkey::find_program_address(&[b"game_vault", mint.as_ref()], &timba::id()).0;
-        let vault_ata = self.create_ata(game_vault, mint);
-        let instruction = Instruction::new_with_bytes(
-            timba::id(),
-            &timba::instruction::InitializeToken {}.data(),
-            timba::accounts::InitializeToken {
-                game_token,
-                token_mint: mint,
-                game_vault,
-                game_token_account: vault_ata,
-                oracle: self.oracle,
-                oracle_operator: self.operator.pubkey(),
-                system_program: system_program::ID,
-                token_program: TOKEN_PROGRAM_ID,
-                associated_token_program: ASSOCIATED_TOKEN_PROGRAM_ID,
-            }
-            .to_account_metas(None),
-        );
-        let operator = self.operator.insecure_clone();
-        assert!(self.send(&[instruction], &[&operator]));
-        (game_token, game_vault, vault_ata)
-    }
-
     pub fn token_fixture(&mut self) -> TokenFixture {
         let mint = self.create_mint();
-        let token = self.uninitialized_token_fixture(mint);
+        let token = self.token_fixture_for_mint(mint);
         self.create_ata(self.operator.pubkey(), token.mint.pubkey());
-        let instruction = self.initialize_token_instruction(&token);
-        let operator = self.operator.insecure_clone();
-        assert!(self.send(&[instruction], &[&operator]));
         token
     }
 
-    pub fn uninitialized_token_fixture(&mut self, mint: Keypair) -> TokenFixture {
-        let game_token =
-            Pubkey::find_program_address(&[b"game_token", mint.pubkey().as_ref()], &timba::id()).0;
+    pub fn token_fixture_for_mint(&mut self, mint: Keypair) -> TokenFixture {
         let game_vault =
             Pubkey::find_program_address(&[b"game_vault", mint.pubkey().as_ref()], &timba::id()).0;
         let vault_ata = self.create_ata(game_vault, mint.pubkey());
         TokenFixture {
             mint,
-            game_token,
             game_vault,
             vault_ata,
         }
-    }
-
-    pub fn initialize_token_instruction(&self, token: &TokenFixture) -> Instruction {
-        self.initialize_token_instruction_with_accounts(
-            token,
-            self.operator.pubkey(),
-            TOKEN_PROGRAM_ID,
-        )
-    }
-
-    pub fn initialize_token_instruction_with_accounts(
-        &self,
-        token: &TokenFixture,
-        oracle_operator: Pubkey,
-        token_program: Pubkey,
-    ) -> Instruction {
-        Instruction::new_with_bytes(
-            timba::id(),
-            &timba::instruction::InitializeToken {}.data(),
-            timba::accounts::InitializeToken {
-                game_token: token.game_token,
-                token_mint: token.mint.pubkey(),
-                game_vault: token.game_vault,
-                game_token_account: token.vault_ata,
-                oracle: self.oracle,
-                oracle_operator,
-                system_program: system_program::ID,
-                token_program,
-                associated_token_program: ASSOCIATED_TOKEN_PROGRAM_ID,
-            }
-            .to_account_metas(None),
-        )
     }
 
     pub fn funded_player(&mut self, mint: Pubkey, amount: u64) -> (Keypair, Pubkey) {
@@ -388,11 +322,10 @@ impl TimbaFixture {
                 creator,
                 oracle: self.oracle,
                 oracle_operator,
-                game_token_ctx: timba::accounts::GameTokenContext {
+                game_vault_ctx: timba::accounts::GameVaultContext {
                     token_mint: token.mint.pubkey(),
-                    game_token: token.game_token,
                     game_vault: token.game_vault,
-                    game_token_account: token.vault_ata,
+                    game_vault_token_account: token.vault_ata,
                     token_program: TOKEN_PROGRAM_ID,
                     associated_token_program: ASSOCIATED_TOKEN_PROGRAM_ID,
                 },
@@ -441,11 +374,10 @@ impl TimbaFixture {
                 game,
                 player,
                 oracle_operator,
-                game_token_ctx: timba::accounts::GameTokenContext {
+                game_vault_ctx: timba::accounts::GameVaultContext {
                     token_mint: token.mint.pubkey(),
-                    game_token: token.game_token,
                     game_vault: token.game_vault,
-                    game_token_account: token.vault_ata,
+                    game_vault_token_account: token.vault_ata,
                     token_program: TOKEN_PROGRAM_ID,
                     associated_token_program: ASSOCIATED_TOKEN_PROGRAM_ID,
                 },
@@ -485,11 +417,10 @@ impl TimbaFixture {
                 player,
                 authority,
                 oracle: self.oracle,
-                game_token_ctx: timba::accounts::GameTokenContext {
+                game_vault_ctx: timba::accounts::GameVaultContext {
                     token_mint: token.mint.pubkey(),
-                    game_token: token.game_token,
                     game_vault: token.game_vault,
-                    game_token_account: token.vault_ata,
+                    game_vault_token_account: token.vault_ata,
                     token_program: TOKEN_PROGRAM_ID,
                     associated_token_program: ASSOCIATED_TOKEN_PROGRAM_ID,
                 },
@@ -556,11 +487,10 @@ impl TimbaFixture {
             .data(),
             timba::accounts::CompleteGame {
                 game,
-                game_token_ctx: timba::accounts::GameTokenContext {
+                game_vault_ctx: timba::accounts::GameVaultContext {
                     token_mint: token.mint.pubkey(),
-                    game_token: token.game_token,
                     game_vault: token.game_vault,
-                    game_token_account: token.vault_ata,
+                    game_vault_token_account: token.vault_ata,
                     token_program: TOKEN_PROGRAM_ID,
                     associated_token_program: ASSOCIATED_TOKEN_PROGRAM_ID,
                 },
@@ -602,11 +532,10 @@ impl TimbaFixture {
                 game,
                 creator,
                 oracle: self.oracle,
-                game_token_ctx: timba::accounts::GameTokenContext {
+                game_vault_ctx: timba::accounts::GameVaultContext {
                     token_mint: token.mint.pubkey(),
-                    game_token: token.game_token,
                     game_vault: token.game_vault,
-                    game_token_account: token.vault_ata,
+                    game_vault_token_account: token.vault_ata,
                     token_program: TOKEN_PROGRAM_ID,
                     associated_token_program: ASSOCIATED_TOKEN_PROGRAM_ID,
                 },
@@ -631,30 +560,6 @@ impl TimbaFixture {
         state.amount = amount;
         TokenAccount::pack(state, &mut account.data).unwrap();
         self.svm.set_account(token_account, account).unwrap();
-    }
-
-    pub fn close_token(&mut self, token: &TokenFixture, signer: &Keypair) -> bool {
-        let instruction = Instruction::new_with_bytes(
-            timba::id(),
-            &timba::instruction::CloseToken {}.data(),
-            timba::accounts::CloseToken {
-                token_mint: token.mint.pubkey(),
-                game_token: token.game_token,
-                game_vault: token.game_vault,
-                game_token_account: token.vault_ata,
-                token_program: TOKEN_PROGRAM_ID,
-                associated_token_program: ASSOCIATED_TOKEN_PROGRAM_ID,
-                oracle: self.oracle,
-                oracle_operator: signer.pubkey(),
-            }
-            .to_account_metas(None),
-        );
-        if signer.pubkey() == self.operator.pubkey() {
-            self.send(&[instruction], &[signer])
-        } else {
-            let operator = self.operator.insecure_clone();
-            self.send(&[instruction], &[&operator, signer])
-        }
     }
 
     pub fn update_oracle(&mut self, signer: &Keypair, config: OracleConfig) -> bool {
