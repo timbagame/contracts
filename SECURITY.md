@@ -185,7 +185,7 @@ Ready for completion means: max tickets filled, **or** min tickets reached **and
 - The matching Anchor IDL is committed publicly and synchronized into clients; on-chain IDL publication is intentionally skipped to avoid its account rent
 - Event logs provide complete game history
 
-The deployment procedure and verification commands are documented in [MAINNET_DEPLOYMENT.md](./MAINNET_DEPLOYMENT.md).
+The deployment procedure and verification commands are documented in [DEPLOYMENT.md](./DEPLOYMENT.md).
 
 ## What Could Go Wrong?
 

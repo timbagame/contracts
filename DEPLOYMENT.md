@@ -14,8 +14,9 @@ Use the versions pinned by the repository:
 
 - Anchor CLI 1.1.2
 - Solana CLI 3.1.10
-- Bun 1.3.14
-- `solana-verify`
+- Rust 1.98.0
+- Bun 1.4.0
+- `solana-verify` 0.5.1
 - A container runtime supported by Anchor verifiable builds
 
 Release from a clean public commit. Generated `target/idl/timba.json` and `target/types/timba.ts` must match that commit.
