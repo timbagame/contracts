@@ -2615,25 +2615,11 @@ export type Timba = {
             "type": "u8"
           },
           {
-            "name": "reservedPolicyAmount",
-            "docs": [
-              "Reserved v0.2 `min_amount` bytes; no longer read as policy"
-            ],
-            "type": "u64"
-          },
-          {
             "name": "feeAmount",
             "docs": [
               "Accumulated fee amount for this token"
             ],
             "type": "u64"
-          },
-          {
-            "name": "reservedPolicyEnabled",
-            "docs": [
-              "Reserved v0.2 `enabled` byte; no longer read as policy"
-            ],
-            "type": "u8"
           }
         ]
       }

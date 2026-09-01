@@ -35,9 +35,7 @@ pub const MIN_COMPETITIVE_PLAYERS: u32 = 2;
 pub const MIN_GIVEAWAY_PLAYERS: u32 = 1;
 /// Longest period the oracle may exclusively settle a ready game.
 pub const MAX_ORACLE_BUFFER_TIME: u64 = 60 * 60;
-// Keep the v0.2 policy bytes reserved so an in-place upgrade preserves the
-// serialized offset of fee_amount in existing accounts.
-pub const GAME_TOKEN_SIZE: usize = 8 + 32 + 1 + 8 + 8 + 1;
+pub const GAME_TOKEN_SIZE: usize = 8 + 32 + 1 + 8;
 /// Base size of Game excluding variable-length Vec data
 pub const GAME_BASE_SIZE: usize = 8
     + 32 // creator
@@ -151,12 +149,8 @@ pub struct GameToken {
     pub token_mint: Pubkey,
     /// Vault bump seed for PDA token transfers
     pub vault_bump: u8,
-    /// Reserved v0.2 `min_amount` bytes; no longer read as policy
-    pub reserved_policy_amount: u64,
     /// Accumulated fee amount for this token
     pub fee_amount: u64,
-    /// Reserved v0.2 `enabled` byte; no longer read as policy
-    pub reserved_policy_enabled: u8,
 }
 
 impl GameToken {
@@ -164,9 +158,7 @@ impl GameToken {
     pub fn initialize(&mut self, token_mint: Pubkey, vault_bump: u8) {
         self.token_mint = token_mint;
         self.vault_bump = vault_bump;
-        self.reserved_policy_amount = 0;
         self.fee_amount = 0;
-        self.reserved_policy_enabled = 0;
     }
 
     /// Accrues protocol fees, guarding against overflow.
