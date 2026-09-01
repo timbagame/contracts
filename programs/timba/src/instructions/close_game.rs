@@ -9,8 +9,9 @@ pub fn handler(ctx: Context<super::CloseGame>) -> Result<()> {
     let oracle = &ctx.accounts.oracle;
     let current_time = get_current_time()?;
 
+    let is_empty = game.tickets_count == 0;
     require!(
-        !game.waiting_for_oracle(oracle.oracle_buffer_time, current_time),
+        is_empty || game.can_unjoin(oracle.oracle_buffer_time, current_time),
         ErrorCode::GameWaitingForOracle
     );
 

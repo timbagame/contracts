@@ -3,6 +3,7 @@ import * as anchor from "@anchor-lang/core";
 import {
   TestUtils,
   TestEnvironment,
+  awaitOracleCompletionReady,
   coinflipGameConfig,
   deriveGameAccounts,
   expectAnchorError,
@@ -82,7 +83,7 @@ describe("Unjoin Race Conditions", () => {
     const ticketAmount = new anchor.BN(1_200_000);
     const gameConfig = coinflipGameConfig({
       amount: ticketAmount,
-      timeout: 240,
+      timeout: 2,
       minTickets: 3,
       maxTickets: 3,
     });
@@ -91,6 +92,13 @@ describe("Unjoin Race Conditions", () => {
 
     await testUtils.game.joinGame(gameData.gamePDA, creator.player);
     await testUtils.game.joinGame(gameData.gamePDA, participant.player);
+
+    const oracle = env.oracle;
+    if (!oracle) {
+      throw new Error("Oracle unavailable for unjoin race test");
+    }
+    const initialGameAccount = await testUtils.game.fetchGame(gameData.gamePDA);
+    await awaitOracleCompletionReady(initialGameAccount, oracle.config);
 
     const balanceBefore = await env.provider.connection.getTokenAccountBalance(
       participant.playerTokenAccount.address,

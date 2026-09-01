@@ -57,7 +57,7 @@ fn initialization_requires_prize_and_unused_close_refunds_it() {
 }
 
 #[test]
-fn underfilled_giveaway_closes_early_even_with_participant() {
+fn underfilled_giveaway_with_participant_closes_only_after_timeout() {
     let mut fixture = common::TimbaFixture::new();
     let token = fixture.token_fixture();
     let (creator, creator_ata) = fixture.funded_player(token.mint.pubkey(), 5_000);
@@ -70,6 +70,13 @@ fn underfilled_giveaway_closes_early_even_with_participant() {
         [39; 32],
     );
     assert!(fixture.join_game(&token, game, &participant, participant_ata));
+    assert!(!fixture.close_game(&token, game, &creator, creator_ata));
+
+    let game_state = state(&fixture, game);
+    let mut clock = fixture.svm.get_sysvar::<Clock>();
+    clock.unix_timestamp = (game_state.created_at + game_state.timeout) as i64;
+    fixture.svm.set_sysvar(&clock);
+
     assert!(fixture.close_game(&token, game, &creator, creator_ata));
     assert_eq!(fixture.token_balance(creator_ata), 5_000);
 }
@@ -131,7 +138,7 @@ fn giveaway_completion_pays_prize_minus_fee_without_player_funds() {
 }
 
 #[test]
-fn single_player_giveaway_completes_after_timeout_and_unjoin_preserves_prize() {
+fn single_player_giveaway_stays_committed_and_completes_after_timeout() {
     let mut fixture = common::TimbaFixture::new();
     let token = fixture.token_fixture();
     let (creator, creator_ata) = fixture.funded_player(token.mint.pubkey(), 10_000);
@@ -148,9 +155,8 @@ fn single_player_giveaway_completes_after_timeout_and_unjoin_preserves_prize() {
     assert!(fixture.join_game(&token, game, &participant, participant_ata));
     let before = state(&fixture, game);
     assert_eq!(before.total_amount, 10_000);
-    assert!(fixture.unjoin_game(&token, game, &participant, participant_ata));
+    assert!(!fixture.unjoin_game(&token, game, &participant, participant_ata));
     assert_eq!(state(&fixture, game).total_amount, 10_000);
-    assert!(fixture.join_game(&token, game, &participant, participant_ata));
     let mut clock = fixture.svm.get_sysvar::<Clock>();
     clock.unix_timestamp = (before.created_at + before.timeout) as i64;
     fixture.svm.set_sysvar(&clock);

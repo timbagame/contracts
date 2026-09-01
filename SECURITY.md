@@ -27,9 +27,9 @@ The design is not fully trustless. It depends on the program upgrade authority, 
 | Initialize game      | Creator and current operator                        | Amount must be positive and game limits must match the Oracle configuration  |
 | Join public game     | Player                                              | Player must be unique, game must be open, and the mint must match            |
 | Join private game    | Player and current operator                         | The operator approves each private join                                      |
-| Unjoin               | Participant or game creator                         | Refund always goes to the participant's canonical token account              |
+| Unjoin               | Participant or game creator                         | Uses the same timeout/recovery rule and refunds only to the participant      |
 | Complete game        | Current operator                                    | Reveal, winner, recipient accounts, amounts, and timing are checked on-chain |
-| Creator close        | Game creator                                        | Close is blocked while the game is waiting for the oracle                    |
+| Creator close        | Game creator                                        | Empty games close immediately; populated giveaways follow the recovery rule  |
 | Operator close       | Current operator                                    | Game must be empty and past the recovery boundary                            |
 | Close current Oracle | Current operator and program upgrade authority      | Closes the canonical v0.3 Oracle PDA                                         |
 | Close legacy Oracle  | Encoded v0.2 operator and program upgrade authority | Requires the exact v0.2 layout, discriminator, owner, and PDA                |
@@ -75,7 +75,7 @@ If no acceptable entropy window exists, completion fails instead of using a bias
 
 The on-chain program proves consistency with the commitment and deterministic selection formula. It does not prove that the operator generated the secret uniformly or only generated one candidate commitment.
 
-The operator knows the secret, and player actions affect `last_slot` and participant ordering. Joins, unjoins, and creator-authorized removals can therefore influence the final calculation input. The operator can also withhold settlement. These facts make the operator and client workflow part of the fairness assumptions.
+The operator knows the secret, and joins affect `last_slot` and participant ordering. Joins can therefore influence the final calculation input. Participant removal is blocked while a game can still become ready or be completed. The operator can also withhold settlement. These facts make the operator and client workflow part of the fairness assumptions.
 
 Applications should record commitment issuance, reject reused commitments, use a cryptographically secure random generator, and monitor withheld settlements.
 
@@ -94,11 +94,13 @@ created_at + timeout + current_oracle_buffer_time
 
 The Oracle buffer extends the game's configured timeout for recovery purposes. It is not a timer that starts when the game fills or otherwise becomes ready. The value is read from the live Oracle account and is not stored in each game. An operator update therefore changes the recovery boundary for open games, but the program restricts the buffer to 1 through 3,600 seconds.
 
-Before a game is ready, participants may unjoin. After it becomes ready, unjoin and creator close are blocked until the recovery boundary. At the boundary, completion is no longer accepted and unjoin becomes available.
+Before timeout, participants cannot unjoin and the creator cannot remove them. Joining is therefore a commitment for the configured game duration. At timeout, a game below `min_tickets` is not completable, so participant removal becomes available immediately.
+
+If the game is ready at timeout, participant removal and creator close remain blocked until the recovery boundary. At that boundary, completion is no longer accepted and recovery becomes available. Players and the creator use the same timing rule for participant removal; coinflip refunds always go to the removed player's canonical token account.
 
 If a game fills early, it can be completed immediately, but participants cannot use the recovery path until the configured timeout and Oracle buffer have both elapsed. This rule keeps one recovery deadline and avoids storing or updating a separate fill timestamp.
 
-An underfilled game that never reaches its minimum ticket count is not ready, so its participants may unjoin without waiting for the timeout or buffer.
+An empty game can be closed by its creator immediately. A giveaway with participants cannot be closed before timeout. If it is underfilled at timeout, the creator can close it and recover the prize; if it is ready, the creator must wait until the recovery boundary.
 
 ## Fund flows
 

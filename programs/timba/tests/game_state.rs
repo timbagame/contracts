@@ -106,6 +106,22 @@ fn completion_and_unjoin_windows_cover_all_states() {
 }
 
 #[test]
+fn underfilled_game_unlocks_at_timeout_but_not_before() {
+    let game = Game {
+        created_at: 100,
+        timeout: 10,
+        min_tickets: 2,
+        max_tickets: 3,
+        tickets_count: 1,
+        total_amount: 10,
+        ..Game::default()
+    };
+
+    assert!(!game.can_unjoin(5, 109));
+    assert!(game.can_unjoin(5, 110));
+}
+
+#[test]
 fn winner_index_is_bounded_deterministic_and_reaches_every_slot() {
     for tickets in 1..=64 {
         for sample in 0_u64..200 {

@@ -286,11 +286,15 @@ impl Game {
         self.is_ready_for_completion(current_time) && still_waiting
     }
 
-    /// Determines if players can unjoin at the current moment.
+    /// Determines if participant removal is available at the current moment.
     #[must_use]
     pub fn can_unjoin(&self, oracle_buffer_time: u64, current_time: u64) -> bool {
-        self.is_buffer_expired(oracle_buffer_time, current_time)
-            || !self.waiting_for_oracle(oracle_buffer_time, current_time)
+        if !self.is_expired(current_time) {
+            return false;
+        }
+
+        !self.is_ready_for_completion(current_time)
+            || self.is_buffer_expired(oracle_buffer_time, current_time)
     }
 
     /// Marks the game as completed by setting `total_amount` to zero

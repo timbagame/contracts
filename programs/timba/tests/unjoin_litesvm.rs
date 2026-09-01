@@ -71,7 +71,7 @@ fn full_game_blocks_unjoin_until_exact_buffer_expiry() {
 }
 
 #[test]
-fn underfilled_game_allows_unjoin_without_waiting() {
+fn underfilled_game_blocks_unjoin_until_timeout() {
     let mut fixture = common::TimbaFixture::new();
     let token = fixture.token_fixture();
     let (player, player_ata) = fixture.funded_player(token.mint.pubkey(), 10_000);
@@ -90,6 +90,13 @@ fn underfilled_game_allows_unjoin_without_waiting() {
         [10; 32],
     );
     assert!(fixture.join_game(&token, game, &player, player_ata));
+    assert!(!fixture.unjoin_game(&token, game, &player, player_ata));
+
+    let state = game_state(&fixture, game);
+    let mut clock = fixture.svm.get_sysvar::<Clock>();
+    clock.unix_timestamp = (state.created_at + state.timeout) as i64;
+    fixture.svm.set_sysvar(&clock);
+
     assert!(fixture.unjoin_game(&token, game, &player, player_ata));
     assert_eq!(game_state(&fixture, game).tickets_count, 0);
 }

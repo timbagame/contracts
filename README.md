@@ -27,7 +27,7 @@ Only the legacy SPL Token program is supported. Token-2022 mints are rejected by
 3. Players call `join_game`. A private game also requires the current oracle operator to sign each join.
 4. A game becomes ready when it is full, or when its minimum ticket count is met and its timeout has elapsed.
 5. Once the game is ready and before its recovery boundary, the oracle operator reveals the secret through `complete_game`. The program verifies the commitment, recomputes the winner, transfers the payout and fee, and closes the game account.
-6. If settlement does not occur, participants can unjoin at the recovery boundary: `created_at + timeout + current_oracle_buffer_time`. This boundary is not calculated from when the game fills. See [SECURITY.md](./SECURITY.md).
+6. A join is committed until the game timeout. At timeout, an underfilled game unlocks immediately. A ready game unlocks only at the recovery boundary: `created_at + timeout + current_oracle_buffer_time`. This boundary is not calculated from when the game fills. See [SECURITY.md](./SECURITY.md).
 
 The oracle signature authorizes game creation but does not make creation policy on-chain. Token enablement, allowlists, and minimum amounts remain in the off-chain service. The program enforces a positive amount and the configured on-chain limits.
 
