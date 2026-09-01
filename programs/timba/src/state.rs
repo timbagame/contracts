@@ -8,6 +8,8 @@ use solana_sha256_hasher::hashv;
 // oracle_buffer_time (u64: 8) + max_tickets (u32: 4) +
 // max_timeout (u64: 8) + min_timeout (u64: 8)
 pub const ORACLE_SIZE: usize = 8 + 32 + 1 + 32 + 8 + 4 + 8 + 8;
+/// Exact serialized size of the v0.2 Oracle account.
+pub const LEGACY_ORACLE_SIZE: usize = 8 + 32 + 1 + 8 + 4 + 8 + 8;
 
 // ENTROPY CONSTANTS
 /// Size of entropy window for winner calculation (8 bytes for u64)
@@ -82,6 +84,23 @@ pub struct Oracle {
 }
 
 impl Oracle {
+    /// Reads the operator from an exact v0.2 Oracle account layout.
+    pub fn legacy_operator(account_data: &[u8]) -> Result<Pubkey> {
+        require!(
+            account_data.len() == LEGACY_ORACLE_SIZE,
+            ErrorCode::InvalidLegacyOracle
+        );
+        require!(
+            account_data[..8] == *Self::DISCRIMINATOR,
+            ErrorCode::InvalidLegacyOracle
+        );
+
+        let operator_bytes: [u8; 32] = account_data[8..40]
+            .try_into()
+            .map_err(|_| ErrorCode::InvalidLegacyOracle)?;
+        Ok(Pubkey::new_from_array(operator_bytes))
+    }
+
     /// Updates oracle configuration with new values
     pub fn update_config(&mut self, config: &OracleConfig, new_operator: Pubkey) {
         self.fee_percentage = config.fee_percentage;

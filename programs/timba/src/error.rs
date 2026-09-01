@@ -120,6 +120,10 @@ pub enum ErrorCode {
     #[msg("Invalid oracle buffer time")]
     InvalidOracleBufferTime = 1304,
 
+    /// The supplied account is not an exact v0.2 Oracle account
+    #[msg("Invalid legacy oracle account")]
+    InvalidLegacyOracle = 1305,
+
     // TOKEN ERRORS (1400-1499)
     /// Token mint account does not match expected value
     #[msg("Token mint mismatch")]

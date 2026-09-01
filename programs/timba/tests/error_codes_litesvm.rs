@@ -42,6 +42,7 @@ fn error_codes_are_sequential_within_each_category() {
             ErrorCode::InvalidAmount as u32,
             ErrorCode::InvalidSecretKey as u32,
             ErrorCode::InvalidOracleBufferTime as u32,
+            ErrorCode::InvalidLegacyOracle as u32,
         ],
     ];
 

@@ -66,6 +66,65 @@ pub struct UpdateOracle<'info> {
     pub new_oracle_operator: Signer<'info>,
 }
 
+#[derive(Accounts)]
+pub struct CloseOracle<'info> {
+    #[account(
+        mut,
+        close = oracle_operator,
+        seeds = [ORACLE_SEED],
+        bump,
+        constraint = oracle.is_authorized_operator(&oracle_operator.key()) @ ErrorCode::UnauthorizedOperator,
+    )]
+    pub oracle: Account<'info, Oracle>,
+
+    #[account(mut)]
+    pub oracle_operator: Signer<'info>,
+
+    pub upgrade_authority: Signer<'info>,
+
+    #[account(
+        constraint = program.programdata_address()? == Some(program_data.key())
+            @ ErrorCode::UnauthorizedOperator,
+    )]
+    pub program: Program<'info, crate::program::Timba>,
+
+    #[account(
+        constraint = program_data.upgrade_authority_address == Some(upgrade_authority.key())
+            @ ErrorCode::UnauthorizedOperator,
+    )]
+    pub program_data: Account<'info, ProgramData>,
+}
+
+#[derive(Accounts)]
+pub struct CloseLegacyOracle<'info> {
+    /// CHECK: The handler validates the PDA, owner, exact legacy size,
+    /// discriminator, and encoded operator before closing this account.
+    #[account(
+        mut,
+        seeds = [ORACLE_SEED],
+        bump,
+        owner = crate::ID,
+    )]
+    pub oracle: UncheckedAccount<'info>,
+
+    #[account(mut)]
+    pub oracle_operator: Signer<'info>,
+
+    pub upgrade_authority: Signer<'info>,
+
+    #[account(
+        constraint = program.programdata_address()? == Some(program_data.key())
+            @ ErrorCode::UnauthorizedOperator,
+    )]
+    pub program: Program<'info, crate::program::Timba>,
+
+    #[account(
+        constraint = program_data.upgrade_authority_address == Some(upgrade_authority.key())
+            @ ErrorCode::UnauthorizedOperator,
+    )]
+    pub program_data: Account<'info, ProgramData>,
+}
+
 // GAME MANAGEMENT
 
 #[derive(Accounts)]

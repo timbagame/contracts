@@ -94,6 +94,13 @@ Ready for completion means: max tickets filled, **or** min tickets reached **and
 - Completed games automatically close and return rent to creators
 - Prevents blockchain bloat and reduces ongoing costs
 - Makes post-completion attacks impossible (no account to attack)
+- Oracle closure is a privileged migration or decommissioning action that requires
+  both the current Oracle operator and the program upgrade authority
+- `close_legacy_oracle` additionally verifies the exact v0.2 account size,
+  discriminator, and encoded operator before returning rent to that operator
+- Oracle closure does not discover or settle games; operators must settle or close
+  every game first, because removing the global Oracle can make remaining games
+  impossible to operate normally
 
 **Participation Tracking:**
 
@@ -186,6 +193,7 @@ The deployment procedure and verification commands are documented in [MAINNET_DE
 - **Invalid winner submission** → Cryptographic reveal verification and slot-based entropy prevent the operator from naming a winner that does not match the on-chain calculation
 - **Oracle key compromise** → The attacker can rotate the operator, change configuration for new games within its caps, change the direct fee recipient, approve new games outside the off-chain token policy when their canonical vaults exist, and complete games with known valid reveals. Existing games keep their snapshotted fee percentages, and winner payout and refund constraints still apply; rotate the key immediately through `update_oracle` if control remains available
 - **Initialization takeover** → Initial oracle creation requires the intended operator plus the program upgrade authority verified through the upgradeable-loader `ProgramData` account
+- **Privileged Oracle closure** → The Oracle operator and upgrade authority together can close the global Oracle; operational controls must prevent this until every game is settled or closed, and legacy close plus reinitialization must be atomic
 
 ### Smart Contract Risks:
 

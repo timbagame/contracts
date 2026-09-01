@@ -218,6 +218,117 @@ export type Timba = {
       "args": []
     },
     {
+      "name": "closeLegacyOracle",
+      "docs": [
+        "Closes an exact v0.2 Oracle account as part of an atomic migration"
+      ],
+      "discriminator": [
+        241,
+        221,
+        221,
+        107,
+        39,
+        248,
+        228,
+        205
+      ],
+      "accounts": [
+        {
+          "name": "oracle",
+          "docs": [
+            "discriminator, and encoded operator before closing this account."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  114,
+                  97,
+                  99,
+                  108,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "oracleOperator",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "upgradeAuthority",
+          "signer": true
+        },
+        {
+          "name": "program",
+          "address": "32Jr4JnXWvqq9GqPQynkooHsszaucUUvZfNLh2hdX2L5"
+        },
+        {
+          "name": "programData"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "closeOracle",
+      "docs": [
+        "Closes a current Oracle after all games have been settled"
+      ],
+      "discriminator": [
+        74,
+        239,
+        49,
+        223,
+        206,
+        52,
+        189,
+        123
+      ],
+      "accounts": [
+        {
+          "name": "oracle",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  114,
+                  97,
+                  99,
+                  108,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "oracleOperator",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "upgradeAuthority",
+          "signer": true
+        },
+        {
+          "name": "program",
+          "address": "32Jr4JnXWvqq9GqPQynkooHsszaucUUvZfNLh2hdX2L5"
+        },
+        {
+          "name": "programData"
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "completeGame",
       "docs": [
         "Completes a game by revealing the secret key and distributing winnings"
@@ -1383,6 +1494,32 @@ export type Timba = {
       ]
     },
     {
+      "name": "legacyOracleClosed",
+      "discriminator": [
+        4,
+        86,
+        240,
+        124,
+        61,
+        147,
+        140,
+        251
+      ]
+    },
+    {
+      "name": "oracleClosed",
+      "discriminator": [
+        205,
+        229,
+        1,
+        107,
+        243,
+        212,
+        142,
+        16
+      ]
+    },
+    {
       "name": "oracleInitialized",
       "discriminator": [
         42,
@@ -1565,6 +1702,11 @@ export type Timba = {
       "code": 7304,
       "name": "invalidOracleBufferTime",
       "msg": "Invalid oracle buffer time"
+    },
+    {
+      "code": 7305,
+      "name": "invalidLegacyOracle",
+      "msg": "Invalid legacy oracle account"
     },
     {
       "code": 7401,
@@ -1942,6 +2084,24 @@ export type Timba = {
       }
     },
     {
+      "name": "legacyOracleClosed",
+      "docs": [
+        "Emitted when a v0.2 Oracle account is closed during migration"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "operator",
+            "docs": [
+              "Legacy operator that authorized the closure and receives the reclaimed rent"
+            ],
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
       "name": "oracle",
       "type": {
         "kind": "struct",
@@ -1994,6 +2154,24 @@ export type Timba = {
               "Minimum timeout duration in seconds for a game"
             ],
             "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "oracleClosed",
+      "docs": [
+        "Emitted when a current Oracle account is closed for decommissioning or migration"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "operator",
+            "docs": [
+              "Operator that authorized the closure and receives the reclaimed rent"
+            ],
+            "type": "pubkey"
           }
         ]
       }

@@ -30,13 +30,25 @@ are not compatible with 0.2.x, and it removes `GameToken` accounts. Before deplo
 3. Withdraw all accrued 0.2.x fees.
 4. Close every obsolete `GameToken` account and its empty vault where required.
 5. Create and verify each v0.3 mint-derived vault ATA and fee-recipient ATA.
-6. Deploy matching program, IDL, and client releases before re-enabling creation.
+6. Deploy the v0.3 executable, but keep game creation disabled.
+7. In one transaction, call `close_legacy_oracle` and then `initialize_oracle`
+   with the v0.3 configuration.
+8. Verify the new Oracle state, matching IDL, and client release before re-enabling
+   creation.
 
-An executable upgrade does not resize or rewrite program-owned accounts. Do not
-upgrade the existing program address until the Oracle migration mechanism is
-documented and tested. If v0.3 uses a new program address, update the declared ID,
-deployment configuration, generated artifacts, and every downstream client as one
-release.
+An executable upgrade does not resize or rewrite program-owned accounts.
+`close_legacy_oracle` accepts only the exact 69-byte v0.2 Oracle layout and requires
+both its encoded operator and the current program upgrade authority to sign. Keep
+its closure and `initialize_oracle` in the same transaction so the canonical PDA
+never remains closed between transactions. The reclaimed legacy Oracle rent returns
+to its operator.
+
+`close_oracle` is the equivalent decommissioning operation for the current v0.3
+layout. It also requires the Oracle operator and current program upgrade authority,
+and it returns rent to the operator. Before any future incompatible upgrade, settle
+or close every game first, then call `close_oracle` while the installed program can
+still deserialize the v0.3 account. For a same-version reset, `close_oracle` and
+`initialize_oracle` can be submitted in one transaction.
 
 ## Test and freeze
 
@@ -104,7 +116,7 @@ Complete remote verification and require a successful result. The release is inc
 
 ## Initial deployments
 
-`initialize_oracle` is only for a fresh program whose Oracle PDA does not exist. It requires signatures from:
+`initialize_oracle` is only for a fresh or explicitly closed Oracle PDA. It requires signatures from:
 
 - The current upgrade authority recorded in the program's upgradeable-loader ProgramData account.
 - The intended Oracle operator, which becomes the runtime authority and funds Oracle account creation.
@@ -120,7 +132,7 @@ The canonical initial configuration is:
 | Maximum timeout |  86,400 seconds |
 | Minimum timeout |     300 seconds |
 
-Do not initialize a new Oracle during a routine executable upgrade.
+Do not close or initialize an Oracle during a routine compatible executable upgrade.
 
 ## Release evidence
 

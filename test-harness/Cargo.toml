@@ -83,6 +83,10 @@ name = "oracle_litesvm"
 path = "../programs/timba/tests/oracle_litesvm.rs"
 
 [[test]]
+name = "oracle_closure_litesvm"
+path = "../programs/timba/tests/oracle_closure_litesvm.rs"
+
+[[test]]
 name = "oracle_rotation_litesvm"
 path = "../programs/timba/tests/oracle_rotation_litesvm.rs"
 

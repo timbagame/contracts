@@ -46,6 +46,20 @@ pub struct OracleUpdated {
     pub min_timeout: u64,
 }
 
+/// Emitted when a current Oracle account is closed for decommissioning or migration
+#[event]
+pub struct OracleClosed {
+    /// Operator that authorized the closure and receives the reclaimed rent
+    pub operator: Pubkey,
+}
+
+/// Emitted when a v0.2 Oracle account is closed during migration
+#[event]
+pub struct LegacyOracleClosed {
+    /// Legacy operator that authorized the closure and receives the reclaimed rent
+    pub operator: Pubkey,
+}
+
 struct OracleEventFields {
     fee_percentage: u8,
     fee_recipient: Pubkey,

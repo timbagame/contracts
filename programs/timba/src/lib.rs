@@ -84,6 +84,16 @@ pub mod timba {
         instructions::update_oracle::handler(ctx, config)
     }
 
+    /// Closes a current Oracle after all games have been settled
+    pub fn close_oracle(ctx: Context<CloseOracle>) -> Result<()> {
+        instructions::close_oracle::handler(ctx)
+    }
+
+    /// Closes an exact v0.2 Oracle account as part of an atomic migration
+    pub fn close_legacy_oracle(ctx: Context<CloseLegacyOracle>) -> Result<()> {
+        instructions::close_legacy_oracle::handler(ctx)
+    }
+
     /// Creates a new game with specified configuration
     pub fn initialize_game(
         ctx: Context<InitializeGame>,
