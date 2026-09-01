@@ -4118,7 +4118,7 @@ dependencies = [
 
 [[package]]
 name = "timba"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "anchor-lang",
  "anchor-spl",
@@ -4127,7 +4127,7 @@ dependencies = [
 
 [[package]]
 name = "timba-test-harness"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "anchor-lang",
  "anchor-spl",

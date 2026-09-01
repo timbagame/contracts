@@ -28,7 +28,7 @@ use {
         state::{Account as TokenAccount, Mint},
         ID as TOKEN_PROGRAM_ID,
     },
-    timba::{error::ErrorCode, GameConfig, OracleConfig, TokenConfig},
+    timba::{error::ErrorCode, GameConfig, OracleConfig},
 };
 
 pub struct TokenFixture {
@@ -200,13 +200,7 @@ impl TimbaFixture {
         let vault_ata = self.create_ata(game_vault, mint);
         let instruction = Instruction::new_with_bytes(
             timba::id(),
-            &timba::instruction::InitializeToken {
-                config: TokenConfig {
-                    min_amount: 1_000,
-                    enabled: true,
-                },
-            }
-            .data(),
+            &timba::instruction::InitializeToken {}.data(),
             timba::accounts::InitializeToken {
                 game_token,
                 token_mint: mint,
@@ -228,13 +222,7 @@ impl TimbaFixture {
     pub fn token_fixture(&mut self) -> TokenFixture {
         let mint = self.create_mint();
         let token = self.uninitialized_token_fixture(mint);
-        let instruction = self.initialize_token_instruction(
-            &token,
-            TokenConfig {
-                min_amount: 1_000,
-                enabled: true,
-            },
-        );
+        let instruction = self.initialize_token_instruction(&token);
         let operator = self.operator.insecure_clone();
         assert!(self.send(&[instruction], &[&operator]));
         token
@@ -254,14 +242,9 @@ impl TimbaFixture {
         }
     }
 
-    pub fn initialize_token_instruction(
-        &self,
-        token: &TokenFixture,
-        config: TokenConfig,
-    ) -> Instruction {
+    pub fn initialize_token_instruction(&self, token: &TokenFixture) -> Instruction {
         self.initialize_token_instruction_with_accounts(
             token,
-            config,
             self.operator.pubkey(),
             TOKEN_PROGRAM_ID,
         )
@@ -270,13 +253,12 @@ impl TimbaFixture {
     pub fn initialize_token_instruction_with_accounts(
         &self,
         token: &TokenFixture,
-        config: TokenConfig,
         oracle_operator: Pubkey,
         token_program: Pubkey,
     ) -> Instruction {
         Instruction::new_with_bytes(
             timba::id(),
-            &timba::instruction::InitializeToken { config }.data(),
+            &timba::instruction::InitializeToken {}.data(),
             timba::accounts::InitializeToken {
                 game_token: token.game_token,
                 token_mint: token.mint.pubkey(),
@@ -633,40 +615,6 @@ impl TimbaFixture {
         state.amount = amount;
         TokenAccount::pack(state, &mut account.data).unwrap();
         self.svm.set_account(token_account, account).unwrap();
-    }
-
-    pub fn update_token(
-        &mut self,
-        token: &TokenFixture,
-        signer: &Keypair,
-        config: TokenConfig,
-    ) -> bool {
-        let instruction = self.update_token_instruction(token, signer.pubkey(), config);
-        if signer.pubkey() == self.operator.pubkey() {
-            self.send(&[instruction], &[signer])
-        } else {
-            let operator = self.operator.insecure_clone();
-            self.send(&[instruction], &[&operator, signer])
-        }
-    }
-
-    pub fn update_token_instruction(
-        &self,
-        token: &TokenFixture,
-        signer: Pubkey,
-        config: TokenConfig,
-    ) -> Instruction {
-        Instruction::new_with_bytes(
-            timba::id(),
-            &timba::instruction::UpdateToken { config }.data(),
-            timba::accounts::UpdateToken {
-                game_token: token.game_token,
-                token_mint: token.mint.pubkey(),
-                oracle: self.oracle,
-                oracle_operator: signer,
-            }
-            .to_account_metas(None),
-        )
     }
 
     pub fn close_token(&mut self, token: &TokenFixture, signer: &Keypair) -> bool {

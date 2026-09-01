@@ -7,7 +7,7 @@ use {
     solana_signer::Signer,
     timba::{
         state::{Game, GameToken, GameType},
-        GameConfig, OracleConfig, TokenConfig,
+        GameConfig, OracleConfig,
     },
 };
 
@@ -69,7 +69,7 @@ fn completion_accrues_exact_fee_and_withdraws_it() {
 }
 
 #[test]
-fn near_u64_max_fee_is_exact_and_withdrawable_while_disabled() {
+fn near_u64_max_fee_is_exact_and_withdrawable() {
     let mut fixture = common::TimbaFixture::new();
     let token = fixture.token_fixture();
     let prize = 18_446_744_073_709_500_000_u64;
@@ -121,15 +121,6 @@ fn near_u64_max_fee_is_exact_and_withdrawable_while_disabled() {
     let fee = prize / 10;
     assert_eq!(fixture.token_balance(participant_ata), prize - fee);
     assert_eq!(token_state(&fixture, &token).fee_amount, fee);
-    let operator = fixture.operator.insecure_clone();
-    assert!(fixture.update_token(
-        &token,
-        &operator,
-        TokenConfig {
-            min_amount: 1_000,
-            enabled: false
-        }
-    ));
     let operator_ata = fixture.create_ata(fixture.operator.pubkey(), token.mint.pubkey());
     let operator = fixture.operator.insecure_clone();
     assert!(fixture.withdraw_fees(&token, &operator, operator_ata));

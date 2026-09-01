@@ -5,7 +5,7 @@ use anchor_spl::token::{Mint, Token, TokenAccount};
 use crate::error::ErrorCode;
 #[allow(clippy::wildcard_imports)]
 use crate::state::*;
-use crate::{GameConfig, OracleConfig, TokenConfig};
+use crate::{GameConfig, OracleConfig};
 
 // ORACLE MANAGEMENT
 
@@ -67,7 +67,6 @@ pub struct UpdateOracle<'info> {
 // TOKEN MANAGEMENT
 
 #[derive(Accounts)]
-#[instruction(config: TokenConfig)]
 pub struct InitializeToken<'info> {
     #[account(
         init,
@@ -104,29 +103,6 @@ pub struct InitializeToken<'info> {
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
     pub associated_token_program: Program<'info, AssociatedToken>,
-}
-
-#[derive(Accounts)]
-#[instruction(config: TokenConfig)]
-pub struct UpdateToken<'info> {
-    #[account(
-        mut,
-        seeds = [GAME_TOKEN_SEED, token_mint.key().as_ref()],
-        bump,
-        constraint = game_token.token_mint == token_mint.key() @ ErrorCode::InvalidTokenMint,
-    )]
-    pub game_token: Account<'info, GameToken>,
-
-    pub token_mint: Account<'info, Mint>,
-
-    #[account(
-        seeds = [ORACLE_SEED],
-        bump,
-        constraint = oracle.is_authorized_operator(&oracle_operator.key()) @ ErrorCode::UnauthorizedOperator,
-    )]
-    pub oracle: Account<'info, Oracle>,
-
-    pub oracle_operator: Signer<'info>,
 }
 
 #[derive(Accounts)]
@@ -249,9 +225,7 @@ pub struct InitializeGame<'info> {
             + (config.max_tickets as usize * 32),
         seeds = [GAME_SEED, random_hash.as_ref()],
         bump,
-        constraint = game_token_ctx.game_token.is_enabled() @ ErrorCode::TokenNotEnabled,
         constraint = config.amount > 0 @ ErrorCode::InvalidAmount,
-        constraint = game_token_ctx.game_token.meets_min_amount(config.amount) @ ErrorCode::InvalidAmount,
         constraint = oracle.is_valid_timeout_range(config.timeout) @ ErrorCode::InvalidTimeout,
         constraint = Game::is_valid_tickets_count(config.max_tickets, config.min_tickets, oracle.max_tickets) @ ErrorCode::InvalidTicketsCount,
         constraint = Game::is_valid_game_type_tickets(config.game_type, config.max_tickets, config.min_tickets) @ ErrorCode::InvalidTicketsCount,
@@ -284,7 +258,6 @@ pub struct JoinGame<'info> {
         constraint = game.is_not_full() @ ErrorCode::GameFull,
         constraint = game.can_join_private(oracle_operator.as_ref(), &oracle.operator) @ ErrorCode::PrivateGameAccessDenied,
         constraint = game.has_sufficient_balance_for_join(player_token_account.amount) @ ErrorCode::InsufficientBalance,
-        constraint = game_token_ctx.game_token.is_enabled() @ ErrorCode::TokenNotEnabled,
         constraint = game.token_mint == game_token_ctx.token_mint.key() @ ErrorCode::InvalidTokenMint,
     )]
     pub game: Account<'info, Game>,

@@ -3,7 +3,7 @@ mod common;
 use {
     solana_keypair::Keypair,
     solana_signer::Signer,
-    timba::{error::ErrorCode, state::GameType, GameConfig, TokenConfig},
+    timba::{error::ErrorCode, state::GameType, GameConfig},
 };
 
 #[test]
@@ -49,14 +49,13 @@ fn error_codes_are_sequential_within_each_category() {
         assert!(codes.windows(2).all(|pair| pair[1] == pair[0] + 1));
     }
 
-    assert_eq!(ErrorCode::TokenNotEnabled as u32, 1400);
     assert_eq!(ErrorCode::InvalidTokenMint as u32, 1401);
     assert_eq!(ErrorCode::TokenVaultNotEmpty as u32, 1403);
     assert_eq!(ErrorCode::TokenFeesOutstanding as u32, 1404);
 }
 
 #[test]
-fn preserves_named_configuration_token_and_authorization_errors() {
+fn preserves_named_configuration_and_authorization_errors() {
     let mut fixture = common::TimbaFixture::new();
     let token = fixture.token_fixture();
     let (creator, creator_ata) = fixture.funded_player(token.mint.pubkey(), 10_000);
@@ -78,35 +77,6 @@ fn preserves_named_configuration_token_and_authorization_errors() {
     assert_eq!(
         common::custom_error_code(fixture.send_result(&[invalid_config], &[&payer, &creator])),
         common::anchor_error(ErrorCode::InvalidTicketsCount)
-    );
-
-    let operator = fixture.operator.insecure_clone();
-    assert!(fixture.update_token(
-        &token,
-        &operator,
-        TokenConfig {
-            min_amount: 1_000,
-            enabled: false
-        },
-    ));
-    let (_game, disabled) = fixture.initialize_game_instruction(
-        &token,
-        creator.pubkey(),
-        creator_ata,
-        GameConfig {
-            game_type: GameType::Coinflip,
-            amount: 1_000,
-            max_tickets: 2,
-            min_tickets: 2,
-            timeout: 30,
-            is_private: false,
-        },
-        [55; 32],
-    );
-    let payer = fixture.operator.insecure_clone();
-    assert_eq!(
-        common::custom_error_code(fixture.send_result(&[disabled], &[&payer, &creator])),
-        common::anchor_error(ErrorCode::TokenNotEnabled)
     );
 
     let outsider = Keypair::new();

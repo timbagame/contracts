@@ -12,10 +12,10 @@ use {
     timba::{
         events::{
             GameClosed, GameCompleted, GameInitialized, OracleUpdated, PlayerJoined,
-            PlayerUnjoined, TokenFeeWithdrawn, TokenInitialized, TokenUpdated,
+            PlayerUnjoined, TokenFeeWithdrawn, TokenInitialized,
         },
         state::{Game, GameType},
-        GameConfig, OracleConfig, TokenConfig,
+        GameConfig, OracleConfig,
     },
 };
 
@@ -37,34 +37,11 @@ fn emits_token_and_oracle_configuration_events() {
     let mut fixture = common::TimbaFixture::new();
     let mint = fixture.create_mint();
     let token = fixture.uninitialized_token_fixture(mint);
-    let init = fixture.initialize_token_instruction(
-        &token,
-        TokenConfig {
-            min_amount: 1_000,
-            enabled: true,
-        },
-    );
+    let init = fixture.initialize_token_instruction(&token);
     let operator = fixture.operator.insecure_clone();
     let metadata = fixture.send_result(&[init], &[&operator]).unwrap();
     let initialized: TokenInitialized = event(&metadata);
     assert_eq!(initialized.token_mint, token.mint.pubkey());
-    assert_eq!(initialized.min_amount, 1_000);
-    assert!(initialized.enabled);
-
-    let update = fixture.update_token_instruction(
-        &token,
-        fixture.operator.pubkey(),
-        TokenConfig {
-            min_amount: 2_000,
-            enabled: false,
-        },
-    );
-    let operator = fixture.operator.insecure_clone();
-    let metadata = fixture.send_result(&[update], &[&operator]).unwrap();
-    let updated: TokenUpdated = event(&metadata);
-    assert_eq!(updated.token_mint, token.mint.pubkey());
-    assert_eq!(updated.min_amount, 2_000);
-    assert!(!updated.enabled);
 
     let operator_ata = fixture.create_ata(fixture.operator.pubkey(), token.mint.pubkey());
     let withdraw =

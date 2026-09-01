@@ -45,7 +45,6 @@ export function deriveOraclePda(programId: PublicKey): PublicKey {
 const gameTokenCache = new Map<string, { tokenMint: PublicKey; tokenProgram: PublicKey }>();
 
 const DEFAULT_PLAYER_BALANCE = new anchor.BN(100_000_000);
-const DEFAULT_MIN_TOKEN_AMOUNT = new anchor.BN(1000);
 
 export async function requestAndConfirmAirdrop(
   connection: anchor.web3.Connection,
@@ -789,16 +788,13 @@ export class MintManager {
       tokenProgram,
     );
 
-    // Initialize token config
-    const tokenConfig = { minAmount: new anchor.BN(1000), enabled: true };
-
     // Get the oracle operator from the oracle account
     const oraclePDA = deriveOraclePda(this.program.programId);
     const oracleAccount = await this.program.account.oracle.fetch(oraclePDA);
     const oracleOperatorKeypair = DEFAULT_OPERATOR_KEYPAIR;
 
     await this.program.methods
-      .initializeToken(tokenConfig)
+      .initializeToken()
       .accountsStrict({
         gameToken: gameTokenPDA,
         tokenMint: mint,
@@ -1564,13 +1560,13 @@ export class TestUtils {
 
     this.env.testUtils = this;
 
-    await this.resetTokenConfiguration(setup);
+    await this.resetTokenFees(setup);
     await this.ensurePlayerBalances(setup);
 
     return setup;
   }
 
-  private async resetTokenConfiguration(setup: StandardSetup): Promise<void> {
+  private async resetTokenFees(setup: StandardSetup): Promise<void> {
     const { oracle, mint } = setup;
     const oracleAddress = oracle.oracle ?? oracle.oraclePDA;
     if (!oracleAddress) {
@@ -1579,29 +1575,6 @@ export class TestUtils {
 
     const tokenContext = gameTokenContextFromMint(mint, this.env.program);
     const gameTokenAccount = await this.env.program.account.gameToken.fetch(tokenContext.gameToken);
-
-    const desiredMinAmount = DEFAULT_MIN_TOKEN_AMOUNT;
-    const desiredEnabled = true;
-    const updateTokenAccounts = {
-      gameToken: tokenContext.gameToken,
-      tokenMint: tokenContext.tokenMint,
-      oracle: oracleAddress,
-      oracleOperator: oracle.operator,
-    } as const;
-
-    if (
-      !gameTokenAccount.minAmount.eq(desiredMinAmount) ||
-      gameTokenAccount.enabled !== desiredEnabled
-    ) {
-      await this.env.program.methods
-        .updateToken({
-          minAmount: desiredMinAmount,
-          enabled: desiredEnabled,
-        })
-        .accountsStrict(updateTokenAccounts)
-        .signers([oracle.operatorKeypair])
-        .rpc();
-    }
 
     if (!gameTokenAccount.feeAmount.isZero()) {
       const operatorTokenAccount = await ensureOperatorAta(

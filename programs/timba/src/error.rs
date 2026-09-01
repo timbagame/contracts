@@ -121,9 +121,6 @@ pub enum ErrorCode {
     InvalidOracleBufferTime = 1304,
 
     // TOKEN ERRORS (1400-1499)
-    /// Token is not enabled for game operations
-    #[msg("Token disabled")]
-    TokenNotEnabled = 1400,
     /// Token mint account does not match expected value
     #[msg("Token mint mismatch")]
     InvalidTokenMint = 1401,

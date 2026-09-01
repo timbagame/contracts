@@ -2,7 +2,7 @@
   "address": "32Jr4JnXWvqq9GqPQynkooHsszaucUUvZfNLh2hdX2L5",
   "metadata": {
     "name": "timba",
-    "version": "0.2.0",
+    "version": "0.3.0",
     "spec": "0.1.0",
     "description": "Timba on-chain game contracts built with Anchor"
   },
@@ -241,7 +241,7 @@
     {
       "name": "close_token",
       "docs": [
-        "Closes token configuration and vault after settling funds"
+        "Closes token vault state after settling funds"
       ],
       "discriminator": [
         26,
@@ -1022,7 +1022,7 @@
     {
       "name": "initialize_token",
       "docs": [
-        "Initializes a new token for use in games with minimum amount and enabled status"
+        "Initializes the vault state for a token approved by the oracle service"
       ],
       "discriminator": [
         38,
@@ -1183,16 +1183,7 @@
           "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
         }
       ],
-      "args": [
-        {
-          "name": "config",
-          "type": {
-            "defined": {
-              "name": "TokenConfig"
-            }
-          }
-        }
-      ]
+      "args": []
     },
     {
       "name": "join_game",
@@ -1719,86 +1710,6 @@
       ]
     },
     {
-      "name": "update_token",
-      "docs": [
-        "Updates token configuration including minimum amounts and enabled status"
-      ],
-      "discriminator": [
-        92,
-        200,
-        25,
-        239,
-        138,
-        254,
-        58,
-        102
-      ],
-      "accounts": [
-        {
-          "name": "game_token",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  103,
-                  97,
-                  109,
-                  101,
-                  95,
-                  116,
-                  111,
-                  107,
-                  101,
-                  110
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "token_mint"
-              }
-            ]
-          }
-        },
-        {
-          "name": "token_mint"
-        },
-        {
-          "name": "oracle",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  111,
-                  114,
-                  97,
-                  99,
-                  108,
-                  101
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "oracle_operator",
-          "signer": true
-        }
-      ],
-      "args": [
-        {
-          "name": "config",
-          "type": {
-            "defined": {
-              "name": "TokenConfig"
-            }
-          }
-        }
-      ]
-    },
-    {
       "name": "withdraw_token_fee",
       "docs": [
         "Allows oracle operator to withdraw accumulated fees for a token"
@@ -2196,19 +2107,6 @@
         204,
         0
       ]
-    },
-    {
-      "name": "TokenUpdated",
-      "discriminator": [
-        75,
-        194,
-        205,
-        144,
-        160,
-        56,
-        53,
-        139
-      ]
     }
   ],
   "errors": [
@@ -2341,11 +2239,6 @@
       "code": 7304,
       "name": "InvalidOracleBufferTime",
       "msg": "Invalid oracle buffer time"
-    },
-    {
-      "code": 7400,
-      "name": "TokenNotEnabled",
-      "msg": "Token disabled"
     },
     {
       "code": 7401,
@@ -2704,7 +2597,7 @@
           {
             "name": "token_mint",
             "docs": [
-              "Token mint for this game token configuration"
+              "Token mint for this game vault"
             ],
             "type": "pubkey"
           },
@@ -2716,9 +2609,9 @@
             "type": "u8"
           },
           {
-            "name": "min_amount",
+            "name": "reserved_policy_amount",
             "docs": [
-              "Minimum amount required to participate in games"
+              "Reserved v0.2 `min_amount` bytes; no longer read as policy"
             ],
             "type": "u64"
           },
@@ -2730,11 +2623,11 @@
             "type": "u64"
           },
           {
-            "name": "enabled",
+            "name": "reserved_policy_enabled",
             "docs": [
-              "Whether this token is enabled for games"
+              "Reserved v0.2 `enabled` byte; no longer read as policy"
             ],
-            "type": "bool"
+            "type": "u8"
           }
         ]
       }
@@ -3097,7 +2990,7 @@
     {
       "name": "TokenClosed",
       "docs": [
-        "Emitted when a token configuration and vault are closed"
+        "Emitted when token vault state is closed"
       ],
       "type": {
         "kind": "struct",
@@ -3115,31 +3008,6 @@
               "Token mint that was removed"
             ],
             "type": "pubkey"
-          }
-        ]
-      }
-    },
-    {
-      "name": "TokenConfig",
-      "docs": [
-        "Configuration parameters for token initialization and updates"
-      ],
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "min_amount",
-            "docs": [
-              "Minimum amount required to participate in games with this token"
-            ],
-            "type": "u64"
-          },
-          {
-            "name": "enabled",
-            "docs": [
-              "Whether this token is enabled for creating/joining games"
-            ],
-            "type": "bool"
           }
         ]
       }
@@ -3190,52 +3058,6 @@
               "Token mint address"
             ],
             "type": "pubkey"
-          },
-          {
-            "name": "min_amount",
-            "docs": [
-              "Minimum amount required for games"
-            ],
-            "type": "u64"
-          },
-          {
-            "name": "enabled",
-            "docs": [
-              "Whether token is enabled"
-            ],
-            "type": "bool"
-          }
-        ]
-      }
-    },
-    {
-      "name": "TokenUpdated",
-      "docs": [
-        "Emitted when token configuration is updated"
-      ],
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "token_mint",
-            "docs": [
-              "Token mint address"
-            ],
-            "type": "pubkey"
-          },
-          {
-            "name": "min_amount",
-            "docs": [
-              "Updated minimum amount"
-            ],
-            "type": "u64"
-          },
-          {
-            "name": "enabled",
-            "docs": [
-              "Updated enabled status"
-            ],
-            "type": "bool"
           }
         ]
       }

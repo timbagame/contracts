@@ -35,6 +35,7 @@ assert(calculatedHash === originalCommittedHash);
 **What the Oracle does:**
 
 - Generates cryptographically random secrets for games
+- Applies the token allowlist, enabled state, and minimum amount policy before approving new games
 - Validates and partially signs initialization transactions tied to unused oracle commitments
 - Completes games by revealing secrets after conditions are met
 - Collects platform fees as configured
@@ -42,6 +43,7 @@ assert(calculatedHash === originalCommittedHash);
 **Trust assumptions:**
 
 - ⚠️ **Oracle must be honest** - The platform operator controls the oracle
+- ⚠️ **Creation policy is enforced off-chain** - The program requires a positive amount and the current operator's signature, but it does not store or independently enforce the token enabled state or minimum game amount
 - ⚠️ **Oracle must be available** - Games depend on oracle completion
 - ✅ **Oracle cannot arbitrarily redirect game payouts or refunds** - Token destinations and calculated amounts are constrained on-chain, although the live fee can be changed up to its 10% cap
 - ⚠️ **The oracle remains trusted for liveness and commitment issuance** - It can refuse to settle a game, while its required initialization signature proves that the current operator approved the commitment
@@ -52,6 +54,7 @@ assert(calculatedHash === originalCommittedHash);
 - Once a game is ready for completion, unjoin is blocked until the oracle buffer ends
 - After that buffer, players can recover coinflip stakes if the game was not completed
 - The live oracle buffer applies to open games, but it is constrained on-chain to 1–3,600 seconds, preventing an operator from configuring an indefinite wait
+- Disabling a token in the Oracle service blocks new approvals but does not change the rules for games that already exist
 
 ### 3. Unjoin Rules
 
@@ -179,7 +182,7 @@ The deployment procedure and verification commands are documented in [MAINNET_DE
 - **Oracle downtime** → After a ready game’s buffer ends, players can unjoin (earlier unjoin still works if the game never became ready)
 - **Oracle censorship** → The operator can withhold settlement, but cannot keep the exclusive settlement window above the one-hour on-chain cap; coinflip participants can subsequently unjoin
 - **Invalid winner submission** → Cryptographic reveal verification and slot-based entropy prevent the operator from naming a winner that does not match the on-chain calculation
-- **Oracle key compromise** → The attacker can rotate the operator, change live configuration within its caps, complete games with known valid reveals, administer supported tokens, and withdraw accrued protocol fees. Game payout and refund constraints still apply; rotate the key immediately through `update_oracle` if control remains available
+- **Oracle key compromise** → The attacker can rotate the operator, change live configuration within its caps, approve new games outside the off-chain token policy, initialize token vault state, complete games with known valid reveals, and withdraw accrued protocol fees. Game payout and refund constraints still apply; rotate the key immediately through `update_oracle` if control remains available
 - **Initialization takeover** → Initial oracle creation requires the intended operator plus the program upgrade authority verified through the upgradeable-loader `ProgramData` account
 
 ### Smart Contract Risks:

@@ -49,15 +49,6 @@ pub struct OracleConfig {
     pub min_timeout: u64,
 }
 
-/// Configuration parameters for token initialization and updates
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct TokenConfig {
-    /// Minimum amount required to participate in games with this token
-    pub min_amount: u64,
-    /// Whether this token is enabled for creating/joining games
-    pub enabled: bool,
-}
-
 /// Configuration parameters for game creation
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct GameConfig {
@@ -91,17 +82,12 @@ pub mod timba {
         instructions::update_oracle::handler(ctx, config)
     }
 
-    /// Initializes a new token for use in games with minimum amount and enabled status
-    pub fn initialize_token(ctx: Context<InitializeToken>, config: TokenConfig) -> Result<()> {
-        instructions::initialize_token::handler(ctx, config)
+    /// Initializes the vault state for a token approved by the oracle service
+    pub fn initialize_token(ctx: Context<InitializeToken>) -> Result<()> {
+        instructions::initialize_token::handler(ctx)
     }
 
-    /// Updates token configuration including minimum amounts and enabled status
-    pub fn update_token(ctx: Context<UpdateToken>, config: TokenConfig) -> Result<()> {
-        instructions::update_token::handler(ctx, config)
-    }
-
-    /// Closes token configuration and vault after settling funds
+    /// Closes token vault state after settling funds
     pub fn close_token(ctx: Context<CloseToken>) -> Result<()> {
         instructions::close_token::handler(ctx)
     }

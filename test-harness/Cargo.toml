@@ -1,6 +1,6 @@
 [package]
 name = "timba-test-harness"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 publish = false
 
@@ -99,8 +99,8 @@ name = "token_admin_litesvm"
 path = "../programs/timba/tests/token_admin_litesvm.rs"
 
 [[test]]
-name = "token_gating_litesvm"
-path = "../programs/timba/tests/token_gating_litesvm.rs"
+name = "creation_policy_litesvm"
+path = "../programs/timba/tests/creation_policy_litesvm.rs"
 
 [[test]]
 name = "token_litesvm"

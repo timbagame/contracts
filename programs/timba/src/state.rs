@@ -35,6 +35,8 @@ pub const MIN_COMPETITIVE_PLAYERS: u32 = 2;
 pub const MIN_GIVEAWAY_PLAYERS: u32 = 1;
 /// Longest period the oracle may exclusively settle a ready game.
 pub const MAX_ORACLE_BUFFER_TIME: u64 = 60 * 60;
+// Keep the v0.2 policy bytes reserved so an in-place upgrade preserves the
+// serialized offset of fee_amount in existing accounts.
 pub const GAME_TOKEN_SIZE: usize = 8 + 32 + 1 + 8 + 8 + 1;
 /// Base size of Game excluding variable-length Vec data
 pub const GAME_BASE_SIZE: usize = 8
@@ -145,50 +147,26 @@ impl Oracle {
 #[account]
 #[derive(Default)]
 pub struct GameToken {
-    /// Token mint for this game token configuration
+    /// Token mint for this game vault
     pub token_mint: Pubkey,
     /// Vault bump seed for PDA token transfers
     pub vault_bump: u8,
-    /// Minimum amount required to participate in games
-    pub min_amount: u64,
+    /// Reserved v0.2 `min_amount` bytes; no longer read as policy
+    pub reserved_policy_amount: u64,
     /// Accumulated fee amount for this token
     pub fee_amount: u64,
-    /// Whether this token is enabled for games
-    pub enabled: bool,
+    /// Reserved v0.2 `enabled` byte; no longer read as policy
+    pub reserved_policy_enabled: u8,
 }
 
 impl GameToken {
-    /// Updates token configuration with new values
-    pub fn update_config(&mut self, min_amount: u64, enabled: bool) {
-        self.min_amount = min_amount;
-        self.enabled = enabled;
-    }
-
-    /// Initializes token configuration for new token
-    pub fn initialize(
-        &mut self,
-        token_mint: Pubkey,
-        vault_bump: u8,
-        min_amount: u64,
-        enabled: bool,
-    ) {
+    /// Initializes vault state for a new token
+    pub fn initialize(&mut self, token_mint: Pubkey, vault_bump: u8) {
         self.token_mint = token_mint;
         self.vault_bump = vault_bump;
-        self.min_amount = min_amount;
+        self.reserved_policy_amount = 0;
         self.fee_amount = 0;
-        self.enabled = enabled;
-    }
-
-    /// Checks if token is enabled for games
-    #[must_use]
-    pub fn is_enabled(&self) -> bool {
-        self.enabled
-    }
-
-    /// Validates amount meets minimum requirement
-    #[must_use]
-    pub fn meets_min_amount(&self, amount: u64) -> bool {
-        amount >= self.min_amount
+        self.reserved_policy_enabled = 0;
     }
 
     /// Accrues protocol fees, guarding against overflow.

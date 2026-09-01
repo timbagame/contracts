@@ -2,7 +2,7 @@ mod common;
 
 use {
     solana_signer::Signer,
-    timba::{state::GameType, GameConfig, TokenConfig},
+    timba::{state::GameType, GameConfig},
 };
 
 fn rejected(config: GameConfig, seed: u8) {
@@ -22,19 +22,9 @@ fn rejected(config: GameConfig, seed: u8) {
 }
 
 #[test]
-fn rejects_zero_amount_even_when_token_minimum_is_zero() {
+fn rejects_zero_amount() {
     let mut fixture = common::TimbaFixture::new();
     let token = fixture.token_fixture();
-    let operator = fixture.operator.insecure_clone();
-    assert!(fixture.update_token(
-        &token,
-        &operator,
-        TokenConfig {
-            min_amount: 0,
-            enabled: true,
-        },
-    ));
-
     let (creator, creator_ata) = fixture.funded_player(token.mint.pubkey(), 10_000);
     let (game, instruction) = fixture.initialize_game_instruction(
         &token,
@@ -51,6 +41,7 @@ fn rejects_zero_amount_even_when_token_minimum_is_zero() {
         [28; 32],
     );
 
+    let operator = fixture.operator.insecure_clone();
     assert!(!fixture.send(&[instruction], &[&operator, &creator]));
     assert!(fixture.svm.get_account(&game).is_none());
 }
@@ -73,7 +64,7 @@ fn rejects_invalid_coinflip_ticket_and_timeout_configuration() {
 }
 
 #[test]
-fn rejects_invalid_giveaway_ticket_count_and_prize() {
+fn rejects_invalid_giveaway_ticket_count() {
     rejected(
         GameConfig {
             game_type: GameType::Giveaway,
@@ -84,17 +75,6 @@ fn rejects_invalid_giveaway_ticket_count_and_prize() {
             is_private: false,
         },
         26,
-    );
-    rejected(
-        GameConfig {
-            game_type: GameType::Giveaway,
-            amount: 999,
-            max_tickets: 2,
-            min_tickets: 1,
-            timeout: 60,
-            is_private: false,
-        },
-        27,
     );
 }
 use timba_test_harness as timba;

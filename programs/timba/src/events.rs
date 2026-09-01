@@ -1,5 +1,5 @@
 use crate::state::{Game, GameType};
-use crate::{OracleConfig, TokenConfig};
+use crate::OracleConfig;
 use anchor_lang::prelude::*;
 
 // EVENT DEFINITIONS
@@ -101,61 +101,12 @@ impl OracleUpdated {
 pub struct TokenInitialized {
     /// Token mint address
     pub token_mint: Pubkey,
-    /// Minimum amount required for games
-    pub min_amount: u64,
-    /// Whether token is enabled
-    pub enabled: bool,
-}
-
-/// Emitted when token configuration is updated
-#[event]
-pub struct TokenUpdated {
-    /// Token mint address
-    pub token_mint: Pubkey,
-    /// Updated minimum amount
-    pub min_amount: u64,
-    /// Updated enabled status
-    pub enabled: bool,
-}
-
-struct TokenEventFields {
-    token_mint: Pubkey,
-    min_amount: u64,
-    enabled: bool,
-}
-
-impl TokenEventFields {
-    #[must_use]
-    fn new(token_mint: Pubkey, config: &TokenConfig) -> Self {
-        Self {
-            token_mint,
-            min_amount: config.min_amount,
-            enabled: config.enabled,
-        }
-    }
 }
 
 impl TokenInitialized {
     #[must_use]
-    pub fn from_config(token_mint: Pubkey, config: &TokenConfig) -> Self {
-        let fields = TokenEventFields::new(token_mint, config);
-        Self {
-            token_mint: fields.token_mint,
-            min_amount: fields.min_amount,
-            enabled: fields.enabled,
-        }
-    }
-}
-
-impl TokenUpdated {
-    #[must_use]
-    pub fn from_config(token_mint: Pubkey, config: &TokenConfig) -> Self {
-        let fields = TokenEventFields::new(token_mint, config);
-        Self {
-            token_mint: fields.token_mint,
-            min_amount: fields.min_amount,
-            enabled: fields.enabled,
-        }
+    pub fn new(token_mint: Pubkey) -> Self {
+        Self { token_mint }
     }
 }
 
@@ -181,7 +132,7 @@ impl TokenFeeWithdrawn {
     }
 }
 
-/// Emitted when a token configuration and vault are closed
+/// Emitted when token vault state is closed
 #[event]
 pub struct TokenClosed {
     /// Operator closing the token

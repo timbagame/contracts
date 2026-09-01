@@ -7,7 +7,7 @@ use {
     solana_signer::Signer,
     timba::{
         state::{Game, GameToken, GameType},
-        GameConfig, TokenConfig,
+        GameConfig,
     },
 };
 
@@ -26,13 +26,8 @@ fn initialize_token_enforces_operator_and_program_accounts() {
         .svm
         .airdrop(&outsider.pubkey(), 1_000_000_000)
         .unwrap();
-    let config = TokenConfig {
-        min_amount: 1_000,
-        enabled: true,
-    };
     let unauthorized = fixture.initialize_token_instruction_with_accounts(
         &token,
-        config.clone(),
         outsider.pubkey(),
         anchor_spl::token::ID,
     );
@@ -40,7 +35,6 @@ fn initialize_token_enforces_operator_and_program_accounts() {
     assert!(!fixture.send(&[unauthorized], &[&payer, &outsider]));
     let unsupported = fixture.initialize_token_instruction_with_accounts(
         &token,
-        config.clone(),
         fixture.operator.pubkey(),
         system_program::ID,
     );
@@ -48,66 +42,12 @@ fn initialize_token_enforces_operator_and_program_accounts() {
     assert!(!fixture.send(&[unsupported], &[&operator]));
     let invalid = fixture.initialize_token_instruction_with_accounts(
         &token,
-        config,
         fixture.operator.pubkey(),
         Pubkey::new_unique(),
     );
     let operator = fixture.operator.insecure_clone();
     assert!(!fixture.send(&[invalid], &[&operator]));
     assert!(fixture.svm.get_account(&token.game_token).is_none());
-}
-
-#[test]
-fn updates_token_and_enforces_operator_authority() {
-    let mut fixture = common::TimbaFixture::new();
-    let token = fixture.token_fixture();
-    let outsider = Keypair::new();
-    fixture
-        .svm
-        .airdrop(&outsider.pubkey(), 1_000_000_000)
-        .unwrap();
-    assert!(!fixture.update_token(
-        &token,
-        &outsider,
-        TokenConfig {
-            min_amount: 2_000,
-            enabled: false,
-        },
-    ));
-    let operator = fixture.operator.insecure_clone();
-    assert!(fixture.update_token(
-        &token,
-        &operator,
-        TokenConfig {
-            min_amount: 2_000,
-            enabled: false,
-        },
-    ));
-    let token_state = state(&fixture, &token);
-    assert_eq!(token_state.min_amount, 2_000);
-    assert!(!token_state.enabled);
-}
-
-#[test]
-fn update_token_rejects_mismatched_mint() {
-    let mut fixture = common::TimbaFixture::new();
-    let token = fixture.token_fixture();
-    let mismatched = common::TokenFixture {
-        mint: fixture.create_mint(),
-        game_token: token.game_token,
-        game_vault: token.game_vault,
-        vault_ata: token.vault_ata,
-    };
-    let operator = fixture.operator.insecure_clone();
-    assert!(!fixture.update_token(
-        &mismatched,
-        &operator,
-        TokenConfig {
-            min_amount: 2_000,
-            enabled: true
-        },
-    ));
-    assert_eq!(state(&fixture, &token).min_amount, 1_000);
 }
 
 #[test]
