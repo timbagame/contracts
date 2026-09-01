@@ -13,7 +13,13 @@ Production service rollout, operator key custody, RPC configuration, monitoring,
 | Target cluster | Solana mainnet-beta                            |
 | Release line   | v0.3.0                                         |
 
-Do not derive the production program address from a local `target/deploy/timba-keypair.json`. Local builds can generate an unrelated keypair. Production upgrades must explicitly target the fixed program ID.
+The production program keypair used by Anchor must derive the fixed program ID. Verify it before building or deploying:
+
+```bash
+solana-keygen pubkey <PRODUCTION_PROGRAM_KEYPAIR>
+```
+
+The command must return `32Jr4JnXWvqq9GqPQynkooHsszaucUUvZfNLh2hdX2L5`.
 
 ## Supported toolchain
 
@@ -46,7 +52,7 @@ Before any mainnet upgrade:
 1. Select a public commit that contains the program source, lockfiles, generated IDL, and generated TypeScript client.
 2. Confirm that the commit is on the intended release branch and that the working tree is clean.
 3. Confirm the current program ID and upgrade authority on mainnet.
-4. Confirm the upgrade-authority signer, fee-payer signer, RPC endpoint, and expected balance impact.
+4. Confirm the production program keypair, upgrade-authority wallet, RPC endpoint, and expected balance impact.
 5. Disable new game approvals in the off-chain service.
 6. Review the account-compatibility requirements for the release.
 7. Build, deploy, and verify the same executable artifact.
@@ -61,7 +67,7 @@ Install exactly the locked JavaScript dependencies:
 bun install --frozen-lockfile
 ```
 
-Run the same checks as CI:
+Run the release checks:
 
 ```bash
 bun audit
@@ -70,12 +76,10 @@ bun run lint
 bun run typecheck
 cargo fmt --all -- --check
 cargo clippy --workspace --all-targets -- -D warnings
-anchor build --ignore-keys
+anchor build
 git diff --exit-code -- target/idl/timba.json target/types/timba.ts
 anchor test --skip-build
 ```
-
-The local `--ignore-keys` option prevents an unrelated generated development keypair from changing the build decision. It does not change the program ID embedded by `declare_id!`.
 
 Require a clean release commit after the checks:
 
@@ -93,7 +97,6 @@ Build the verifiable executable with the pinned Solana toolchain:
 ```bash
 anchor build \
   --verifiable \
-  --ignore-keys \
   --program-name timba \
   --solana-version 3.1.10
 ```
@@ -139,18 +142,19 @@ Stop if the observed program ID, authority, accounts, or balances do not match t
 
 ## Upgrade the program
 
-Deploy the exact verifiable artifact to the existing program ID:
+Deploy the exact verifiable artifact with Anchor. `--no-idl` is required because this project keeps its generated IDL off-chain:
 
 ```bash
-solana program deploy \
-  target/verifiable/timba.so \
-  --url mainnet-beta \
-  --program-id 32Jr4JnXWvqq9GqPQynkooHsszaucUUvZfNLh2hdX2L5 \
-  --upgrade-authority <UPGRADE_AUTHORITY_SIGNER> \
-  --fee-payer <FEE_PAYER_SIGNER>
+anchor deploy \
+  --verifiable \
+  --no-idl \
+  --program-name timba \
+  --program-keypair <PRODUCTION_PROGRAM_KEYPAIR> \
+  --provider.cluster mainnet \
+  --provider.wallet <UPGRADE_AUTHORITY_KEYPAIR>
 ```
 
-Do not use `anchor deploy` unless its program keypair and final command have been independently verified to target the fixed production address. An existing-program upgrade does not require the local development program keypair; the Solana CLI accepts the existing program address.
+Before signing, confirm again that the production program keypair derives the fixed program ID and that the provider wallet is the current on-chain upgrade authority. Anchor deploys `target/verifiable/timba.so` because `--verifiable` is set. It does not create or update an on-chain IDL account because `--no-idl` is set.
 
 Record the deployment transaction signature.
 
