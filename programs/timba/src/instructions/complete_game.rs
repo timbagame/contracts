@@ -43,14 +43,7 @@ pub fn handler(
         ErrorCode::WinnerPubkeyMismatch
     );
 
-    let fee_percentage = u64::from(oracle.fee_percentage);
-    let (winner_amount, fee_amount) = game.calculate_amounts(fee_percentage);
-
-    // Update fee amount and transfer directly to winner
-    ctx.accounts
-        .game_token_ctx
-        .game_token
-        .accrue_fee(fee_amount)?;
+    let (winner_amount, fee_amount) = game.calculate_amounts();
 
     // Mark game as completed
     game.complete();
@@ -59,6 +52,11 @@ pub fn handler(
     ctx.accounts
         .game_token_ctx
         .transfer_from_vault(&ctx.accounts.winner_token_account, winner_amount)?;
+
+    // Transfer the immutable game fee directly to the configured recipient.
+    ctx.accounts
+        .game_token_ctx
+        .transfer_from_vault(&ctx.accounts.fee_recipient_token_account, fee_amount)?;
 
     emit!(GameCompleted::new(
         game,

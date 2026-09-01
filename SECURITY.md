@@ -45,7 +45,7 @@ assert(calculatedHash === originalCommittedHash);
 - ⚠️ **Oracle must be honest** - The platform operator controls the oracle
 - ⚠️ **Creation policy is enforced off-chain** - The program requires a positive amount and the current operator's signature, but it does not store or independently enforce the token enabled state or minimum game amount
 - ⚠️ **Oracle must be available** - Games depend on oracle completion
-- ✅ **Oracle cannot arbitrarily redirect game payouts or refunds** - Token destinations and calculated amounts are constrained on-chain, although the live fee can be changed up to its 10% cap
+- ✅ **Oracle cannot arbitrarily redirect winner payouts or refunds** - Token destinations and calculated amounts are constrained on-chain; each game snapshots its fee percentage at creation
 - ⚠️ **The oracle remains trusted for liveness and commitment issuance** - It can refuse to settle a game, while its required initialization signature proves that the current operator approved the commitment
 - ✅ **A submitted settlement cannot choose an arbitrary winner** - The program verifies the reveal and recomputes the winner from the committed secret, final participant vector, and last participant-action slot
 
@@ -122,12 +122,14 @@ Ready for completion means: max tickets filled, **or** min tickets reached **and
 
 - Configurable percentage with a hard on-chain cap of 0–10%
 - Deducted from game pot before winner payout
+- Transferred directly to the configured fee recipient during settlement
 - Used to maintain platform operations
 
 **Transparency:**
 
 - Fee percentages are stored on-chain and publicly visible
-- Settlement uses the current oracle fee (not snapshotted per game); updates apply to open games, still capped at 10%
+- Each game snapshots the Oracle fee percentage at creation, so later updates do not change its economics
+- The fee recipient is stored in the Oracle account and must have a token account for the game mint before settlement
 - Oracle buffer updates likewise apply to open games, with a hard maximum of one hour
 - All fee calculations are performed on-chain and verifiable
 
@@ -182,7 +184,7 @@ The deployment procedure and verification commands are documented in [MAINNET_DE
 - **Oracle downtime** → After a ready game’s buffer ends, players can unjoin (earlier unjoin still works if the game never became ready)
 - **Oracle censorship** → The operator can withhold settlement, but cannot keep the exclusive settlement window above the one-hour on-chain cap; coinflip participants can subsequently unjoin
 - **Invalid winner submission** → Cryptographic reveal verification and slot-based entropy prevent the operator from naming a winner that does not match the on-chain calculation
-- **Oracle key compromise** → The attacker can rotate the operator, change live configuration within its caps, approve new games outside the off-chain token policy, initialize token vault state, complete games with known valid reveals, and withdraw accrued protocol fees. Game payout and refund constraints still apply; rotate the key immediately through `update_oracle` if control remains available
+- **Oracle key compromise** → The attacker can rotate the operator, change configuration for new games within its caps, change the direct fee recipient, approve new games outside the off-chain token policy, initialize token vault state, and complete games with known valid reveals. Existing games keep their snapshotted fee percentages, and winner payout and refund constraints still apply; rotate the key immediately through `update_oracle` if control remains available
 - **Initialization takeover** → Initial oracle creation requires the intended operator plus the program upgrade authority verified through the upgradeable-loader `ProgramData` account
 
 ### Smart Contract Risks:
@@ -191,7 +193,7 @@ The deployment procedure and verification commands are documented in [MAINNET_DE
 - **Upgrade risks** → Program upgrades require proper governance
 - **Solana network issues** → Would affect all Solana applications equally
 - **Unsupported token programs** → Only legacy SPL Token mints are accepted; Token-2022 mints cannot be initialized
-- **Shared vault** → All games for a mint share one vault; solvency depends on correct per-game and fee accounting
+- **Shared vault** → All games for a mint share one vault; solvency depends on correct per-game accounting and atomic settlement transfers
 
 ### User Risks:
 
@@ -211,7 +213,7 @@ The deployment procedure and verification commands are documented in [MAINNET_DE
 **Red flags to watch for:**
 
 - Games that never complete (coinflip stakes should become refundable after the recovery boundary)
-- Unexpected fee deductions above 10% (hard cap; fee is the live oracle value at complete)
+- Unexpected fee deductions above 10% (hard cap; each game stores its fee percentage at creation)
 - Winners that don't match cryptographic verification
 - Any requests for additional payments or "gas fees"
 

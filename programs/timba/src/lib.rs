@@ -39,6 +39,8 @@ declare_id!("32Jr4JnXWvqq9GqPQynkooHsszaucUUvZfNLh2hdX2L5");
 pub struct OracleConfig {
     /// Fee percentage taken from game winnings (0-10)
     pub fee_percentage: u8,
+    /// Wallet that receives protocol fees during settlement
+    pub fee_recipient: Pubkey,
     /// Buffer time in seconds after game timeout before cancellation
     pub oracle_buffer_time: u64,
     /// Maximum number of tickets allowed in any game
@@ -124,10 +126,5 @@ pub mod timba {
         winner_index: u32,
     ) -> Result<()> {
         instructions::complete_game::handler(ctx, _random_hash, secret_key, winner_index)
-    }
-
-    /// Allows oracle operator to withdraw accumulated fees for a token
-    pub fn withdraw_token_fee(ctx: Context<WithdrawTokenFee>) -> Result<()> {
-        instructions::withdraw_token_fee::handler(ctx)
     }
 }

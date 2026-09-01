@@ -6,15 +6,10 @@ use {
     solana_sha256_hasher::hash,
     solana_signer::Signer,
     timba::{
-        state::{Game, GameToken, GameType},
+        state::{Game, GameType},
         GameConfig,
     },
 };
-
-fn state(fixture: &common::TimbaFixture, token: &common::TokenFixture) -> GameToken {
-    let account = fixture.svm.get_account(&token.game_token).unwrap();
-    GameToken::try_deserialize(&mut account.data.as_slice()).unwrap()
-}
 
 #[test]
 fn initialize_token_enforces_operator_and_program_accounts() {
@@ -51,7 +46,7 @@ fn initialize_token_enforces_operator_and_program_accounts() {
 }
 
 #[test]
-fn closes_only_empty_fee_free_token_vault() {
+fn closes_empty_token_vault() {
     let mut fixture = common::TimbaFixture::new();
     let token = fixture.token_fixture();
     let operator = fixture.operator.insecure_clone();
@@ -85,7 +80,7 @@ fn rejects_close_when_vault_contains_tokens() {
 }
 
 #[test]
-fn rejects_close_when_fees_are_outstanding() {
+fn closes_after_direct_settlement_drains_the_vault() {
     let mut fixture = common::TimbaFixture::new();
     let token = fixture.token_fixture();
     let (creator, creator_ata) = fixture.funded_player(token.mint.pubkey(), 10_000);
@@ -126,8 +121,9 @@ fn rejects_close_when_fees_are_outstanding() {
         winner_ata,
         creator.pubkey(),
     ));
-    assert!(state(&fixture, &token).fee_amount > 0);
+    assert_eq!(fixture.token_balance(token.vault_ata), 0);
     let operator = fixture.operator.insecure_clone();
-    assert!(!fixture.close_token(&token, &operator));
+    assert!(fixture.close_token(&token, &operator));
+    assert!(fixture.svm.get_account(&token.game_token).is_none());
 }
 use timba_test_harness as timba;

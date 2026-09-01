@@ -230,6 +230,7 @@ export async function ensureOperatorAta(
 
 export interface OracleConfig {
   feePercentage: number;
+  feeRecipient: PublicKey;
   oracleBufferTime: number;
   maxTickets: number;
   maxTimeout: number;
@@ -583,6 +584,7 @@ export class OracleManager {
   async createOracle(config?: Partial<OracleConfig>): Promise<TestOracle> {
     const defaultConfig: OracleConfig = {
       feePercentage: 1,
+      feeRecipient: DEFAULT_OPERATOR_KEYPAIR.publicKey,
       oracleBufferTime: 2,
       maxTickets: 50000,
       maxTimeout: 86400,
@@ -608,6 +610,7 @@ export class OracleManager {
           operatorKeypair,
           config: {
             feePercentage: existingOracle.feePercentage,
+            feeRecipient: existingOracle.feeRecipient,
             oracleBufferTime: existingOracle.oracleBufferTime.toNumber(),
             maxTickets: existingOracle.maxTickets,
             maxTimeout: existingOracle.maxTimeout.toNumber(),
@@ -632,6 +635,7 @@ export class OracleManager {
 
       const configForProgram = {
         feePercentage: defaultConfig.feePercentage,
+        feeRecipient: defaultConfig.feeRecipient,
         oracleBufferTime: new anchor.BN(defaultConfig.oracleBufferTime),
         maxTickets: defaultConfig.maxTickets,
         maxTimeout: new anchor.BN(defaultConfig.maxTimeout),
@@ -681,6 +685,7 @@ export class OracleManager {
       operatorKeypair,
       config: {
         feePercentage: oracleAccount.feePercentage,
+        feeRecipient: oracleAccount.feeRecipient,
         oracleBufferTime: oracleAccount.oracleBufferTime.toNumber(),
         maxTickets: oracleAccount.maxTickets,
         maxTimeout: oracleAccount.maxTimeout.toNumber(),
@@ -792,6 +797,17 @@ export class MintManager {
     const oraclePDA = deriveOraclePda(this.program.programId);
     const oracleAccount = await this.program.account.oracle.fetch(oraclePDA);
     const oracleOperatorKeypair = DEFAULT_OPERATOR_KEYPAIR;
+
+    await getOrCreateAssociatedTokenAccount(
+      this.provider.connection,
+      mintAuthority,
+      mint,
+      oracleAccount.feeRecipient,
+      false,
+      undefined,
+      undefined,
+      tokenProgram,
+    );
 
     await this.program.methods
       .initializeToken()
@@ -1079,6 +1095,8 @@ type CompleteGameAccounts = {
   winner: PublicKey;
   creator: PublicKey;
   winnerTokenAccount: PublicKey;
+  feeRecipient: PublicKey;
+  feeRecipientTokenAccount: PublicKey;
 };
 
 export class GameManager {
@@ -1277,6 +1295,16 @@ export class GameManager {
       throw new Error("Missing winner token account for completeGame");
     }
 
+    const oracleAccount = await this.program.account.oracle.fetch(derived.oracle);
+    const feeRecipient = oracleAccount.feeRecipient;
+    const feeRecipientTokenAccount = getAssociatedTokenAddressSync(
+      derived.tokenMint,
+      feeRecipient,
+      false,
+      derived.tokenProgram,
+      ASSOCIATED_TOKEN_PROGRAM_ID,
+    );
+
     const baseAccounts: CompleteGameAccounts = {
       game: gameData.gamePDA,
       gameTokenCtx: toGameTokenContext(derived),
@@ -1285,6 +1313,8 @@ export class GameManager {
       winner,
       creator,
       winnerTokenAccount: derived.winnerTokenAccount,
+      feeRecipient,
+      feeRecipientTokenAccount,
     };
 
     return { ...baseAccounts, ...overrides };
@@ -1560,40 +1590,9 @@ export class TestUtils {
 
     this.env.testUtils = this;
 
-    await this.resetTokenFees(setup);
     await this.ensurePlayerBalances(setup);
 
     return setup;
-  }
-
-  private async resetTokenFees(setup: StandardSetup): Promise<void> {
-    const { oracle, mint } = setup;
-    const oracleAddress = oracle.oracle ?? oracle.oraclePDA;
-    if (!oracleAddress) {
-      throw new Error("Oracle not initialized");
-    }
-
-    const tokenContext = gameTokenContextFromMint(mint, this.env.program);
-    const gameTokenAccount = await this.env.program.account.gameToken.fetch(tokenContext.gameToken);
-
-    if (!gameTokenAccount.feeAmount.isZero()) {
-      const operatorTokenAccount = await ensureOperatorAta(
-        this.env.provider.connection,
-        oracle,
-        mint.mint,
-      );
-
-      await this.env.program.methods
-        .withdrawTokenFee()
-        .accountsStrict({
-          gameTokenCtx: tokenContext,
-          oracle: oracleAddress,
-          oracleOperator: oracle.operator,
-          oracleOperatorTokenAccount: operatorTokenAccount,
-        })
-        .signers([oracle.operatorKeypair])
-        .rpc();
-    }
   }
 
   private async ensurePlayerBalances(setup: StandardSetup): Promise<void> {

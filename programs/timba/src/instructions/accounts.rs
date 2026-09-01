@@ -19,6 +19,7 @@ pub struct InitializeOracle<'info> {
         seeds = [ORACLE_SEED],
         bump,
         constraint = Oracle::is_valid_fee_percentage(config.fee_percentage) @ ErrorCode::InvalidAmount,
+        constraint = Oracle::is_valid_fee_recipient(&config.fee_recipient) @ ErrorCode::InvalidFeeRecipient,
         constraint = Oracle::is_valid_buffer_time(config.oracle_buffer_time) @ ErrorCode::InvalidOracleBufferTime,
         constraint = Oracle::is_valid_timeout(config.max_timeout, config.min_timeout) @ ErrorCode::InvalidTimeout,
         constraint = Oracle::is_valid_tickets_count(config.max_tickets) @ ErrorCode::InvalidTicketsCount,
@@ -54,6 +55,7 @@ pub struct UpdateOracle<'info> {
         bump,
         constraint = oracle.is_authorized_operator(&old_oracle_operator.key()) @ ErrorCode::UnauthorizedOperator,
         constraint = Oracle::is_valid_fee_percentage(config.fee_percentage) @ ErrorCode::InvalidAmount,
+        constraint = Oracle::is_valid_fee_recipient(&config.fee_recipient) @ ErrorCode::InvalidFeeRecipient,
         constraint = Oracle::is_valid_buffer_time(config.oracle_buffer_time) @ ErrorCode::InvalidOracleBufferTime,
         constraint = Oracle::is_valid_timeout(config.max_timeout, config.min_timeout) @ ErrorCode::InvalidTimeout,
         constraint = Oracle::is_valid_tickets_count(config.max_tickets) @ ErrorCode::InvalidTicketsCount,
@@ -115,7 +117,6 @@ pub struct CloseToken<'info> {
         seeds = [GAME_TOKEN_SEED, token_mint.key().as_ref()],
         bump,
         constraint = game_token.token_mint == token_mint.key() @ ErrorCode::InvalidTokenMint,
-        constraint = game_token.fee_amount == 0 @ ErrorCode::TokenFeesOutstanding,
     )]
     pub game_token: Account<'info, GameToken>,
 
@@ -310,6 +311,16 @@ pub struct CompleteGame<'info> {
         associated_token::token_program = game_token_ctx.token_program,
     )]
     pub winner_token_account: Account<'info, TokenAccount>,
+    /// CHECK: Address must match the recipient stored in the Oracle account.
+    #[account(constraint = fee_recipient.key() == oracle.fee_recipient @ ErrorCode::InvalidFeeRecipient)]
+    pub fee_recipient: UncheckedAccount<'info>,
+    #[account(
+        mut,
+        associated_token::mint = game_token_ctx.token_mint,
+        associated_token::authority = fee_recipient,
+        associated_token::token_program = game_token_ctx.token_program,
+    )]
+    pub fee_recipient_token_account: Account<'info, TokenAccount>,
 }
 
 #[derive(Accounts)]
@@ -360,25 +371,4 @@ pub struct CloseGame<'info> {
         associated_token::token_program = game_token_ctx.token_program,
     )]
     pub creator_token_account: Account<'info, TokenAccount>,
-}
-
-// FEE MANAGEMENT
-
-#[derive(Accounts)]
-pub struct WithdrawTokenFee<'info> {
-    pub game_token_ctx: GameTokenContext<'info>,
-    #[account(
-        seeds = [ORACLE_SEED],
-        bump,
-        constraint = oracle.is_authorized_operator(&oracle_operator.key()) @ ErrorCode::UnauthorizedOperator,
-    )]
-    pub oracle: Account<'info, Oracle>,
-    pub oracle_operator: Signer<'info>,
-    #[account(
-        mut,
-        associated_token::mint = game_token_ctx.token_mint,
-        associated_token::authority = oracle_operator,
-        associated_token::token_program = game_token_ctx.token_program,
-    )]
-    pub oracle_operator_token_account: Account<'info, TokenAccount>,
 }

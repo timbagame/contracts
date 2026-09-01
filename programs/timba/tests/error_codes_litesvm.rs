@@ -51,7 +51,7 @@ fn error_codes_are_sequential_within_each_category() {
 
     assert_eq!(ErrorCode::InvalidTokenMint as u32, 1401);
     assert_eq!(ErrorCode::TokenVaultNotEmpty as u32, 1403);
-    assert_eq!(ErrorCode::TokenFeesOutstanding as u32, 1404);
+    assert_eq!(ErrorCode::InvalidFeeRecipient as u32, 1404);
 }
 
 #[test]
@@ -84,11 +84,16 @@ fn preserves_named_configuration_and_authorization_errors() {
         .svm
         .airdrop(&outsider.pubkey(), 1_000_000_000)
         .unwrap();
-    let outsider_ata = fixture.create_ata(outsider.pubkey(), token.mint.pubkey());
-    let withdraw = fixture.withdraw_fees_instruction(&token, outsider.pubkey(), outsider_ata);
+    let mint = fixture.create_mint();
+    let uninitialized = fixture.uninitialized_token_fixture(mint);
+    let unauthorized = fixture.initialize_token_instruction_with_accounts(
+        &uninitialized,
+        outsider.pubkey(),
+        anchor_spl::token::ID,
+    );
     let payer = fixture.operator.insecure_clone();
     assert_eq!(
-        common::custom_error_code(fixture.send_result(&[withdraw], &[&payer, &outsider])),
+        common::custom_error_code(fixture.send_result(&[unauthorized], &[&payer, &outsider])),
         common::anchor_error(ErrorCode::UnauthorizedOperator)
     );
 }

@@ -9,7 +9,7 @@ use {
             program_pack::Pack,
             system_program,
         },
-        InstructionData, ToAccountMetas,
+        AccountDeserialize, InstructionData, ToAccountMetas,
     },
     litesvm::{types::TransactionResult, LiteSVM},
     solana_instruction::error::InstructionError,
@@ -28,7 +28,7 @@ use {
         state::{Account as TokenAccount, Mint},
         ID as TOKEN_PROGRAM_ID,
     },
-    timba::{error::ErrorCode, GameConfig, OracleConfig},
+    timba::{error::ErrorCode, state::Oracle, GameConfig, OracleConfig},
 };
 
 pub struct TokenFixture {
@@ -133,6 +133,7 @@ impl TimbaFixture {
             &timba::instruction::InitializeOracle {
                 config: OracleConfig {
                     fee_percentage: 5,
+                    fee_recipient: self.operator.pubkey(),
                     oracle_buffer_time: 5,
                     max_tickets: 2_048,
                     max_timeout: 86_400,
@@ -222,6 +223,7 @@ impl TimbaFixture {
     pub fn token_fixture(&mut self) -> TokenFixture {
         let mint = self.create_mint();
         let token = self.uninitialized_token_fixture(mint);
+        self.create_ata(self.operator.pubkey(), token.mint.pubkey());
         let instruction = self.initialize_token_instruction(&token);
         let operator = self.operator.insecure_clone();
         assert!(self.send(&[instruction], &[&operator]));
@@ -536,6 +538,14 @@ impl TimbaFixture {
         creator: Pubkey,
         oracle_operator: Pubkey,
     ) -> Instruction {
+        let oracle_account = self.svm.get_account(&self.oracle).unwrap();
+        let oracle_state = Oracle::try_deserialize(&mut oracle_account.data.as_slice()).unwrap();
+        let fee_recipient = oracle_state.fee_recipient;
+        let fee_recipient_token_account = get_associated_token_address_with_program_id(
+            &fee_recipient,
+            &token.mint.pubkey(),
+            &TOKEN_PROGRAM_ID,
+        );
         Instruction::new_with_bytes(
             timba::id(),
             &timba::instruction::CompleteGame {
@@ -559,6 +569,8 @@ impl TimbaFixture {
                 winner,
                 creator,
                 winner_token_account: winner_ata,
+                fee_recipient,
+                fee_recipient_token_account,
             }
             .to_account_metas(None),
         )
@@ -609,6 +621,10 @@ impl TimbaFixture {
         TokenAccount::unpack(&account.data).unwrap().amount
     }
 
+    pub fn associated_token_address(&self, owner: Pubkey, mint: Pubkey) -> Pubkey {
+        get_associated_token_address_with_program_id(&owner, &mint, &TOKEN_PROGRAM_ID)
+    }
+
     pub fn set_token_balance(&mut self, token_account: Pubkey, amount: u64) {
         let mut account = self.svm.get_account(&token_account).unwrap();
         let mut state = TokenAccount::unpack(&account.data).unwrap();
@@ -639,47 +655,6 @@ impl TimbaFixture {
             let operator = self.operator.insecure_clone();
             self.send(&[instruction], &[&operator, signer])
         }
-    }
-
-    pub fn withdraw_fees(
-        &mut self,
-        token: &TokenFixture,
-        signer: &Keypair,
-        destination: Pubkey,
-    ) -> bool {
-        let instruction = self.withdraw_fees_instruction(token, signer.pubkey(), destination);
-        if signer.pubkey() == self.operator.pubkey() {
-            self.send(&[instruction], &[signer])
-        } else {
-            let operator = self.operator.insecure_clone();
-            self.send(&[instruction], &[&operator, signer])
-        }
-    }
-
-    pub fn withdraw_fees_instruction(
-        &self,
-        token: &TokenFixture,
-        signer: Pubkey,
-        destination: Pubkey,
-    ) -> Instruction {
-        Instruction::new_with_bytes(
-            timba::id(),
-            &timba::instruction::WithdrawTokenFee {}.data(),
-            timba::accounts::WithdrawTokenFee {
-                game_token_ctx: timba::accounts::GameTokenContext {
-                    token_mint: token.mint.pubkey(),
-                    game_token: token.game_token,
-                    game_vault: token.game_vault,
-                    game_token_account: token.vault_ata,
-                    token_program: TOKEN_PROGRAM_ID,
-                    associated_token_program: ASSOCIATED_TOKEN_PROGRAM_ID,
-                },
-                oracle: self.oracle,
-                oracle_operator: signer,
-                oracle_operator_token_account: destination,
-            }
-            .to_account_metas(None),
-        )
     }
 
     pub fn update_oracle(&mut self, signer: &Keypair, config: OracleConfig) -> bool {

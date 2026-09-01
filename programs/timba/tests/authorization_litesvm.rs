@@ -32,19 +32,6 @@ fn non_creator_cannot_close_game() {
 }
 
 #[test]
-fn non_operator_cannot_withdraw_even_zero_fees() {
-    let mut fixture = common::TimbaFixture::new();
-    let token = fixture.token_fixture();
-    let outsider = Keypair::new();
-    fixture
-        .svm
-        .airdrop(&outsider.pubkey(), 1_000_000_000)
-        .unwrap();
-    let outsider_ata = fixture.create_ata(outsider.pubkey(), token.mint.pubkey());
-    assert!(!fixture.withdraw_fees(&token, &outsider, outsider_ata));
-}
-
-#[test]
 fn non_operator_cannot_approve_game_initialization() {
     let mut fixture = common::TimbaFixture::new();
     let token = fixture.token_fixture();

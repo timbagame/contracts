@@ -13,6 +13,8 @@ pub struct OracleInitialized {
     pub operator: Pubkey,
     /// Fee percentage taken from game winnings (0-10)
     pub fee_percentage: u8,
+    /// Wallet that receives protocol fees
+    pub fee_recipient: Pubkey,
     /// Buffer time in seconds after game timeout
     pub oracle_buffer_time: u64,
     /// Maximum tickets allowed in any game
@@ -32,6 +34,8 @@ pub struct OracleUpdated {
     pub new_operator: Pubkey,
     /// Updated fee percentage
     pub fee_percentage: u8,
+    /// Updated fee recipient
+    pub fee_recipient: Pubkey,
     /// Updated buffer time
     pub oracle_buffer_time: u64,
     /// Updated maximum tickets
@@ -44,6 +48,7 @@ pub struct OracleUpdated {
 
 struct OracleEventFields {
     fee_percentage: u8,
+    fee_recipient: Pubkey,
     oracle_buffer_time: u64,
     max_tickets: u32,
     max_timeout: u64,
@@ -55,6 +60,7 @@ impl OracleEventFields {
     fn new(config: &OracleConfig) -> Self {
         Self {
             fee_percentage: config.fee_percentage,
+            fee_recipient: config.fee_recipient,
             oracle_buffer_time: config.oracle_buffer_time,
             max_tickets: config.max_tickets,
             max_timeout: config.max_timeout,
@@ -70,6 +76,7 @@ impl OracleInitialized {
         Self {
             operator,
             fee_percentage: fields.fee_percentage,
+            fee_recipient: fields.fee_recipient,
             oracle_buffer_time: fields.oracle_buffer_time,
             max_tickets: fields.max_tickets,
             max_timeout: fields.max_timeout,
@@ -86,6 +93,7 @@ impl OracleUpdated {
             old_operator,
             new_operator,
             fee_percentage: fields.fee_percentage,
+            fee_recipient: fields.fee_recipient,
             oracle_buffer_time: fields.oracle_buffer_time,
             max_tickets: fields.max_tickets,
             max_timeout: fields.max_timeout,
@@ -107,28 +115,6 @@ impl TokenInitialized {
     #[must_use]
     pub fn new(token_mint: Pubkey) -> Self {
         Self { token_mint }
-    }
-}
-
-/// Emitted when accumulated fees are withdrawn by operator
-#[event]
-pub struct TokenFeeWithdrawn {
-    /// Operator that withdrew the fees
-    pub operator: Pubkey,
-    /// Token mint of the withdrawn fees
-    pub token_mint: Pubkey,
-    /// Amount of fees withdrawn
-    pub amount: u64,
-}
-
-impl TokenFeeWithdrawn {
-    #[must_use]
-    pub fn new(operator: Pubkey, token_mint: Pubkey, amount: u64) -> Self {
-        Self {
-            operator,
-            token_mint,
-            amount,
-        }
     }
 }
 
@@ -284,6 +270,8 @@ pub struct GameInitialized {
     pub token_mint: Pubkey,
     /// Whether game is private
     pub is_private: bool,
+    /// Immutable protocol fee percentage
+    pub fee_percentage: u8,
     /// Game creation timestamp
     pub created_at: u64,
     /// Game timeout duration
@@ -303,6 +291,7 @@ impl GameInitialized {
             min_tickets: game.min_tickets,
             token_mint: game.token_mint,
             is_private: game.is_private,
+            fee_percentage: game.fee_percentage,
             created_at: game.created_at,
             timeout: game.timeout,
         }

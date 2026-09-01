@@ -124,7 +124,10 @@ fn giveaway_completion_pays_prize_minus_fee_without_player_funds() {
         creator.pubkey(),
     ));
     assert_eq!(fixture.token_balance(participant_ata), 9_500);
-    assert_eq!(fixture.token_balance(token.vault_ata), 500);
+    let recipient_ata =
+        fixture.associated_token_address(fixture.operator.pubkey(), token.mint.pubkey());
+    assert_eq!(fixture.token_balance(recipient_ata), 500);
+    assert_eq!(fixture.token_balance(token.vault_ata), 0);
 }
 
 #[test]

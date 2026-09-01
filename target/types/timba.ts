@@ -657,6 +657,68 @@ export type Timba = {
               ]
             }
           }
+        },
+        {
+          "name": "feeRecipient"
+        },
+        {
+          "name": "feeRecipientTokenAccount",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "feeRecipient"
+              },
+              {
+                "kind": "account",
+                "path": "gameTokenCtx.tokenProgram",
+                "account": "gameTokenContext"
+              },
+              {
+                "kind": "account",
+                "path": "gameTokenCtx.tokenMint",
+                "account": "gameTokenContext"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
         }
       ],
       "args": [
@@ -1714,232 +1776,6 @@ export type Timba = {
           }
         }
       ]
-    },
-    {
-      "name": "withdrawTokenFee",
-      "docs": [
-        "Allows oracle operator to withdraw accumulated fees for a token"
-      ],
-      "discriminator": [
-        52,
-        183,
-        125,
-        234,
-        165,
-        30,
-        67,
-        19
-      ],
-      "accounts": [
-        {
-          "name": "gameTokenCtx",
-          "accounts": [
-            {
-              "name": "tokenMint"
-            },
-            {
-              "name": "gameToken",
-              "writable": true,
-              "pda": {
-                "seeds": [
-                  {
-                    "kind": "const",
-                    "value": [
-                      103,
-                      97,
-                      109,
-                      101,
-                      95,
-                      116,
-                      111,
-                      107,
-                      101,
-                      110
-                    ]
-                  },
-                  {
-                    "kind": "account",
-                    "path": "tokenMint"
-                  }
-                ]
-              }
-            },
-            {
-              "name": "gameVault",
-              "pda": {
-                "seeds": [
-                  {
-                    "kind": "const",
-                    "value": [
-                      103,
-                      97,
-                      109,
-                      101,
-                      95,
-                      118,
-                      97,
-                      117,
-                      108,
-                      116
-                    ]
-                  },
-                  {
-                    "kind": "account",
-                    "path": "tokenMint"
-                  }
-                ]
-              }
-            },
-            {
-              "name": "gameTokenAccount",
-              "writable": true,
-              "pda": {
-                "seeds": [
-                  {
-                    "kind": "account",
-                    "path": "gameVault"
-                  },
-                  {
-                    "kind": "account",
-                    "path": "tokenProgram"
-                  },
-                  {
-                    "kind": "account",
-                    "path": "tokenMint"
-                  }
-                ],
-                "program": {
-                  "kind": "const",
-                  "value": [
-                    140,
-                    151,
-                    37,
-                    143,
-                    78,
-                    36,
-                    137,
-                    241,
-                    187,
-                    61,
-                    16,
-                    41,
-                    20,
-                    142,
-                    13,
-                    131,
-                    11,
-                    90,
-                    19,
-                    153,
-                    218,
-                    255,
-                    16,
-                    132,
-                    4,
-                    142,
-                    123,
-                    216,
-                    219,
-                    233,
-                    248,
-                    89
-                  ]
-                }
-              }
-            },
-            {
-              "name": "tokenProgram",
-              "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
-            },
-            {
-              "name": "associatedTokenProgram",
-              "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
-            }
-          ]
-        },
-        {
-          "name": "oracle",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  111,
-                  114,
-                  97,
-                  99,
-                  108,
-                  101
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "oracleOperator",
-          "signer": true
-        },
-        {
-          "name": "oracleOperatorTokenAccount",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "oracleOperator"
-              },
-              {
-                "kind": "account",
-                "path": "gameTokenCtx.tokenProgram",
-                "account": "gameTokenContext"
-              },
-              {
-                "kind": "account",
-                "path": "gameTokenCtx.tokenMint",
-                "account": "gameTokenContext"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
-        }
-      ],
-      "args": []
     }
   ],
   "accounts": [
@@ -2086,19 +1922,6 @@ export type Timba = {
         65,
         0,
         152
-      ]
-    },
-    {
-      "name": "tokenFeeWithdrawn",
-      "discriminator": [
-        92,
-        98,
-        195,
-        90,
-        108,
-        129,
-        244,
-        119
       ]
     },
     {
@@ -2258,8 +2081,8 @@ export type Timba = {
     },
     {
       "code": 7404,
-      "name": "tokenFeesOutstanding",
-      "msg": "Token fees outstanding"
+      "name": "invalidFeeRecipient",
+      "msg": "Fee recipient mismatch"
     }
   ],
   "types": [
@@ -2348,6 +2171,13 @@ export type Timba = {
               "Whether this is a private game requiring oracle approval"
             ],
             "type": "bool"
+          },
+          {
+            "name": "feePercentage",
+            "docs": [
+              "Immutable protocol fee percentage for this game"
+            ],
+            "type": "u8"
           },
           {
             "name": "totalAmount",
@@ -2579,6 +2409,13 @@ export type Timba = {
             "type": "bool"
           },
           {
+            "name": "feePercentage",
+            "docs": [
+              "Immutable protocol fee percentage"
+            ],
+            "type": "u8"
+          },
+          {
             "name": "createdAt",
             "docs": [
               "Game creation timestamp"
@@ -2613,13 +2450,6 @@ export type Timba = {
               "Vault bump seed for PDA token transfers"
             ],
             "type": "u8"
-          },
-          {
-            "name": "feeAmount",
-            "docs": [
-              "Accumulated fee amount for this token"
-            ],
-            "type": "u64"
           }
         ]
       }
@@ -2649,7 +2479,7 @@ export type Timba = {
           {
             "name": "operator",
             "docs": [
-              "Operator that can update oracle settings and claim fees"
+              "Operator that can update oracle settings"
             ],
             "type": "pubkey"
           },
@@ -2659,6 +2489,13 @@ export type Timba = {
               "Percentage of game amount taken as fee (0-10)"
             ],
             "type": "u8"
+          },
+          {
+            "name": "feeRecipient",
+            "docs": [
+              "Wallet that receives protocol fees during settlement"
+            ],
+            "type": "pubkey"
           },
           {
             "name": "oracleBufferTime",
@@ -2705,6 +2542,13 @@ export type Timba = {
               "Fee percentage taken from game winnings (0-10)"
             ],
             "type": "u8"
+          },
+          {
+            "name": "feeRecipient",
+            "docs": [
+              "Wallet that receives protocol fees during settlement"
+            ],
+            "type": "pubkey"
           },
           {
             "name": "oracleBufferTime",
@@ -2758,6 +2602,13 @@ export type Timba = {
               "Fee percentage taken from game winnings (0-10)"
             ],
             "type": "u8"
+          },
+          {
+            "name": "feeRecipient",
+            "docs": [
+              "Wallet that receives protocol fees"
+            ],
+            "type": "pubkey"
           },
           {
             "name": "oracleBufferTime",
@@ -2818,6 +2669,13 @@ export type Timba = {
               "Updated fee percentage"
             ],
             "type": "u8"
+          },
+          {
+            "name": "feeRecipient",
+            "docs": [
+              "Updated fee recipient"
+            ],
+            "type": "pubkey"
           },
           {
             "name": "oracleBufferTime",
@@ -3000,38 +2858,6 @@ export type Timba = {
               "Token mint that was removed"
             ],
             "type": "pubkey"
-          }
-        ]
-      }
-    },
-    {
-      "name": "tokenFeeWithdrawn",
-      "docs": [
-        "Emitted when accumulated fees are withdrawn by operator"
-      ],
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "operator",
-            "docs": [
-              "Operator that withdrew the fees"
-            ],
-            "type": "pubkey"
-          },
-          {
-            "name": "tokenMint",
-            "docs": [
-              "Token mint of the withdrawn fees"
-            ],
-            "type": "pubkey"
-          },
-          {
-            "name": "amount",
-            "docs": [
-              "Amount of fees withdrawn"
-            ],
-            "type": "u64"
           }
         ]
       }

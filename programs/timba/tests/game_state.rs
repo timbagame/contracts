@@ -1,6 +1,6 @@
 use anchor_lang::prelude::Pubkey;
 use timba::{
-    state::{Game, GameToken, GameType, Oracle, MAX_ORACLE_BUFFER_TIME},
+    state::{Game, GameType, Oracle, MAX_ORACLE_BUFFER_TIME},
     GameConfig,
 };
 
@@ -26,6 +26,8 @@ fn oracle_configuration_validation_covers_boundaries() {
     assert!(Oracle::is_valid_fee_percentage(0));
     assert!(Oracle::is_valid_fee_percentage(10));
     assert!(!Oracle::is_valid_fee_percentage(11));
+    assert!(!Oracle::is_valid_fee_recipient(&Pubkey::default()));
+    assert!(Oracle::is_valid_fee_recipient(&Pubkey::new_unique()));
     assert!(!Oracle::is_valid_buffer_time(0));
     assert!(Oracle::is_valid_buffer_time(1));
     assert!(Oracle::is_valid_buffer_time(MAX_ORACLE_BUFFER_TIME));
@@ -68,13 +70,15 @@ fn game_initialization_sets_type_specific_amounts() {
         is_private: true,
     };
     let mut coinflip = Game::default();
-    coinflip.initialize(creator, mint, &config(GameType::Coinflip, 500), 100, 7);
+    coinflip.initialize(creator, mint, &config(GameType::Coinflip, 500), 5, 100, 7);
     assert_eq!(coinflip.ticket_amount, 500);
     assert_eq!(coinflip.total_amount, 0);
+    assert_eq!(coinflip.fee_percentage, 5);
     let mut giveaway = Game::default();
-    giveaway.initialize(creator, mint, &config(GameType::Giveaway, 900), 100, 7);
+    giveaway.initialize(creator, mint, &config(GameType::Giveaway, 900), 7, 100, 7);
     assert_eq!(giveaway.ticket_amount, 0);
     assert_eq!(giveaway.total_amount, 900);
+    assert_eq!(giveaway.fee_percentage, 7);
 }
 
 #[test]
@@ -132,22 +136,15 @@ fn winner_index_is_bounded_deterministic_and_reaches_every_slot() {
 }
 
 #[test]
-fn fee_math_and_accumulation_are_exact_near_u64_max() {
+fn snapshotted_fee_math_is_exact_near_u64_max() {
     let game = Game {
         total_amount: 18_446_744_073_709_500_000,
+        fee_percentage: 10,
         ..Game::default()
     };
-    assert_eq!(game.calculate_amounts(100), (0, game.total_amount));
-    let (winner, fee) = game.calculate_amounts(7);
+    let (winner, fee) = game.calculate_amounts();
     assert_eq!(winner.checked_add(fee), Some(game.total_amount));
-    let mut token = GameToken {
-        fee_amount: u64::MAX - 1,
-        ..GameToken::default()
-    };
-    token.accrue_fee(1).unwrap();
-    assert_eq!(token.fee_amount, u64::MAX);
-    assert!(token.accrue_fee(1).is_err());
-    assert_eq!(token.drain_fees(), u64::MAX);
+    assert_eq!(fee, game.total_amount / 10);
 }
 
 #[test]

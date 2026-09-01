@@ -127,7 +127,7 @@ pub enum ErrorCode {
     /// Vault still holds token funds
     #[msg("Token vault not empty")]
     TokenVaultNotEmpty = 1403,
-    /// Fees must be withdrawn before closing token
-    #[msg("Token fees outstanding")]
-    TokenFeesOutstanding = 1404,
+    /// Fee recipient does not match the configured wallet
+    #[msg("Fee recipient mismatch")]
+    InvalidFeeRecipient = 1404,
 }

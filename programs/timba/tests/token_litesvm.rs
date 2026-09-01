@@ -16,7 +16,6 @@ fn initializes_token_vault_state_without_creation_policy() {
     let account = fixture.svm.get_account(&game_token).unwrap();
     let state = GameToken::try_deserialize(&mut account.data.as_slice()).unwrap();
     assert_eq!(state.token_mint, mint.pubkey());
-    assert_eq!(state.fee_amount, 0);
     assert!(fixture.svm.get_account(&vault_ata).is_some());
 }
 
@@ -43,6 +42,7 @@ fn initializes_coinflip_game_with_real_token_accounts() {
     let state = Game::try_deserialize(&mut account.data.as_slice()).unwrap();
     assert_eq!(state.creator, creator.pubkey());
     assert_eq!(state.ticket_amount, 1_000);
+    assert_eq!(state.fee_percentage, 5);
     assert_eq!(state.tickets_count, 0);
     assert_eq!(state.total_amount, 0);
 }
