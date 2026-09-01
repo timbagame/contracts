@@ -12,6 +12,7 @@ pub mod close_game;
 pub mod complete_game;
 pub mod initialize_game;
 pub mod join_game;
+pub mod operator_close_game;
 pub mod unjoin_game;
 
 // Re-export accounts for convenience

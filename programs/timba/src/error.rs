@@ -58,6 +58,10 @@ pub enum ErrorCode {
     #[msg("Participant store full")]
     ParticipantStorageExceeded = 1107,
 
+    /// Operator cleanup is not available until the game timeout and oracle buffer expire
+    #[msg("Game cleanup not available")]
+    GameCleanupNotAvailable = 1108,
+
     // PLAYER ACTION ERRORS (1200-1299)
     /// Player has already joined this game
     #[msg("Already joined")]

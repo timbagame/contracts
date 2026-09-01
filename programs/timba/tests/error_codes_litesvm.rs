@@ -23,6 +23,7 @@ fn error_codes_are_sequential_within_each_category() {
             ErrorCode::GameAlreadyCompleted as u32,
             ErrorCode::OracleBufferNotExpired as u32,
             ErrorCode::ParticipantStorageExceeded as u32,
+            ErrorCode::GameCleanupNotAvailable as u32,
         ],
         vec![
             ErrorCode::AlreadyJoined as u32,

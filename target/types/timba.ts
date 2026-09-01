@@ -1164,6 +1164,213 @@ export type Timba = {
       "args": []
     },
     {
+      "name": "operatorCloseGame",
+      "docs": [
+        "Closes an expired game with no participants (Oracle operator only)"
+      ],
+      "discriminator": [
+        156,
+        21,
+        221,
+        84,
+        94,
+        226,
+        235,
+        185
+      ],
+      "accounts": [
+        {
+          "name": "game",
+          "writable": true
+        },
+        {
+          "name": "oracleOperator",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "oracle",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  114,
+                  97,
+                  99,
+                  108,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "gameVaultCtx",
+          "accounts": [
+            {
+              "name": "tokenMint"
+            },
+            {
+              "name": "gameVault",
+              "pda": {
+                "seeds": [
+                  {
+                    "kind": "const",
+                    "value": [
+                      103,
+                      97,
+                      109,
+                      101,
+                      95,
+                      118,
+                      97,
+                      117,
+                      108,
+                      116
+                    ]
+                  },
+                  {
+                    "kind": "account",
+                    "path": "tokenMint"
+                  }
+                ]
+              }
+            },
+            {
+              "name": "gameVaultTokenAccount",
+              "writable": true,
+              "pda": {
+                "seeds": [
+                  {
+                    "kind": "account",
+                    "path": "gameVault"
+                  },
+                  {
+                    "kind": "account",
+                    "path": "tokenProgram"
+                  },
+                  {
+                    "kind": "account",
+                    "path": "tokenMint"
+                  }
+                ],
+                "program": {
+                  "kind": "const",
+                  "value": [
+                    140,
+                    151,
+                    37,
+                    143,
+                    78,
+                    36,
+                    137,
+                    241,
+                    187,
+                    61,
+                    16,
+                    41,
+                    20,
+                    142,
+                    13,
+                    131,
+                    11,
+                    90,
+                    19,
+                    153,
+                    218,
+                    255,
+                    16,
+                    132,
+                    4,
+                    142,
+                    123,
+                    216,
+                    219,
+                    233,
+                    248,
+                    89
+                  ]
+                }
+              }
+            },
+            {
+              "name": "tokenProgram",
+              "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+            },
+            {
+              "name": "associatedTokenProgram",
+              "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+            }
+          ]
+        },
+        {
+          "name": "creator"
+        },
+        {
+          "name": "creatorTokenAccount",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "creator"
+              },
+              {
+                "kind": "account",
+                "path": "gameVaultCtx.tokenProgram",
+                "account": "gameVaultContext"
+              },
+              {
+                "kind": "account",
+                "path": "gameVaultCtx.tokenMint",
+                "account": "gameVaultContext"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "unjoinGame",
       "docs": [
         "Allows a player to leave a game before completion (with refund)"
@@ -1507,6 +1714,19 @@ export type Timba = {
       ]
     },
     {
+      "name": "operatorGameClosed",
+      "discriminator": [
+        236,
+        51,
+        251,
+        125,
+        251,
+        64,
+        187,
+        174
+      ]
+    },
+    {
       "name": "oracleClosed",
       "discriminator": [
         205,
@@ -1627,6 +1847,11 @@ export type Timba = {
       "code": 7107,
       "name": "participantStorageExceeded",
       "msg": "Participant store full"
+    },
+    {
+      "code": 7108,
+      "name": "gameCleanupNotAvailable",
+      "msg": "Game cleanup not available"
     },
     {
       "code": 7200,
@@ -2097,6 +2322,59 @@ export type Timba = {
               "Legacy operator that authorized the closure and receives the reclaimed rent"
             ],
             "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "operatorGameClosed",
+      "docs": [
+        "Emitted when an expired, empty game is closed by the Oracle operator"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "gameKey",
+            "docs": [
+              "Game that was closed"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "creator",
+            "docs": [
+              "Original game creator"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "operator",
+            "docs": [
+              "Oracle operator that performed the cleanup"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "refundedAmount",
+            "docs": [
+              "Giveaway funds returned to the creator"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "recoveredLamports",
+            "docs": [
+              "Game account rent returned to the operator"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "docs": [
+              "Closure timestamp"
+            ],
+            "type": "u64"
           }
         ]
       }

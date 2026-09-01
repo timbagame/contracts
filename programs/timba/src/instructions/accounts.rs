@@ -363,3 +363,34 @@ pub struct CloseGame<'info> {
     )]
     pub creator_token_account: Account<'info, TokenAccount>,
 }
+
+#[derive(Accounts)]
+pub struct OperatorCloseGame<'info> {
+    #[account(
+        mut,
+        close = oracle_operator,
+        constraint = game.tickets_count == 0 @ ErrorCode::GameHasActivePlayers,
+        constraint = game.participants.is_empty() @ ErrorCode::GameHasActivePlayers,
+        constraint = game.token_mint == game_vault_ctx.token_mint.key() @ ErrorCode::InvalidTokenMint,
+    )]
+    pub game: Account<'info, Game>,
+    #[account(mut)]
+    pub oracle_operator: Signer<'info>,
+    #[account(
+        seeds = [ORACLE_SEED],
+        bump,
+        constraint = oracle.is_authorized_operator(&oracle_operator.key()) @ ErrorCode::UnauthorizedOperator,
+    )]
+    pub oracle: Account<'info, Oracle>,
+    pub game_vault_ctx: GameVaultContext<'info>,
+    /// CHECK: Address is constrained to the creator stored in the Game account.
+    #[account(constraint = creator.key() == game.creator @ ErrorCode::InvalidCreator)]
+    pub creator: UncheckedAccount<'info>,
+    #[account(
+        mut,
+        associated_token::mint = game_vault_ctx.token_mint,
+        associated_token::authority = creator,
+        associated_token::token_program = game_vault_ctx.token_program,
+    )]
+    pub creator_token_account: Account<'info, TokenAccount>,
+}

@@ -549,6 +549,35 @@ impl TimbaFixture {
         )
     }
 
+    pub fn operator_close_game_instruction(
+        &self,
+        token: &TokenFixture,
+        game: Pubkey,
+        creator: Pubkey,
+        creator_ata: Pubkey,
+        oracle_operator: Pubkey,
+    ) -> Instruction {
+        Instruction::new_with_bytes(
+            timba::id(),
+            &timba::instruction::OperatorCloseGame {}.data(),
+            timba::accounts::OperatorCloseGame {
+                game,
+                oracle_operator,
+                oracle: self.oracle,
+                game_vault_ctx: timba::accounts::GameVaultContext {
+                    token_mint: token.mint.pubkey(),
+                    game_vault: token.game_vault,
+                    game_vault_token_account: token.vault_ata,
+                    token_program: TOKEN_PROGRAM_ID,
+                    associated_token_program: ASSOCIATED_TOKEN_PROGRAM_ID,
+                },
+                creator,
+                creator_token_account: creator_ata,
+            }
+            .to_account_metas(None),
+        )
+    }
+
     pub fn token_balance(&self, token_account: Pubkey) -> u64 {
         let account = self.svm.get_account(&token_account).unwrap();
         TokenAccount::unpack(&account.data).unwrap().amount

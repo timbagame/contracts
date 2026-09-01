@@ -94,6 +94,9 @@ Ready for completion means: max tickets filled, **or** min tickets reached **and
 - Completed games automatically close and return rent to creators
 - Prevents blockchain bloat and reduces ongoing costs
 - Makes post-completion attacks impossible (no account to attack)
+- After the timeout and Oracle buffer expire, the current Oracle operator may close
+  an empty game. Any remaining giveaway prize returns to the creator's canonical
+  token account, while only the closed Game account rent goes to the operator
 - Oracle closure is a privileged migration or decommissioning action that requires
   both the current Oracle operator and the program upgrade authority
 - `close_legacy_oracle` additionally verifies the exact v0.2 account size,
@@ -191,7 +194,7 @@ The deployment procedure and verification commands are documented in [MAINNET_DE
 - **Oracle downtime** → After a ready game’s buffer ends, players can unjoin (earlier unjoin still works if the game never became ready)
 - **Oracle censorship** → The operator can withhold settlement, but cannot keep the exclusive settlement window above the one-hour on-chain cap; coinflip participants can subsequently unjoin
 - **Invalid winner submission** → Cryptographic reveal verification and slot-based entropy prevent the operator from naming a winner that does not match the on-chain calculation
-- **Oracle key compromise** → The attacker can rotate the operator, change configuration for new games within its caps, change the direct fee recipient, approve new games outside the off-chain token policy when their canonical vaults exist, and complete games with known valid reveals. Existing games keep their snapshotted fee percentages, and winner payout and refund constraints still apply; rotate the key immediately through `update_oracle` if control remains available
+- **Oracle key compromise** → The attacker can rotate the operator, change configuration for new games within its caps, change the direct fee recipient, approve new games outside the off-chain token policy when their canonical vaults exist, complete games with known valid reveals, and reclaim rent from expired games only after all participants have left. Existing games keep their snapshotted fee percentages; winner payouts, player refunds, and giveaway cleanup refunds remain constrained on-chain. Rotate the key immediately through `update_oracle` if control remains available
 - **Initialization takeover** → Initial oracle creation requires the intended operator plus the program upgrade authority verified through the upgradeable-loader `ProgramData` account
 - **Privileged Oracle closure** → The Oracle operator and upgrade authority together can close the global Oracle; operational controls must prevent this until every game is settled or closed, and legacy close plus reinitialization must be atomic
 

@@ -332,3 +332,40 @@ impl GameClosed {
         }
     }
 }
+
+/// Emitted when an expired, empty game is closed by the Oracle operator
+#[event]
+pub struct OperatorGameClosed {
+    /// Game that was closed
+    pub game_key: Pubkey,
+    /// Original game creator
+    pub creator: Pubkey,
+    /// Oracle operator that performed the cleanup
+    pub operator: Pubkey,
+    /// Giveaway funds returned to the creator
+    pub refunded_amount: u64,
+    /// Game account rent returned to the operator
+    pub recovered_lamports: u64,
+    /// Closure timestamp
+    pub timestamp: u64,
+}
+
+impl OperatorGameClosed {
+    #[must_use]
+    pub fn new(
+        game: &Account<'_, Game>,
+        operator: Pubkey,
+        refunded_amount: u64,
+        recovered_lamports: u64,
+        timestamp: u64,
+    ) -> Self {
+        Self {
+            game_key: game.key(),
+            creator: game.creator,
+            operator,
+            refunded_amount,
+            recovered_lamports,
+            timestamp,
+        }
+    }
+}

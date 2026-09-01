@@ -118,6 +118,11 @@ pub mod timba {
         instructions::close_game::handler(ctx)
     }
 
+    /// Closes an expired game with no participants (Oracle operator only)
+    pub fn operator_close_game(ctx: Context<OperatorCloseGame>) -> Result<()> {
+        instructions::operator_close_game::handler(ctx)
+    }
+
     /// Completes a game by revealing the secret key and distributing winnings
     pub fn complete_game(
         ctx: Context<CompleteGame>,

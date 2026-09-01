@@ -92,6 +92,10 @@ name = "oracle_rotation_litesvm"
 path = "../programs/timba/tests/oracle_rotation_litesvm.rs"
 
 [[test]]
+name = "operator_close_game_litesvm"
+path = "../programs/timba/tests/operator_close_game_litesvm.rs"
+
+[[test]]
 name = "participant_stress_litesvm"
 path = "../programs/timba/tests/participant_stress_litesvm.rs"
 

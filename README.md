@@ -12,6 +12,7 @@ Anchor-based Solana smart contracts for the Timba game platform.
 - Settles winner payouts and protocol fees directly on-chain.
 - Supports legacy SPL Token flows.
 - Provides timeout + oracle-buffer protections so players can recover funds if completion stalls.
+- Allows the Oracle operator to close expired games only after all participants have left; giveaway funds return to the creator and only account rent goes to the operator.
 
 For the full trust model and security details, see [SECURITY.md](./SECURITY.md).
 
