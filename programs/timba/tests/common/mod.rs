@@ -2,7 +2,7 @@
 
 use {
     anchor_lang::{
-        prelude::{Pubkey, Rent},
+        prelude::Pubkey,
         solana_program::{
             bpf_loader_upgradeable::{self, UpgradeableLoaderState},
             instruction::Instruction,
@@ -15,6 +15,7 @@ use {
     solana_instruction::error::InstructionError,
     solana_keypair::Keypair,
     solana_message::{Message, VersionedMessage},
+    solana_rent::Rent,
     solana_signer::Signer,
     solana_system_interface::instruction as system_instruction,
     solana_transaction::versioned::VersionedTransaction,
@@ -60,10 +61,13 @@ pub fn set_program_upgrade_authority(
     let mut account = svm
         .get_account(&program_data)
         .expect("upgradeable program data must exist");
-    let metadata = bincode::serialize(&UpgradeableLoaderState::ProgramData {
-        slot: svm.get_sysvar::<anchor_lang::prelude::Clock>().slot,
-        upgrade_authority_address: Some(authority),
-    })
+    let metadata = bincode::serde::encode_to_vec(
+        UpgradeableLoaderState::ProgramData {
+            slot: svm.get_sysvar::<anchor_lang::prelude::Clock>().slot,
+            upgrade_authority_address: Some(authority),
+        },
+        bincode::config::legacy(),
+    )
     .unwrap();
     account.data[..metadata.len()].copy_from_slice(&metadata);
     svm.set_account(program_data, account).unwrap();
