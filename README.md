@@ -1,105 +1,131 @@
 # Timba Contracts
 
-Anchor-based Solana smart contracts for the Timba game platform.
+Timba Contracts is an Anchor program for token-based coinflip and giveaway games on Solana.
 
-## What this program does
+The current branch targets v0.3.0. This release changes the `Oracle` and `Game` account layouts and removes `GameToken` accounts. Read [DEPLOYMENT.md](./DEPLOYMENT.md) before upgrading an existing deployment.
 
-- Runs token-based **Coinflip** and **Giveaway** games.
-- Uses a commit-reveal flow for verifiable randomness.
-- Requires both the game creator and current oracle operator to sign game initialization; the creator remains the fee payer.
-- Keeps token allowlists, enabled state, and minimum game amounts in the off-chain Oracle service; the program validates the operator signature and positive amount.
-- Derives each shared game vault from its token mint; required vault token accounts are created before a mint is enabled.
-- Settles winner payouts and protocol fees directly on-chain.
-- Supports legacy SPL Token flows.
-- Provides timeout + oracle-buffer protections so players can recover funds if completion stalls.
-- Allows the Oracle operator to close expired games only after all participants have left; giveaway funds return to the creator and only account rent goes to the operator.
+Program ID: `32Jr4JnXWvqq9GqPQynkooHsszaucUUvZfNLh2hdX2L5`
 
-For the full trust model and security details, see [SECURITY.md](./SECURITY.md).
+## Program model
+
+The program uses three main address types:
+
+| Address         | Derivation                   | Purpose                                                                   |
+| --------------- | ---------------------------- | ------------------------------------------------------------------------- |
+| Oracle          | `["oracle"]`                 | Stores the operator, fee configuration, timeout limits, and oracle buffer |
+| Game            | `["game", random_hash]`      | Stores one game and binds it to its commitment hash                       |
+| Vault authority | `["game_vault", token_mint]` | Controls the shared vault token account for one mint                      |
+
+The vault token account is the canonical associated token account for the mint-derived vault authority. It must exist before the program uses that mint. All games for the same mint share this vault, while each `Game` account tracks its own balance and participants.
+
+Only the legacy SPL Token program is supported. Token-2022 mints are rejected by the account constraints.
+
+## Game lifecycle
+
+1. The oracle service generates a 32-byte secret and its SHA-256 commitment.
+2. The creator and current oracle operator sign `initialize_game`. The creator pays account rent and funds the prize for a giveaway.
+3. Players call `join_game`. A private game also requires the current oracle operator to sign each join.
+4. A game becomes ready when it is full, or when its minimum ticket count is met and its timeout has elapsed.
+5. During the completion window, the oracle operator reveals the secret through `complete_game`. The program verifies the commitment, recomputes the winner, transfers the payout and fee, and closes the game account.
+6. If settlement does not occur, participants can unjoin according to the timeout and oracle-buffer rules described in [SECURITY.md](./SECURITY.md).
+
+The oracle signature authorizes game creation but does not make creation policy on-chain. Token enablement, allowlists, and minimum amounts remain in the off-chain service. The program enforces a positive amount and the configured on-chain limits.
+
+## Instructions
+
+| Instruction           | Required authority                                | Purpose                                                      |
+| --------------------- | ------------------------------------------------- | ------------------------------------------------------------ |
+| `initialize_oracle`   | Intended operator and program upgrade authority   | Creates the global Oracle PDA                                |
+| `update_oracle`       | Current and new operators                         | Updates configuration and optionally rotates the operator    |
+| `initialize_game`     | Creator and current operator                      | Creates a game from an approved commitment                   |
+| `join_game`           | Player; current operator also signs private joins | Adds one unique participant                                  |
+| `unjoin_game`         | Participant or game creator                       | Removes a participant and refunds a coinflip stake           |
+| `complete_game`       | Current operator                                  | Reveals the secret and settles the game                      |
+| `close_game`          | Game creator                                      | Closes an eligible game and refunds an unused giveaway prize |
+| `operator_close_game` | Current operator                                  | Cleans up an expired, empty game                             |
+| `close_oracle`        | Current operator and program upgrade authority    | Closes the current Oracle account                            |
+| `close_legacy_oracle` | Legacy operator and program upgrade authority     | Closes the exact v0.2 Oracle layout during migration         |
 
 ## Repository layout
 
-- `programs/timba/src` - on-chain program (instructions, state, events, errors).
-- `programs/timba/tests` - Rust unit and LiteSVM integration test sources.
-- `test-harness` - host-side `rlib` harness that compiles the same program source for Rust tests while the deployable program remains LTO-enabled.
-- `tests` - Anchor/TypeScript integration tests (`anchor test`) for the generated client and validator concurrency.
-- `target/idl` and `target/types` - generated artifacts committed for downstream tooling.
+- `programs/timba/src` contains the on-chain program.
+- `programs/timba/tests` contains Rust unit and LiteSVM integration tests.
+- `test-harness` compiles the program as a host-side library for Rust tests.
+- `tests` contains Anchor and TypeScript integration tests.
+- `target/idl/timba.json` and `target/types/timba.ts` are committed generated clients.
+- `.github/workflows/ci.yml` defines the supported CI toolchain.
 
-## Prerequisites
+## Toolchain
 
-- Rust (`rust-toolchain.toml` pins the version)
-- Solana CLI (includes `cargo-build-sbf`)
-- Anchor CLI
-- Node.js
-- Bun
+The repository pins or tests these versions:
 
-The repo also includes a `.devcontainer` for containerized setup in VS Code/Cursor/Codespaces.
+- Rust 1.98.0
+- Solana CLI 3.1.10
+- Anchor CLI 1.1.2
+- Bun 1.4.0
+- Surfpool 1.5.0
 
-## Quick start
+Use `rust-toolchain.toml`, `Anchor.toml`, and `.github/workflows/ci.yml` as the version sources of truth.
+
+## Local setup
+
+Create a local Solana keypair if one does not exist:
 
 ```bash
-bun install
-anchor build
-anchor test           # Complete Rust and TypeScript test suite
+solana-keygen new \
+  --no-bip39-passphrase \
+  --outfile ~/.config/solana/id.json
 ```
 
-## Testing
-
-| Suite                   | Command                            | Coverage                                                                                |
-| ----------------------- | ---------------------------------- | --------------------------------------------------------------------------------------- |
-| **Complete suite**      | `anchor test`                      | All Rust/LiteSVM and Anchor/TypeScript tests                                            |
-| **Rust / LiteSVM only** | `cargo test -p timba-test-harness` | State logic, instruction guards, fees, giveaways, oracle flows, events, and error codes |
-
-Build the SBF binary before LiteSVM tests (loads `target/deploy/timba.so`):
+Install dependencies, build the program, and run the complete suite:
 
 ```bash
-cargo-build-sbf --manifest-path programs/timba/Cargo.toml
-# or: anchor build
+bun install --frozen-lockfile
+anchor build --ignore-keys
+anchor test --skip-build
+```
+
+The repository also includes a development-container configuration. Its installer is intended for local development; release builds must use the pinned release process in [DEPLOYMENT.md](./DEPLOYMENT.md).
+
+## Testing and checks
+
+| Check                              | Command                                                 |
+| ---------------------------------- | ------------------------------------------------------- |
+| Complete Rust and TypeScript suite | `anchor test`                                           |
+| Rust and LiteSVM suite             | `cargo test -p timba-test-harness`                      |
+| Rust formatting                    | `cargo fmt --all -- --check`                            |
+| Rust lint                          | `cargo clippy --workspace --all-targets -- -D warnings` |
+| Markdown and TypeScript formatting | `bun run format:check`                                  |
+| TypeScript lint                    | `bun run lint`                                          |
+| TypeScript type check              | `bun run typecheck`                                     |
+| JavaScript dependency audit        | `bun audit`                                             |
+
+LiteSVM tests load `target/deploy/timba.so`. Build it before running the Rust-only suite:
+
+```bash
+anchor build --ignore-keys
 cargo test -p timba-test-harness
 ```
 
-Filter examples:
+To run a focused Rust test:
 
 ```bash
 cargo test -p timba-test-harness --test fees_litesvm
 cargo test -p timba-test-harness unjoin
 ```
 
-## Common commands
+After changing the program interface, rebuild and commit both generated clients:
 
 ```bash
-# Build program and regenerate IDL/types
-anchor build
-
-# Complete Rust and TypeScript test suite
-anchor test
-
-# Rust unit and LiteSVM tests only
-cargo test -p timba-test-harness
-
-# Formatting checks
-bun run lint
-bun run lint:fix
-
-# TypeScript generated-client check
-bun x tsc -p tsconfig.json --noEmit
+anchor build --ignore-keys
+git diff -- target/idl/timba.json target/types/timba.ts
 ```
 
-## Game initialization signing flow
+## Security and deployment
 
-The oracle creates and stores the secret, then returns only its commitment hash. The creator builds an `initialize_game` transaction with itself as fee payer and sends the serialized transaction to the oracle. The oracle validates the commitment and transaction accounts, partially signs with its own key, and returns it. The creator then signs and submits the same transaction. Neither private key leaves its device.
+- [SECURITY.md](./SECURITY.md) defines the trust model, authority boundaries, recovery rules, and known risks.
+- [DEPLOYMENT.md](./DEPLOYMENT.md) defines the v0.3.0 migration and reproducible mainnet release process.
 
-## Mainnet deployment
+## License
 
-Mainnet releases must use a reproducible build from a clean, public commit. Deploy the exact verifiable artifact with `--no-idl`, keep the generated IDL and types committed and synchronized with clients, and complete remote source verification afterward. Do not deploy a normal `anchor build` or `cargo-build-sbf` artifact to mainnet.
-
-See [DEPLOYMENT.md](./DEPLOYMENT.md) for the complete release and verification checklist.
-
-## Program ID
-
-`32Jr4JnXWvqq9GqPQynkooHsszaucUUvZfNLh2hdX2L5`
-
-## Additional docs
-
-- [DEPLOYMENT.md](./DEPLOYMENT.md) - reproducible deployment, remote verification, off-chain IDL handling, and shutdown checklist.
-- [SECURITY.md](./SECURITY.md) - security model and user guidance.
-- [LICENSE](./LICENSE) - Business Source License 1.1 (BUSL-1.1).
+This repository uses the [Business Source License 1.1](./LICENSE).

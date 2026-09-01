@@ -1,128 +1,273 @@
-# Timba Contracts — Mainnet Release Guide
+# Timba Contracts Deployment Guide
 
-This public guide covers contract release requirements. Production service rollout, operator key custody, host configuration, incident recovery, and cross-project orchestration belong in private operations documentation.
+This guide defines the public build, upgrade, migration, and verification process for Timba Contracts v0.3.0.
 
-Program ID:
+Production service rollout, operator key custody, RPC configuration, monitoring, incident response, and cross-repository coordination belong in private operations documentation.
 
-```text
-32Jr4JnXWvqq9GqPQynkooHsszaucUUvZfNLh2hdX2L5
+## Fixed release identity
+
+| Item           | Value                                          |
+| -------------- | ---------------------------------------------- |
+| Program        | `timba`                                        |
+| Program ID     | `32Jr4JnXWvqq9GqPQynkooHsszaucUUvZfNLh2hdX2L5` |
+| Target cluster | Solana mainnet-beta                            |
+| Release line   | v0.3.0                                         |
+
+Do not derive the production program address from a local `target/deploy/timba-keypair.json`. Local builds can generate an unrelated keypair. Production upgrades must explicitly target the fixed program ID.
+
+## Supported toolchain
+
+| Tool            | Version |
+| --------------- | ------- |
+| Rust            | 1.98.0  |
+| Solana CLI      | 3.1.10  |
+| Anchor CLI      | 1.1.2   |
+| Bun             | 1.4.0   |
+| Surfpool        | 1.5.0   |
+| `solana-verify` | 0.5.1   |
+
+Use `rust-toolchain.toml`, `Anchor.toml`, and `.github/workflows/ci.yml` as the repository sources of truth. A verifiable build also requires a container runtime supported by Anchor.
+
+Before signing a release, record the tool versions:
+
+```bash
+rustc --version
+solana --version
+anchor --version
+bun --version
+surfpool --version
+solana-verify --version
 ```
 
-## Toolchain
+## Release requirements
 
-Use the versions pinned by the repository:
+Before any mainnet upgrade:
 
-- Anchor CLI 1.1.2
-- Solana CLI 3.1.10
-- Rust 1.98.0
-- Bun 1.4.0
-- `solana-verify` 0.5.1
-- A container runtime supported by Anchor verifiable builds
+1. Select a public commit that contains the program source, lockfiles, generated IDL, and generated TypeScript client.
+2. Confirm that the commit is on the intended release branch and that the working tree is clean.
+3. Confirm the current program ID and upgrade authority on mainnet.
+4. Confirm the upgrade-authority signer, fee-payer signer, RPC endpoint, and expected balance impact.
+5. Disable new game approvals in the off-chain service.
+6. Review the account-compatibility requirements for the release.
+7. Build, deploy, and verify the same executable artifact.
 
-Release from a clean public commit. Generated `target/idl/timba.json` and `target/types/timba.ts` must match that commit.
+Never deploy from an uncommitted working tree.
 
-## Compatibility gate
+## Validate the release commit
 
-Version 0.3.0 is a coordinated breaking migration. Its `Oracle` and `Game` layouts
-are not compatible with 0.2.x, and it removes `GameToken` accounts. Before deployment:
-
-1. Stop new game creation.
-2. Settle or close every existing game.
-3. Withdraw all accrued 0.2.x fees.
-4. Close every obsolete `GameToken` account and its empty vault where required.
-5. Create and verify each v0.3 mint-derived vault ATA and fee-recipient ATA.
-6. Deploy the v0.3 executable, but keep game creation disabled.
-7. In one transaction, call `close_legacy_oracle` and then `initialize_oracle`
-   with the v0.3 configuration.
-8. Verify the new Oracle state, matching IDL, and client release before re-enabling
-   creation.
-
-An executable upgrade does not resize or rewrite program-owned accounts.
-`close_legacy_oracle` accepts only the exact 69-byte v0.2 Oracle layout and requires
-both its encoded operator and the current program upgrade authority to sign. Keep
-its closure and `initialize_oracle` in the same transaction so the canonical PDA
-never remains closed between transactions. The reclaimed legacy Oracle rent returns
-to its operator.
-
-`close_oracle` is the equivalent decommissioning operation for the current v0.3
-layout. It also requires the Oracle operator and current program upgrade authority,
-and it returns rent to the operator. Before any future incompatible upgrade, settle
-or close every game first, then call `close_oracle` while the installed program can
-still deserialize the v0.3 account. For a same-version reset, `close_oracle` and
-`initialize_oracle` can be submitted in one transaction.
-
-## Test and freeze
+Install exactly the locked JavaScript dependencies:
 
 ```bash
 bun install --frozen-lockfile
-anchor test
+```
+
+Run the same checks as CI:
+
+```bash
+bun audit
 bun run format:check
 bun run lint
 bun run typecheck
-git diff --exit-code
-git diff --cached --exit-code
+cargo fmt --all -- --check
+cargo clippy --workspace --all-targets -- -D warnings
+anchor build --ignore-keys
+git diff --exit-code -- target/idl/timba.json target/types/timba.ts
+anchor test --skip-build
 ```
 
-Record the exact public commit used for the release:
+The local `--ignore-keys` option prevents an unrelated generated development keypair from changing the build decision. It does not change the program ID embedded by `declare_id!`.
+
+Require a clean release commit after the checks:
 
 ```bash
+git status --short
 git rev-parse HEAD
 ```
 
-## Reproducible build
+`git status --short` must produce no output. Record the commit SHA returned by `git rev-parse HEAD`.
+
+## Build the release artifact
+
+Build the verifiable executable with the pinned Solana toolchain:
 
 ```bash
-anchor build --verifiable --solana-version 3.1.10
-solana-verify get-executable-hash target/verifiable/timba.so
-```
-
-Do not substitute `target/deploy/timba.so` for the verifiable artifact in a production release. Record the executable and IDL hashes before deployment.
-
-## Deploy
-
-Confirm the target cluster, program ID, current upgrade authority, expected balance impact, and executable hash before signing. Upgrade the existing program ID; never generate a replacement program for a routine upgrade.
-
-Deploy with `--no-idl`. The canonical generated IDL stays off-chain to avoid creating a rent-funded IDL account:
-
-```bash
-anchor deploy \
+anchor build \
   --verifiable \
-  --no-idl \
+  --ignore-keys \
   --program-name timba \
-  --provider.cluster mainnet \
-  --provider.wallet <UPGRADE_AUTHORITY_KEYPAIR>
+  --solana-version 3.1.10
 ```
 
-Dump the deployed executable and require its hash to match the frozen verifiable artifact before continuing.
+The production artifact is:
 
-## Keep the IDL off-chain
+```text
+target/verifiable/timba.so
+```
 
-Do not run `anchor idl init` or `anchor idl upgrade`. Keep `target/idl/timba.json` and `target/types/timba.ts` committed, hash the generated IDL as release evidence, and require downstream clients to bundle the identical artifact.
+Do not deploy `target/deploy/timba.so` to mainnet.
 
-## Verify source
+Record the executable and generated-client hashes:
 
-Verify the deployed executable against the exact public commit:
+```bash
+solana-verify get-executable-hash target/verifiable/timba.so
+sha256sum target/idl/timba.json target/types/timba.ts
+```
+
+Run the verifiable build a second time in an independent, clean release environment. The executable hash must be identical.
+
+## Record pre-upgrade state
+
+Inspect the existing program:
+
+```bash
+solana program show \
+  --url mainnet-beta \
+  32Jr4JnXWvqq9GqPQynkooHsszaucUUvZfNLh2hdX2L5
+```
+
+Record:
+
+- Current program-data address.
+- Current upgrade authority.
+- Current executable hash.
+- Current Oracle account data.
+- Every open game account.
+- Relevant token-vault balances.
+- The release commit and local artifact hashes.
+
+Stop if the observed program ID, authority, accounts, or balances do not match the approved release plan.
+
+## Upgrade the program
+
+Deploy the exact verifiable artifact to the existing program ID:
+
+```bash
+solana program deploy \
+  target/verifiable/timba.so \
+  --url mainnet-beta \
+  --program-id 32Jr4JnXWvqq9GqPQynkooHsszaucUUvZfNLh2hdX2L5 \
+  --upgrade-authority <UPGRADE_AUTHORITY_SIGNER> \
+  --fee-payer <FEE_PAYER_SIGNER>
+```
+
+Do not use `anchor deploy` unless its program keypair and final command have been independently verified to target the fixed production address. An existing-program upgrade does not require the local development program keypair; the Solana CLI accepts the existing program address.
+
+Record the deployment transaction signature.
+
+## Verify the deployed executable
+
+Dump the finalized on-chain program:
+
+```bash
+solana program dump \
+  --url mainnet-beta \
+  32Jr4JnXWvqq9GqPQynkooHsszaucUUvZfNLh2hdX2L5 \
+  /tmp/timba-mainnet.so
+```
+
+Calculate both hashes:
+
+```bash
+solana-verify get-executable-hash target/verifiable/timba.so
+solana-verify get-executable-hash /tmp/timba-mainnet.so
+```
+
+The hashes must match before migration or service re-enablement.
+
+Inspect the program again and confirm that its upgrade authority did not change unexpectedly:
+
+```bash
+solana program show \
+  --url mainnet-beta \
+  32Jr4JnXWvqq9GqPQynkooHsszaucUUvZfNLh2hdX2L5
+```
+
+## Verify the public source
+
+Create or update the on-chain verification record from the exact public commit:
 
 ```bash
 solana-verify verify-from-repo \
-  -u https://api.mainnet-beta.solana.com \
-  --program-id 32Jr4JnXWvqq9GqPQynkooHsszaucUUvZfNLh2hdX2L5 \
   https://github.com/timbagame/contracts \
+  --url https://api.mainnet-beta.solana.com \
+  --program-id 32Jr4JnXWvqq9GqPQynkooHsszaucUUvZfNLh2hdX2L5 \
   --commit-hash <COMMIT_SHA> \
   --library-name timba \
-  --mount-path programs/timba
+  --mount-path programs/timba \
+  --workspace-path . \
+  --keypair <UPGRADE_AUTHORITY_SIGNER>
 ```
 
-Complete remote verification and require a successful result. The release is incomplete until the executable hash, local generated IDL, source commit, downstream client artifacts, and remote verification record all agree.
+Review the requested on-chain write before approving it. For a multisignature upgrade authority, use the transaction-export flow supported by `solana-verify` instead of supplying a local keypair.
 
-## Initial deployments
+After the verification PDA exists, submit the remote verification job:
 
-`initialize_oracle` is only for a fresh or explicitly closed Oracle PDA. It requires signatures from:
+```bash
+solana-verify remote submit-job \
+  --url https://api.mainnet-beta.solana.com \
+  --program-id 32Jr4JnXWvqq9GqPQynkooHsszaucUUvZfNLh2hdX2L5 \
+  --uploader <UPGRADE_AUTHORITY_PUBKEY>
+```
 
-- The current upgrade authority recorded in the program's upgradeable-loader ProgramData account.
-- The intended Oracle operator, which becomes the runtime authority and funds Oracle account creation.
+The release is not verified until the remote result succeeds and reports the same executable hash.
 
-The canonical initial configuration is:
+## Keep the IDL off-chain
+
+This project does not create or update an on-chain Anchor IDL account. Do not run `anchor idl init` or `anchor idl upgrade`.
+
+Publish these files with the release:
+
+- `target/idl/timba.json`
+- `target/types/timba.ts`
+
+Downstream clients must use artifacts generated from the same release commit. Compare their hashes before service rollout.
+
+## v0.2 to v0.3 migration
+
+v0.3.0 is a breaking account migration:
+
+- The `Oracle` layout adds `fee_recipient`.
+- The `Game` layout changes.
+- `GameToken` accounts are removed.
+- Existing v0.2 Oracle data cannot be deserialized as a v0.3 Oracle.
+
+An executable upgrade does not resize or rewrite program-owned accounts.
+
+### Before upgrading from v0.2
+
+Complete these steps while the v0.2 executable is still installed:
+
+1. Disable new game creation in every service.
+2. Settle or close every v0.2 game.
+3. Withdraw all accrued v0.2 fees.
+4. Close every v0.2 `GameToken` account.
+5. Close or otherwise account for each obsolete v0.2 token vault as required by the v0.2 program.
+6. Prove that no v0.2 game or `GameToken` account remains.
+7. Record the legacy Oracle address, exact 69-byte account data, encoded operator, lamport balance, and current upgrade authority.
+
+Do not upgrade while a game or `GameToken` account still depends on the v0.2 executable.
+
+### Upgrade and replace the Oracle
+
+After deploying and hash-verifying v0.3.0, submit one atomic transaction containing:
+
+1. `close_legacy_oracle`.
+2. `initialize_oracle` with the approved v0.3 configuration.
+
+The transaction requires:
+
+- The operator encoded in the v0.2 Oracle.
+- The intended v0.3 operator, which pays the new Oracle account rent.
+- The current program upgrade authority.
+- A transaction fee payer, which can be one of these signers.
+
+`close_legacy_oracle` accepts only the canonical Oracle PDA owned by this program with the exact v0.2 size, current Oracle discriminator, and encoded operator. It returns the legacy account rent to that operator.
+
+Keep closure and initialization in one transaction. If either instruction fails, the complete transaction rolls back and the legacy Oracle remains. Do not leave the canonical Oracle PDA closed between transactions.
+
+### Configure v0.3
+
+The approved initial configuration is:
 
 | Setting         |           Value |
 | --------------- | --------------: |
@@ -133,22 +278,49 @@ The canonical initial configuration is:
 | Maximum timeout |  86,400 seconds |
 | Minimum timeout |     300 seconds |
 
-Do not close or initialize an Oracle during a routine compatible executable upgrade.
+Before enabling game approvals:
+
+1. Read and decode the new Oracle account.
+2. Confirm its operator, fee percentage, fee recipient, buffer, ticket limit, and timeout limits.
+3. Create and verify the canonical mint-vault ATA for each enabled legacy SPL mint.
+4. Create and verify the fee-recipient ATA for each enabled mint.
+5. Confirm that service clients use the v0.3.0 IDL and program ID.
+6. Run a controlled end-to-end game with an approved test amount.
+7. Enable new game approvals only after all checks pass.
+
+## Future Oracle closure
+
+`close_oracle` is for a current v0.3 Oracle. It requires the current operator and current program upgrade authority and returns rent to the operator.
+
+Before a future incompatible upgrade:
+
+1. Disable new game approvals.
+2. Settle or close every game.
+3. Call `close_oracle` while the installed executable can still deserialize the v0.3 account.
+4. Upgrade and initialize the replacement state according to the new release plan.
+
+For a same-version reset, `close_oracle` and `initialize_oracle` can be placed in one atomic transaction. Do not close the Oracle during a routine compatible executable upgrade.
 
 ## Release evidence
 
 Retain:
 
-- Public commit SHA
-- Verifiable executable and hash
-- IDL and hash
-- Program state before and after deployment
-- Deployment signature
-- Downstream local-IDL comparison
-- Local and remote verification results
-- Account-compatibility evidence
+- Release branch, tag, and public commit SHA.
+- Tool versions and container image information.
+- Local verifiable executable and hash.
+- Deployed executable dump and hash.
+- Generated IDL and TypeScript client hashes.
+- Pre-upgrade and post-upgrade program state.
+- Pre-migration and post-migration Oracle state.
+- Game and token-account closure evidence.
+- Deployment and migration transaction signatures.
+- Local source-verification output.
+- Verification PDA details and remote verification result.
+- Downstream client artifact comparison.
+- Approvals for service re-enablement.
 
-References:
+## References
 
 - [Anchor verifiable builds](https://www.anchor-lang.com/docs/references/verifiable-builds)
 - [Solana verified builds](https://solana.com/docs/programs/verified-builds)
+- [Solana verifiable-build CLI](https://github.com/solana-foundation/solana-verifiable-build)
