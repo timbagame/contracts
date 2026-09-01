@@ -92,11 +92,11 @@ The recovery boundary is:
 created_at + timeout + current_oracle_buffer_time
 ```
 
-The Oracle buffer is read from the live Oracle account. It is not stored in each game. An operator update therefore changes the recovery boundary for open games, but the program restricts the buffer to 1 through 3,600 seconds.
+The Oracle buffer extends the game's configured timeout for recovery purposes. It is not a timer that starts when the game fills or otherwise becomes ready. The value is read from the live Oracle account and is not stored in each game. An operator update therefore changes the recovery boundary for open games, but the program restricts the buffer to 1 through 3,600 seconds.
 
 Before a game is ready, participants may unjoin. After it becomes ready, unjoin and creator close are blocked until the recovery boundary. At the boundary, completion is no longer accepted and unjoin becomes available.
 
-The recovery boundary is based on the creation time, not the moment when the game becomes ready. If a game fills early, participants can remain locked for the rest of the configured timeout plus the Oracle buffer.
+If a game fills early, it can be completed immediately, but participants cannot use the recovery path until the configured timeout and Oracle buffer have both elapsed. This rule keeps one recovery deadline and avoids storing or updating a separate fill timestamp.
 
 An underfilled game that never reaches its minimum ticket count is not ready, so its participants may unjoin without waiting for the timeout or buffer.
 

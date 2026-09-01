@@ -273,14 +273,14 @@ Keep closure and initialization in one transaction. If either instruction fails,
 
 The approved initial configuration is:
 
-| Setting         |           Value |
-| --------------- | --------------: |
-| Fee percentage  |              1% |
-| Fee recipient   | Treasury wallet |
-| Oracle buffer   |   3,600 seconds |
-| Maximum tickets |             100 |
-| Maximum timeout |  86,400 seconds |
-| Minimum timeout |     300 seconds |
+| Setting                            |           Value |
+| ---------------------------------- | --------------: |
+| Fee percentage                     |              1% |
+| Fee recipient                      | Treasury wallet |
+| Recovery buffer after game timeout |   3,600 seconds |
+| Maximum tickets                    |             100 |
+| Maximum timeout                    |  86,400 seconds |
+| Minimum timeout                    |     300 seconds |
 
 Before enabling game approvals:
 
