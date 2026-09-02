@@ -32,7 +32,6 @@ fn creates_games_with_a_precreated_mint_derived_vault() {
     let state = Game::try_deserialize(&mut account.data.as_slice()).unwrap();
     assert_eq!(state.creator, creator.pubkey());
     assert_eq!(state.ticket_amount, 1_000);
-    assert_eq!(state.fee_percentage, 5);
     assert_eq!(state.tickets_count, 0);
     assert_eq!(state.total_amount, 0);
 }

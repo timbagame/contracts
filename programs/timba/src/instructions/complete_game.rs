@@ -44,7 +44,7 @@ pub fn handler(
         ErrorCode::WinnerPubkeyMismatch
     );
 
-    let (winner_amount, fee_amount) = game.calculate_amounts();
+    let (winner_amount, fee_amount) = game.calculate_amounts(oracle.fee_percentage);
 
     // Mark game as completed
     game.complete();
@@ -56,9 +56,9 @@ pub fn handler(
         vault_bump,
     )?;
 
-    // Transfer the immutable game fee directly to the configured recipient.
+    // Transfer the live Oracle fee directly to the current Oracle operator.
     ctx.accounts.game_vault_ctx.transfer_from_vault(
-        &ctx.accounts.fee_recipient_token_account,
+        &ctx.accounts.oracle_operator_token_account,
         fee_amount,
         vault_bump,
     )?;

@@ -228,14 +228,9 @@ Downstream clients must use artifacts generated from the same release commit. Co
 
 ## v0.2 to v0.3 migration
 
-v0.3.0 is a breaking account migration:
+v0.3.0 is a breaking instruction and client migration. The `Oracle` and `Game` account layouts remain compatible with v0.2, but `GameToken` accounts and their management instructions are removed. Fees are transferred directly to the current Oracle operator during settlement, using the live Oracle fee percentage.
 
-- The `Oracle` layout adds `fee_recipient`.
-- The `Game` layout changes.
-- `GameToken` accounts are removed.
-- Existing v0.2 Oracle data cannot be deserialized as a v0.3 Oracle.
-
-An executable upgrade does not resize or rewrite program-owned accounts.
+An executable upgrade does not close obsolete program-owned accounts. Complete the cleanup before installing code that no longer exposes the `GameToken` instructions.
 
 ### Before upgrading from v0.2
 
@@ -247,47 +242,34 @@ Complete these steps while the v0.2 executable is still installed:
 4. Close every v0.2 `GameToken` account.
 5. Close or otherwise account for each obsolete v0.2 token vault as required by the v0.2 program.
 6. Prove that no v0.2 game or `GameToken` account remains.
-7. Record the legacy Oracle address, exact 69-byte account data, encoded operator, lamport balance, and current upgrade authority.
+7. Record the Oracle address, decoded configuration, lamport balance, and current upgrade authority.
 
 Do not upgrade while a game or `GameToken` account still depends on the v0.2 executable.
 
-### Upgrade and replace the Oracle
+### Preserve the Oracle
 
-After deploying and hash-verifying v0.3.0, submit one atomic transaction containing:
+The v0.2 Oracle is the v0.3 Oracle. Do not close or reinitialize it during this upgrade. After deploying and hash-verifying v0.3.0, read the same canonical Oracle PDA and confirm that its operator, fee percentage, recovery buffer, ticket limit, and timeout limits are unchanged.
 
-1. `close_legacy_oracle`.
-2. `initialize_oracle` with the approved v0.3 configuration.
-
-The transaction requires:
-
-- The operator encoded in the v0.2 Oracle.
-- The intended v0.3 operator, which pays the new Oracle account rent.
-- The current program upgrade authority.
-- A transaction fee payer, which can be one of these signers.
-
-`close_legacy_oracle` accepts only the canonical Oracle PDA owned by this program with the exact v0.2 size, current Oracle discriminator, and encoded operator. It returns the legacy account rent to that operator.
-
-Keep closure and initialization in one transaction. If either instruction fails, the complete transaction rolls back and the legacy Oracle remains. Do not leave the canonical Oracle PDA closed between transactions.
+If the release plan changes any Oracle setting or rotates the operator, use `update_oracle` after deployment. Both the current and new operators must sign an operator rotation.
 
 ### Configure v0.3
 
 The approved initial configuration is:
 
-| Setting                            |           Value |
-| ---------------------------------- | --------------: |
-| Fee percentage                     |              1% |
-| Fee recipient                      | Treasury wallet |
-| Recovery buffer after game timeout |   3,600 seconds |
-| Maximum tickets                    |             100 |
-| Maximum timeout                    |  86,400 seconds |
-| Minimum timeout                    |     300 seconds |
+| Setting                            |          Value |
+| ---------------------------------- | -------------: |
+| Fee percentage                     |             1% |
+| Recovery buffer after game timeout |  3,600 seconds |
+| Maximum tickets                    |            100 |
+| Maximum timeout                    | 86,400 seconds |
+| Minimum timeout                    |    300 seconds |
 
 Before enabling game approvals:
 
-1. Read and decode the new Oracle account.
-2. Confirm its operator, fee percentage, fee recipient, buffer, ticket limit, and timeout limits.
+1. Read and decode the existing Oracle account with the v0.3 client.
+2. Confirm its operator, fee percentage, buffer, ticket limit, and timeout limits.
 3. Create and verify the canonical mint-vault ATA for each enabled legacy SPL mint.
-4. Create and verify the fee-recipient ATA for each enabled mint.
+4. Create and verify the current Oracle operator's ATA for each enabled mint.
 5. Confirm that service clients use the v0.3.0 IDL and program ID.
 6. Run a controlled end-to-end game with an approved test amount.
 7. Enable new game approvals only after all checks pass.
@@ -315,7 +297,7 @@ Retain:
 - Deployed executable dump and hash.
 - Generated IDL and TypeScript client hashes.
 - Pre-upgrade and post-upgrade program state.
-- Pre-migration and post-migration Oracle state.
+- Pre-upgrade and post-upgrade Oracle state.
 - Game and token-account closure evidence.
 - Deployment and migration transaction signatures.
 - Local source-verification output.

@@ -2,7 +2,7 @@
 
 Timba Contracts is an Anchor program for token-based coinflip and giveaway games on Solana.
 
-The current branch targets v0.3.0. This release changes the `Oracle` and `Game` account layouts and removes `GameToken` accounts. Read [DEPLOYMENT.md](./DEPLOYMENT.md) before upgrading an existing deployment.
+The current branch targets v0.3.0. This release removes `GameToken` accounts and changes the instruction and client interfaces while preserving the v0.2 `Oracle` and `Game` account layouts. Read [DEPLOYMENT.md](./DEPLOYMENT.md) before upgrading an existing deployment.
 
 Program ID: `32Jr4JnXWvqq9GqPQynkooHsszaucUUvZfNLh2hdX2L5`
 
@@ -44,7 +44,6 @@ The oracle signature authorizes game creation but does not make creation policy 
 | `close_game`          | Game creator                                      | Closes an eligible game and refunds an unused giveaway prize |
 | `operator_close_game` | Current operator                                  | Cleans up an expired, empty game                             |
 | `close_oracle`        | Current operator and program upgrade authority    | Closes the current Oracle account                            |
-| `close_legacy_oracle` | Legacy operator and program upgrade authority     | Closes the exact v0.2 Oracle layout during migration         |
 
 ## Repository layout
 
