@@ -42,10 +42,9 @@ export function deriveOraclePda(programId: PublicKey): PublicKey {
   return oraclePda;
 }
 
-const gameTokenCache = new Map<string, { tokenMint: PublicKey; tokenProgram: PublicKey }>();
+const gameVaultCache = new Map<string, { tokenMint: PublicKey; tokenProgram: PublicKey }>();
 
 const DEFAULT_PLAYER_BALANCE = new anchor.BN(100_000_000);
-const DEFAULT_MIN_TOKEN_AMOUNT = new anchor.BN(1000);
 
 export async function requestAndConfirmAirdrop(
   connection: anchor.web3.Connection,
@@ -144,7 +143,6 @@ export interface TestMint {
   mint: PublicKey;
   mintAuthority: anchor.web3.Keypair;
   gameVaultPDA: PublicKey;
-  gameTokenPDA: PublicKey;
   tokenProgram: PublicKey;
   decimals: number;
 }
@@ -165,9 +163,8 @@ export type DerivedGameAccounts = {
   tokenMint: PublicKey;
   tokenProgram: PublicKey;
   oracle: PublicKey;
-  gameToken: PublicKey;
   gameVault: PublicKey;
-  gameTokenAccount: PublicKey;
+  gameVaultTokenAccount: PublicKey;
   playerTokenAccount?: PublicKey;
   winnerTokenAccount?: PublicKey;
 };
@@ -231,6 +228,7 @@ export async function ensureOperatorAta(
 
 export interface OracleConfig {
   feePercentage: number;
+  feeRecipient: PublicKey;
   oracleBufferTime: number;
   maxTickets: number;
   maxTimeout: number;
@@ -584,6 +582,7 @@ export class OracleManager {
   async createOracle(config?: Partial<OracleConfig>): Promise<TestOracle> {
     const defaultConfig: OracleConfig = {
       feePercentage: 1,
+      feeRecipient: DEFAULT_OPERATOR_KEYPAIR.publicKey,
       oracleBufferTime: 2,
       maxTickets: 50000,
       maxTimeout: 86400,
@@ -609,6 +608,7 @@ export class OracleManager {
           operatorKeypair,
           config: {
             feePercentage: existingOracle.feePercentage,
+            feeRecipient: existingOracle.feeRecipient,
             oracleBufferTime: existingOracle.oracleBufferTime.toNumber(),
             maxTickets: existingOracle.maxTickets,
             maxTimeout: existingOracle.maxTimeout.toNumber(),
@@ -633,6 +633,7 @@ export class OracleManager {
 
       const configForProgram = {
         feePercentage: defaultConfig.feePercentage,
+        feeRecipient: defaultConfig.feeRecipient,
         oracleBufferTime: new anchor.BN(defaultConfig.oracleBufferTime),
         maxTickets: defaultConfig.maxTickets,
         maxTimeout: new anchor.BN(defaultConfig.maxTimeout),
@@ -682,6 +683,7 @@ export class OracleManager {
       operatorKeypair,
       config: {
         feePercentage: oracleAccount.feePercentage,
+        feeRecipient: oracleAccount.feeRecipient,
         oracleBufferTime: oracleAccount.oracleBufferTime.toNumber(),
         maxTickets: oracleAccount.maxTickets,
         maxTimeout: oracleAccount.maxTimeout.toNumber(),
@@ -694,28 +696,22 @@ export class OracleManager {
 /**
  * Token and mint management utilities
  */
-type GameTokenDerivation = {
-  gameToken: PublicKey;
+type GameVaultDerivation = {
   gameVault: PublicKey;
-  gameTokenAccount: PublicKey;
+  gameVaultTokenAccount: PublicKey;
 };
 
-export function computeGameTokenContext(
+export function computeGameVaultContext(
   program: anchor.Program<Timba>,
   tokenMint: PublicKey,
   tokenProgram: PublicKey,
-): GameTokenDerivation {
-  const [gameToken] = PublicKey.findProgramAddressSync(
-    [Buffer.from("game_token"), tokenMint.toBuffer()],
-    program.programId,
-  );
-
+): GameVaultDerivation {
   const [gameVault] = PublicKey.findProgramAddressSync(
     [Buffer.from("game_vault"), tokenMint.toBuffer()],
     program.programId,
   );
 
-  const gameTokenAccount = getAssociatedTokenAddressSync(
+  const gameVaultTokenAccount = getAssociatedTokenAddressSync(
     tokenMint,
     gameVault,
     true,
@@ -723,7 +719,7 @@ export function computeGameTokenContext(
     ASSOCIATED_TOKEN_PROGRAM_ID,
   );
 
-  return { gameToken, gameVault, gameTokenAccount };
+  return { gameVault, gameVaultTokenAccount };
 }
 
 export class MintManager {
@@ -760,11 +756,7 @@ export class MintManager {
     );
 
     // Get PDAs and token accounts
-    const {
-      gameToken: gameTokenPDA,
-      gameVault: gameVaultPDA,
-      gameTokenAccount,
-    } = computeGameTokenContext(this.program, mint, tokenProgram);
+    const { gameVault: gameVaultPDA } = computeGameVaultContext(this.program, mint, tokenProgram);
 
     // Create required token accounts
     await getOrCreateAssociatedTokenAccount(
@@ -789,47 +781,32 @@ export class MintManager {
       tokenProgram,
     );
 
-    // Initialize token config
-    const tokenConfig = { minAmount: new anchor.BN(1000), enabled: true };
-
     // Get the oracle operator from the oracle account
     const oraclePDA = deriveOraclePda(this.program.programId);
     const oracleAccount = await this.program.account.oracle.fetch(oraclePDA);
-    const oracleOperatorKeypair = DEFAULT_OPERATOR_KEYPAIR;
-
-    await this.program.methods
-      .initializeToken(tokenConfig)
-      .accountsStrict({
-        gameToken: gameTokenPDA,
-        tokenMint: mint,
-        gameVault: gameVaultPDA,
-        gameTokenAccount,
-        oracle: oraclePDA,
-        oracleOperator: oracleAccount.operator,
-        systemProgram: anchor.web3.SystemProgram.programId,
-        tokenProgram,
-        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
-      })
-      .signers([oracleOperatorKeypair])
-      .rpc();
+    await getOrCreateAssociatedTokenAccount(
+      this.provider.connection,
+      mintAuthority,
+      mint,
+      oracleAccount.feeRecipient,
+      false,
+      undefined,
+      undefined,
+      tokenProgram,
+    );
 
     return {
       mint,
       mintAuthority,
       gameVaultPDA,
-      gameTokenPDA,
       tokenProgram,
       decimals,
     };
   }
 
   // Helper getters used in some tests
-  getGameTokenPDA(mint: PublicKey): PublicKey {
-    const { gameToken } = computeGameTokenContext(this.program, mint, TOKEN_PROGRAM_ID);
-    return gameToken;
-  }
   getGameVaultPDA(mint: PublicKey): PublicKey {
-    const { gameVault } = computeGameTokenContext(this.program, mint, TOKEN_PROGRAM_ID);
+    const { gameVault } = computeGameVaultContext(this.program, mint, TOKEN_PROGRAM_ID);
     return gameVault;
   }
 
@@ -887,7 +864,7 @@ export async function deriveGameAccounts(
       const gameAccount = await program.account.game.fetch(gamePDA);
       tokenMint = new PublicKey(gameAccount.tokenMint);
     } catch (error) {
-      const cached = gameTokenCache.get(cacheKey);
+      const cached = gameVaultCache.get(cacheKey);
       if (cached) {
         tokenMint = cached.tokenMint;
         tokenProgram = cached.tokenProgram;
@@ -905,11 +882,11 @@ export async function deriveGameAccounts(
     tokenProgram = await resolveTokenProgram(program.provider.connection, tokenMint);
   }
 
-  gameTokenCache.set(cacheKey, { tokenMint, tokenProgram });
+  gameVaultCache.set(cacheKey, { tokenMint, tokenProgram });
 
   const oracle = deriveOraclePda(program.programId);
 
-  const { gameToken, gameVault, gameTokenAccount } = computeGameTokenContext(
+  const { gameVault, gameVaultTokenAccount } = computeGameVaultContext(
     program,
     tokenMint,
     tokenProgram,
@@ -939,32 +916,30 @@ export async function deriveGameAccounts(
     tokenMint,
     tokenProgram,
     oracle,
-    gameToken,
     gameVault,
-    gameTokenAccount,
+    gameVaultTokenAccount,
     ...(playerTokenAccount ? { playerTokenAccount } : {}),
     ...(winnerTokenAccount ? { winnerTokenAccount } : {}),
   };
 }
 
-export function toGameTokenContext(derived: DerivedGameAccounts): GameTokenContextAccounts {
+export function toGameVaultContext(derived: DerivedGameAccounts): GameVaultContextAccounts {
   return {
     tokenMint: derived.tokenMint,
-    gameToken: derived.gameToken,
     gameVault: derived.gameVault,
-    gameTokenAccount: derived.gameTokenAccount,
+    gameVaultTokenAccount: derived.gameVaultTokenAccount,
     tokenProgram: derived.tokenProgram,
     associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
   };
 }
 
-export function gameTokenContextFromMint(
+export function gameVaultContextFromMint(
   mint: TestMint,
   program?: anchor.Program<Timba>,
-): GameTokenContextAccounts {
+): GameVaultContextAccounts {
   const resolvedProgram = program ?? (anchor.workspace.Timba as anchor.Program<Timba>);
 
-  const { gameToken, gameVault, gameTokenAccount } = computeGameTokenContext(
+  const { gameVault, gameVaultTokenAccount } = computeGameVaultContext(
     resolvedProgram,
     mint.mint,
     mint.tokenProgram,
@@ -972,9 +947,8 @@ export function gameTokenContextFromMint(
 
   return {
     tokenMint: mint.mint,
-    gameToken,
     gameVault,
-    gameTokenAccount,
+    gameVaultTokenAccount,
     tokenProgram: mint.tokenProgram,
     associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
   };
@@ -1066,23 +1040,24 @@ export class PlayerManager {
 /**
  * Game management utilities
  */
-export type GameTokenContextAccounts = {
+export type GameVaultContextAccounts = {
   tokenMint: PublicKey;
-  gameToken: PublicKey;
   gameVault: PublicKey;
-  gameTokenAccount: PublicKey;
+  gameVaultTokenAccount: PublicKey;
   tokenProgram: PublicKey;
   associatedTokenProgram: PublicKey;
 };
 
 type CompleteGameAccounts = {
   game: PublicKey;
-  gameTokenCtx: GameTokenContextAccounts;
+  gameVaultCtx: GameVaultContextAccounts;
   oracle: PublicKey;
   oracleOperator: PublicKey;
   winner: PublicKey;
   creator: PublicKey;
   winnerTokenAccount: PublicKey;
+  feeRecipient: PublicKey;
+  feeRecipientTokenAccount: PublicKey;
 };
 
 export class GameManager {
@@ -1123,7 +1098,7 @@ export class GameManager {
   ): Promise<void> {
     const tokenProgram = await this.resolveTokenProgram(tokenMint);
     const oracle = deriveOraclePda(this.program.programId);
-    const { gameToken, gameVault, gameTokenAccount } = computeGameTokenContext(
+    const { gameVault, gameVaultTokenAccount } = computeGameVaultContext(
       this.program,
       tokenMint,
       tokenProgram,
@@ -1135,11 +1110,10 @@ export class GameManager {
       tokenProgram,
       ASSOCIATED_TOKEN_PROGRAM_ID,
     );
-    const gameTokenCtx: GameTokenContextAccounts = {
+    const gameVaultCtx: GameVaultContextAccounts = {
       tokenMint,
-      gameToken,
       gameVault,
-      gameTokenAccount,
+      gameVaultTokenAccount,
       tokenProgram,
       associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
     };
@@ -1159,14 +1133,14 @@ export class GameManager {
         creator: creator.publicKey,
         oracle,
         oracleOperator: oracleOperator.publicKey,
-        gameTokenCtx,
+        gameVaultCtx,
         creatorTokenAccount,
         systemProgram: anchor.web3.SystemProgram.programId,
       })
       .signers([creator, oracleOperator])
       .rpc();
 
-    gameTokenCache.set(gameData.gamePDA.toBase58(), {
+    gameVaultCache.set(gameData.gamePDA.toBase58(), {
       tokenMint,
       tokenProgram,
     });
@@ -1185,12 +1159,12 @@ export class GameManager {
       throw new Error("Missing player token account for joinGame");
     }
 
-    const gameTokenCtx = toGameTokenContext(derived);
+    const gameVaultCtx = toGameVaultContext(derived);
     const commonAccounts = {
       game: gamePDA,
       player: player.publicKey,
       playerTokenAccount: derived.playerTokenAccount,
-      gameTokenCtx,
+      gameVaultCtx,
       oracle: derived.oracle,
     };
 
@@ -1233,7 +1207,7 @@ export class GameManager {
         authority: authoritySigner.publicKey,
         oracle: derived.oracle,
         playerTokenAccount: derived.playerTokenAccount,
-        gameTokenCtx: toGameTokenContext(derived),
+        gameVaultCtx: toGameVaultContext(derived),
       })
       .signers([authoritySigner])
       .rpc();
@@ -1281,14 +1255,26 @@ export class GameManager {
       throw new Error("Missing winner token account for completeGame");
     }
 
+    const oracleAccount = await this.program.account.oracle.fetch(derived.oracle);
+    const feeRecipient = oracleAccount.feeRecipient;
+    const feeRecipientTokenAccount = getAssociatedTokenAddressSync(
+      derived.tokenMint,
+      feeRecipient,
+      false,
+      derived.tokenProgram,
+      ASSOCIATED_TOKEN_PROGRAM_ID,
+    );
+
     const baseAccounts: CompleteGameAccounts = {
       game: gameData.gamePDA,
-      gameTokenCtx: toGameTokenContext(derived),
+      gameVaultCtx: toGameVaultContext(derived),
       oracle: derived.oracle,
       oracleOperator,
       winner,
       creator,
       winnerTokenAccount: derived.winnerTokenAccount,
+      feeRecipient,
+      feeRecipientTokenAccount,
     };
 
     return { ...baseAccounts, ...overrides };
@@ -1564,63 +1550,9 @@ export class TestUtils {
 
     this.env.testUtils = this;
 
-    await this.resetTokenConfiguration(setup);
     await this.ensurePlayerBalances(setup);
 
     return setup;
-  }
-
-  private async resetTokenConfiguration(setup: StandardSetup): Promise<void> {
-    const { oracle, mint } = setup;
-    const oracleAddress = oracle.oracle ?? oracle.oraclePDA;
-    if (!oracleAddress) {
-      throw new Error("Oracle not initialized");
-    }
-
-    const tokenContext = gameTokenContextFromMint(mint, this.env.program);
-    const gameTokenAccount = await this.env.program.account.gameToken.fetch(tokenContext.gameToken);
-
-    const desiredMinAmount = DEFAULT_MIN_TOKEN_AMOUNT;
-    const desiredEnabled = true;
-    const updateTokenAccounts = {
-      gameToken: tokenContext.gameToken,
-      tokenMint: tokenContext.tokenMint,
-      oracle: oracleAddress,
-      oracleOperator: oracle.operator,
-    } as const;
-
-    if (
-      !gameTokenAccount.minAmount.eq(desiredMinAmount) ||
-      gameTokenAccount.enabled !== desiredEnabled
-    ) {
-      await this.env.program.methods
-        .updateToken({
-          minAmount: desiredMinAmount,
-          enabled: desiredEnabled,
-        })
-        .accountsStrict(updateTokenAccounts)
-        .signers([oracle.operatorKeypair])
-        .rpc();
-    }
-
-    if (!gameTokenAccount.feeAmount.isZero()) {
-      const operatorTokenAccount = await ensureOperatorAta(
-        this.env.provider.connection,
-        oracle,
-        mint.mint,
-      );
-
-      await this.env.program.methods
-        .withdrawTokenFee()
-        .accountsStrict({
-          gameTokenCtx: tokenContext,
-          oracle: oracleAddress,
-          oracleOperator: oracle.operator,
-          oracleOperatorTokenAccount: operatorTokenAccount,
-        })
-        .signers([oracle.operatorKeypair])
-        .rpc();
-    }
   }
 
   private async ensurePlayerBalances(setup: StandardSetup): Promise<void> {

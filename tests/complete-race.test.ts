@@ -7,6 +7,7 @@ import {
   calculateWinnerIndex,
   calculatePayoutBreakdown,
   getWinnerFromPlayers,
+  ensureOperatorAta,
 } from "./test-helpers.ts";
 import type { TestGame } from "./test-helpers.ts";
 
@@ -113,11 +114,18 @@ describe("Complete Game Race", () => {
     const preWinnerBalance = await env.provider.connection.getTokenAccountBalance(
       winner.playerTokenAccount.address,
     );
+    const feeRecipientTokenAccount = await ensureOperatorAta(
+      env.provider.connection,
+      oracle,
+      mint.mint,
+    );
+    const preFeeRecipientBalance =
+      await env.provider.connection.getTokenAccountBalance(feeRecipientTokenAccount);
 
     const totalPot = new anchor.BN(gameAccount.totalAmount.toString());
     const { fee: expectedFee, winnerAmount: expectedWinnerAmount } = calculatePayoutBreakdown(
       totalPot,
-      oracle.config.feePercentage,
+      gameAccount.feePercentage,
     );
 
     const badIndex = (winnerIndex + 1) % gameAccount.ticketsCount;
@@ -181,7 +189,11 @@ describe("Complete Game Race", () => {
     const gameInfo = await env.provider.connection.getAccountInfo(gameData.gamePDA);
     expect(gameInfo).to.be.null;
 
-    const gameTokenAccount = await env.program.account.gameToken.fetch(mint.gameTokenPDA);
-    expect(new anchor.BN(gameTokenAccount.feeAmount.toString()).eq(expectedFee)).to.be.true;
+    const postFeeRecipientBalance =
+      await env.provider.connection.getTokenAccountBalance(feeRecipientTokenAccount);
+    const feeDelta = new anchor.BN(postFeeRecipientBalance.value.amount).sub(
+      new anchor.BN(preFeeRecipientBalance.value.amount),
+    );
+    expect(feeDelta.eq(expectedFee)).to.be.true;
   }).timeout(180_000);
 });

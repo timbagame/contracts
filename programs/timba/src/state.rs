@@ -1,14 +1,15 @@
-use crate::{error::ErrorCode, GameConfig};
+use crate::{error::ErrorCode, GameConfig, OracleConfig};
 use anchor_lang::prelude::*;
-use anchor_spl::token::{close_account, transfer_checked, CloseAccount, TransferChecked};
 use solana_sha256_hasher::hashv;
 
 // ACCOUNT SIZE CONSTANTS
 
-// discriminator (8) + operator (32) + fee_percentage (1) +
+// discriminator (8) + operator (32) + fee_percentage (1) + fee_recipient (32) +
 // oracle_buffer_time (u64: 8) + max_tickets (u32: 4) +
 // max_timeout (u64: 8) + min_timeout (u64: 8)
-pub const ORACLE_SIZE: usize = 8 + 32 + 1 + 8 + 4 + 8 + 8;
+pub const ORACLE_SIZE: usize = 8 + 32 + 1 + 32 + 8 + 4 + 8 + 8;
+/// Exact serialized size of the v0.2 Oracle account.
+pub const LEGACY_ORACLE_SIZE: usize = 8 + 32 + 1 + 8 + 4 + 8 + 8;
 
 // ENTROPY CONSTANTS
 /// Size of entropy window for winner calculation (8 bytes for u64)
@@ -22,8 +23,6 @@ pub const MAX_ENTROPY_WINDOWS: usize = 32 - ENTROPY_WINDOW_SIZE;
 pub const ORACLE_SEED: &[u8] = b"oracle";
 /// Seed for Game PDA
 pub const GAME_SEED: &[u8] = b"game";
-/// Seed for `GameToken` PDA
-pub const GAME_TOKEN_SEED: &[u8] = b"game_token";
 /// Seed for Game Vault PDA
 pub const GAME_VAULT_SEED: &[u8] = b"game_vault";
 
@@ -35,7 +34,6 @@ pub const MIN_COMPETITIVE_PLAYERS: u32 = 2;
 pub const MIN_GIVEAWAY_PLAYERS: u32 = 1;
 /// Longest period the oracle may exclusively settle a ready game.
 pub const MAX_ORACLE_BUFFER_TIME: u64 = 60 * 60;
-pub const GAME_TOKEN_SIZE: usize = 8 + 32 + 1 + 8 + 8 + 1;
 /// Base size of Game excluding variable-length Vec data
 pub const GAME_BASE_SIZE: usize = 8
     + 32 // creator
@@ -49,6 +47,7 @@ pub const GAME_BASE_SIZE: usize = 8
     + 8  // timeout (u64)
     + 8  // last_slot
     + 1  // is_private
+    + 1  // fee_percentage
     + 8; // total_amount
 
 // GAME TYPES
@@ -68,10 +67,12 @@ pub enum GameType {
 #[account]
 #[derive(Default)]
 pub struct Oracle {
-    /// Operator that can update oracle settings and claim fees
+    /// Operator that can update oracle settings
     pub operator: Pubkey,
     /// Percentage of game amount taken as fee (0-10)
     pub fee_percentage: u8,
+    /// Wallet that receives protocol fees during settlement
+    pub fee_recipient: Pubkey,
     /// Buffer time in seconds after game timeout before cancellation is allowed
     pub oracle_buffer_time: u64,
     /// Maximum number of tickets allowed in a game
@@ -83,22 +84,31 @@ pub struct Oracle {
 }
 
 impl Oracle {
-    /// Updates oracle configuration with new values
-    pub fn update_config(
-        &mut self,
-        fee_percentage: u8,
-        oracle_buffer_time: u64,
-        max_tickets: u32,
-        max_timeout: u64,
-        min_timeout: u64,
+    /// Reads the operator from an exact v0.2 Oracle account layout.
+    pub fn legacy_operator(account_data: &[u8]) -> Result<Pubkey> {
+        require!(
+            account_data.len() == LEGACY_ORACLE_SIZE,
+            ErrorCode::InvalidLegacyOracle
+        );
+        require!(
+            account_data[..8] == *Self::DISCRIMINATOR,
+            ErrorCode::InvalidLegacyOracle
+        );
 
-        new_operator: Pubkey,
-    ) {
-        self.fee_percentage = fee_percentage;
-        self.oracle_buffer_time = oracle_buffer_time;
-        self.max_tickets = max_tickets;
-        self.max_timeout = max_timeout;
-        self.min_timeout = min_timeout;
+        let operator_bytes: [u8; 32] = account_data[8..40]
+            .try_into()
+            .map_err(|_| ErrorCode::InvalidLegacyOracle)?;
+        Ok(Pubkey::new_from_array(operator_bytes))
+    }
+
+    /// Updates oracle configuration with new values
+    pub fn update_config(&mut self, config: &OracleConfig, new_operator: Pubkey) {
+        self.fee_percentage = config.fee_percentage;
+        self.fee_recipient = config.fee_recipient;
+        self.oracle_buffer_time = config.oracle_buffer_time;
+        self.max_tickets = config.max_tickets;
+        self.max_timeout = config.max_timeout;
+        self.min_timeout = config.min_timeout;
 
         self.operator = new_operator;
     }
@@ -121,6 +131,12 @@ impl Oracle {
         fee_percentage <= 10
     }
 
+    /// Validates that protocol fees cannot be sent to the default address.
+    #[must_use]
+    pub fn is_valid_fee_recipient(fee_recipient: &Pubkey) -> bool {
+        *fee_recipient != Pubkey::default()
+    }
+
     /// Validates oracle buffer time is strictly positive
     #[must_use]
     pub fn is_valid_buffer_time(oracle_buffer_time: u64) -> bool {
@@ -140,172 +156,6 @@ impl Oracle {
     }
 }
 
-// GAME TOKEN ACCOUNT
-
-#[account]
-#[derive(Default)]
-pub struct GameToken {
-    /// Token mint for this game token configuration
-    pub token_mint: Pubkey,
-    /// Vault bump seed for PDA token transfers
-    pub vault_bump: u8,
-    /// Minimum amount required to participate in games
-    pub min_amount: u64,
-    /// Accumulated fee amount for this token
-    pub fee_amount: u64,
-    /// Whether this token is enabled for games
-    pub enabled: bool,
-}
-
-impl GameToken {
-    /// Updates token configuration with new values
-    pub fn update_config(&mut self, min_amount: u64, enabled: bool) {
-        self.min_amount = min_amount;
-        self.enabled = enabled;
-    }
-
-    /// Initializes token configuration for new token
-    pub fn initialize(
-        &mut self,
-        token_mint: Pubkey,
-        vault_bump: u8,
-        min_amount: u64,
-        enabled: bool,
-    ) {
-        self.token_mint = token_mint;
-        self.vault_bump = vault_bump;
-        self.min_amount = min_amount;
-        self.fee_amount = 0;
-        self.enabled = enabled;
-    }
-
-    /// Checks if token is enabled for games
-    #[must_use]
-    pub fn is_enabled(&self) -> bool {
-        self.enabled
-    }
-
-    /// Validates amount meets minimum requirement
-    #[must_use]
-    pub fn meets_min_amount(&self, amount: u64) -> bool {
-        amount >= self.min_amount
-    }
-
-    /// Accrues protocol fees, guarding against overflow.
-    pub fn accrue_fee(&mut self, amount: u64) -> Result<()> {
-        if amount == 0 {
-            return Ok(());
-        }
-
-        self.fee_amount = self
-            .fee_amount
-            .checked_add(amount)
-            .ok_or(ErrorCode::ArithmeticOverflow)?;
-        Ok(())
-    }
-
-    /// Returns all accumulated fees and resets the counter.
-    pub fn drain_fees(&mut self) -> u64 {
-        let fees = self.fee_amount;
-        self.fee_amount = 0;
-        fees
-    }
-
-    /// Transfers tokens using a player signer as authority.
-    #[allow(clippy::too_many_arguments)]
-    pub fn transfer_from_player<'info>(
-        &self,
-        from: AccountInfo<'info>,
-        to: AccountInfo<'info>,
-        authority: AccountInfo<'info>, // player or PDA
-        token_program: AccountInfo<'info>,
-        token_mint: AccountInfo<'info>,
-        amount: u64,
-        decimals: u8,
-    ) -> Result<()> {
-        if amount == 0 {
-            return Ok(());
-        }
-
-        transfer_checked(
-            CpiContext::new(
-                token_program.key(),
-                TransferChecked {
-                    from,
-                    mint: token_mint,
-                    to,
-                    authority,
-                },
-            ),
-            amount,
-            decimals,
-        )?;
-        Ok(())
-    }
-
-    /// Transfers tokens using the vault PDA as authority.
-    #[allow(clippy::too_many_arguments)]
-    pub fn transfer_from_vault<'info>(
-        &self,
-        from: AccountInfo<'info>,
-        to: AccountInfo<'info>,
-        authority: AccountInfo<'info>,
-        token_program: AccountInfo<'info>,
-        token_mint: AccountInfo<'info>,
-        amount: u64,
-        decimals: u8,
-    ) -> Result<()> {
-        if amount == 0 {
-            return Ok(());
-        }
-
-        let signer_seeds = [
-            GAME_VAULT_SEED,
-            self.token_mint.as_ref(),
-            &[self.vault_bump],
-        ];
-        transfer_checked(
-            CpiContext::new_with_signer(
-                token_program.key(),
-                TransferChecked {
-                    from,
-                    mint: token_mint,
-                    to,
-                    authority,
-                },
-                &[&signer_seeds],
-            ),
-            amount,
-            decimals,
-        )?;
-        Ok(())
-    }
-
-    /// Closes the PDA-owned vault ATA and returns rent to destination.
-    pub fn close_vault_account<'info>(
-        &self,
-        vault_account: AccountInfo<'info>,
-        destination: AccountInfo<'info>,
-        vault_authority: AccountInfo<'info>,
-        token_program: AccountInfo<'info>,
-    ) -> Result<()> {
-        let signer_seeds = &[
-            GAME_VAULT_SEED,
-            self.token_mint.as_ref(),
-            &[self.vault_bump],
-        ];
-        close_account(CpiContext::new_with_signer(
-            token_program.key(),
-            CloseAccount {
-                account: vault_account,
-                destination,
-                authority: vault_authority,
-            },
-            &[signer_seeds],
-        ))?;
-        Ok(())
-    }
-}
 // GAME ACCOUNT
 #[account]
 #[derive(Default)]
@@ -332,6 +182,8 @@ pub struct Game {
     pub last_slot: u64,
     /// Whether this is a private game requiring oracle approval
     pub is_private: bool,
+    /// Immutable protocol fee percentage for this game
+    pub fee_percentage: u8,
     /// Total accumulated prize
     pub total_amount: u64,
     /// Exact participant public keys in canonical current-vector order
@@ -352,6 +204,7 @@ impl Game {
         creator: Pubkey,
         token_mint: Pubkey,
         config: &GameConfig,
+        fee_percentage: u8,
         created_at: u64,
         slot: u64,
     ) {
@@ -365,6 +218,7 @@ impl Game {
         self.timeout = config.timeout;
         self.last_slot = slot;
         self.is_private = config.is_private;
+        self.fee_percentage = fee_percentage;
 
         if config.game_type == GameType::Giveaway {
             self.total_amount = config.amount;
@@ -432,11 +286,15 @@ impl Game {
         self.is_ready_for_completion(current_time) && still_waiting
     }
 
-    /// Determines if players can unjoin at the current moment.
+    /// Determines if participant removal is available at the current moment.
     #[must_use]
     pub fn can_unjoin(&self, oracle_buffer_time: u64, current_time: u64) -> bool {
-        self.is_buffer_expired(oracle_buffer_time, current_time)
-            || !self.waiting_for_oracle(oracle_buffer_time, current_time)
+        if !self.is_expired(current_time) {
+            return false;
+        }
+
+        !self.is_ready_for_completion(current_time)
+            || self.is_buffer_expired(oracle_buffer_time, current_time)
     }
 
     /// Marks the game as completed by setting `total_amount` to zero
@@ -486,10 +344,10 @@ impl Game {
 
     /// Calculates prize distribution with fee deduction
     #[must_use]
-    pub fn calculate_amounts(&self, fee_percentage: u64) -> (u64, u64) {
+    pub fn calculate_amounts(&self) -> (u64, u64) {
         // Use u128 for intermediate calculation to prevent overflow
         let fee_amount =
-            u64::try_from(u128::from(self.total_amount) * u128::from(fee_percentage) / 100)
+            u64::try_from(u128::from(self.total_amount) * u128::from(self.fee_percentage) / 100)
                 .unwrap_or(u64::MAX);
         let winner_amount = self.total_amount - fee_amount;
         (winner_amount, fee_amount)

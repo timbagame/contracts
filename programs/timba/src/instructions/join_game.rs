@@ -20,7 +20,7 @@ pub fn handler(ctx: Context<super::JoinGame>) -> Result<()> {
     let ticket_index = game.add_player_to_game(player_key)?;
     game.last_slot = current_slot;
 
-    ctx.accounts.game_token_ctx.transfer_from_player(
+    ctx.accounts.game_vault_ctx.transfer_from_player(
         &ctx.accounts.player_token_account,
         &ctx.accounts.player,
         game.ticket_amount,

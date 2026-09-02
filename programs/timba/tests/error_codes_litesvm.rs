@@ -3,7 +3,7 @@ mod common;
 use {
     solana_keypair::Keypair,
     solana_signer::Signer,
-    timba::{error::ErrorCode, state::GameType, GameConfig, TokenConfig},
+    timba::{error::ErrorCode, state::GameType, GameConfig},
 };
 
 #[test]
@@ -23,6 +23,7 @@ fn error_codes_are_sequential_within_each_category() {
             ErrorCode::GameAlreadyCompleted as u32,
             ErrorCode::OracleBufferNotExpired as u32,
             ErrorCode::ParticipantStorageExceeded as u32,
+            ErrorCode::GameCleanupNotAvailable as u32,
         ],
         vec![
             ErrorCode::AlreadyJoined as u32,
@@ -42,6 +43,7 @@ fn error_codes_are_sequential_within_each_category() {
             ErrorCode::InvalidAmount as u32,
             ErrorCode::InvalidSecretKey as u32,
             ErrorCode::InvalidOracleBufferTime as u32,
+            ErrorCode::InvalidLegacyOracle as u32,
         ],
     ];
 
@@ -49,14 +51,12 @@ fn error_codes_are_sequential_within_each_category() {
         assert!(codes.windows(2).all(|pair| pair[1] == pair[0] + 1));
     }
 
-    assert_eq!(ErrorCode::TokenNotEnabled as u32, 1400);
     assert_eq!(ErrorCode::InvalidTokenMint as u32, 1401);
-    assert_eq!(ErrorCode::TokenVaultNotEmpty as u32, 1403);
-    assert_eq!(ErrorCode::TokenFeesOutstanding as u32, 1404);
+    assert_eq!(ErrorCode::InvalidFeeRecipient as u32, 1404);
 }
 
 #[test]
-fn preserves_named_configuration_token_and_authorization_errors() {
+fn preserves_named_configuration_and_authorization_errors() {
     let mut fixture = common::TimbaFixture::new();
     let token = fixture.token_fixture();
     let (creator, creator_ata) = fixture.funded_player(token.mint.pubkey(), 10_000);
@@ -80,16 +80,12 @@ fn preserves_named_configuration_token_and_authorization_errors() {
         common::anchor_error(ErrorCode::InvalidTicketsCount)
     );
 
-    let operator = fixture.operator.insecure_clone();
-    assert!(fixture.update_token(
-        &token,
-        &operator,
-        TokenConfig {
-            min_amount: 1_000,
-            enabled: false
-        },
-    ));
-    let (_game, disabled) = fixture.initialize_game_instruction(
+    let outsider = Keypair::new();
+    fixture
+        .svm
+        .airdrop(&outsider.pubkey(), 1_000_000_000)
+        .unwrap();
+    let (_game, unauthorized) = fixture.initialize_game_instruction_with_operator(
         &token,
         creator.pubkey(),
         creator_ata,
@@ -102,23 +98,13 @@ fn preserves_named_configuration_token_and_authorization_errors() {
             is_private: false,
         },
         [55; 32],
+        outsider.pubkey(),
     );
     let payer = fixture.operator.insecure_clone();
     assert_eq!(
-        common::custom_error_code(fixture.send_result(&[disabled], &[&payer, &creator])),
-        common::anchor_error(ErrorCode::TokenNotEnabled)
-    );
-
-    let outsider = Keypair::new();
-    fixture
-        .svm
-        .airdrop(&outsider.pubkey(), 1_000_000_000)
-        .unwrap();
-    let outsider_ata = fixture.create_ata(outsider.pubkey(), token.mint.pubkey());
-    let withdraw = fixture.withdraw_fees_instruction(&token, outsider.pubkey(), outsider_ata);
-    let payer = fixture.operator.insecure_clone();
-    assert_eq!(
-        common::custom_error_code(fixture.send_result(&[withdraw], &[&payer, &outsider])),
+        common::custom_error_code(
+            fixture.send_result(&[unauthorized], &[&payer, &creator, &outsider])
+        ),
         common::anchor_error(ErrorCode::UnauthorizedOperator)
     );
 }

@@ -32,12 +32,5 @@ pub fn update_oracle_configuration(
     config: &OracleConfig,
     operator_key: Pubkey,
 ) {
-    oracle.update_config(
-        config.fee_percentage,
-        config.oracle_buffer_time,
-        config.max_tickets,
-        config.max_timeout,
-        config.min_timeout,
-        operator_key,
-    );
+    oracle.update_config(config, operator_key);
 }

@@ -7,9 +7,10 @@ use {
     timba::{state::GameType, GameConfig, OracleConfig},
 };
 
-fn config() -> OracleConfig {
+fn config(fee_recipient: anchor_lang::prelude::Pubkey) -> OracleConfig {
     OracleConfig {
         fee_percentage: 5,
+        fee_recipient,
         oracle_buffer_time: 5,
         max_tickets: 2_048,
         max_timeout: 86_400,
@@ -18,7 +19,7 @@ fn config() -> OracleConfig {
 }
 
 #[test]
-fn rotated_operator_controls_private_join_completion_and_withdrawal() {
+fn rotated_operator_controls_private_join_and_completion() {
     let mut fixture = common::TimbaFixture::new();
     let token = fixture.token_fixture();
     let old_operator = fixture.operator.insecure_clone();
@@ -27,7 +28,7 @@ fn rotated_operator_controls_private_join_completion_and_withdrawal() {
         .svm
         .airdrop(&new_operator.pubkey(), 1_000_000_000)
         .unwrap();
-    assert!(fixture.rotate_oracle(&old_operator, &new_operator, config()));
+    assert!(fixture.rotate_oracle(&old_operator, &new_operator, config(old_operator.pubkey())));
 
     let (creator, creator_ata) = fixture.funded_player(token.mint.pubkey(), 10_000);
     let (second, second_ata) = fixture.funded_player(token.mint.pubkey(), 10_000);
@@ -115,9 +116,8 @@ fn rotated_operator_controls_private_join_completion_and_withdrawal() {
     let payer = fixture.operator.insecure_clone();
     assert!(fixture.send(&[completion], &[&payer, &new_operator]));
 
-    let new_operator_ata = fixture.create_ata(new_operator.pubkey(), token.mint.pubkey());
-    let old_operator_ata = fixture.create_ata(old_operator.pubkey(), token.mint.pubkey());
-    assert!(!fixture.withdraw_fees(&token, &old_operator, old_operator_ata));
-    assert!(fixture.withdraw_fees(&token, &new_operator, new_operator_ata));
+    let old_operator_ata =
+        fixture.associated_token_address(old_operator.pubkey(), token.mint.pubkey());
+    assert_eq!(fixture.token_balance(old_operator_ata), 100);
 }
 use timba_test_harness as timba;

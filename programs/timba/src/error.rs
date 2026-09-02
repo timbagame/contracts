@@ -58,6 +58,10 @@ pub enum ErrorCode {
     #[msg("Participant store full")]
     ParticipantStorageExceeded = 1107,
 
+    /// Operator cleanup is not available until the game timeout and oracle buffer expire
+    #[msg("Game cleanup not available")]
+    GameCleanupNotAvailable = 1108,
+
     // PLAYER ACTION ERRORS (1200-1299)
     /// Player has already joined this game
     #[msg("Already joined")]
@@ -120,17 +124,15 @@ pub enum ErrorCode {
     #[msg("Invalid oracle buffer time")]
     InvalidOracleBufferTime = 1304,
 
+    /// The supplied account is not an exact v0.2 Oracle account
+    #[msg("Invalid legacy oracle account")]
+    InvalidLegacyOracle = 1305,
+
     // TOKEN ERRORS (1400-1499)
-    /// Token is not enabled for game operations
-    #[msg("Token disabled")]
-    TokenNotEnabled = 1400,
     /// Token mint account does not match expected value
     #[msg("Token mint mismatch")]
     InvalidTokenMint = 1401,
-    /// Vault still holds token funds
-    #[msg("Token vault not empty")]
-    TokenVaultNotEmpty = 1403,
-    /// Fees must be withdrawn before closing token
-    #[msg("Token fees outstanding")]
-    TokenFeesOutstanding = 1404,
+    /// Fee recipient does not match the configured wallet
+    #[msg("Fee recipient mismatch")]
+    InvalidFeeRecipient = 1404,
 }
