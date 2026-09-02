@@ -82,72 +82,6 @@ fn completion_transfers_the_exact_fee_directly() {
 }
 
 #[test]
-fn completion_rejects_an_unconfigured_fee_recipient() {
-    let mut fixture = common::TimbaFixture::new();
-    let token = fixture.token_fixture();
-    let (creator, creator_ata) = fixture.funded_player(token.mint.pubkey(), 10_000);
-    let (second, second_ata) = fixture.funded_player(token.mint.pubkey(), 10_000);
-    let secret = [38; 32];
-    let random_hash = hash(&secret).to_bytes();
-    let game = fixture.initialize_game(
-        &token,
-        &creator,
-        creator_ata,
-        GameConfig {
-            game_type: GameType::Coinflip,
-            amount: 1_000,
-            max_tickets: 2,
-            min_tickets: 2,
-            timeout: 30,
-            is_private: false,
-        },
-        random_hash,
-    );
-    assert!(fixture.join_game(&token, game, &creator, creator_ata));
-    assert!(fixture.join_game(&token, game, &second, second_ata));
-    let (winner_index, winner, winner_ata) = winner(
-        &fixture,
-        game,
-        secret,
-        &[
-            (creator.pubkey(), creator_ata),
-            (second.pubkey(), second_ata),
-        ],
-    );
-    let mut instruction = fixture.complete_instruction(
-        &token,
-        game,
-        random_hash,
-        secret,
-        winner_index,
-        winner,
-        winner_ata,
-        creator.pubkey(),
-        fixture.operator.pubkey(),
-    );
-    let configured_recipient = fixture.operator.pubkey();
-    let outsider = Keypair::new();
-    fixture
-        .svm
-        .airdrop(&outsider.pubkey(), 1_000_000_000)
-        .unwrap();
-    instruction
-        .accounts
-        .iter_mut()
-        .find(|meta| meta.pubkey == configured_recipient && !meta.is_signer)
-        .expect("completion must include the configured fee recipient")
-        .pubkey = outsider.pubkey();
-
-    let operator = fixture.operator.insecure_clone();
-    let result = fixture.send_result(&[instruction], &[&operator]);
-    assert_eq!(
-        common::custom_error_code(result),
-        common::anchor_error(timba::error::ErrorCode::InvalidFeeRecipient)
-    );
-    assert!(fixture.svm.get_account(&game).is_some());
-}
-
-#[test]
 fn near_u64_max_fee_is_transferred_exactly() {
     let mut fixture = common::TimbaFixture::new();
     let token = fixture.token_fixture();
@@ -158,7 +92,6 @@ fn near_u64_max_fee_is_transferred_exactly() {
         &operator,
         OracleConfig {
             fee_percentage: 10,
-            fee_recipient: operator.pubkey(),
             oracle_buffer_time: 5,
             max_tickets: 2_048,
             max_timeout: 86_400,
@@ -206,7 +139,7 @@ fn near_u64_max_fee_is_transferred_exactly() {
 }
 
 #[test]
-fn oracle_fee_updates_do_not_change_existing_game_economics() {
+fn oracle_fee_updates_change_existing_game_economics() {
     let mut fixture = common::TimbaFixture::new();
     let token = fixture.token_fixture();
     let recipient_ata =
@@ -229,16 +162,11 @@ fn oracle_fee_updates_do_not_change_existing_game_economics() {
         },
         random_hash,
     );
-    let game_account = fixture.svm.get_account(&game).unwrap();
-    let game_state = Game::try_deserialize(&mut game_account.data.as_slice()).unwrap();
-    assert_eq!(game_state.fee_percentage, 5);
-
     let operator = fixture.operator.insecure_clone();
     assert!(fixture.update_oracle(
         &operator,
         OracleConfig {
             fee_percentage: 10,
-            fee_recipient: operator.pubkey(),
             oracle_buffer_time: 5,
             max_tickets: 2_048,
             max_timeout: 86_400,
@@ -266,5 +194,5 @@ fn oracle_fee_updates_do_not_change_existing_game_economics() {
         winner_ata,
         creator.pubkey(),
     ));
-    assert_eq!(fixture.token_balance(recipient_ata), 100);
+    assert_eq!(fixture.token_balance(recipient_ata), 200);
 }

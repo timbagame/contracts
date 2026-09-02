@@ -43,7 +43,6 @@ fn error_codes_are_sequential_within_each_category() {
             ErrorCode::InvalidAmount as u32,
             ErrorCode::InvalidSecretKey as u32,
             ErrorCode::InvalidOracleBufferTime as u32,
-            ErrorCode::InvalidLegacyOracle as u32,
         ],
     ];
 
@@ -52,7 +51,6 @@ fn error_codes_are_sequential_within_each_category() {
     }
 
     assert_eq!(ErrorCode::InvalidTokenMint as u32, 1401);
-    assert_eq!(ErrorCode::InvalidFeeRecipient as u32, 1404);
 }
 
 #[test]

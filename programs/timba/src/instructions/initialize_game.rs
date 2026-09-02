@@ -13,7 +13,6 @@ pub fn handler(ctx: Context<super::InitializeGame>, config: GameConfig) -> Resul
         creator_key,
         token_mint_key,
         &config,
-        ctx.accounts.oracle.fee_percentage,
         current_time,
         current_slot,
     );

@@ -114,18 +114,19 @@ describe("Complete Game Race", () => {
     const preWinnerBalance = await env.provider.connection.getTokenAccountBalance(
       winner.playerTokenAccount.address,
     );
-    const feeRecipientTokenAccount = await ensureOperatorAta(
+    const operatorTokenAccount = await ensureOperatorAta(
       env.provider.connection,
       oracle,
       mint.mint,
     );
-    const preFeeRecipientBalance =
-      await env.provider.connection.getTokenAccountBalance(feeRecipientTokenAccount);
+    const preOperatorBalance =
+      await env.provider.connection.getTokenAccountBalance(operatorTokenAccount);
 
     const totalPot = new anchor.BN(gameAccount.totalAmount.toString());
+    const oracleAccount = await env.program.account.oracle.fetch(oracle.oraclePDA);
     const { fee: expectedFee, winnerAmount: expectedWinnerAmount } = calculatePayoutBreakdown(
       totalPot,
-      gameAccount.feePercentage,
+      oracleAccount.feePercentage,
     );
 
     const badIndex = (winnerIndex + 1) % gameAccount.ticketsCount;
@@ -189,10 +190,10 @@ describe("Complete Game Race", () => {
     const gameInfo = await env.provider.connection.getAccountInfo(gameData.gamePDA);
     expect(gameInfo).to.be.null;
 
-    const postFeeRecipientBalance =
-      await env.provider.connection.getTokenAccountBalance(feeRecipientTokenAccount);
-    const feeDelta = new anchor.BN(postFeeRecipientBalance.value.amount).sub(
-      new anchor.BN(preFeeRecipientBalance.value.amount),
+    const postOperatorBalance =
+      await env.provider.connection.getTokenAccountBalance(operatorTokenAccount);
+    const feeDelta = new anchor.BN(postOperatorBalance.value.amount).sub(
+      new anchor.BN(preOperatorBalance.value.amount),
     );
     expect(feeDelta.eq(expectedFee)).to.be.true;
   }).timeout(180_000);

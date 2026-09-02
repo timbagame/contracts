@@ -39,8 +39,6 @@ declare_id!("32Jr4JnXWvqq9GqPQynkooHsszaucUUvZfNLh2hdX2L5");
 pub struct OracleConfig {
     /// Fee percentage taken from game winnings (0-10)
     pub fee_percentage: u8,
-    /// Wallet that receives protocol fees during settlement
-    pub fee_recipient: Pubkey,
     /// Buffer time in seconds after game timeout before cancellation
     pub oracle_buffer_time: u64,
     /// Maximum number of tickets allowed in any game
@@ -87,11 +85,6 @@ pub mod timba {
     /// Closes a current Oracle after all games have been settled
     pub fn close_oracle(ctx: Context<CloseOracle>) -> Result<()> {
         instructions::close_oracle::handler(ctx)
-    }
-
-    /// Closes an exact v0.2 Oracle account as part of an atomic migration
-    pub fn close_legacy_oracle(ctx: Context<CloseLegacyOracle>) -> Result<()> {
-        instructions::close_legacy_oracle::handler(ctx)
     }
 
     /// Creates a new game with specified configuration

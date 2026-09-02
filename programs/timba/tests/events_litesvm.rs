@@ -44,7 +44,6 @@ fn emits_oracle_configuration_event() {
         &timba::instruction::UpdateOracle {
             config: OracleConfig {
                 fee_percentage: 7,
-                fee_recipient: new_operator.pubkey(),
                 oracle_buffer_time: 6,
                 max_tickets: 1_000,
                 max_timeout: 1_000,
@@ -67,7 +66,6 @@ fn emits_oracle_configuration_event() {
     assert_eq!(updated.old_operator, fixture.operator.pubkey());
     assert_eq!(updated.new_operator, new_operator.pubkey());
     assert_eq!(updated.fee_percentage, 7);
-    assert_eq!(updated.fee_recipient, new_operator.pubkey());
     assert_eq!(updated.oracle_buffer_time, 6);
 }
 
@@ -102,7 +100,6 @@ fn emits_initialize_join_unjoin_and_close_events() {
     assert_eq!(initialized.creator, creator.pubkey());
     assert_eq!(initialized.ticket_amount, 1_000);
     assert_eq!(initialized.max_tickets, 3);
-    assert_eq!(initialized.fee_percentage, 5);
 
     let join = fixture.join_instruction(&token, game, creator.pubkey(), creator_ata);
     let payer = fixture.operator.insecure_clone();

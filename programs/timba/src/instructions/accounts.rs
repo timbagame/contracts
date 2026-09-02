@@ -19,7 +19,6 @@ pub struct InitializeOracle<'info> {
         seeds = [ORACLE_SEED],
         bump,
         constraint = Oracle::is_valid_fee_percentage(config.fee_percentage) @ ErrorCode::InvalidAmount,
-        constraint = Oracle::is_valid_fee_recipient(&config.fee_recipient) @ ErrorCode::InvalidFeeRecipient,
         constraint = Oracle::is_valid_buffer_time(config.oracle_buffer_time) @ ErrorCode::InvalidOracleBufferTime,
         constraint = Oracle::is_valid_timeout(config.max_timeout, config.min_timeout) @ ErrorCode::InvalidTimeout,
         constraint = Oracle::is_valid_tickets_count(config.max_tickets) @ ErrorCode::InvalidTicketsCount,
@@ -55,7 +54,6 @@ pub struct UpdateOracle<'info> {
         bump,
         constraint = oracle.is_authorized_operator(&old_oracle_operator.key()) @ ErrorCode::UnauthorizedOperator,
         constraint = Oracle::is_valid_fee_percentage(config.fee_percentage) @ ErrorCode::InvalidAmount,
-        constraint = Oracle::is_valid_fee_recipient(&config.fee_recipient) @ ErrorCode::InvalidFeeRecipient,
         constraint = Oracle::is_valid_buffer_time(config.oracle_buffer_time) @ ErrorCode::InvalidOracleBufferTime,
         constraint = Oracle::is_valid_timeout(config.max_timeout, config.min_timeout) @ ErrorCode::InvalidTimeout,
         constraint = Oracle::is_valid_tickets_count(config.max_tickets) @ ErrorCode::InvalidTicketsCount,
@@ -76,36 +74,6 @@ pub struct CloseOracle<'info> {
         constraint = oracle.is_authorized_operator(&oracle_operator.key()) @ ErrorCode::UnauthorizedOperator,
     )]
     pub oracle: Account<'info, Oracle>,
-
-    #[account(mut)]
-    pub oracle_operator: Signer<'info>,
-
-    pub upgrade_authority: Signer<'info>,
-
-    #[account(
-        constraint = program.programdata_address()? == Some(program_data.key())
-            @ ErrorCode::UnauthorizedOperator,
-    )]
-    pub program: Program<'info, crate::program::Timba>,
-
-    #[account(
-        constraint = program_data.upgrade_authority_address == Some(upgrade_authority.key())
-            @ ErrorCode::UnauthorizedOperator,
-    )]
-    pub program_data: Account<'info, ProgramData>,
-}
-
-#[derive(Accounts)]
-pub struct CloseLegacyOracle<'info> {
-    /// CHECK: The handler validates the PDA, owner, exact legacy size,
-    /// discriminator, and encoded operator before closing this account.
-    #[account(
-        mut,
-        seeds = [ORACLE_SEED],
-        bump,
-        owner = crate::ID,
-    )]
-    pub oracle: UncheckedAccount<'info>,
 
     #[account(mut)]
     pub oracle_operator: Signer<'info>,
@@ -302,16 +270,13 @@ pub struct CompleteGame<'info> {
         associated_token::token_program = game_vault_ctx.token_program,
     )]
     pub winner_token_account: Account<'info, TokenAccount>,
-    /// CHECK: Address must match the recipient stored in the Oracle account.
-    #[account(constraint = fee_recipient.key() == oracle.fee_recipient @ ErrorCode::InvalidFeeRecipient)]
-    pub fee_recipient: UncheckedAccount<'info>,
     #[account(
         mut,
         associated_token::mint = game_vault_ctx.token_mint,
-        associated_token::authority = fee_recipient,
+        associated_token::authority = oracle_operator,
         associated_token::token_program = game_vault_ctx.token_program,
     )]
-    pub fee_recipient_token_account: Account<'info, TokenAccount>,
+    pub oracle_operator_token_account: Account<'info, TokenAccount>,
 }
 
 #[derive(Accounts)]

@@ -9,7 +9,7 @@ use {
             program_pack::Pack,
             system_program,
         },
-        AccountDeserialize, InstructionData, ToAccountMetas,
+        InstructionData, ToAccountMetas,
     },
     litesvm::{types::TransactionResult, LiteSVM},
     solana_instruction::error::InstructionError,
@@ -29,7 +29,7 @@ use {
         state::{Account as TokenAccount, Mint},
         ID as TOKEN_PROGRAM_ID,
     },
-    timba::{error::ErrorCode, state::Oracle, GameConfig, OracleConfig},
+    timba::{error::ErrorCode, GameConfig, OracleConfig},
 };
 
 pub struct TokenFixture {
@@ -136,7 +136,6 @@ impl TimbaFixture {
             &timba::instruction::InitializeOracle {
                 config: OracleConfig {
                     fee_percentage: 5,
-                    fee_recipient: self.operator.pubkey(),
                     oracle_buffer_time: 5,
                     max_tickets: 2_048,
                     max_timeout: 86_400,
@@ -473,11 +472,8 @@ impl TimbaFixture {
         creator: Pubkey,
         oracle_operator: Pubkey,
     ) -> Instruction {
-        let oracle_account = self.svm.get_account(&self.oracle).unwrap();
-        let oracle_state = Oracle::try_deserialize(&mut oracle_account.data.as_slice()).unwrap();
-        let fee_recipient = oracle_state.fee_recipient;
-        let fee_recipient_token_account = get_associated_token_address_with_program_id(
-            &fee_recipient,
+        let oracle_operator_token_account = get_associated_token_address_with_program_id(
+            &oracle_operator,
             &token.mint.pubkey(),
             &TOKEN_PROGRAM_ID,
         );
@@ -503,8 +499,7 @@ impl TimbaFixture {
                 winner,
                 creator,
                 winner_token_account: winner_ata,
-                fee_recipient,
-                fee_recipient_token_account,
+                oracle_operator_token_account,
             }
             .to_account_metas(None),
         )

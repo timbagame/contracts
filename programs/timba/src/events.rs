@@ -13,8 +13,6 @@ pub struct OracleInitialized {
     pub operator: Pubkey,
     /// Fee percentage taken from game winnings (0-10)
     pub fee_percentage: u8,
-    /// Wallet that receives protocol fees
-    pub fee_recipient: Pubkey,
     /// Buffer time in seconds after game timeout
     pub oracle_buffer_time: u64,
     /// Maximum tickets allowed in any game
@@ -34,8 +32,6 @@ pub struct OracleUpdated {
     pub new_operator: Pubkey,
     /// Updated fee percentage
     pub fee_percentage: u8,
-    /// Updated fee recipient
-    pub fee_recipient: Pubkey,
     /// Updated buffer time
     pub oracle_buffer_time: u64,
     /// Updated maximum tickets
@@ -53,16 +49,8 @@ pub struct OracleClosed {
     pub operator: Pubkey,
 }
 
-/// Emitted when a v0.2 Oracle account is closed during migration
-#[event]
-pub struct LegacyOracleClosed {
-    /// Legacy operator that authorized the closure and receives the reclaimed rent
-    pub operator: Pubkey,
-}
-
 struct OracleEventFields {
     fee_percentage: u8,
-    fee_recipient: Pubkey,
     oracle_buffer_time: u64,
     max_tickets: u32,
     max_timeout: u64,
@@ -74,7 +62,6 @@ impl OracleEventFields {
     fn new(config: &OracleConfig) -> Self {
         Self {
             fee_percentage: config.fee_percentage,
-            fee_recipient: config.fee_recipient,
             oracle_buffer_time: config.oracle_buffer_time,
             max_tickets: config.max_tickets,
             max_timeout: config.max_timeout,
@@ -90,7 +77,6 @@ impl OracleInitialized {
         Self {
             operator,
             fee_percentage: fields.fee_percentage,
-            fee_recipient: fields.fee_recipient,
             oracle_buffer_time: fields.oracle_buffer_time,
             max_tickets: fields.max_tickets,
             max_timeout: fields.max_timeout,
@@ -107,7 +93,6 @@ impl OracleUpdated {
             old_operator,
             new_operator,
             fee_percentage: fields.fee_percentage,
-            fee_recipient: fields.fee_recipient,
             oracle_buffer_time: fields.oracle_buffer_time,
             max_tickets: fields.max_tickets,
             max_timeout: fields.max_timeout,
@@ -249,8 +234,6 @@ pub struct GameInitialized {
     pub token_mint: Pubkey,
     /// Whether game is private
     pub is_private: bool,
-    /// Immutable protocol fee percentage
-    pub fee_percentage: u8,
     /// Game creation timestamp
     pub created_at: u64,
     /// Game timeout duration
@@ -270,7 +253,6 @@ impl GameInitialized {
             min_tickets: game.min_tickets,
             token_mint: game.token_mint,
             is_private: game.is_private,
-            fee_percentage: game.fee_percentage,
             created_at: game.created_at,
             timeout: game.timeout,
         }

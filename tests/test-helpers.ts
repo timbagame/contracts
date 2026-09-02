@@ -228,7 +228,6 @@ export async function ensureOperatorAta(
 
 export interface OracleConfig {
   feePercentage: number;
-  feeRecipient: PublicKey;
   oracleBufferTime: number;
   maxTickets: number;
   maxTimeout: number;
@@ -582,7 +581,6 @@ export class OracleManager {
   async createOracle(config?: Partial<OracleConfig>): Promise<TestOracle> {
     const defaultConfig: OracleConfig = {
       feePercentage: 1,
-      feeRecipient: DEFAULT_OPERATOR_KEYPAIR.publicKey,
       oracleBufferTime: 2,
       maxTickets: 50000,
       maxTimeout: 86400,
@@ -608,7 +606,6 @@ export class OracleManager {
           operatorKeypair,
           config: {
             feePercentage: existingOracle.feePercentage,
-            feeRecipient: existingOracle.feeRecipient,
             oracleBufferTime: existingOracle.oracleBufferTime.toNumber(),
             maxTickets: existingOracle.maxTickets,
             maxTimeout: existingOracle.maxTimeout.toNumber(),
@@ -633,7 +630,6 @@ export class OracleManager {
 
       const configForProgram = {
         feePercentage: defaultConfig.feePercentage,
-        feeRecipient: defaultConfig.feeRecipient,
         oracleBufferTime: new anchor.BN(defaultConfig.oracleBufferTime),
         maxTickets: defaultConfig.maxTickets,
         maxTimeout: new anchor.BN(defaultConfig.maxTimeout),
@@ -683,7 +679,6 @@ export class OracleManager {
       operatorKeypair,
       config: {
         feePercentage: oracleAccount.feePercentage,
-        feeRecipient: oracleAccount.feeRecipient,
         oracleBufferTime: oracleAccount.oracleBufferTime.toNumber(),
         maxTickets: oracleAccount.maxTickets,
         maxTimeout: oracleAccount.maxTimeout.toNumber(),
@@ -788,7 +783,7 @@ export class MintManager {
       this.provider.connection,
       mintAuthority,
       mint,
-      oracleAccount.feeRecipient,
+      oracleAccount.operator,
       false,
       undefined,
       undefined,
@@ -1056,8 +1051,7 @@ type CompleteGameAccounts = {
   winner: PublicKey;
   creator: PublicKey;
   winnerTokenAccount: PublicKey;
-  feeRecipient: PublicKey;
-  feeRecipientTokenAccount: PublicKey;
+  oracleOperatorTokenAccount: PublicKey;
 };
 
 export class GameManager {
@@ -1255,11 +1249,9 @@ export class GameManager {
       throw new Error("Missing winner token account for completeGame");
     }
 
-    const oracleAccount = await this.program.account.oracle.fetch(derived.oracle);
-    const feeRecipient = oracleAccount.feeRecipient;
-    const feeRecipientTokenAccount = getAssociatedTokenAddressSync(
+    const oracleOperatorTokenAccount = getAssociatedTokenAddressSync(
       derived.tokenMint,
-      feeRecipient,
+      oracleOperator,
       false,
       derived.tokenProgram,
       ASSOCIATED_TOKEN_PROGRAM_ID,
@@ -1273,8 +1265,7 @@ export class GameManager {
       winner,
       creator,
       winnerTokenAccount: derived.winnerTokenAccount,
-      feeRecipient,
-      feeRecipientTokenAccount,
+      oracleOperatorTokenAccount,
     };
 
     return { ...baseAccounts, ...overrides };

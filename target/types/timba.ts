@@ -218,63 +218,6 @@ export type Timba = {
       "args": []
     },
     {
-      "name": "closeLegacyOracle",
-      "docs": [
-        "Closes an exact v0.2 Oracle account as part of an atomic migration"
-      ],
-      "discriminator": [
-        241,
-        221,
-        221,
-        107,
-        39,
-        248,
-        228,
-        205
-      ],
-      "accounts": [
-        {
-          "name": "oracle",
-          "docs": [
-            "discriminator, and encoded operator before closing this account."
-          ],
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  111,
-                  114,
-                  97,
-                  99,
-                  108,
-                  101
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "oracleOperator",
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "upgradeAuthority",
-          "signer": true
-        },
-        {
-          "name": "program",
-          "address": "32Jr4JnXWvqq9GqPQynkooHsszaucUUvZfNLh2hdX2L5"
-        },
-        {
-          "name": "programData"
-        }
-      ],
-      "args": []
-    },
-    {
       "name": "closeOracle",
       "docs": [
         "Closes a current Oracle after all games have been settled"
@@ -553,16 +496,13 @@ export type Timba = {
           }
         },
         {
-          "name": "feeRecipient"
-        },
-        {
-          "name": "feeRecipientTokenAccount",
+          "name": "oracleOperatorTokenAccount",
           "writable": true,
           "pda": {
             "seeds": [
               {
                 "kind": "account",
-                "path": "feeRecipient"
+                "path": "oracleOperator"
               },
               {
                 "kind": "account",
@@ -1701,19 +1641,6 @@ export type Timba = {
       ]
     },
     {
-      "name": "legacyOracleClosed",
-      "discriminator": [
-        4,
-        86,
-        240,
-        124,
-        61,
-        147,
-        140,
-        251
-      ]
-    },
-    {
       "name": "operatorGameClosed",
       "discriminator": [
         236,
@@ -1929,19 +1856,9 @@ export type Timba = {
       "msg": "Invalid oracle buffer time"
     },
     {
-      "code": 7305,
-      "name": "invalidLegacyOracle",
-      "msg": "Invalid legacy oracle account"
-    },
-    {
       "code": 7401,
       "name": "invalidTokenMint",
       "msg": "Token mint mismatch"
-    },
-    {
-      "code": 7404,
-      "name": "invalidFeeRecipient",
-      "msg": "Fee recipient mismatch"
     }
   ],
   "types": [
@@ -2030,13 +1947,6 @@ export type Timba = {
               "Whether this is a private game requiring oracle approval"
             ],
             "type": "bool"
-          },
-          {
-            "name": "feePercentage",
-            "docs": [
-              "Immutable protocol fee percentage for this game"
-            ],
-            "type": "u8"
           },
           {
             "name": "totalAmount",
@@ -2268,13 +2178,6 @@ export type Timba = {
             "type": "bool"
           },
           {
-            "name": "feePercentage",
-            "docs": [
-              "Immutable protocol fee percentage"
-            ],
-            "type": "u8"
-          },
-          {
             "name": "createdAt",
             "docs": [
               "Game creation timestamp"
@@ -2304,24 +2207,6 @@ export type Timba = {
           },
           {
             "name": "giveaway"
-          }
-        ]
-      }
-    },
-    {
-      "name": "legacyOracleClosed",
-      "docs": [
-        "Emitted when a v0.2 Oracle account is closed during migration"
-      ],
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "operator",
-            "docs": [
-              "Legacy operator that authorized the closure and receives the reclaimed rent"
-            ],
-            "type": "pubkey"
           }
         ]
       }
@@ -2399,13 +2284,6 @@ export type Timba = {
             "type": "u8"
           },
           {
-            "name": "feeRecipient",
-            "docs": [
-              "Wallet that receives protocol fees during settlement"
-            ],
-            "type": "pubkey"
-          },
-          {
             "name": "oracleBufferTime",
             "docs": [
               "Buffer time in seconds after game timeout before cancellation is allowed"
@@ -2470,13 +2348,6 @@ export type Timba = {
             "type": "u8"
           },
           {
-            "name": "feeRecipient",
-            "docs": [
-              "Wallet that receives protocol fees during settlement"
-            ],
-            "type": "pubkey"
-          },
-          {
             "name": "oracleBufferTime",
             "docs": [
               "Buffer time in seconds after game timeout before cancellation"
@@ -2528,13 +2399,6 @@ export type Timba = {
               "Fee percentage taken from game winnings (0-10)"
             ],
             "type": "u8"
-          },
-          {
-            "name": "feeRecipient",
-            "docs": [
-              "Wallet that receives protocol fees"
-            ],
-            "type": "pubkey"
           },
           {
             "name": "oracleBufferTime",
@@ -2595,13 +2459,6 @@ export type Timba = {
               "Updated fee percentage"
             ],
             "type": "u8"
-          },
-          {
-            "name": "feeRecipient",
-            "docs": [
-              "Updated fee recipient"
-            ],
-            "type": "pubkey"
           },
           {
             "name": "oracleBufferTime",

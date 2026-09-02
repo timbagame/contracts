@@ -4,12 +4,10 @@ use solana_sha256_hasher::hashv;
 
 // ACCOUNT SIZE CONSTANTS
 
-// discriminator (8) + operator (32) + fee_percentage (1) + fee_recipient (32) +
+// discriminator (8) + operator (32) + fee_percentage (1) +
 // oracle_buffer_time (u64: 8) + max_tickets (u32: 4) +
 // max_timeout (u64: 8) + min_timeout (u64: 8)
-pub const ORACLE_SIZE: usize = 8 + 32 + 1 + 32 + 8 + 4 + 8 + 8;
-/// Exact serialized size of the v0.2 Oracle account.
-pub const LEGACY_ORACLE_SIZE: usize = 8 + 32 + 1 + 8 + 4 + 8 + 8;
+pub const ORACLE_SIZE: usize = 8 + 32 + 1 + 8 + 4 + 8 + 8;
 
 // ENTROPY CONSTANTS
 /// Size of entropy window for winner calculation (8 bytes for u64)
@@ -47,7 +45,6 @@ pub const GAME_BASE_SIZE: usize = 8
     + 8  // timeout (u64)
     + 8  // last_slot
     + 1  // is_private
-    + 1  // fee_percentage
     + 8; // total_amount
 
 // GAME TYPES
@@ -71,8 +68,6 @@ pub struct Oracle {
     pub operator: Pubkey,
     /// Percentage of game amount taken as fee (0-10)
     pub fee_percentage: u8,
-    /// Wallet that receives protocol fees during settlement
-    pub fee_recipient: Pubkey,
     /// Buffer time in seconds after game timeout before cancellation is allowed
     pub oracle_buffer_time: u64,
     /// Maximum number of tickets allowed in a game
@@ -84,27 +79,9 @@ pub struct Oracle {
 }
 
 impl Oracle {
-    /// Reads the operator from an exact v0.2 Oracle account layout.
-    pub fn legacy_operator(account_data: &[u8]) -> Result<Pubkey> {
-        require!(
-            account_data.len() == LEGACY_ORACLE_SIZE,
-            ErrorCode::InvalidLegacyOracle
-        );
-        require!(
-            account_data[..8] == *Self::DISCRIMINATOR,
-            ErrorCode::InvalidLegacyOracle
-        );
-
-        let operator_bytes: [u8; 32] = account_data[8..40]
-            .try_into()
-            .map_err(|_| ErrorCode::InvalidLegacyOracle)?;
-        Ok(Pubkey::new_from_array(operator_bytes))
-    }
-
     /// Updates oracle configuration with new values
     pub fn update_config(&mut self, config: &OracleConfig, new_operator: Pubkey) {
         self.fee_percentage = config.fee_percentage;
-        self.fee_recipient = config.fee_recipient;
         self.oracle_buffer_time = config.oracle_buffer_time;
         self.max_tickets = config.max_tickets;
         self.max_timeout = config.max_timeout;
@@ -129,12 +106,6 @@ impl Oracle {
     #[must_use]
     pub fn is_valid_fee_percentage(fee_percentage: u8) -> bool {
         fee_percentage <= 10
-    }
-
-    /// Validates that protocol fees cannot be sent to the default address.
-    #[must_use]
-    pub fn is_valid_fee_recipient(fee_recipient: &Pubkey) -> bool {
-        *fee_recipient != Pubkey::default()
     }
 
     /// Validates oracle buffer time is strictly positive
@@ -182,8 +153,6 @@ pub struct Game {
     pub last_slot: u64,
     /// Whether this is a private game requiring oracle approval
     pub is_private: bool,
-    /// Immutable protocol fee percentage for this game
-    pub fee_percentage: u8,
     /// Total accumulated prize
     pub total_amount: u64,
     /// Exact participant public keys in canonical current-vector order
@@ -204,7 +173,6 @@ impl Game {
         creator: Pubkey,
         token_mint: Pubkey,
         config: &GameConfig,
-        fee_percentage: u8,
         created_at: u64,
         slot: u64,
     ) {
@@ -218,8 +186,6 @@ impl Game {
         self.timeout = config.timeout;
         self.last_slot = slot;
         self.is_private = config.is_private;
-        self.fee_percentage = fee_percentage;
-
         if config.game_type == GameType::Giveaway {
             self.total_amount = config.amount;
             self.ticket_amount = 0;
@@ -344,10 +310,10 @@ impl Game {
 
     /// Calculates prize distribution with fee deduction
     #[must_use]
-    pub fn calculate_amounts(&self) -> (u64, u64) {
+    pub fn calculate_amounts(&self, fee_percentage: u8) -> (u64, u64) {
         // Use u128 for intermediate calculation to prevent overflow
         let fee_amount =
-            u64::try_from(u128::from(self.total_amount) * u128::from(self.fee_percentage) / 100)
+            u64::try_from(u128::from(self.total_amount) * u128::from(fee_percentage) / 100)
                 .unwrap_or(u64::MAX);
         let winner_amount = self.total_amount - fee_amount;
         (winner_amount, fee_amount)
