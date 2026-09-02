@@ -39,6 +39,8 @@ declare_id!("32Jr4JnXWvqq9GqPQynkooHsszaucUUvZfNLh2hdX2L5");
 pub struct OracleConfig {
     /// Fee percentage taken from game winnings (0-10)
     pub fee_percentage: u8,
+    /// Wallet that receives protocol fees during settlement
+    pub fee_recipient: Pubkey,
     /// Buffer time in seconds after game timeout before cancellation
     pub oracle_buffer_time: u64,
     /// Maximum number of tickets allowed in any game
@@ -47,15 +49,6 @@ pub struct OracleConfig {
     pub max_timeout: u64,
     /// Minimum timeout duration in seconds for games
     pub min_timeout: u64,
-}
-
-/// Configuration parameters for token initialization and updates
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct TokenConfig {
-    /// Minimum amount required to participate in games with this token
-    pub min_amount: u64,
-    /// Whether this token is enabled for creating/joining games
-    pub enabled: bool,
 }
 
 /// Configuration parameters for game creation
@@ -91,19 +84,14 @@ pub mod timba {
         instructions::update_oracle::handler(ctx, config)
     }
 
-    /// Initializes a new token for use in games with minimum amount and enabled status
-    pub fn initialize_token(ctx: Context<InitializeToken>, config: TokenConfig) -> Result<()> {
-        instructions::initialize_token::handler(ctx, config)
+    /// Closes a current Oracle after all games have been settled
+    pub fn close_oracle(ctx: Context<CloseOracle>) -> Result<()> {
+        instructions::close_oracle::handler(ctx)
     }
 
-    /// Updates token configuration including minimum amounts and enabled status
-    pub fn update_token(ctx: Context<UpdateToken>, config: TokenConfig) -> Result<()> {
-        instructions::update_token::handler(ctx, config)
-    }
-
-    /// Closes token configuration and vault after settling funds
-    pub fn close_token(ctx: Context<CloseToken>) -> Result<()> {
-        instructions::close_token::handler(ctx)
+    /// Closes an exact v0.2 Oracle account as part of an atomic migration
+    pub fn close_legacy_oracle(ctx: Context<CloseLegacyOracle>) -> Result<()> {
+        instructions::close_legacy_oracle::handler(ctx)
     }
 
     /// Creates a new game with specified configuration
@@ -130,6 +118,11 @@ pub mod timba {
         instructions::close_game::handler(ctx)
     }
 
+    /// Closes an expired game with no participants (Oracle operator only)
+    pub fn operator_close_game(ctx: Context<OperatorCloseGame>) -> Result<()> {
+        instructions::operator_close_game::handler(ctx)
+    }
+
     /// Completes a game by revealing the secret key and distributing winnings
     pub fn complete_game(
         ctx: Context<CompleteGame>,
@@ -138,10 +131,5 @@ pub mod timba {
         winner_index: u32,
     ) -> Result<()> {
         instructions::complete_game::handler(ctx, _random_hash, secret_key, winner_index)
-    }
-
-    /// Allows oracle operator to withdraw accumulated fees for a token
-    pub fn withdraw_token_fee(ctx: Context<WithdrawTokenFee>) -> Result<()> {
-        instructions::withdraw_token_fee::handler(ctx)
     }
 }

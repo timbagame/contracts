@@ -1,232 +1,241 @@
-# Security Model & User Guide
+# Timba Contracts Security Model
 
-This document explains the security architecture and trust model of the TimbaGame smart contracts to help users understand how the system protects their funds and ensures fair gameplay.
+This document describes the v0.3.0 trust model, authority boundaries, fund flows, and recovery rules. It is not an audit report or a guarantee that the program has no defects.
 
-## Core Security Architecture
+Program ID: `32Jr4JnXWvqq9GqPQynkooHsszaucUUvZfNLh2hdX2L5`
 
-### 1. Commit-Reveal Randomness Scheme
+## Security objectives
 
-**How it works:**
+The program is designed to:
 
-- The oracle generates the secret and provides the commitment hash to the creator for `initialize_game`; the current oracle operator must co-sign game initialization, so the program only accepts commitments approved by that operator
-- The client builds a recent-blockhash transaction with the creator as fee payer, the oracle validates and partially signs it, and the creator signs and submits the same transaction; neither private key leaves its device
-- Players join the game knowing only the hash, not the secret value
-- After the game fills or times out, the oracle reveals the secret key
-- The winner is calculated using both the secret key AND the blockchain slot number when the last player joined
-- Self-made commitments cannot initialize games because they lack the current oracle operator's approval signature
+- Keep game custody and settlement rules on-chain.
+- Bind each game to a secret commitment approved by the current oracle operator.
+- Verify the revealed secret and recompute the winner during settlement.
+- Prevent the operator from redirecting winner payouts, player refunds, or giveaway refunds.
+- Limit the operator's exclusive settlement period.
+- Keep protocol fees bounded and visible on-chain.
+- Let users inspect game state and emitted events.
 
-**Security guarantees:**
+The design is not fully trustless. It depends on the program upgrade authority, the oracle operator, the off-chain creation policy, the supported token program, and the Solana network.
 
-- ✅ **Game creators cannot predict winners under the intended flow** - They receive only the hash from an honest oracle, which retains the secret
-- ✅ **Players cannot influence outcomes** - They join before knowing the secret
-- ✅ **Cryptographically verifiable** - Anyone can verify the secret matches the original hash
-- ✅ **Unbiased selection** - Uses mathematical algorithms to eliminate modulo bias
+## Authorities
 
-**Example verification:**
+| Action               | Required signer or authority                        | On-chain restriction                                                         |
+| -------------------- | --------------------------------------------------- | ---------------------------------------------------------------------------- |
+| Initialize Oracle    | Intended operator and program upgrade authority     | Upgrade authority is read from the program's `ProgramData` account           |
+| Update Oracle        | Current operator and new operator                   | Both sign; configuration must remain within its hard limits                  |
+| Initialize game      | Creator and current operator                        | Amount must be positive and game limits must match the Oracle configuration  |
+| Join public game     | Player                                              | Player must be unique, game must be open, and the mint must match            |
+| Join private game    | Player and current operator                         | The operator approves each private join                                      |
+| Unjoin               | Participant or game creator                         | Uses the same timeout/recovery rule and refunds only to the participant      |
+| Complete game        | Current operator                                    | Reveal, winner, recipient accounts, amounts, and timing are checked on-chain |
+| Creator close        | Game creator                                        | Empty games close immediately; populated giveaways follow the recovery rule  |
+| Operator close       | Current operator                                    | Game must be empty and past the recovery boundary                            |
+| Close current Oracle | Current operator and program upgrade authority      | Closes the canonical v0.3 Oracle PDA                                         |
+| Close legacy Oracle  | Encoded v0.2 operator and program upgrade authority | Requires the exact v0.2 layout, discriminator, owner, and PDA                |
 
-```javascript
-// Anyone can verify this on-chain
-const calculatedHash = sha256(secretKey);
-assert(calculatedHash === originalCommittedHash);
+The upgrade authority is the highest-trust role. It can deploy new program code. Users must treat its key custody and governance as part of the security model.
+
+The oracle operator can rotate the operator, change the live Oracle configuration within on-chain limits, authorize games, approve private joins, settle valid games, and clean up eligible empty games. An operator update does not require the upgrade authority, but the new operator must sign.
+
+## Commit and reveal
+
+### Commitment
+
+The oracle service generates a 32-byte `secret_key` and calculates:
+
+```text
+random_hash = SHA256(secret_key)
 ```
 
-### 2. Oracle Trust Model
+The game PDA uses `random_hash` as a seed. The creator and current operator must both sign `initialize_game`. The creator remains the transaction fee payer. A second game cannot use the same commitment while the first game account exists because it would resolve to the same PDA.
 
-**What the Oracle does:**
+The intended signing flow is:
 
-- Generates cryptographically random secrets for games
-- Validates and partially signs initialization transactions tied to unused oracle commitments
-- Completes games by revealing secrets after conditions are met
-- Collects platform fees as configured
+1. The oracle creates and stores the secret.
+2. The creator builds the initialization transaction with a recent blockhash.
+3. The oracle validates the commitment and accounts, then partially signs the transaction.
+4. The creator signs and submits the same transaction.
 
-**Trust assumptions:**
+Neither signer must disclose its private key to the other party.
 
-- ⚠️ **Oracle must be honest** - The platform operator controls the oracle
-- ⚠️ **Oracle must be available** - Games depend on oracle completion
-- ✅ **Oracle cannot arbitrarily redirect game payouts or refunds** - Token destinations and calculated amounts are constrained on-chain, although the live fee can be changed up to its 10% cap
-- ⚠️ **The oracle remains trusted for liveness and commitment issuance** - It can refuse to settle a game, while its required initialization signature proves that the current operator approved the commitment
-- ✅ **A submitted settlement cannot choose an arbitrary winner** - The program verifies the reveal and recomputes the winner from the committed secret, final participant vector, and last participant-action slot
+### Winner calculation
 
-**What if the oracle fails?**
+Each join and unjoin updates `last_slot`. During completion, the program:
 
-- Once a game is ready for completion, unjoin is blocked until the oracle buffer ends
-- After that buffer, players can recover coinflip stakes if the game was not completed
-- The live oracle buffer applies to open games, but it is constrained on-chain to 1–3,600 seconds, preventing an operator from configuring an indefinite wait
+1. Verifies that `SHA256(secret_key)` equals the commitment used in the game PDA.
+2. Selects index zero directly when the game has one participant.
+3. Otherwise, calculates `SHA256(secret_key || last_slot_le_u64)` and uses rejection sampling over eight-byte windows to select an index without modulo bias.
+4. Checks that the submitted `winner_index` equals the calculated index.
+5. Checks that the winner address is the participant stored at that index.
 
-### 3. Unjoin Rules
+If no acceptable entropy window exists, completion fails instead of using a biased fallback.
 
-**When can you unjoin?**
+### Randomness limitations
 
-- **Before the game is ready** (not full, and not min-tickets + timeout): unjoin is allowed
-- **While waiting for the oracle** (ready for completion and still inside the buffer): unjoin is blocked
-- **After buffer expiry** without completion: unjoin is allowed again
-- Completed games close on settlement, so there is no post-completion unjoin
+The on-chain program proves consistency with the commitment and deterministic selection formula. It does not prove that the operator generated the secret uniformly or only generated one candidate commitment.
 
-Ready for completion means: max tickets filled, **or** min tickets reached **and** game timeout elapsed. The recovery boundary is `created_at + timeout + oracle_buffer_time`. The buffer is read from the current global oracle configuration rather than snapshotted per game, so an authorized update affects open games, but its hard on-chain range is 1–3,600 seconds.
+The operator knows the secret, and joins affect `last_slot` and participant ordering. Joins can therefore influence the final calculation input. Participant removal is blocked while a game can still become ready or be completed. The operator can also withhold settlement. These facts make the operator and client workflow part of the fairness assumptions.
 
-**How to recover after a stalled ready game:**
+Applications should record commitment issuance, reject reused commitments, use a cryptographically secure random generator, and monitor withheld settlements.
 
-1. Wait until `created_at + timeout + oracle_buffer_time`
-2. Call `unjoin_game` to reclaim a coinflip stake (`ticket_amount`; giveaways refund 0)
-3. Funds return directly to your token account
+## Game readiness and recovery
 
-**Important notes:**
+A game is ready for completion when either condition is true:
 
-- ❌ **Cannot unjoin after game completion** - Once a winner is paid, the game is final
-- ❌ **Cannot unjoin while waiting for the oracle** - Ready games stay locked until buffer end
-- ✅ **Early unjoin when not ready** - Underfilled games can leave without waiting for timeout + buffer
-- ✅ **Creator may unjoin a participant** - Same timing rules as the player (`authority` = player or creator)
-- ✅ **Direct refunds** - Tokens return immediately; no claim queue
+- `tickets_count == max_tickets`; or
+- `tickets_count >= min_tickets` and `created_at + timeout` has been reached.
 
-### 4. On-Chain Security Features
+The recovery boundary is:
 
-**Checks-Effects-Interactions (CEI) Pattern:**
+```text
+created_at + timeout + current_oracle_buffer_time
+```
 
-- All state changes happen before external token transfers
-- Prevents reentrancy attacks and state manipulation
-- Industry-standard protection against common exploits
+The Oracle buffer extends the game's configured timeout for recovery purposes. It is not a timer that starts when the game fills or otherwise becomes ready. The value is read from the live Oracle account and is not stored in each game. An operator update therefore changes the recovery boundary for open games, but the program restricts the buffer to 1 through 3,600 seconds.
 
-**Account closure:**
+Before timeout, participants cannot unjoin and the creator cannot remove them. Joining is therefore a commitment for the configured game duration. At timeout, a game below `min_tickets` is not completable, so participant removal becomes available immediately.
 
-- Completed games automatically close and return rent to creators
-- Prevents blockchain bloat and reduces ongoing costs
-- Makes post-completion attacks impossible (no account to attack)
+If the game is ready at timeout, participant removal and creator close remain blocked until the recovery boundary. At that boundary, completion is no longer accepted and recovery becomes available. Players and the creator use the same timing rule for participant removal; coinflip refunds always go to the removed player's canonical token account.
 
-**Participation Tracking:**
+If a game fills early, it can be completed immediately, but participants cannot use the recovery path until the configured timeout and Oracle buffer have both elapsed. This rule keeps one recovery deadline and avoids storing or updating a separate fill timestamp.
 
-- Exact participant public keys stored in the canonical current-vector order; unjoin uses `swap_remove`, so a removal can move the final participant into the removed position
-- Direct public-key comparisons prevent truncated-identity collisions
-- Single participation per public key is enforced on-chain
+An empty game can be closed by its creator immediately. A giveaway with participants cannot be closed before timeout. If it is underfilled at timeout, the creator can close it and recover the prize; if it is ready, the creator must wait until the recovery boundary.
 
-## Game Types and Risk Profiles
+## Fund flows
 
-### Coinflip Games (Competitive)
+### Coinflip
 
-- **Risk**: Players compete for the combined pot
-- **Fairness**: Winner selected randomly from all participants
-- **Payout**: Winner receives (total pot - platform fees)
+- Each participant transfers one `ticket_amount` to the shared mint vault.
+- A participant can hold only one active entry in a game.
+- A permitted unjoin returns exactly one `ticket_amount`.
+- Completion transfers the pot minus the fee to the winner and transfers the fee to the configured recipient.
+- Creator close requires zero participants.
 
-### Giveaway Games (Creator-Funded)
+### Giveaway
 
-- **Risk**: Players risk nothing (free to join)
-- **Fairness**: Winner selected randomly from all participants
-- **Payout**: Winner receives creator's contributed amount (minus fees)
-- **Close**: Creator may close and reclaim the prize when not waiting for the oracle, including underfilled games that still have participants
+- The creator transfers the complete prize to the vault during initialization.
+- Players join without transferring tokens.
+- Unjoin removes a participant but transfers no tokens.
+- Completion transfers the prize minus the fee to the winner and the fee to the configured recipient.
+- The creator can close an eligible giveaway even when participants remain. The full unspent prize returns to the creator's canonical token account.
 
-## Fee Structure
+### Fees
 
-**Platform Fees:**
+- The Oracle fee percentage must be between 0% and 10%.
+- Each game stores its fee percentage at creation. Later Oracle updates do not change that percentage.
+- The fee recipient is read from the live Oracle during settlement. An operator can therefore change the recipient used by existing games.
+- The fee recipient must not be the default public key and must have a canonical token account for the game mint.
+- Fee arithmetic uses a wider intermediate value before conversion to `u64`.
 
-- Configurable percentage with a hard on-chain cap of 0–10%
-- Deducted from game pot before winner payout
-- Used to maintain platform operations
+All token transfers use `transfer_checked` through the legacy SPL Token program. A failed transfer fails the complete Solana instruction and rolls back its state changes.
 
-**Transparency:**
+## Token custody
 
-- Fee percentages are stored on-chain and publicly visible
-- Settlement uses the current oracle fee (not snapshotted per game); updates apply to open games, still capped at 10%
-- Oracle buffer updates likewise apply to open games, with a hard maximum of one hour
-- All fee calculations are performed on-chain and verifiable
+Each supported mint has one vault authority PDA and one canonical associated token account. All games for that mint share the token account.
 
-## Best Practices for Users
+The program checks:
 
-### Before Joining a Game:
+- The legacy SPL Token program owns the mint and token accounts.
+- The vault token account is canonical for the mint-derived vault authority.
+- Player, creator, winner, and fee-recipient token accounts are canonical for their owners and mint.
+- Each game uses the mint stored in its account.
 
-1. **Verify game parameters** - Check timeout, fees, and game type
-2. **Understand the risk** - Only play with amounts you can afford to lose
-3. **Check oracle status** - Ensure the platform is operational
+The program does not store an on-chain token allowlist. The off-chain oracle service decides which mints are enabled and which minimum amounts it will approve. If the operator key is compromised, an attacker can approve a positive-amount game for any legacy SPL mint whose canonical vault exists.
 
-### During Gameplay:
+The shared-vault design reduces account creation but increases the effect of an accounting defect: a vault balance can contain funds for several games. The per-game accounting and atomic token transfers are therefore critical controls.
 
-1. **Monitor timeouts** - Be aware of when games will complete
-2. **Know when unjoin works** - Allowed before the game is ready; blocked while waiting for oracle; allowed again after buffer if settle fails
-3. **Verify fairness** - Anyone can verify the randomness was fair after completion
+## Account closure
 
-### After Game Completion:
+- Successful completion closes the `Game` account and returns its rent to the creator.
+- Creator close returns `Game` rent to the creator.
+- `operator_close_game` requires no participants and waits until the recovery boundary. It returns any giveaway prize to the creator and returns only the `Game` rent to the operator.
+- `close_oracle` returns current Oracle rent to the current operator.
+- `close_legacy_oracle` returns legacy Oracle rent to the operator encoded in that account.
 
-1. **Verify the outcome** - Check that the secret key matches the original hash
-2. **Confirm fair winner selection** - The winner index should be mathematically correct
-3. **Report issues** - Contact support if you detect any anomalies
+Oracle closure does not enumerate, settle, or close games. Normal game instructions require the canonical Oracle account. Closing it while games remain can make those games impossible to operate. Settle or close every game before closing the Oracle.
 
-## Security Audits and Monitoring
+## Failure and compromise scenarios
 
-**Code Quality:**
+### Oracle downtime or censorship
 
-- Follows Solana/Anchor best practices
-- Implements proven security patterns
-- Comprehensive test suite covering edge cases
+The operator can delay or refuse settlement. Coinflip participants can recover their stake when unjoin becomes available. Giveaway participants contributed no tokens, and the creator can recover the prize when close becomes available.
 
-**Continuous Monitoring:**
+### Oracle key compromise
 
-- Track unusual transaction patterns
-- Monitor oracle performance and availability
-- Alert systems for failed completions or errors
+An attacker controlling the operator key can:
 
-**Transparency:**
+- Rotate the operator to another signer that it controls.
+- Change the fee recipient and other live Oracle settings within hard limits.
+- Approve games outside the off-chain token policy.
+- Approve private joins.
+- Settle games for which it knows valid secrets.
+- Close eligible empty games and collect their rent.
 
-- All code is open source and auditable
-- On-chain state is publicly verifiable
-- Mainnet releases should be built reproducibly from a published commit and remotely verified against the deployed executable
-- The matching Anchor IDL is committed publicly and synchronized into clients; on-chain IDL publication is intentionally skipped to avoid its account rent
-- Event logs provide complete game history
+The attacker cannot use the existing code to select a winner that does not match the reveal and game state, redirect a participant refund, redirect a giveaway cleanup refund, or increase an existing game's snapshotted fee percentage.
 
-The deployment procedure and verification commands are documented in [MAINNET_DEPLOYMENT.md](./MAINNET_DEPLOYMENT.md).
+If the legitimate operator still has control, rotate immediately with `update_oracle`. Also pause off-chain approvals, inspect recent configuration and game events, and prepare an upgrade-authority response if rotation is not possible.
 
-## What Could Go Wrong?
+### Upgrade-authority compromise
 
-### Oracle-Related Risks:
+The upgrade authority can replace the program with different code. Together with the operator, it can also close the Oracle. Protect the authority with hardware-backed signing, multisignature governance, separation of duties, and reviewed deployment procedures.
 
-- **Oracle downtime** → After a ready game’s buffer ends, players can unjoin (earlier unjoin still works if the game never became ready)
-- **Oracle censorship** → The operator can withhold settlement, but cannot keep the exclusive settlement window above the one-hour on-chain cap; coinflip participants can subsequently unjoin
-- **Invalid winner submission** → Cryptographic reveal verification and slot-based entropy prevent the operator from naming a winner that does not match the on-chain calculation
-- **Oracle key compromise** → The attacker can rotate the operator, change live configuration within its caps, complete games with known valid reveals, administer supported tokens, and withdraw accrued protocol fees. Game payout and refund constraints still apply; rotate the key immediately through `update_oracle` if control remains available
-- **Initialization takeover** → Initial oracle creation requires the intended operator plus the program upgrade authority verified through the upgradeable-loader `ProgramData` account
+### Oracle closure with live games
 
-### Smart Contract Risks:
+Closing the Oracle can block completion, unjoin, and close instructions because they require the canonical Oracle PDA. Operational controls must prove that no game remains before Oracle closure.
 
-- **Code bugs** → Comprehensive testing and audits minimize this risk
-- **Upgrade risks** → Program upgrades require proper governance
-- **Solana network issues** → Would affect all Solana applications equally
-- **Unsupported token programs** → Only legacy SPL Token mints are accepted; Token-2022 mints cannot be initialized
-- **Shared vault** → All games for a mint share one vault; solvency depends on correct per-game and fee accounting
+### Unsupported tokens
 
-### User Risks:
+Token-2022 mints and extensions are not supported. Clients must not present them as valid Timba game tokens.
 
-- **Private key compromise** → Use secure wallets and good practices
-- **Phishing attacks** → Always verify you're using the official interface
-- **Loss of stake** → Only risk the amount of your stake, nothing more
+### Network or client failure
 
-## Getting Help
+RPC errors, expired blockhashes, dropped transactions, or stale client data can make an action appear unsuccessful. Confirm the finalized transaction and current on-chain account state before retrying.
 
-**If you encounter issues:**
+## User checklist
 
-1. Check the game state on-chain using a Solana explorer
-2. Verify your transaction succeeded and wasn't just pending
-3. Wait for the appropriate timeout periods before assuming something is wrong
-4. Contact platform support with transaction signatures for investigation
+Before joining:
 
-**Red flags to watch for:**
+1. Confirm the program ID and game address.
+2. Check the game type, mint, ticket amount, participant limits, timeout, and fee percentage.
+3. Confirm that the expected oracle operator approved the game.
+4. For private games, understand that the operator must approve each join.
+5. Risk only funds that you can afford to lose.
 
-- Games that never complete (coinflip stakes should become refundable after the recovery boundary)
-- Unexpected fee deductions above 10% (hard cap; fee is the live oracle value at complete)
-- Winners that don't match cryptographic verification
-- Any requests for additional payments or "gas fees"
+While a game is open:
 
-## Technical Resources
+1. Monitor the participant list and `last_slot`.
+2. Distinguish the game timeout from the later recovery boundary.
+3. Confirm a transaction on-chain before sending a replacement.
 
-**Verify randomness yourself:**
+After completion:
+
+1. Confirm that the revealed secret hashes to the original commitment as raw 32-byte data.
+2. Recompute the winner from the secret, little-endian `last_slot`, and final participant order.
+3. Verify the winner and fee transfers.
+
+For example, to hash a 32-byte secret represented by 64 hexadecimal characters:
 
 ```bash
-# Example verification command (pseudo-code)
-solana account <game-address> | grep secret_key
-echo "<secret-key>" | sha256sum
-# Compare with original committed hash
+printf '%s' '<SECRET_HEX>' | xxd -r -p | sha256sum
 ```
 
-**Monitor your games:**
+Do not hash the textual hexadecimal representation itself.
 
-- Use Solana explorers to track your transactions
-- Subscribe to game events to get completion notifications
-- Check oracle health endpoints before playing
+## Release integrity
 
-Remember: The goal of this security model is to make the system as trustless as possible while maintaining usability. While some trust in the oracle is required, cryptographic verification ensures that trust is minimized and verifiable.
+A verified build proves that a deployed executable matches a source commit. It does not prove that the source is secure.
+
+For each mainnet release:
+
+- Build from a clean public commit.
+- Use the repository's pinned toolchain.
+- Compare the local verifiable executable hash with the deployed program.
+- Publish and synchronize the matching IDL and TypeScript client.
+- Complete independent source verification.
+
+See [DEPLOYMENT.md](./DEPLOYMENT.md) for the release and v0.3.0 migration procedure.
+
+## Reporting a security issue
+
+Use the repository owner's private security-reporting channel. Include the affected instruction, program ID, transaction signatures, expected behavior, observed behavior, and a minimal reproduction. Do not publish private keys, seed phrases, unrevealed game secrets, or exploit details in a public issue.

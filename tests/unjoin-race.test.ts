@@ -3,10 +3,11 @@ import * as anchor from "@anchor-lang/core";
 import {
   TestUtils,
   TestEnvironment,
+  awaitOracleCompletionReady,
   coinflipGameConfig,
   deriveGameAccounts,
   expectAnchorError,
-  toGameTokenContext,
+  toGameVaultContext,
 } from "./test-helpers.ts";
 
 const MEMO_PROGRAM_ID = new anchor.web3.PublicKey("MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr");
@@ -35,7 +36,7 @@ async function buildSignedUnjoinTx(
       authority: player.publicKey,
       oracle: derived.oracle,
       playerTokenAccount: derived.playerTokenAccount,
-      gameTokenCtx: toGameTokenContext(derived),
+      gameVaultCtx: toGameVaultContext(derived),
     })
     .instruction();
 
@@ -82,7 +83,7 @@ describe("Unjoin Race Conditions", () => {
     const ticketAmount = new anchor.BN(1_200_000);
     const gameConfig = coinflipGameConfig({
       amount: ticketAmount,
-      timeout: 240,
+      timeout: 2,
       minTickets: 3,
       maxTickets: 3,
     });
@@ -91,6 +92,13 @@ describe("Unjoin Race Conditions", () => {
 
     await testUtils.game.joinGame(gameData.gamePDA, creator.player);
     await testUtils.game.joinGame(gameData.gamePDA, participant.player);
+
+    const oracle = env.oracle;
+    if (!oracle) {
+      throw new Error("Oracle unavailable for unjoin race test");
+    }
+    const initialGameAccount = await testUtils.game.fetchGame(gameData.gamePDA);
+    await awaitOracleCompletionReady(initialGameAccount, oracle.config);
 
     const balanceBefore = await env.provider.connection.getTokenAccountBalance(
       participant.playerTokenAccount.address,

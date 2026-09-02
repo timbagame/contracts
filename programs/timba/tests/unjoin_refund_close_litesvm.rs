@@ -68,7 +68,7 @@ fn unjoin_refunds_exact_ticket_amount_after_buffer() {
 }
 
 #[test]
-fn creator_can_remove_participant_before_minimum_is_reached() {
+fn creator_cannot_remove_participant_before_underfilled_game_times_out() {
     let mut fixture = common::TimbaFixture::new();
     let token = fixture.token_fixture();
     let (creator, creator_ata) = fixture.funded_player(token.mint.pubkey(), 10_000);
@@ -88,7 +88,7 @@ fn creator_can_remove_participant_before_minimum_is_reached() {
         [18; 32],
     );
     assert!(fixture.join_game(&token, game, &participant, participant_ata));
-    let instruction = fixture.unjoin_instruction(
+    let early_instruction = fixture.unjoin_instruction(
         &token,
         game,
         participant.pubkey(),
@@ -96,7 +96,22 @@ fn creator_can_remove_participant_before_minimum_is_reached() {
         participant_ata,
     );
     let operator = fixture.operator.insecure_clone();
-    assert!(fixture.send(&[instruction], &[&operator, &creator]));
+    assert!(!fixture.send(&[early_instruction], &[&operator, &creator]));
+    assert_eq!(state(&fixture, game).tickets_count, 1);
+
+    let game_state = state(&fixture, game);
+    let mut clock = fixture.svm.get_sysvar::<Clock>();
+    clock.unix_timestamp = (game_state.created_at + game_state.timeout) as i64;
+    fixture.svm.set_sysvar(&clock);
+
+    let expired_instruction = fixture.unjoin_instruction(
+        &token,
+        game,
+        participant.pubkey(),
+        creator.pubkey(),
+        participant_ata,
+    );
+    assert!(fixture.send(&[expired_instruction], &[&operator, &creator]));
     assert_eq!(state(&fixture, game).tickets_count, 0);
     assert_eq!(fixture.token_balance(participant_ata), 10_000);
 }

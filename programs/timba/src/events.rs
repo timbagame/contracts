@@ -1,5 +1,5 @@
 use crate::state::{Game, GameType};
-use crate::{OracleConfig, TokenConfig};
+use crate::OracleConfig;
 use anchor_lang::prelude::*;
 
 // EVENT DEFINITIONS
@@ -13,6 +13,8 @@ pub struct OracleInitialized {
     pub operator: Pubkey,
     /// Fee percentage taken from game winnings (0-10)
     pub fee_percentage: u8,
+    /// Wallet that receives protocol fees
+    pub fee_recipient: Pubkey,
     /// Buffer time in seconds after game timeout
     pub oracle_buffer_time: u64,
     /// Maximum tickets allowed in any game
@@ -32,6 +34,8 @@ pub struct OracleUpdated {
     pub new_operator: Pubkey,
     /// Updated fee percentage
     pub fee_percentage: u8,
+    /// Updated fee recipient
+    pub fee_recipient: Pubkey,
     /// Updated buffer time
     pub oracle_buffer_time: u64,
     /// Updated maximum tickets
@@ -42,8 +46,23 @@ pub struct OracleUpdated {
     pub min_timeout: u64,
 }
 
+/// Emitted when a current Oracle account is closed for decommissioning or migration
+#[event]
+pub struct OracleClosed {
+    /// Operator that authorized the closure and receives the reclaimed rent
+    pub operator: Pubkey,
+}
+
+/// Emitted when a v0.2 Oracle account is closed during migration
+#[event]
+pub struct LegacyOracleClosed {
+    /// Legacy operator that authorized the closure and receives the reclaimed rent
+    pub operator: Pubkey,
+}
+
 struct OracleEventFields {
     fee_percentage: u8,
+    fee_recipient: Pubkey,
     oracle_buffer_time: u64,
     max_tickets: u32,
     max_timeout: u64,
@@ -55,6 +74,7 @@ impl OracleEventFields {
     fn new(config: &OracleConfig) -> Self {
         Self {
             fee_percentage: config.fee_percentage,
+            fee_recipient: config.fee_recipient,
             oracle_buffer_time: config.oracle_buffer_time,
             max_tickets: config.max_tickets,
             max_timeout: config.max_timeout,
@@ -70,6 +90,7 @@ impl OracleInitialized {
         Self {
             operator,
             fee_percentage: fields.fee_percentage,
+            fee_recipient: fields.fee_recipient,
             oracle_buffer_time: fields.oracle_buffer_time,
             max_tickets: fields.max_tickets,
             max_timeout: fields.max_timeout,
@@ -86,116 +107,11 @@ impl OracleUpdated {
             old_operator,
             new_operator,
             fee_percentage: fields.fee_percentage,
+            fee_recipient: fields.fee_recipient,
             oracle_buffer_time: fields.oracle_buffer_time,
             max_tickets: fields.max_tickets,
             max_timeout: fields.max_timeout,
             min_timeout: fields.min_timeout,
-        }
-    }
-}
-
-// TOKEN EVENTS
-
-/// Emitted when a new token is initialized for games
-#[event]
-pub struct TokenInitialized {
-    /// Token mint address
-    pub token_mint: Pubkey,
-    /// Minimum amount required for games
-    pub min_amount: u64,
-    /// Whether token is enabled
-    pub enabled: bool,
-}
-
-/// Emitted when token configuration is updated
-#[event]
-pub struct TokenUpdated {
-    /// Token mint address
-    pub token_mint: Pubkey,
-    /// Updated minimum amount
-    pub min_amount: u64,
-    /// Updated enabled status
-    pub enabled: bool,
-}
-
-struct TokenEventFields {
-    token_mint: Pubkey,
-    min_amount: u64,
-    enabled: bool,
-}
-
-impl TokenEventFields {
-    #[must_use]
-    fn new(token_mint: Pubkey, config: &TokenConfig) -> Self {
-        Self {
-            token_mint,
-            min_amount: config.min_amount,
-            enabled: config.enabled,
-        }
-    }
-}
-
-impl TokenInitialized {
-    #[must_use]
-    pub fn from_config(token_mint: Pubkey, config: &TokenConfig) -> Self {
-        let fields = TokenEventFields::new(token_mint, config);
-        Self {
-            token_mint: fields.token_mint,
-            min_amount: fields.min_amount,
-            enabled: fields.enabled,
-        }
-    }
-}
-
-impl TokenUpdated {
-    #[must_use]
-    pub fn from_config(token_mint: Pubkey, config: &TokenConfig) -> Self {
-        let fields = TokenEventFields::new(token_mint, config);
-        Self {
-            token_mint: fields.token_mint,
-            min_amount: fields.min_amount,
-            enabled: fields.enabled,
-        }
-    }
-}
-
-/// Emitted when accumulated fees are withdrawn by operator
-#[event]
-pub struct TokenFeeWithdrawn {
-    /// Operator that withdrew the fees
-    pub operator: Pubkey,
-    /// Token mint of the withdrawn fees
-    pub token_mint: Pubkey,
-    /// Amount of fees withdrawn
-    pub amount: u64,
-}
-
-impl TokenFeeWithdrawn {
-    #[must_use]
-    pub fn new(operator: Pubkey, token_mint: Pubkey, amount: u64) -> Self {
-        Self {
-            operator,
-            token_mint,
-            amount,
-        }
-    }
-}
-
-/// Emitted when a token configuration and vault are closed
-#[event]
-pub struct TokenClosed {
-    /// Operator closing the token
-    pub operator: Pubkey,
-    /// Token mint that was removed
-    pub token_mint: Pubkey,
-}
-
-impl TokenClosed {
-    #[must_use]
-    pub fn new(operator: Pubkey, token_mint: Pubkey) -> Self {
-        Self {
-            operator,
-            token_mint,
         }
     }
 }
@@ -333,6 +249,8 @@ pub struct GameInitialized {
     pub token_mint: Pubkey,
     /// Whether game is private
     pub is_private: bool,
+    /// Immutable protocol fee percentage
+    pub fee_percentage: u8,
     /// Game creation timestamp
     pub created_at: u64,
     /// Game timeout duration
@@ -352,6 +270,7 @@ impl GameInitialized {
             min_tickets: game.min_tickets,
             token_mint: game.token_mint,
             is_private: game.is_private,
+            fee_percentage: game.fee_percentage,
             created_at: game.created_at,
             timeout: game.timeout,
         }
@@ -409,6 +328,43 @@ impl GameClosed {
     pub fn new(game: &Account<'_, Game>, timestamp: u64) -> Self {
         Self {
             game_key: game.key(),
+            timestamp,
+        }
+    }
+}
+
+/// Emitted when an expired, empty game is closed by the Oracle operator
+#[event]
+pub struct OperatorGameClosed {
+    /// Game that was closed
+    pub game_key: Pubkey,
+    /// Original game creator
+    pub creator: Pubkey,
+    /// Oracle operator that performed the cleanup
+    pub operator: Pubkey,
+    /// Giveaway funds returned to the creator
+    pub refunded_amount: u64,
+    /// Game account rent returned to the operator
+    pub recovered_lamports: u64,
+    /// Closure timestamp
+    pub timestamp: u64,
+}
+
+impl OperatorGameClosed {
+    #[must_use]
+    pub fn new(
+        game: &Account<'_, Game>,
+        operator: Pubkey,
+        refunded_amount: u64,
+        recovered_lamports: u64,
+        timestamp: u64,
+    ) -> Self {
+        Self {
+            game_key: game.key(),
+            creator: game.creator,
+            operator,
+            refunded_amount,
+            recovered_lamports,
             timestamp,
         }
     }

@@ -9,6 +9,7 @@ pub fn handler(
     secret_key: [u8; 32],
     winner_index: u32,
 ) -> Result<()> {
+    let vault_bump = ctx.bumps.game_vault_ctx.game_vault;
     let game = &mut ctx.accounts.game;
     let oracle = &ctx.accounts.oracle;
     let current_time = get_current_time()?;
@@ -43,22 +44,24 @@ pub fn handler(
         ErrorCode::WinnerPubkeyMismatch
     );
 
-    let fee_percentage = u64::from(oracle.fee_percentage);
-    let (winner_amount, fee_amount) = game.calculate_amounts(fee_percentage);
-
-    // Update fee amount and transfer directly to winner
-    ctx.accounts
-        .game_token_ctx
-        .game_token
-        .accrue_fee(fee_amount)?;
+    let (winner_amount, fee_amount) = game.calculate_amounts();
 
     // Mark game as completed
     game.complete();
 
     // Transfer winner amount directly to winner's token account
-    ctx.accounts
-        .game_token_ctx
-        .transfer_from_vault(&ctx.accounts.winner_token_account, winner_amount)?;
+    ctx.accounts.game_vault_ctx.transfer_from_vault(
+        &ctx.accounts.winner_token_account,
+        winner_amount,
+        vault_bump,
+    )?;
+
+    // Transfer the immutable game fee directly to the configured recipient.
+    ctx.accounts.game_vault_ctx.transfer_from_vault(
+        &ctx.accounts.fee_recipient_token_account,
+        fee_amount,
+        vault_bump,
+    )?;
 
     emit!(GameCompleted::new(
         game,
