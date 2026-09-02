@@ -17,7 +17,6 @@ use {
 fn config() -> OracleConfig {
     OracleConfig {
         fee_percentage: 5,
-        fee_recipient: Pubkey::new_from_array([7; 32]),
         oracle_buffer_time: 10,
         max_tickets: 1_024,
         max_timeout: 86_400,
@@ -138,7 +137,6 @@ fn initializes_oracle_and_persists_configuration() {
     let oracle = fixture.oracle_state();
     assert_eq!(oracle.operator, fixture.operator.pubkey());
     assert_eq!(oracle.fee_percentage, expected.fee_percentage);
-    assert_eq!(oracle.fee_recipient, expected.fee_recipient);
     assert_eq!(oracle.oracle_buffer_time, expected.oracle_buffer_time);
     assert_eq!(oracle.max_tickets, expected.max_tickets);
     assert_eq!(oracle.max_timeout, expected.max_timeout);
@@ -150,10 +148,6 @@ fn rejects_invalid_oracle_configurations() {
     let invalid = [
         OracleConfig {
             fee_percentage: 11,
-            ..config()
-        },
-        OracleConfig {
-            fee_recipient: Pubkey::default(),
             ..config()
         },
         OracleConfig {
@@ -191,10 +185,6 @@ fn rejects_invalid_updates_without_mutating_oracle() {
             ..config()
         },
         OracleConfig {
-            fee_recipient: Pubkey::default(),
-            ..config()
-        },
-        OracleConfig {
             oracle_buffer_time: 0,
             ..config()
         },
@@ -217,7 +207,6 @@ fn rejects_invalid_updates_without_mutating_oracle() {
     }
     let state = fixture.oracle_state();
     assert_eq!(state.fee_percentage, config().fee_percentage);
-    assert_eq!(state.fee_recipient, config().fee_recipient);
     assert_eq!(state.oracle_buffer_time, config().oracle_buffer_time);
     assert_eq!(state.max_tickets, config().max_tickets);
     assert_eq!(state.max_timeout, config().max_timeout);

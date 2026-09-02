@@ -212,63 +212,6 @@
       "args": []
     },
     {
-      "name": "close_legacy_oracle",
-      "docs": [
-        "Closes an exact v0.2 Oracle account as part of an atomic migration"
-      ],
-      "discriminator": [
-        241,
-        221,
-        221,
-        107,
-        39,
-        248,
-        228,
-        205
-      ],
-      "accounts": [
-        {
-          "name": "oracle",
-          "docs": [
-            "discriminator, and encoded operator before closing this account."
-          ],
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  111,
-                  114,
-                  97,
-                  99,
-                  108,
-                  101
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "oracle_operator",
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "upgrade_authority",
-          "signer": true
-        },
-        {
-          "name": "program",
-          "address": "32Jr4JnXWvqq9GqPQynkooHsszaucUUvZfNLh2hdX2L5"
-        },
-        {
-          "name": "program_data"
-        }
-      ],
-      "args": []
-    },
-    {
       "name": "close_oracle",
       "docs": [
         "Closes a current Oracle after all games have been settled"
@@ -547,16 +490,13 @@
           }
         },
         {
-          "name": "fee_recipient"
-        },
-        {
-          "name": "fee_recipient_token_account",
+          "name": "oracle_operator_token_account",
           "writable": true,
           "pda": {
             "seeds": [
               {
                 "kind": "account",
-                "path": "fee_recipient"
+                "path": "oracle_operator"
               },
               {
                 "kind": "account",
@@ -1695,19 +1635,6 @@
       ]
     },
     {
-      "name": "LegacyOracleClosed",
-      "discriminator": [
-        4,
-        86,
-        240,
-        124,
-        61,
-        147,
-        140,
-        251
-      ]
-    },
-    {
       "name": "OperatorGameClosed",
       "discriminator": [
         236,
@@ -1923,19 +1850,9 @@
       "msg": "Invalid oracle buffer time"
     },
     {
-      "code": 7305,
-      "name": "InvalidLegacyOracle",
-      "msg": "Invalid legacy oracle account"
-    },
-    {
       "code": 7401,
       "name": "InvalidTokenMint",
       "msg": "Token mint mismatch"
-    },
-    {
-      "code": 7404,
-      "name": "InvalidFeeRecipient",
-      "msg": "Fee recipient mismatch"
     }
   ],
   "types": [
@@ -2024,13 +1941,6 @@
               "Whether this is a private game requiring oracle approval"
             ],
             "type": "bool"
-          },
-          {
-            "name": "fee_percentage",
-            "docs": [
-              "Immutable protocol fee percentage for this game"
-            ],
-            "type": "u8"
           },
           {
             "name": "total_amount",
@@ -2262,13 +2172,6 @@
             "type": "bool"
           },
           {
-            "name": "fee_percentage",
-            "docs": [
-              "Immutable protocol fee percentage"
-            ],
-            "type": "u8"
-          },
-          {
             "name": "created_at",
             "docs": [
               "Game creation timestamp"
@@ -2298,24 +2201,6 @@
           },
           {
             "name": "Giveaway"
-          }
-        ]
-      }
-    },
-    {
-      "name": "LegacyOracleClosed",
-      "docs": [
-        "Emitted when a v0.2 Oracle account is closed during migration"
-      ],
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "operator",
-            "docs": [
-              "Legacy operator that authorized the closure and receives the reclaimed rent"
-            ],
-            "type": "pubkey"
           }
         ]
       }
@@ -2393,13 +2278,6 @@
             "type": "u8"
           },
           {
-            "name": "fee_recipient",
-            "docs": [
-              "Wallet that receives protocol fees during settlement"
-            ],
-            "type": "pubkey"
-          },
-          {
             "name": "oracle_buffer_time",
             "docs": [
               "Buffer time in seconds after game timeout before cancellation is allowed"
@@ -2464,13 +2342,6 @@
             "type": "u8"
           },
           {
-            "name": "fee_recipient",
-            "docs": [
-              "Wallet that receives protocol fees during settlement"
-            ],
-            "type": "pubkey"
-          },
-          {
             "name": "oracle_buffer_time",
             "docs": [
               "Buffer time in seconds after game timeout before cancellation"
@@ -2522,13 +2393,6 @@
               "Fee percentage taken from game winnings (0-10)"
             ],
             "type": "u8"
-          },
-          {
-            "name": "fee_recipient",
-            "docs": [
-              "Wallet that receives protocol fees"
-            ],
-            "type": "pubkey"
           },
           {
             "name": "oracle_buffer_time",
@@ -2589,13 +2453,6 @@
               "Updated fee percentage"
             ],
             "type": "u8"
-          },
-          {
-            "name": "fee_recipient",
-            "docs": [
-              "Updated fee recipient"
-            ],
-            "type": "pubkey"
           },
           {
             "name": "oracle_buffer_time",

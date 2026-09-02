@@ -7,10 +7,9 @@ use {
     timba::{state::GameType, GameConfig, OracleConfig},
 };
 
-fn config(fee_recipient: anchor_lang::prelude::Pubkey) -> OracleConfig {
+fn config() -> OracleConfig {
     OracleConfig {
         fee_percentage: 5,
-        fee_recipient,
         oracle_buffer_time: 5,
         max_tickets: 2_048,
         max_timeout: 86_400,
@@ -28,7 +27,8 @@ fn rotated_operator_controls_private_join_and_completion() {
         .svm
         .airdrop(&new_operator.pubkey(), 1_000_000_000)
         .unwrap();
-    assert!(fixture.rotate_oracle(&old_operator, &new_operator, config(old_operator.pubkey())));
+    assert!(fixture.rotate_oracle(&old_operator, &new_operator, config()));
+    let new_operator_ata = fixture.create_ata(new_operator.pubkey(), token.mint.pubkey());
 
     let (creator, creator_ata) = fixture.funded_player(token.mint.pubkey(), 10_000);
     let (second, second_ata) = fixture.funded_player(token.mint.pubkey(), 10_000);
@@ -118,6 +118,7 @@ fn rotated_operator_controls_private_join_and_completion() {
 
     let old_operator_ata =
         fixture.associated_token_address(old_operator.pubkey(), token.mint.pubkey());
-    assert_eq!(fixture.token_balance(old_operator_ata), 100);
+    assert_eq!(fixture.token_balance(old_operator_ata), 0);
+    assert_eq!(fixture.token_balance(new_operator_ata), 100);
 }
 use timba_test_harness as timba;

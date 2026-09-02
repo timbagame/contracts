@@ -2,7 +2,6 @@
 pub mod accounts;
 
 // Oracle management
-pub mod close_legacy_oracle;
 pub mod close_oracle;
 pub mod initialize_oracle;
 pub mod update_oracle;
