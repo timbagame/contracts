@@ -5,13 +5,13 @@ import tseslint from "typescript-eslint";
 
 export default tseslint.config(
   {
-    ignores: ["node_modules/**", "target/**", "tests/fixtures/**"],
+    ignores: ["node_modules/**", "target/**", "tests/fixtures/**", "tests/generated/**"],
   },
   js.configs.recommended,
   ...tseslint.configs.strict,
   {
     languageOptions: {
-      globals: { ...globals.node, ...globals.mocha },
+      globals: { ...globals.node },
     },
     rules: {
       "@typescript-eslint/no-empty-object-type": "off",

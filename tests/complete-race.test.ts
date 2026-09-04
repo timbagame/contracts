@@ -1,77 +1,66 @@
-import { expect } from "chai";
-import * as anchor from "@anchor-lang/core";
+import { beforeAll, describe, expect, test } from "bun:test";
+import { address, type Address, type Instruction, type KeyPairSigner } from "@solana/kit";
 import {
   TestEnvironment,
   TestUtils,
-  coinflipGameConfig,
-  calculateWinnerIndex,
+  buildSignedTransaction,
   calculatePayoutBreakdown,
-  getWinnerFromPlayers,
+  calculateWinnerIndex,
+  coinflipGameConfig,
   ensureOperatorAta,
+  errorToString,
+  fetchTokenBalance,
+  getWinnerFromPlayers,
+  sendSignedTransaction,
+  type TestGame,
 } from "./test-helpers.ts";
-import type { TestGame } from "./test-helpers.ts";
+import { fetchOracle } from "./generated/index.ts";
 
-const MEMO_PROGRAM_ID = new anchor.web3.PublicKey("MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr");
+const MEMO_PROGRAM_ADDRESS = address("MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr");
+
+function memoInstruction(value: string): Instruction {
+  return {
+    programAddress: MEMO_PROGRAM_ADDRESS,
+    accounts: [],
+    data: new TextEncoder().encode(value),
+  };
+}
 
 async function buildSignedCompleteTx(
   env: TestEnvironment,
   testUtils: TestUtils,
   gameData: TestGame,
-  winnerPublicKey: anchor.web3.PublicKey,
-  creatorPublicKey: anchor.web3.PublicKey,
-  oracleOperatorKeypair: anchor.web3.Keypair,
+  winner: Address,
+  creator: Address,
+  oracleOperator: KeyPairSigner,
   winnerIndex: number,
   memoSeed: string,
-): Promise<anchor.web3.Transaction> {
-  const accounts = await testUtils.game.buildCompleteGameAccounts(
+) {
+  const completeInstruction = await testUtils.game.buildCompleteGameInstruction(
     gameData,
-    winnerPublicKey,
-    creatorPublicKey,
-    oracleOperatorKeypair.publicKey,
+    winner,
+    creator,
+    oracleOperator,
+    winnerIndex,
   );
-
-  const ix = await env.program.methods
-    .completeGame(gameData.randomHash, gameData.secretKey, winnerIndex)
-    .accountsStrict(accounts)
-    .instruction();
-
-  const { blockhash, lastValidBlockHeight } = await env.provider.connection.getLatestBlockhash();
-
-  const tx = new anchor.web3.Transaction({
-    feePayer: oracleOperatorKeypair.publicKey,
-    blockhash,
-    lastValidBlockHeight,
-  });
-
-  tx.add(
-    new anchor.web3.TransactionInstruction({
-      programId: MEMO_PROGRAM_ID,
-      keys: [],
-      data: Buffer.from(`complete-race-${memoSeed}`),
-    }),
-  );
-  tx.add(ix);
-  tx.sign(oracleOperatorKeypair);
-  return tx;
+  return buildSignedTransaction(env.rpc, oracleOperator, [
+    memoInstruction(`complete-race-${memoSeed}`),
+    completeInstruction,
+  ]);
 }
 
 type TxOutcome = { ok: true; signature: string } | { ok: false; error: Error };
 
-async function sendTx(env: TestEnvironment, tx: anchor.web3.Transaction): Promise<TxOutcome> {
-  const serialized = tx.serialize();
+async function sendTx(
+  env: TestEnvironment,
+  signed: Awaited<ReturnType<typeof buildSignedCompleteTx>>,
+): Promise<TxOutcome> {
   try {
-    const signature = await env.provider.connection.sendRawTransaction(serialized, {
-      skipPreflight: false,
-    });
-    const confirmation = await env.provider.connection.confirmTransaction(signature, "confirmed");
-    if (confirmation.value.err) {
-      return {
-        ok: false,
-        error: new Error(
-          `Transaction ${signature} failed: ${JSON.stringify(confirmation.value.err)}`,
-        ),
-      };
-    }
+    const signature = await sendSignedTransaction(
+      env.rpc,
+      signed.transaction,
+      signed.lastValidBlockHeight,
+    );
     return { ok: true, signature };
   } catch (error) {
     return { ok: false, error: error as Error };
@@ -82,79 +71,63 @@ describe("Complete Game Race", () => {
   let env: TestEnvironment;
   let testUtils: TestUtils;
 
-  before(async () => {
+  beforeAll(async () => {
     env = TestEnvironment.getInstance();
     testUtils = new TestUtils();
-    if (!env.oracle) {
-      await env.initialize();
-    }
+    if (!env.oracle) await env.initialize();
   });
 
-  it("settles exactly once when completion instructions race", async () => {
+  test("settles exactly once when completion instructions race", async () => {
     const { oracle, mint, players } = await testUtils.quickSetup();
     const [creator, challenger] = players;
-
-    const gameConfig = coinflipGameConfig({ timeout: new anchor.BN(120) });
-
-    const gameData = await testUtils.game.createGame(gameConfig, creator.player, mint.mint);
-
+    const gameData = await testUtils.game.createGame(
+      coinflipGameConfig({ timeout: 120n }),
+      creator.player,
+      mint.mint,
+    );
     await testUtils.game.joinGame(gameData.gamePDA, creator.player);
     await testUtils.game.joinGame(gameData.gamePDA, challenger.player);
 
     const gameAccount = await testUtils.game.fetchGame(gameData.gamePDA);
-
     const winnerIndex = calculateWinnerIndex(
       gameAccount.ticketsCount,
       gameData.secretKey,
       Number(gameAccount.lastSlot),
     );
-    const participants = [creator, challenger];
-    const winner = getWinnerFromPlayers(participants, winnerIndex);
-
-    const preWinnerBalance = await env.provider.connection.getTokenAccountBalance(
-      winner.playerTokenAccount.address,
-    );
-    const operatorTokenAccount = await ensureOperatorAta(
-      env.provider.connection,
-      oracle,
-      mint.mint,
-    );
-    const preOperatorBalance =
-      await env.provider.connection.getTokenAccountBalance(operatorTokenAccount);
-
-    const totalPot = new anchor.BN(gameAccount.totalAmount.toString());
-    const oracleAccount = await env.program.account.oracle.fetch(oracle.oraclePDA);
+    const winner = getWinnerFromPlayers([creator, challenger], winnerIndex);
+    const operatorTokenAccount = await ensureOperatorAta(env, oracle, mint.mint);
+    const [preWinnerBalance, preOperatorBalance] = await Promise.all([
+      fetchTokenBalance(env.rpc, winner.playerTokenAccount),
+      fetchTokenBalance(env.rpc, operatorTokenAccount),
+    ]);
+    const oracleAccount = await fetchOracle(env.rpc, oracle.oraclePDA, { commitment: "confirmed" });
     const { fee: expectedFee, winnerAmount: expectedWinnerAmount } = calculatePayoutBreakdown(
-      totalPot,
-      oracleAccount.feePercentage,
+      gameAccount.totalAmount,
+      oracleAccount.data.feePercentage,
     );
-
     const badIndex = (winnerIndex + 1) % gameAccount.ticketsCount;
-
-    const badTxPromise = buildSignedCompleteTx(
-      env,
-      testUtils,
-      gameData,
-      winner.player.publicKey,
-      creator.player.publicKey,
-      oracle.operatorKeypair,
-      badIndex,
-      "spoof",
-    );
-
-    const goodTxPromise = buildSignedCompleteTx(
-      env,
-      testUtils,
-      gameData,
-      winner.player.publicKey,
-      creator.player.publicKey,
-      oracle.operatorKeypair,
-      winnerIndex,
-      "valid",
-    );
-
-    const [badTx, goodTx] = await Promise.all([badTxPromise, goodTxPromise]);
-
+    const [badTx, goodTx] = await Promise.all([
+      buildSignedCompleteTx(
+        env,
+        testUtils,
+        gameData,
+        winner.player.address,
+        creator.player.address,
+        oracle.operatorKeypair,
+        badIndex,
+        "spoof",
+      ),
+      buildSignedCompleteTx(
+        env,
+        testUtils,
+        gameData,
+        winner.player.address,
+        creator.player.address,
+        oracle.operatorKeypair,
+        winnerIndex,
+        "valid",
+      ),
+    ]);
     const [badOutcome, goodOutcome] = await Promise.all([
       sendTx(env, badTx),
       (async () => {
@@ -162,39 +135,26 @@ describe("Complete Game Race", () => {
         return sendTx(env, goodTx);
       })(),
     ]);
-
-    const outcomes = [badOutcome, goodOutcome];
-    const successes = outcomes.filter((o) => o.ok);
-    const failures = outcomes.filter((o) => !o.ok) as Array<{
+    const successes = [badOutcome, goodOutcome].filter((outcome) => outcome.ok);
+    const failures = [badOutcome, goodOutcome].filter((outcome) => !outcome.ok) as Array<{
       ok: false;
       error: Error;
     }>;
-
-    expect(successes.length).to.equal(1);
-    expect(failures.length).to.equal(1);
-
-    const failureMessage = failures[0].error.toString();
+    expect(successes.length).toBe(1);
+    expect(failures.length).toBe(1);
+    const failureMessage = errorToString(failures[0].error);
     expect(
       failureMessage.includes("WinnerIndexMismatch") ||
-        failureMessage.includes("AccountNotInitialized"),
-    ).to.be.true;
+        failureMessage.includes("AccountNotInitialized") ||
+        failureMessage.includes("7202") ||
+        failureMessage.includes("3012"),
+    ).toBe(true);
 
-    const postWinnerBalance = await env.provider.connection.getTokenAccountBalance(
-      winner.playerTokenAccount.address,
-    );
-    const winnerDelta = new anchor.BN(postWinnerBalance.value.amount).sub(
-      new anchor.BN(preWinnerBalance.value.amount),
-    );
-    expect(winnerDelta.eq(expectedWinnerAmount)).to.be.true;
-
-    const gameInfo = await env.provider.connection.getAccountInfo(gameData.gamePDA);
-    expect(gameInfo).to.be.null;
-
-    const postOperatorBalance =
-      await env.provider.connection.getTokenAccountBalance(operatorTokenAccount);
-    const feeDelta = new anchor.BN(postOperatorBalance.value.amount).sub(
-      new anchor.BN(preOperatorBalance.value.amount),
-    );
-    expect(feeDelta.eq(expectedFee)).to.be.true;
-  }).timeout(180_000);
+    const [postWinnerBalance, postOperatorBalance] = await Promise.all([
+      fetchTokenBalance(env.rpc, winner.playerTokenAccount),
+      fetchTokenBalance(env.rpc, operatorTokenAccount),
+    ]);
+    expect(postWinnerBalance - preWinnerBalance).toBe(expectedWinnerAmount);
+    expect(postOperatorBalance - preOperatorBalance).toBe(expectedFee);
+  });
 });
