@@ -50,8 +50,8 @@ The oracle signature authorizes game creation but does not make creation policy 
 - `programs/timba/src` contains the on-chain program.
 - `programs/timba/tests` contains Rust unit and LiteSVM integration tests.
 - `test-harness` compiles the program as a host-side library for Rust tests.
-- `tests` contains Anchor and TypeScript integration tests.
-- `target/idl/timba.json` and `target/types/timba.ts` are committed generated clients.
+- `tests` contains Kit integration tests and the Codama-generated v0.3 client.
+- `target/idl/timba.json`, `target/types/timba.ts`, and `tests/generated` are committed generated artifacts.
 - `.github/workflows/ci.yml` defines the supported CI toolchain.
 
 ## Toolchain
@@ -97,6 +97,7 @@ The repository also includes a development-container configuration. Its installe
 | Markdown and TypeScript formatting | `bun run format:check`                                  |
 | TypeScript lint                    | `bun run lint`                                          |
 | TypeScript type check              | `bun run typecheck`                                     |
+| Generated Kit client drift         | `bun run check:generated`                               |
 | JavaScript dependency audit        | `bun audit`                                             |
 
 LiteSVM tests load `target/deploy/timba.so`. Build it before running the Rust-only suite:
@@ -113,11 +114,12 @@ cargo test -p timba-test-harness --test fees_litesvm
 cargo test -p timba-test-harness unjoin
 ```
 
-After changing the program interface, rebuild and commit both generated clients:
+After changing the program interface, rebuild and commit the IDL, Anchor types, and Kit client:
 
 ```bash
 anchor build --ignore-keys
-git diff -- target/idl/timba.json target/types/timba.ts
+bun run generate:client
+git diff -- target/idl/timba.json target/types/timba.ts tests/generated
 ```
 
 ## Security and deployment

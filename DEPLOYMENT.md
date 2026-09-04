@@ -49,7 +49,7 @@ solana-verify --version
 
 Before any mainnet upgrade:
 
-1. Select a public commit that contains the program source, lockfiles, generated IDL, and generated TypeScript client.
+1. Select a public commit that contains the program source, lockfiles, generated IDL, Anchor types, and Kit client.
 2. Confirm that the commit is on the intended release branch and that the working tree is clean.
 3. Confirm the current program ID and upgrade authority on mainnet.
 4. Confirm the production program keypair, upgrade-authority wallet, RPC endpoint, and expected balance impact.
@@ -77,7 +77,8 @@ bun run typecheck
 cargo fmt --all -- --check
 cargo clippy --workspace --all-targets -- -D warnings
 anchor build
-git diff --exit-code -- target/idl/timba.json target/types/timba.ts
+bun run generate:client
+git diff --exit-code -- target/idl/timba.json target/types/timba.ts tests/generated
 anchor test --skip-build
 ```
 
@@ -114,6 +115,7 @@ Record the executable and generated-client hashes:
 ```bash
 solana-verify get-executable-hash target/verifiable/timba.so
 sha256sum target/idl/timba.json target/types/timba.ts
+find tests/generated -type f -name '*.ts' -print0 | sort -z | xargs -0 sha256sum
 ```
 
 Run the verifiable build a second time in an independent, clean release environment. The executable hash must be identical.

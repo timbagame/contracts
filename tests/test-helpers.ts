@@ -1,229 +1,226 @@
-import * as anchor from "@anchor-lang/core";
-import { expect } from "chai";
-import type { Timba } from "../target/types/timba.ts";
+import { createHash } from "node:crypto";
+import { readFile } from "node:fs/promises";
+
+import { expect } from "bun:test";
 import {
-  ASSOCIATED_TOKEN_PROGRAM_ID,
-  TOKEN_PROGRAM_ID,
-  createMint,
-  getAssociatedTokenAddressSync,
-  getMint,
-  getOrCreateAssociatedTokenAccount,
-  mintTo,
-  type TokenAccount,
-} from "./token-client.ts";
-import { PublicKey } from "@solana/web3.js";
-import { createHash } from "crypto";
+  address,
+  appendTransactionMessageInstructions,
+  assertIsFullySignedTransaction,
+  createKeyPairSignerFromBytes,
+  createKeyPairSignerFromPrivateKeyBytes,
+  createClientWithGetMinimumBalanceFromRpc,
+  createSolanaRpc,
+  createTransactionMessage,
+  fetchEncodedAccount,
+  generateKeyPairSigner,
+  flattenInstructionPlan,
+  getAddressEncoder,
+  getBase64EncodedWireTransaction,
+  getProgramDerivedAddress,
+  lamports as lamportsAmount,
+  pipe,
+  setTransactionMessageFeePayerSigner,
+  setTransactionMessageLifetimeUsingBlockhash,
+  signTransactionMessageWithSigners,
+  type Address,
+  type FullySignedTransaction,
+  type Instruction,
+  type KeyPairSigner,
+  type ReadonlyUint8Array,
+  type Rpc,
+  type Signature,
+  type SolanaRpcApi,
+  type Transaction,
+} from "@solana/kit";
+import { getTransferSolInstruction } from "@solana-program/system";
+import {
+  TOKEN_PROGRAM_ADDRESS,
+  fetchMint,
+  fetchToken,
+  findAssociatedTokenPda,
+  getCreateAssociatedTokenIdempotentInstructionAsync,
+  getCreateMintInstructionPlan,
+  getMintToInstruction,
+} from "@solana-program/token";
+import {
+  GameType,
+  TIMBA_PROGRAM_ADDRESS,
+  fetchGame,
+  fetchMaybeGame,
+  fetchMaybeOracle,
+  fetchOracle,
+  findGamePda,
+  findGameVaultPda,
+  findOraclePda,
+  getCompleteGameInstructionAsync,
+  getInitializeGameInstructionAsync,
+  getInitializeOracleInstructionAsync,
+  getJoinGameInstructionAsync,
+  getUnjoinGameInstructionAsync,
+  type Game,
+} from "./generated/index.ts";
 
-export const toBN = (value: anchor.BN | number): anchor.BN =>
-  anchor.BN.isBN(value) ? value : new anchor.BN(value);
-
-export const toNumber = (value: anchor.BN | number): number =>
-  anchor.BN.isBN(value) ? value.toNumber() : value;
-
+const LAMPORTS_PER_SOL = 1_000_000_000n;
+const DEFAULT_PLAYER_BALANCE = 100_000_000n;
 const DEFAULT_BUFFER_POLL_INTERVAL_MS = 750;
 const DEFAULT_BUFFER_MAX_WAIT_MS = 120_000;
 const CLOCK_STALL_POLLS_BEFORE_TICK = 2;
-const TOKEN_ACCOUNT_READ_RETRIES = 4;
+const CONFIRMATION_TIMEOUT_MS = 60_000;
+const CLOCK_SYSVAR_ADDRESS = address("SysvarC1ock11111111111111111111111111111111");
+const UPGRADEABLE_LOADER_ADDRESS = address("BPFLoaderUpgradeab1e11111111111111111111111");
 
-function disableBlockhashCaching(connection: anchor.web3.Connection): void {
-  // Surfpool's transaction-driven blocks can expire web3.js's cached hash
-  // during a long setup loop. The flag is an internal web3.js test escape hatch.
-  (connection as unknown as { _disableBlockhashCaching: boolean })._disableBlockhashCaching = true;
+export type TestRpc = Rpc<SolanaRpcApi>;
+type SignedTransaction = Transaction & FullySignedTransaction;
+let defaultOperatorKeypair: Promise<KeyPairSigner> | undefined;
+
+function getDefaultOperatorKeypair(): Promise<KeyPairSigner> {
+  defaultOperatorKeypair ??= createKeyPairSignerFromPrivateKeyBytes(new Uint8Array(32).fill(42));
+  return defaultOperatorKeypair;
 }
 
-const ORACLE_SEED = Buffer.from("oracle");
-
-const DEFAULT_OPERATOR_SEED = new Uint8Array(32).fill(42);
-
-export const DEFAULT_OPERATOR_KEYPAIR = anchor.web3.Keypair.fromSeed(DEFAULT_OPERATOR_SEED);
-
-export function deriveOraclePda(programId: PublicKey): PublicKey {
-  const [oraclePda] = PublicKey.findProgramAddressSync([ORACLE_SEED], programId);
-  return oraclePda;
+function rpcUrl(): `${string}://${string}` {
+  return (process.env["ANCHOR_PROVIDER_URL"] ?? "http://127.0.0.1:8899") as `${string}://${string}`;
 }
 
-const gameVaultCache = new Map<string, { tokenMint: PublicKey; tokenProgram: PublicKey }>();
-
-const DEFAULT_PLAYER_BALANCE = new anchor.BN(100_000_000);
-
-export async function requestAndConfirmAirdrop(
-  connection: anchor.web3.Connection,
-  pubkey: PublicKey,
-  lamports: number,
-): Promise<anchor.web3.RpcResponseAndContext<anchor.web3.SignatureResult>> {
-  const signature = await connection.requestAirdrop(pubkey, lamports);
-  return connection.confirmTransaction(signature, "confirmed");
+async function loadPayer(): Promise<KeyPairSigner> {
+  const walletPath = process.env["ANCHOR_WALLET"];
+  if (!walletPath) throw new Error("ANCHOR_WALLET is required for contract integration tests");
+  const bytes = JSON.parse(await readFile(walletPath, "utf8")) as number[];
+  return createKeyPairSignerFromBytes(Uint8Array.from(bytes));
 }
 
 export function errorToString(error: unknown): string {
-  return error instanceof Error ? error.toString() : String(error);
-}
-
-type TimbaEvents = anchor.IdlEvents<Timba>;
-type TimbaEventName = keyof TimbaEvents;
-
-export async function subscribeEvent<TEvent extends TimbaEventName>(
-  program: anchor.Program<Timba>,
-  eventName: TEvent,
-  { timeoutMs = 10_000 }: { timeoutMs?: number } = {},
-): Promise<{
-  wait: Promise<TimbaEvents[TEvent]>;
-  dispose: () => Promise<void>;
-}> {
-  let settled = false;
-  let resolveEvent: (value: TimbaEvents[TEvent]) => void;
-  let rejectEvent: (reason?: unknown) => void;
-
-  const wait = new Promise<TimbaEvents[TEvent]>((resolve, reject) => {
-    resolveEvent = resolve;
-    rejectEvent = reject;
-  });
-
-  const timer = setTimeout(() => {
-    if (!settled) {
-      settled = true;
-      rejectEvent(new Error(`${eventName} timeout`));
+  if (error instanceof Error) {
+    const context =
+      "context" in error ? (error as Error & { context?: unknown }).context : undefined;
+    if (context !== undefined) {
+      return `${error.toString()} ${JSON.stringify(context, (_key, value) =>
+        typeof value === "bigint" ? value.toString() : value,
+      )}`;
     }
-  }, timeoutMs);
-
-  const listenerId = await program.addEventListener(eventName, (event) => {
-    if (settled) return;
-    settled = true;
-    clearTimeout(timer);
-    resolveEvent(event);
-  });
-
-  const dispose = async () => {
-    clearTimeout(timer);
-    if (listenerId !== undefined) {
-      try {
-        await program.removeEventListener(listenerId);
-      } catch (error) {
-        // Surfpool may remove a completed subscription before client cleanup.
-        if (!errorToString(error).includes("doesn't exist")) {
-          throw error;
-        }
-      }
-    }
-  };
-
-  wait.catch(async () => {
-    await dispose().catch(() => {});
-  });
-
-  return { wait, dispose };
-}
-
-export async function captureEvent<TEvent extends TimbaEventName>(
-  program: anchor.Program<Timba>,
-  eventName: TEvent,
-  action: () => Promise<void>,
-  options: { timeoutMs?: number } = {},
-): Promise<TimbaEvents[TEvent]> {
-  const subscription = await subscribeEvent(program, eventName, options);
-
+    return error.toString();
+  }
   try {
-    await action();
-    return await subscription.wait;
-  } finally {
-    await subscription.dispose();
+    return JSON.stringify(error);
+  } catch {
+    return String(error);
   }
 }
 
-/**
- * Shared test utilities for the Timba program test suite
- */
+async function confirmTransaction(
+  rpc: TestRpc,
+  transactionSignature: Signature,
+  lastValidBlockHeight?: bigint,
+): Promise<void> {
+  const deadline = Date.now() + CONFIRMATION_TIMEOUT_MS;
+  while (Date.now() < deadline) {
+    const [{ value: statuses }, blockHeight] = await Promise.all([
+      rpc.getSignatureStatuses([transactionSignature], { searchTransactionHistory: true }).send(),
+      rpc.getBlockHeight({ commitment: "confirmed" }).send(),
+    ]);
+    const status = statuses[0];
+    if (status?.err) {
+      throw new Error(`Transaction ${transactionSignature} failed: ${JSON.stringify(status.err)}`);
+    }
+    if (status?.confirmationStatus === "confirmed" || status?.confirmationStatus === "finalized") {
+      return;
+    }
+    if (lastValidBlockHeight !== undefined && blockHeight > lastValidBlockHeight) {
+      throw new Error(`Transaction ${transactionSignature} expired before confirmation`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+  throw new Error(`Transaction ${transactionSignature} confirmation timed out`);
+}
+
+export async function sendInstructions(
+  rpc: TestRpc,
+  feePayer: KeyPairSigner,
+  instructions: readonly Instruction[],
+): Promise<Signature> {
+  const { value: lifetime } = await rpc.getLatestBlockhash({ commitment: "confirmed" }).send();
+  const message = pipe(
+    createTransactionMessage({ version: "legacy" }),
+    (transactionMessage) => setTransactionMessageFeePayerSigner(feePayer, transactionMessage),
+    (transactionMessage) =>
+      setTransactionMessageLifetimeUsingBlockhash(lifetime, transactionMessage),
+    (transactionMessage) =>
+      appendTransactionMessageInstructions([...instructions], transactionMessage),
+  );
+  const transaction = await signTransactionMessageWithSigners(message);
+  assertIsFullySignedTransaction(transaction);
+  const transactionSignature = await rpc
+    .sendTransaction(getBase64EncodedWireTransaction(transaction), {
+      encoding: "base64",
+      preflightCommitment: "confirmed",
+    })
+    .send();
+  await confirmTransaction(rpc, transactionSignature, lifetime.lastValidBlockHeight);
+  return transactionSignature;
+}
+
+export async function buildSignedTransaction(
+  rpc: TestRpc,
+  feePayer: KeyPairSigner,
+  instructions: readonly Instruction[],
+): Promise<{ transaction: SignedTransaction; lastValidBlockHeight: bigint }> {
+  const { value: lifetime } = await rpc.getLatestBlockhash({ commitment: "confirmed" }).send();
+  const message = pipe(
+    createTransactionMessage({ version: "legacy" }),
+    (transactionMessage) => setTransactionMessageFeePayerSigner(feePayer, transactionMessage),
+    (transactionMessage) =>
+      setTransactionMessageLifetimeUsingBlockhash(lifetime, transactionMessage),
+    (transactionMessage) =>
+      appendTransactionMessageInstructions([...instructions], transactionMessage),
+  );
+  const transaction = await signTransactionMessageWithSigners(message);
+  assertIsFullySignedTransaction(transaction);
+  return { transaction, lastValidBlockHeight: lifetime.lastValidBlockHeight };
+}
+
+export async function sendSignedTransaction(
+  rpc: TestRpc,
+  transaction: SignedTransaction,
+  lastValidBlockHeight: bigint,
+): Promise<Signature> {
+  const transactionSignature = await rpc
+    .sendTransaction(getBase64EncodedWireTransaction(transaction), {
+      encoding: "base64",
+      preflightCommitment: "confirmed",
+    })
+    .send();
+  await confirmTransaction(rpc, transactionSignature, lastValidBlockHeight);
+  return transactionSignature;
+}
+
+async function requestAndConfirmAirdrop(
+  rpc: TestRpc,
+  recipient: Address,
+  lamports: bigint,
+): Promise<void> {
+  const transactionSignature = await rpc
+    .requestAirdrop(recipient, lamportsAmount(lamports), { commitment: "confirmed" })
+    .send();
+  await confirmTransaction(rpc, transactionSignature);
+}
 
 export interface TestPlayer {
-  player: anchor.web3.Keypair;
-  playerTokenAccount: TokenAccount;
+  player: KeyPairSigner;
+  playerTokenAccount: Address;
 }
 
 export interface TestMint {
-  mint: PublicKey;
-  mintAuthority: anchor.web3.Keypair;
-  gameVaultPDA: PublicKey;
-  tokenProgram: PublicKey;
+  mint: Address;
+  mintAuthority: KeyPairSigner;
+  gameVaultPDA: Address;
+  tokenProgram: Address;
   decimals: number;
 }
 
 export interface TestGame {
-  gamePDA: PublicKey;
-  randomHash: number[];
-  secretKey: number[];
-}
-
-type DerivedGameAccountsOptions = {
-  player?: PublicKey;
-  winner?: PublicKey;
-  tokenMint?: PublicKey;
-};
-
-export type DerivedGameAccounts = {
-  tokenMint: PublicKey;
-  tokenProgram: PublicKey;
-  oracle: PublicKey;
-  gameVault: PublicKey;
-  gameVaultTokenAccount: PublicKey;
-  playerTokenAccount?: PublicKey;
-  winnerTokenAccount?: PublicKey;
-};
-
-async function resolveTokenProgram(
-  connection: anchor.web3.Connection,
-  tokenMint: PublicKey,
-): Promise<PublicKey> {
-  const accountInfo = await connection.getAccountInfo(tokenMint);
-
-  if (!accountInfo) {
-    throw new Error(`Token mint ${tokenMint.toBase58()} not found`);
-  }
-
-  if (!accountInfo.owner.equals(TOKEN_PROGRAM_ID)) {
-    throw new Error(`SPL Token mint ${tokenMint.toBase58()} has an invalid owner`);
-  }
-
-  return TOKEN_PROGRAM_ID;
-}
-
-export interface TestOracle {
-  oraclePDA: PublicKey;
-  // Backwards compatibility alias: some tests expect `oracle`
-  oracle?: PublicKey;
-  operator: PublicKey;
-  operatorKeypair: anchor.web3.Keypair;
-  config: OracleConfig;
-}
-
-export function getOraclePublicKey(testOracle: TestOracle): PublicKey {
-  const oraclePubkey = testOracle.oracle ?? testOracle.oraclePDA;
-
-  if (!oraclePubkey) {
-    throw new Error("Missing oracle public key: expected `oracle` or `oraclePDA` to be defined.");
-  }
-
-  return oraclePubkey;
-}
-
-export async function ensureOperatorAta(
-  connection: anchor.web3.Connection,
-  oracle: TestOracle,
-  mint: PublicKey,
-): Promise<PublicKey> {
-  const tokenProgram = await resolveTokenProgram(connection, mint);
-
-  const account = await getOrCreateAssociatedTokenAccount(
-    connection,
-    oracle.operatorKeypair,
-    mint,
-    oracle.operator,
-    undefined,
-    undefined,
-    undefined,
-    tokenProgram,
-  );
-
-  return account.address;
+  gamePDA: Address;
+  randomHash: Uint8Array;
+  secretKey: Uint8Array;
 }
 
 export interface OracleConfig {
@@ -234,682 +231,288 @@ export interface OracleConfig {
   minTimeout: number;
 }
 
-type BufferReadyGameAccount = {
-  createdAt: anchor.BN | number;
-  timeout?: anchor.BN | number;
-  config?: {
-    timeout?: anchor.BN | number;
-  };
-};
-
-export interface AwaitBufferExpiryOptions {
-  /**
-   * Override the provider used for fetching and advancing the clock.
-   * Prefer this over `connection` so both operations target the same validator.
-   */
-  provider?: anchor.AnchorProvider;
-  /** Override only the connection used for fetching the clock sysvar. */
-  connection?: anchor.web3.Connection;
-  /** Custom polling cadence in milliseconds. */
-  pollIntervalMs?: number;
-  /**
-   * Maximum wall-clock duration to wait before triggering a single extension.
-   * The helper allows one automatic extension before failing hard so that
-   * transient slot stalls do not break long-running tests.
-   */
-  maxWaitMs?: number;
-}
-
-export async function getClockUnixTimestamp(connection: anchor.web3.Connection): Promise<number> {
-  const clockInfo = await connection.getAccountInfo(anchor.web3.SYSVAR_CLOCK_PUBKEY);
-
-  if (!clockInfo) {
-    throw new Error("Clock sysvar account unavailable");
-  }
-
-  return Number(clockInfo.data.readBigInt64LE(32));
-}
-
-/**
- * Surfpool only advances its Clock sysvar when a transaction produces a block.
- * A zero-lamport self-transfer is state-neutral, while letting timeout tests
- * make progress on transaction-driven validators.
- */
-async function tickClock(provider: anchor.AnchorProvider): Promise<void> {
-  const transaction = new anchor.web3.Transaction().add(
-    anchor.web3.SystemProgram.transfer({
-      fromPubkey: provider.wallet.publicKey,
-      toPubkey: provider.wallet.publicKey,
-      lamports: 0,
-    }),
-  );
-
-  await provider.sendAndConfirm(transaction);
-}
-
-function resolveTimeoutSeconds(gameAccount: BufferReadyGameAccount): number {
-  if (gameAccount.timeout !== undefined) {
-    return toNumber(gameAccount.timeout);
-  }
-
-  const configTimeout = gameAccount.config?.timeout;
-  if (configTimeout !== undefined) {
-    return toNumber(configTimeout);
-  }
-
-  throw new Error("Game account missing timeout information required for buffer calculation");
-}
-
-export async function awaitBufferExpiry(
-  gameAccount: BufferReadyGameAccount,
-  oracleConfig: OracleConfig,
-  extraSlackSeconds = 2,
-  options: AwaitBufferExpiryOptions = {},
-): Promise<void> {
-  const provider = options.provider ?? TestEnvironment.getInstance().provider;
-  const connection = options.connection ?? provider.connection;
-  const pollIntervalMs = options.pollIntervalMs ?? DEFAULT_BUFFER_POLL_INTERVAL_MS;
-  const maxWaitMs = options.maxWaitMs ?? DEFAULT_BUFFER_MAX_WAIT_MS;
-
-  const createdAtSeconds = toNumber(gameAccount.createdAt);
-  const timeoutSeconds = resolveTimeoutSeconds(gameAccount);
-  const bufferSeconds =
-    typeof oracleConfig.oracleBufferTime === "number"
-      ? oracleConfig.oracleBufferTime
-      : toNumber(oracleConfig.oracleBufferTime);
-
-  const targetTimestamp = createdAtSeconds + timeoutSeconds + bufferSeconds;
-  const adjustedTarget = targetTimestamp + extraSlackSeconds;
-
-  let start = Date.now();
-  let extended = false;
-  let previousClockTimestamp: number | undefined;
-  let stalledPolls = 0;
-
-  while (true) {
-    const clockTimestamp = await getClockUnixTimestamp(connection);
-
-    if (clockTimestamp >= adjustedTarget) {
-      return;
-    }
-
-    if (clockTimestamp === previousClockTimestamp) {
-      stalledPolls += 1;
-      if (stalledPolls >= CLOCK_STALL_POLLS_BEFORE_TICK) {
-        if (options.connection && !options.provider) {
-          throw new Error(
-            "Clock stalled on a custom connection; pass its provider so the same validator can be advanced.",
-          );
-        }
-        await tickClock(provider);
-        stalledPolls = 0;
-      }
-    } else {
-      stalledPolls = 0;
-    }
-    previousClockTimestamp = clockTimestamp;
-
-    if (Date.now() - start > maxWaitMs) {
-      if (!extended) {
-        console.warn(
-          `[awaitBufferExpiry] Extending wait (clock=${clockTimestamp}, target=${adjustedTarget}).`,
-        );
-        extended = true;
-        start = Date.now();
-      } else {
-        throw new Error(
-          `Timed out waiting for oracle buffer expiry (target=${adjustedTarget}, clock=${clockTimestamp}).`,
-        );
-      }
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
-  }
-}
-
-/**
- * Wait until the timeout has elapsed but before the oracle buffer expires so a
- * completion instruction can be sent safely. This wraps `awaitBufferExpiry`
- * with a negative slack adjustment that keeps the wait bounded inside the
- * buffer window even if the helper needs to extend once due to slot stalls.
- */
-export async function awaitOracleCompletionReady(
-  gameAccount: BufferReadyGameAccount,
-  oracleConfig: OracleConfig,
-  extraSlackSeconds = 0.5,
-  options: AwaitBufferExpiryOptions = {},
-): Promise<void> {
-  const bufferSeconds =
-    typeof oracleConfig.oracleBufferTime === "number"
-      ? oracleConfig.oracleBufferTime
-      : toNumber(oracleConfig.oracleBufferTime);
-
-  const boundedSlack =
-    bufferSeconds > 0 ? Math.min(extraSlackSeconds, Math.max(bufferSeconds - 0.25, 0)) : 0;
-
-  const adjustedSlack = -bufferSeconds + boundedSlack;
-
-  await awaitBufferExpiry(gameAccount, oracleConfig, adjustedSlack, options);
+export interface TestOracle {
+  oraclePDA: Address;
+  operator: Address;
+  operatorKeypair: KeyPairSigner;
+  config: OracleConfig;
 }
 
 export interface GameConfig {
-  gameType: { coinflip: Record<string, never> } | { giveaway: Record<string, never> };
-  amount: anchor.BN | number;
-  // Permit raw numbers in tests (we'll coerce to proper types where needed)
-  maxTickets: anchor.BN | number;
-  minTickets: anchor.BN | number;
-  timeout: anchor.BN | number;
+  gameType: GameType;
+  amount: bigint;
+  maxTickets: number;
+  minTickets: number;
+  timeout: bigint;
   isPrivate: boolean;
 }
 
-type GameConfigOverrides = Partial<{
-  amount: anchor.BN | number;
-  maxTickets: anchor.BN | number;
-  minTickets: anchor.BN | number;
-  timeout: anchor.BN | number;
-  isPrivate: boolean;
-}>;
-
-function buildGameConfig(base: GameConfig, overrides: GameConfigOverrides = {}): GameConfig {
-  const merged: GameConfig = {
-    ...base,
+export function coinflipGameConfig(
+  overrides: Partial<Omit<GameConfig, "gameType">> = {},
+): GameConfig {
+  return {
+    gameType: GameType.Coinflip,
+    amount: 1_000_000n,
+    maxTickets: 2,
+    minTickets: 2,
+    timeout: 3_600n,
+    isPrivate: false,
     ...overrides,
   };
-
-  return {
-    ...merged,
-    amount: toBN(merged.amount),
-    maxTickets: toBN(merged.maxTickets),
-    minTickets: toBN(merged.minTickets),
-    timeout: toBN(merged.timeout),
-  };
 }
 
-export function coinflipGameConfig(overrides: GameConfigOverrides = {}): GameConfig {
-  return buildGameConfig(
-    {
-      gameType: { coinflip: {} },
-      amount: new anchor.BN(1_000_000),
-      maxTickets: new anchor.BN(2),
-      minTickets: new anchor.BN(2),
-      timeout: new anchor.BN(3600),
-      isPrivate: false,
-    },
-    overrides,
-  );
-}
-
-export function giveawayGameConfig(overrides: GameConfigOverrides = {}): GameConfig {
-  return buildGameConfig(
-    {
-      gameType: { giveaway: {} },
-      amount: new anchor.BN(2_000_000),
-      maxTickets: new anchor.BN(5),
-      minTickets: new anchor.BN(1),
-      timeout: new anchor.BN(1800),
-      isPrivate: false,
-    },
-    overrides,
-  );
-}
-
-/**
- * Global test state manager
- */
-type StandardSetup = {
-  oracle: TestOracle;
-  mint: TestMint;
-  players: TestPlayer[];
-};
-
-async function createStandardSetup(
-  program: anchor.Program<Timba>,
-  provider: anchor.AnchorProvider,
-): Promise<StandardSetup> {
-  const oracleManager = new OracleManager(program, provider);
-  const mintManager = new MintManager(program, provider);
-  const playerManager = new PlayerManager(provider);
-
-  const oracle = await oracleManager.createOracle();
-  const mint = await mintManager.createMint();
-  const players = await playerManager.createPlayerPool(8, mint.mint);
-
-  for (const player of players) {
-    await playerManager.fundPlayer(player, mint, DEFAULT_PLAYER_BALANCE);
-  }
-
-  return { oracle, mint, players };
-}
+type StandardSetup = { oracle: TestOracle; mint: TestMint; players: TestPlayer[] };
 
 export class TestEnvironment {
   private static instance: TestEnvironment;
-
-  public program: anchor.Program<Timba>;
-  public provider: anchor.AnchorProvider;
+  public readonly rpc = createSolanaRpc(rpcUrl()) as TestRpc;
+  public payer!: KeyPairSigner;
   public oracle?: TestOracle;
   public globalMint?: TestMint;
   public playerPool: TestPlayer[] = [];
-  // Additional compatibility aliases expected by some tests
-  public mint?: TestMint;
-  public testUtils?: TestUtils;
 
-  private constructor() {
-    this.provider = anchor.AnchorProvider.env();
-    disableBlockhashCaching(this.provider.connection);
-    anchor.setProvider(this.provider);
-    this.program = anchor.workspace.Timba as anchor.Program<Timba>;
-  }
+  private constructor() {}
 
   public static getInstance(): TestEnvironment {
-    if (!TestEnvironment.instance) {
-      TestEnvironment.instance = new TestEnvironment();
-    }
+    TestEnvironment.instance ??= new TestEnvironment();
     return TestEnvironment.instance;
   }
 
-  /**
-   * Utility: shuffle an array (compat with tests expecting TestEnvironment.shuffle)
-   */
-  static shuffle<T>(array: T[]): T[] {
-    return RandomUtils.shuffle(array);
-  }
-
-  /**
-   * Initialize the test environment with oracle and global mint
-   */
   async initialize(): Promise<StandardSetup> {
     if (this.oracle && this.globalMint && this.playerPool.length > 0) {
-      return {
-        oracle: this.oracle,
-        mint: this.globalMint,
-        players: this.playerPool,
-      };
+      return { oracle: this.oracle, mint: this.globalMint, players: this.playerPool };
     }
-
-    const setup = await createStandardSetup(this.program, this.provider);
-
-    this.oracle = setup.oracle;
-    this.globalMint = setup.mint;
-    this.mint = setup.mint; // alias for tests referencing env.mint
-    this.playerPool = setup.players;
-
-    // Create test utilities after base environment is established
-    if (!this.testUtils) {
-      this.testUtils = new TestUtils();
+    this.payer = await loadPayer();
+    const oracle = await new OracleManager(this).createOracle();
+    const mintManager = new MintManager(this);
+    const mint = await mintManager.createMint();
+    const players = await new PlayerManager(this).createPlayerPool(8, mint.mint);
+    for (const player of players) {
+      await mintManager.mintTokensToAccount(
+        mint,
+        player.playerTokenAccount,
+        DEFAULT_PLAYER_BALANCE,
+      );
     }
-
-    return setup;
-  }
-
-  // Backwards-compatible helper (some tests call env.createPlayer())
-  public async createPlayer(): Promise<TestPlayer> {
-    if (!this.globalMint) throw new Error("Environment not initialized");
-    const pm = new PlayerManager(this.provider);
-    return pm.createPlayer(this.globalMint.mint);
-  }
-
-  /**
-   * Get a subset of players from the pool
-   */
-  getPlayers(count: number): TestPlayer[] {
-    if (count > this.playerPool.length) {
-      throw new Error(`Requested ${count} players, but only ${this.playerPool.length} available`);
-    }
-    return this.playerPool.slice(0, count);
-  }
-
-  /**
-   * Clean up resources (if needed for specific tests)
-   */
-  async cleanup(): Promise<void> {
-    // Implementation depends on cleanup needs
+    this.oracle = oracle;
+    this.globalMint = mint;
+    this.playerPool = players;
+    return { oracle, mint, players };
   }
 }
 
-/**
- * Oracle management utilities
- */
+export async function deriveOraclePda(): Promise<Address> {
+  return (await findOraclePda())[0];
+}
+
 export class OracleManager {
-  private program: anchor.Program<Timba>;
-  private provider: anchor.AnchorProvider;
+  constructor(private readonly env: TestEnvironment) {}
 
-  constructor(program: anchor.Program<Timba>, provider: anchor.AnchorProvider) {
-    this.program = program;
-    this.provider = provider;
-  }
-
-  async createOracle(config?: Partial<OracleConfig>): Promise<TestOracle> {
-    const defaultConfig: OracleConfig = {
+  async createOracle(config: Partial<OracleConfig> = {}): Promise<TestOracle> {
+    const defaults: OracleConfig = {
       feePercentage: 1,
       oracleBufferTime: 2,
-      maxTickets: 50000,
-      maxTimeout: 86400,
+      maxTickets: 50_000,
+      maxTimeout: 86_400,
       minTimeout: 1,
-
       ...config,
     };
-
-    const oraclePDA = deriveOraclePda(this.program.programId);
-
-    // Use a deterministic keypair for tests so we can reuse it
-    const operatorKeypair = DEFAULT_OPERATOR_KEYPAIR;
-
-    try {
-      // Check if oracle already exists and is properly initialized
-      try {
-        const existingOracle = await this.program.account.oracle.fetch(oraclePDA);
-        // Oracle already initialized
-        return {
-          oraclePDA,
-          oracle: oraclePDA,
-          operator: existingOracle.operator,
-          operatorKeypair,
-          config: {
-            feePercentage: existingOracle.feePercentage,
-            oracleBufferTime: existingOracle.oracleBufferTime.toNumber(),
-            maxTickets: existingOracle.maxTickets,
-            maxTimeout: existingOracle.maxTimeout.toNumber(),
-            minTimeout: existingOracle.minTimeout.toNumber(),
-          },
-        };
-      } catch {
-        // Oracle doesn't exist, proceed with initialization
-      }
-
-      // Airdrop SOL for rent to both provider and oracle operator
-      await requestAndConfirmAirdrop(
-        this.provider.connection,
-        this.provider.publicKey,
-        5 * anchor.web3.LAMPORTS_PER_SOL,
-      );
-      await requestAndConfirmAirdrop(
-        this.provider.connection,
-        operatorKeypair.publicKey,
-        5 * anchor.web3.LAMPORTS_PER_SOL,
-      );
-
-      const configForProgram = {
-        feePercentage: defaultConfig.feePercentage,
-        oracleBufferTime: new anchor.BN(defaultConfig.oracleBufferTime),
-        maxTickets: defaultConfig.maxTickets,
-        maxTimeout: new anchor.BN(defaultConfig.maxTimeout),
-        minTimeout: new anchor.BN(defaultConfig.minTimeout),
+    const oraclePDA = await deriveOraclePda();
+    const operatorKeypair = await getDefaultOperatorKeypair();
+    const existing = await fetchMaybeOracle(this.env.rpc, oraclePDA, { commitment: "confirmed" });
+    if (existing.exists) {
+      return {
+        oraclePDA,
+        operator: existing.data.operator,
+        operatorKeypair,
+        config: {
+          feePercentage: existing.data.feePercentage,
+          oracleBufferTime: Number(existing.data.oracleBufferTime),
+          maxTickets: existing.data.maxTickets,
+          maxTimeout: Number(existing.data.maxTimeout),
+          minTimeout: Number(existing.data.minTimeout),
+        },
       };
-
-      await this.program.methods
-        .initializeOracle(configForProgram)
-        .accounts({
-          oracleOperator: operatorKeypair.publicKey,
-          upgradeAuthority: this.provider.publicKey,
-          programData: anchor.web3.PublicKey.findProgramAddressSync(
-            [this.program.programId.toBuffer()],
-            new anchor.web3.PublicKey("BPFLoaderUpgradeab1e11111111111111111111111"),
-          )[0],
-        })
-        .signers([operatorKeypair])
-        .rpc();
-
-      // Oracle initialized
-    } catch (e) {
-      console.error("Failed to initialize oracle:", e);
-      throw e;
     }
-
-    return {
-      oraclePDA,
-      oracle: oraclePDA,
-      operator: operatorKeypair.publicKey,
-      operatorKeypair,
-      config: defaultConfig,
-    };
-  }
-
-  async getOracle(): Promise<TestOracle> {
-    const oraclePDA = deriveOraclePda(this.program.programId);
-
-    const oracleAccount = await this.program.account.oracle.fetch(oraclePDA);
-
-    // Use the same deterministic keypair as in createOracle
-    const operatorKeypair = DEFAULT_OPERATOR_KEYPAIR;
-
-    return {
-      oraclePDA,
-      oracle: oraclePDA,
-      operator: oracleAccount.operator,
-      operatorKeypair,
+    await requestAndConfirmAirdrop(this.env.rpc, this.env.payer.address, 5n * LAMPORTS_PER_SOL);
+    await requestAndConfirmAirdrop(this.env.rpc, operatorKeypair.address, 5n * LAMPORTS_PER_SOL);
+    const [programData] = await getProgramDerivedAddress({
+      programAddress: UPGRADEABLE_LOADER_ADDRESS,
+      seeds: [getAddressEncoder().encode(TIMBA_PROGRAM_ADDRESS)],
+    });
+    const instruction = await getInitializeOracleInstructionAsync({
+      oracleOperator: operatorKeypair,
+      upgradeAuthority: this.env.payer,
+      programData,
       config: {
-        feePercentage: oracleAccount.feePercentage,
-        oracleBufferTime: oracleAccount.oracleBufferTime.toNumber(),
-        maxTickets: oracleAccount.maxTickets,
-        maxTimeout: oracleAccount.maxTimeout.toNumber(),
-        minTimeout: oracleAccount.minTimeout.toNumber(),
+        feePercentage: defaults.feePercentage,
+        oracleBufferTime: BigInt(defaults.oracleBufferTime),
+        maxTickets: defaults.maxTickets,
+        maxTimeout: BigInt(defaults.maxTimeout),
+        minTimeout: BigInt(defaults.minTimeout),
       },
+    });
+    await sendInstructions(this.env.rpc, this.env.payer, [instruction]);
+    return {
+      oraclePDA,
+      operator: operatorKeypair.address,
+      operatorKeypair,
+      config: defaults,
     };
   }
 }
 
-/**
- * Token and mint management utilities
- */
-type GameVaultDerivation = {
-  gameVault: PublicKey;
-  gameVaultTokenAccount: PublicKey;
-};
+async function associatedTokenAddress(mint: Address, owner: Address): Promise<Address> {
+  return (await findAssociatedTokenPda({ owner, tokenProgram: TOKEN_PROGRAM_ADDRESS, mint }))[0];
+}
 
-export function computeGameVaultContext(
-  program: anchor.Program<Timba>,
-  tokenMint: PublicKey,
-  tokenProgram: PublicKey,
-): GameVaultDerivation {
-  const [gameVault] = PublicKey.findProgramAddressSync(
-    [Buffer.from("game_vault"), tokenMint.toBuffer()],
-    program.programId,
-  );
+async function ensureAssociatedTokenAccount(
+  env: TestEnvironment,
+  payer: KeyPairSigner,
+  mint: Address,
+  owner: Address,
+): Promise<Address> {
+  const ata = await associatedTokenAddress(mint, owner);
+  const account = await fetchEncodedAccount(env.rpc, ata, { commitment: "confirmed" });
+  if (!account.exists) {
+    const instruction = await getCreateAssociatedTokenIdempotentInstructionAsync({
+      payer,
+      ata,
+      owner,
+      mint,
+      tokenProgram: TOKEN_PROGRAM_ADDRESS,
+    });
+    await sendInstructions(env.rpc, payer, [instruction]);
+  }
+  return ata;
+}
 
-  const gameVaultTokenAccount = getAssociatedTokenAddressSync(
-    tokenMint,
-    gameVault,
-    true,
-    tokenProgram,
-    ASSOCIATED_TOKEN_PROGRAM_ID,
-  );
-
-  return { gameVault, gameVaultTokenAccount };
+export async function ensureOperatorAta(
+  env: TestEnvironment,
+  oracle: TestOracle,
+  mint: Address,
+): Promise<Address> {
+  return ensureAssociatedTokenAccount(env, oracle.operatorKeypair, mint, oracle.operator);
 }
 
 export class MintManager {
-  private program: anchor.Program<Timba>;
-  private provider: anchor.AnchorProvider;
-
-  constructor(program: anchor.Program<Timba>, provider: anchor.AnchorProvider) {
-    this.program = program;
-    this.provider = provider;
-  }
+  constructor(private readonly env: TestEnvironment) {}
 
   async createMint(): Promise<TestMint> {
-    const mintAuthority = anchor.web3.Keypair.generate();
-    const tokenProgram = TOKEN_PROGRAM_ID;
-    const decimals = 6;
-
-    // Airdrop SOL to mint authority
-    await requestAndConfirmAirdrop(
-      this.provider.connection,
-      mintAuthority.publicKey,
-      5 * anchor.web3.LAMPORTS_PER_SOL,
+    const mintAuthority = await generateKeyPairSigner();
+    await requestAndConfirmAirdrop(this.env.rpc, mintAuthority.address, 5n * LAMPORTS_PER_SOL);
+    const mint = await generateKeyPairSigner();
+    const plan = await getCreateMintInstructionPlan(
+      createClientWithGetMinimumBalanceFromRpc(this.env.rpc),
+      {
+        payer: mintAuthority,
+        newMint: mint,
+        decimals: 6,
+        mintAuthority: mintAuthority.address,
+        freezeAuthority: null,
+      },
     );
+    const leaves = flattenInstructionPlan(plan);
+    if (leaves.some((leaf) => leaf.kind !== "single")) {
+      throw new Error("Mint instruction plan requires unsupported message packing");
+    }
+    const instructions = leaves.map((leaf) => (leaf as { instruction: Instruction }).instruction);
+    await sendInstructions(this.env.rpc, mintAuthority, instructions);
 
-    // Create mint
-    const mint = await createMint(
-      this.provider.connection,
+    const [gameVaultPDA] = await findGameVaultPda({ tokenMint: mint.address });
+    await ensureAssociatedTokenAccount(this.env, mintAuthority, mint.address, gameVaultPDA);
+    await ensureAssociatedTokenAccount(
+      this.env,
       mintAuthority,
-      mintAuthority.publicKey,
-      null,
-      decimals,
-      undefined,
-      undefined,
-      tokenProgram,
+      mint.address,
+      this.env.payer.address,
     );
-
-    // Get PDAs and token accounts
-    const { gameVault: gameVaultPDA } = computeGameVaultContext(this.program, mint, tokenProgram);
-
-    // Create required token accounts
-    await getOrCreateAssociatedTokenAccount(
-      this.provider.connection,
-      mintAuthority,
-      mint,
-      gameVaultPDA,
-      true,
-      undefined,
-      undefined,
-      tokenProgram,
-    );
-
-    await getOrCreateAssociatedTokenAccount(
-      this.provider.connection,
-      mintAuthority,
-      mint,
-      this.provider.publicKey,
-      undefined,
-      undefined,
-      undefined,
-      tokenProgram,
-    );
-
-    // Get the oracle operator from the oracle account
-    const oraclePDA = deriveOraclePda(this.program.programId);
-    const oracleAccount = await this.program.account.oracle.fetch(oraclePDA);
-    await getOrCreateAssociatedTokenAccount(
-      this.provider.connection,
-      mintAuthority,
-      mint,
-      oracleAccount.operator,
-      false,
-      undefined,
-      undefined,
-      tokenProgram,
-    );
-
+    const oracle = await fetchOracle(this.env.rpc, await deriveOraclePda(), {
+      commitment: "confirmed",
+    });
+    await ensureAssociatedTokenAccount(this.env, mintAuthority, mint.address, oracle.data.operator);
     return {
-      mint,
+      mint: mint.address,
       mintAuthority,
       gameVaultPDA,
-      tokenProgram,
-      decimals,
+      tokenProgram: TOKEN_PROGRAM_ADDRESS,
+      decimals: 6,
     };
   }
 
-  // Helper getters used in some tests
-  getGameVaultPDA(mint: PublicKey): PublicKey {
-    const { gameVault } = computeGameVaultContext(this.program, mint, TOKEN_PROGRAM_ID);
-    return gameVault;
-  }
-
-  async mintTokensToAccount(
-    mint: TestMint,
-    tokenAccount: PublicKey,
-    amount: anchor.BN,
-  ): Promise<void> {
-    const amountBigInt = BigInt(amount.toString());
-    if (amountBigInt === 0n) {
-      return;
-    }
-
-    const mintInfo = await getMint(
-      this.provider.connection,
-      mint.mint,
-      undefined,
-      mint.tokenProgram,
-    );
-    const currentSupply = BigInt(mintInfo.supply.toString());
-    const maxSupply = 0xffff_ffff_ffff_ffffn; // SPL Token total supply is u64::MAX
-    const availableToMint = maxSupply > currentSupply ? maxSupply - currentSupply : 0n;
-    const mintAmount = amountBigInt <= availableToMint ? amountBigInt : availableToMint;
-
-    if (mintAmount === 0n) {
-      return;
-    }
-
-    await mintTo(
-      this.provider.connection,
-      mint.mintAuthority,
-      mint.mint,
-      tokenAccount,
-      mint.mintAuthority,
-      mintAmount,
-      undefined,
-      undefined,
-      mint.tokenProgram,
-    );
+  async mintTokensToAccount(mint: TestMint, tokenAccount: Address, amount: bigint): Promise<void> {
+    if (amount === 0n) return;
+    const mintInfo = await fetchMint(this.env.rpc, mint.mint, { commitment: "confirmed" });
+    const available = 0xffff_ffff_ffff_ffffn - mintInfo.data.supply;
+    const mintAmount = amount <= available ? amount : available;
+    if (mintAmount === 0n) return;
+    await sendInstructions(this.env.rpc, mint.mintAuthority, [
+      getMintToInstruction({
+        mint: mint.mint,
+        token: tokenAccount,
+        mintAuthority: mint.mintAuthority,
+        amount: mintAmount,
+      }),
+    ]);
   }
 }
 
-export async function deriveGameAccounts(
-  program: anchor.Program<Timba>,
-  gamePDA: PublicKey,
-  options: DerivedGameAccountsOptions = {},
-): Promise<DerivedGameAccounts> {
-  const cacheKey = gamePDA.toBase58();
+export class PlayerManager {
+  constructor(private readonly env: TestEnvironment) {}
 
-  let tokenMint: PublicKey | undefined = options.tokenMint;
-  let tokenProgram: PublicKey | undefined;
+  async createPlayer(mint: Address): Promise<TestPlayer> {
+    const player = await generateKeyPairSigner();
+    await requestAndConfirmAirdrop(this.env.rpc, player.address, 3n * LAMPORTS_PER_SOL);
+    const playerTokenAccount = await ensureAssociatedTokenAccount(
+      this.env,
+      player,
+      mint,
+      player.address,
+    );
+    return { player, playerTokenAccount };
+  }
 
-  if (!tokenMint) {
-    try {
-      const gameAccount = await program.account.game.fetch(gamePDA);
-      tokenMint = new PublicKey(gameAccount.tokenMint);
-    } catch (error) {
-      const cached = gameVaultCache.get(cacheKey);
-      if (cached) {
-        tokenMint = cached.tokenMint;
-        tokenProgram = cached.tokenProgram;
-      } else {
-        throw error;
-      }
+  async createPlayerPool(count: number, mint: Address): Promise<TestPlayer[]> {
+    const players: TestPlayer[] = [];
+    for (let index = 0; index < count; index += 1) {
+      players.push(await this.createPlayer(mint));
     }
+    return players;
   }
+}
 
+const gameVaultCache = new Map<string, Address>();
+
+export type DerivedGameAccounts = {
+  tokenMint: Address;
+  oracle: Address;
+  gameVault: Address;
+  gameVaultTokenAccount: Address;
+  playerTokenAccount?: Address;
+  winnerTokenAccount?: Address;
+};
+
+export async function deriveGameAccounts(
+  env: TestEnvironment,
+  gamePDA: Address,
+  options: { player?: Address; winner?: Address; tokenMint?: Address } = {},
+): Promise<DerivedGameAccounts> {
+  let tokenMint = options.tokenMint ?? gameVaultCache.get(gamePDA);
   if (!tokenMint) {
-    throw new Error("Unable to derive game accounts: token mint could not be determined");
+    tokenMint = (await fetchGame(env.rpc, gamePDA, { commitment: "confirmed" })).data.tokenMint;
   }
-
-  if (!tokenProgram) {
-    tokenProgram = await resolveTokenProgram(program.provider.connection, tokenMint);
-  }
-
-  gameVaultCache.set(cacheKey, { tokenMint, tokenProgram });
-
-  const oracle = deriveOraclePda(program.programId);
-
-  const { gameVault, gameVaultTokenAccount } = computeGameVaultContext(
-    program,
-    tokenMint,
-    tokenProgram,
-  );
-
+  gameVaultCache.set(gamePDA, tokenMint);
+  const [oracle] = await findOraclePda();
+  const [gameVault] = await findGameVaultPda({ tokenMint });
+  const gameVaultTokenAccount = await associatedTokenAddress(tokenMint, gameVault);
   const playerTokenAccount = options.player
-    ? getAssociatedTokenAddressSync(
-        tokenMint,
-        options.player,
-        false,
-        tokenProgram,
-        ASSOCIATED_TOKEN_PROGRAM_ID,
-      )
+    ? await associatedTokenAddress(tokenMint, options.player)
     : undefined;
-
   const winnerTokenAccount = options.winner
-    ? getAssociatedTokenAddressSync(
-        tokenMint,
-        options.winner,
-        false,
-        tokenProgram,
-        ASSOCIATED_TOKEN_PROGRAM_ID,
-      )
+    ? await associatedTokenAddress(tokenMint, options.winner)
     : undefined;
-
   return {
     tokenMint,
-    tokenProgram,
     oracle,
     gameVault,
     gameVaultTokenAccount,
@@ -918,488 +521,279 @@ export async function deriveGameAccounts(
   };
 }
 
-export function toGameVaultContext(derived: DerivedGameAccounts): GameVaultContextAccounts {
-  return {
-    tokenMint: derived.tokenMint,
-    gameVault: derived.gameVault,
-    gameVaultTokenAccount: derived.gameVaultTokenAccount,
-    tokenProgram: derived.tokenProgram,
-    associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
-  };
-}
-
-export function gameVaultContextFromMint(
-  mint: TestMint,
-  program?: anchor.Program<Timba>,
-): GameVaultContextAccounts {
-  const resolvedProgram = program ?? (anchor.workspace.Timba as anchor.Program<Timba>);
-
-  const { gameVault, gameVaultTokenAccount } = computeGameVaultContext(
-    resolvedProgram,
-    mint.mint,
-    mint.tokenProgram,
-  );
-
-  return {
-    tokenMint: mint.mint,
-    gameVault,
-    gameVaultTokenAccount,
-    tokenProgram: mint.tokenProgram,
-    associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
-  };
-}
-
-/**
- * Player management utilities
- */
-export class PlayerManager {
-  private program: anchor.Program<Timba>;
-  private provider: anchor.AnchorProvider;
-  private mintManager: MintManager;
-
-  constructor(provider: anchor.AnchorProvider) {
-    this.program = anchor.workspace.Timba as anchor.Program<Timba>;
-    this.provider = provider;
-    this.mintManager = new MintManager(this.program, provider);
-  }
-
-  private async preparePlayerAccount(
-    player: anchor.web3.Keypair,
-    mint: PublicKey,
-    tokenProgram?: PublicKey,
-  ): Promise<TestPlayer> {
-    const resolvedTokenProgram =
-      tokenProgram ?? (await resolveTokenProgram(this.provider.connection, mint));
-
-    await requestAndConfirmAirdrop(
-      this.provider.connection,
-      player.publicKey,
-      3 * anchor.web3.LAMPORTS_PER_SOL,
-    );
-
-    for (let attempt = 0; attempt < TOKEN_ACCOUNT_READ_RETRIES; attempt += 1) {
-      try {
-        const playerTokenAccount = await getOrCreateAssociatedTokenAccount(
-          this.provider.connection,
-          player,
-          mint,
-          player.publicKey,
-          undefined,
-          undefined,
-          undefined,
-          resolvedTokenProgram,
-        );
-
-        return { player, playerTokenAccount };
-      } catch (error) {
-        const isDelayedAccountRead =
-          error instanceof Error && error.name === "TokenAccountNotFoundError";
-
-        if (!isDelayedAccountRead || attempt === TOKEN_ACCOUNT_READ_RETRIES - 1) {
-          throw error;
-        }
-
-        await tickClock(this.provider);
-      }
-    }
-
-    throw new Error("Player token account setup exhausted without returning");
-  }
-
-  async createPlayer(mint: PublicKey): Promise<TestPlayer> {
-    const player = anchor.web3.Keypair.generate();
-    return this.preparePlayerAccount(player, mint);
-  }
-
-  async createPlayerPool(count: number, mint: PublicKey): Promise<TestPlayer[]> {
-    const players = Array.from({ length: count }, () => anchor.web3.Keypair.generate());
-
-    const tokenProgram = await resolveTokenProgram(this.provider.connection, mint);
-
-    const preparedPlayers: TestPlayer[] = [];
-
-    // Surfpool can return an account read before a concurrent ATA creation is
-    // visible. Player setup is not the capacity under test, so keep it serial.
-    for (const player of players) {
-      preparedPlayers.push(await this.preparePlayerAccount(player, mint, tokenProgram));
-    }
-
-    return preparedPlayers;
-  }
-
-  async fundPlayer(player: TestPlayer, mint: TestMint, amount: anchor.BN): Promise<void> {
-    await this.mintManager.mintTokensToAccount(mint, player.playerTokenAccount.address, amount);
-  }
-}
-
-/**
- * Game management utilities
- */
-export type GameVaultContextAccounts = {
-  tokenMint: PublicKey;
-  gameVault: PublicKey;
-  gameVaultTokenAccount: PublicKey;
-  tokenProgram: PublicKey;
-  associatedTokenProgram: PublicKey;
-};
-
-type CompleteGameAccounts = {
-  game: PublicKey;
-  gameVaultCtx: GameVaultContextAccounts;
-  oracle: PublicKey;
-  oracleOperator: PublicKey;
-  winner: PublicKey;
-  creator: PublicKey;
-  winnerTokenAccount: PublicKey;
-  oracleOperatorTokenAccount: PublicKey;
+export type CompleteGameAccounts = {
+  tokenMint: Address;
+  gameVault: Address;
+  gameVaultTokenAccount: Address;
+  oracle: Address;
+  winner: Address;
+  creator: Address;
+  winnerTokenAccount: Address;
+  oracleOperatorTokenAccount: Address;
 };
 
 export class GameManager {
-  private program: anchor.Program<Timba>;
+  constructor(private readonly env: TestEnvironment) {}
 
-  constructor(program: anchor.Program<Timba>) {
-    this.program = program;
-  }
-
-  private async resolveTokenProgram(tokenMint: PublicKey): Promise<PublicKey> {
-    return resolveTokenProgram(this.program.provider.connection, tokenMint);
-  }
-
-  generateGamePDA(): TestGame {
-    const secretKeyBuffer = anchor.web3.Keypair.generate().secretKey.slice(0, 32);
-    const secretKey = Array.from(secretKeyBuffer);
-    const randomHashBuffer = hash(Buffer.from(secretKeyBuffer));
-    const randomHash = Array.from(randomHashBuffer);
-
-    const [gamePDA] = PublicKey.findProgramAddressSync(
-      [Buffer.from("game"), randomHashBuffer],
-      this.program.programId,
-    );
-
+  async generateGamePDA(): Promise<TestGame> {
+    const secretKey = crypto.getRandomValues(new Uint8Array(32));
+    const randomHash = new Uint8Array(createHash("sha256").update(secretKey).digest());
+    const [gamePDA] = await findGamePda({ randomHash });
     return { gamePDA, randomHash, secretKey };
   }
 
-  async fetchGame(gamePDA: PublicKey) {
-    return this.program.account.game.fetch(gamePDA);
+  async fetchGame(gamePDA: Address): Promise<Game> {
+    return (await fetchGame(this.env.rpc, gamePDA, { commitment: "confirmed" })).data;
   }
 
-  async initializeGame(
-    gameData: TestGame,
+  async createGame(
     config: GameConfig,
-    creator: anchor.web3.Keypair,
-    tokenMint: PublicKey,
-    oracleOperator: anchor.web3.Keypair = DEFAULT_OPERATOR_KEYPAIR,
-  ): Promise<void> {
-    const tokenProgram = await this.resolveTokenProgram(tokenMint);
-    const oracle = deriveOraclePda(this.program.programId);
-    const { gameVault, gameVaultTokenAccount } = computeGameVaultContext(
-      this.program,
+    creator: KeyPairSigner,
+    tokenMint: Address,
+  ): Promise<TestGame> {
+    const gameData = await this.generateGamePDA();
+    const creatorTokenAccount = await associatedTokenAddress(tokenMint, creator.address);
+    const oracleOperator = this.env.oracle?.operatorKeypair ?? (await getDefaultOperatorKeypair());
+    const instruction = await getInitializeGameInstructionAsync({
+      creator,
+      oracleOperator,
       tokenMint,
-      tokenProgram,
-    );
-    const creatorTokenAccount = getAssociatedTokenAddressSync(
-      tokenMint,
-      creator.publicKey,
-      false,
-      tokenProgram,
-      ASSOCIATED_TOKEN_PROGRAM_ID,
-    );
-    const gameVaultCtx: GameVaultContextAccounts = {
-      tokenMint,
-      gameVault,
-      gameVaultTokenAccount,
-      tokenProgram,
-      associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
-    };
-    const cfg = {
+      creatorTokenAccount,
       gameType: config.gameType,
-      amount: toBN(config.amount),
-      maxTickets: toNumber(config.maxTickets),
-      minTickets: toNumber(config.minTickets),
-      timeout: toBN(config.timeout),
+      amount: config.amount,
+      maxTickets: config.maxTickets,
+      minTickets: config.minTickets,
+      timeout: config.timeout,
       isPrivate: config.isPrivate,
-    };
-
-    await this.program.methods
-      .initializeGame(cfg, gameData.randomHash)
-      .accountsStrict({
-        game: gameData.gamePDA,
-        creator: creator.publicKey,
-        oracle,
-        oracleOperator: oracleOperator.publicKey,
-        gameVaultCtx,
-        creatorTokenAccount,
-        systemProgram: anchor.web3.SystemProgram.programId,
-      })
-      .signers([creator, oracleOperator])
-      .rpc();
-
-    gameVaultCache.set(gameData.gamePDA.toBase58(), {
-      tokenMint,
-      tokenProgram,
+      randomHash: gameData.randomHash,
     });
+    await sendInstructions(this.env.rpc, creator, [instruction]);
+    gameVaultCache.set(gameData.gamePDA, tokenMint);
+    return gameData;
   }
 
   async joinGame(
-    gamePDA: PublicKey,
-    player: anchor.web3.Keypair,
-    oracleOperator?: anchor.web3.Keypair,
+    gamePDA: Address,
+    player: KeyPairSigner,
+    oracleOperator?: KeyPairSigner,
   ): Promise<void> {
-    const derived = await deriveGameAccounts(this.program, gamePDA, {
-      player: player.publicKey,
-    });
-
-    if (!derived.playerTokenAccount) {
-      throw new Error("Missing player token account for joinGame");
-    }
-
-    const gameVaultCtx = toGameVaultContext(derived);
-    const commonAccounts = {
+    const derived = await deriveGameAccounts(this.env, gamePDA, { player: player.address });
+    if (!derived.playerTokenAccount) throw new Error("Missing player token account");
+    const instruction = await getJoinGameInstructionAsync({
       game: gamePDA,
-      player: player.publicKey,
+      player,
+      ...(oracleOperator ? { oracleOperator } : {}),
+      tokenMint: derived.tokenMint,
+      gameVault: derived.gameVault,
+      gameVaultTokenAccount: derived.gameVaultTokenAccount,
       playerTokenAccount: derived.playerTokenAccount,
-      gameVaultCtx,
       oracle: derived.oracle,
-    };
-
-    if (oracleOperator) {
-      await this.program.methods
-        .joinGame()
-        .accounts({
-          ...commonAccounts,
-          oracleOperator: oracleOperator.publicKey,
-        })
-        .signers([player, oracleOperator])
-        .rpc();
-    } else {
-      await this.program.methods.joinGame().accounts(commonAccounts).signers([player]).rpc();
-    }
-  }
-
-  // rollGame helper not included (multi-participation disabled)
-
-  async unjoinGame(
-    gamePDA: PublicKey,
-    player: anchor.web3.Keypair,
-    authority?: anchor.web3.Keypair,
-  ): Promise<string> {
-    const derived = await deriveGameAccounts(this.program, gamePDA, {
-      player: player.publicKey,
     });
-
-    if (!derived.playerTokenAccount) {
-      throw new Error("Missing player token account for unjoinGame");
-    }
-
-    const authoritySigner = authority ?? player;
-
-    return this.program.methods
-      .unjoinGame()
-      .accountsStrict({
-        game: gamePDA,
-        player: player.publicKey,
-        authority: authoritySigner.publicKey,
-        oracle: derived.oracle,
-        playerTokenAccount: derived.playerTokenAccount,
-        gameVaultCtx: toGameVaultContext(derived),
-      })
-      .signers([authoritySigner])
-      .rpc();
+    await sendInstructions(this.env.rpc, player, [instruction]);
   }
 
-  async completeGame(
-    gameData: TestGame,
-    winner: PublicKey,
-    creator: PublicKey,
-    oracleOperator: PublicKey,
-    winnerIndex: number,
-    oracleOperatorKeypair?: anchor.web3.Keypair,
-    overrides?: Partial<CompleteGameAccounts>,
-  ): Promise<void> {
-    // Use provided oracle operator keypair or default to deterministic one
-    const operatorKeypair = oracleOperatorKeypair || DEFAULT_OPERATOR_KEYPAIR;
+  async buildUnjoinGameInstruction(gamePDA: Address, player: KeyPairSigner) {
+    const derived = await deriveGameAccounts(this.env, gamePDA, { player: player.address });
+    if (!derived.playerTokenAccount) throw new Error("Missing player token account");
+    return getUnjoinGameInstructionAsync({
+      game: gamePDA,
+      player: player.address,
+      authority: player,
+      oracle: derived.oracle,
+      tokenMint: derived.tokenMint,
+      gameVault: derived.gameVault,
+      gameVaultTokenAccount: derived.gameVaultTokenAccount,
+      playerTokenAccount: derived.playerTokenAccount,
+    });
+  }
 
+  async buildCompleteGameInstruction(
+    gameData: TestGame,
+    winner: Address,
+    creator: Address,
+    oracleOperatorKeypair: KeyPairSigner,
+    winnerIndex: number,
+  ) {
     const accounts = await this.buildCompleteGameAccounts(
       gameData,
       winner,
       creator,
-      oracleOperator,
-      overrides,
+      oracleOperatorKeypair.address,
     );
+    return getCompleteGameInstructionAsync({
+      game: gameData.gamePDA,
+      ...accounts,
+      oracleOperator: oracleOperatorKeypair,
+      randomHash: gameData.randomHash,
+      secretKey: gameData.secretKey,
+      winnerIndex,
+    });
+  }
 
-    await this.program.methods
-      .completeGame(gameData.randomHash, gameData.secretKey, winnerIndex)
-      .accountsStrict(accounts)
-      .signers([operatorKeypair])
-      .rpc();
+  async completeGame(
+    gameData: TestGame,
+    winner: Address,
+    creator: Address,
+    oracleOperator: Address,
+    winnerIndex: number,
+    oracleOperatorKeypair?: KeyPairSigner,
+  ): Promise<void> {
+    const operatorSigner = oracleOperatorKeypair ?? (await getDefaultOperatorKeypair());
+    if (operatorSigner.address !== oracleOperator) {
+      throw new Error("Oracle operator signer does not match the requested operator");
+    }
+    const instruction = await this.buildCompleteGameInstruction(
+      gameData,
+      winner,
+      creator,
+      operatorSigner,
+      winnerIndex,
+    );
+    await sendInstructions(this.env.rpc, operatorSigner, [instruction]);
   }
 
   async buildCompleteGameAccounts(
     gameData: TestGame,
-    winner: PublicKey,
-    creator: PublicKey,
-    oracleOperator: PublicKey,
-    overrides: Partial<CompleteGameAccounts> = {},
+    winner: Address,
+    creator: Address,
+    oracleOperator: Address,
   ): Promise<CompleteGameAccounts> {
-    const derived = await deriveGameAccounts(this.program, gameData.gamePDA, {
-      winner,
-    });
-
-    if (!derived.winnerTokenAccount) {
-      throw new Error("Missing winner token account for completeGame");
-    }
-
-    const oracleOperatorTokenAccount = getAssociatedTokenAddressSync(
-      derived.tokenMint,
-      oracleOperator,
-      false,
-      derived.tokenProgram,
-      ASSOCIATED_TOKEN_PROGRAM_ID,
-    );
-
-    const baseAccounts: CompleteGameAccounts = {
-      game: gameData.gamePDA,
-      gameVaultCtx: toGameVaultContext(derived),
+    const derived = await deriveGameAccounts(this.env, gameData.gamePDA, { winner });
+    if (!derived.winnerTokenAccount) throw new Error("Missing winner token account");
+    return {
+      tokenMint: derived.tokenMint,
+      gameVault: derived.gameVault,
+      gameVaultTokenAccount: derived.gameVaultTokenAccount,
       oracle: derived.oracle,
-      oracleOperator,
       winner,
       creator,
       winnerTokenAccount: derived.winnerTokenAccount,
-      oracleOperatorTokenAccount,
+      oracleOperatorTokenAccount: await associatedTokenAddress(derived.tokenMint, oracleOperator),
     };
-
-    return { ...baseAccounts, ...overrides };
-  }
-
-  // Convenience wrapper for tests expecting createGame()
-  async createGame(
-    config: GameConfig,
-    creator: anchor.web3.Keypair,
-    tokenMint: PublicKey,
-  ): Promise<TestGame> {
-    const gameData = this.generateGamePDA();
-    await this.initializeGame(gameData, config, creator, tokenMint);
-    return gameData;
-  }
-
-  async createFilledGame(
-    config: GameConfig,
-    creator: TestPlayer,
-    tokenMint: PublicKey,
-    participants: TestPlayer[],
-    { joinCreator = true }: { joinCreator?: boolean } = {},
-  ): Promise<TestGame> {
-    const gameData = this.generateGamePDA();
-    await this.initializeGame(gameData, config, creator.player, tokenMint);
-
-    if (joinCreator) {
-      await this.joinGame(gameData.gamePDA, creator.player);
-    }
-
-    for (const participant of participants) {
-      await this.joinGame(gameData.gamePDA, participant.player);
-    }
-
-    return gameData;
-  }
-
-  // Expose calculation helper for backward compatibility
-  calculateWinnerIndex(ticketsCount: number, secretKey: number[], lastSlot: number): number {
-    return calculateWinnerIndex(ticketsCount, secretKey, lastSlot);
   }
 }
 
-/**
- * Winner calculation utilities
- */
+export class TestUtils {
+  public readonly env = TestEnvironment.getInstance();
+  public readonly oracle = new OracleManager(this.env);
+  public readonly mint = new MintManager(this.env);
+  public readonly player = new PlayerManager(this.env);
+  public readonly game = new GameManager(this.env);
+
+  async quickSetup(): Promise<StandardSetup> {
+    const setup = await this.env.initialize();
+    for (const player of setup.players) {
+      const balance = (await fetchToken(this.env.rpc, player.playerTokenAccount)).data.amount;
+      if (balance < DEFAULT_PLAYER_BALANCE) {
+        await this.mint.mintTokensToAccount(
+          setup.mint,
+          player.playerTokenAccount,
+          DEFAULT_PLAYER_BALANCE - balance,
+        );
+      }
+    }
+    return setup;
+  }
+}
+
+type BufferReadyGameAccount = Pick<Game, "createdAt" | "timeout">;
+
+export async function getClockUnixTimestamp(rpc: TestRpc): Promise<number> {
+  const clock = await fetchEncodedAccount(rpc, CLOCK_SYSVAR_ADDRESS, { commitment: "confirmed" });
+  if (!clock.exists) throw new Error("Clock sysvar account unavailable");
+  return Number(
+    new DataView(clock.data.buffer, clock.data.byteOffset + 32, 8).getBigInt64(0, true),
+  );
+}
+
+async function tickClock(env: TestEnvironment): Promise<void> {
+  await sendInstructions(env.rpc, env.payer, [
+    getTransferSolInstruction({ source: env.payer, destination: env.payer.address, amount: 0n }),
+  ]);
+}
+
+export async function awaitOracleCompletionReady(
+  gameAccount: BufferReadyGameAccount,
+  oracleConfig: OracleConfig,
+  extraSlackSeconds = 0.5,
+): Promise<void> {
+  const env = TestEnvironment.getInstance();
+  const boundedSlack =
+    oracleConfig.oracleBufferTime > 0
+      ? Math.min(extraSlackSeconds, Math.max(oracleConfig.oracleBufferTime - 0.25, 0))
+      : 0;
+  const targetTimestamp =
+    Number(gameAccount.createdAt) + Number(gameAccount.timeout) + boundedSlack;
+  let start = Date.now();
+  let extended = false;
+  let previousClockTimestamp: number | undefined;
+  let stalledPolls = 0;
+  while (true) {
+    const clockTimestamp = await getClockUnixTimestamp(env.rpc);
+    if (clockTimestamp >= targetTimestamp) return;
+    if (clockTimestamp === previousClockTimestamp) {
+      stalledPolls += 1;
+      if (stalledPolls >= CLOCK_STALL_POLLS_BEFORE_TICK) {
+        await tickClock(env);
+        stalledPolls = 0;
+      }
+    } else {
+      stalledPolls = 0;
+    }
+    previousClockTimestamp = clockTimestamp;
+    if (Date.now() - start > DEFAULT_BUFFER_MAX_WAIT_MS) {
+      if (extended) {
+        throw new Error(
+          `Timed out waiting for game timeout (target=${targetTimestamp}, clock=${clockTimestamp})`,
+        );
+      }
+      extended = true;
+      start = Date.now();
+    }
+    await new Promise((resolve) => setTimeout(resolve, DEFAULT_BUFFER_POLL_INTERVAL_MS));
+  }
+}
+
 export function calculateWinnerIndex(
   ticketsCount: number,
-  secretKey: number[],
+  secretKey: ReadonlyUint8Array,
   lastSlot: number,
 ): number {
-  // Calculate entries: for Snowball games use total_amount/ticket_amount, for others use player count
-  const nEntries = ticketsCount;
-
-  if (nEntries === 1) {
-    return 0;
-  }
-
-  const nPlayers = BigInt(nEntries);
-
-  // Hash combination of secret key and last_slot for additional entropy
+  if (ticketsCount === 1) return 0;
+  const nPlayers = BigInt(ticketsCount);
   const combinedData = new Uint8Array(40);
   combinedData.set(secretKey, 0);
-
-  // Convert lastSlot to little-endian bytes
-  const lastSlotBytes = new Uint8Array(8);
-  const lastSlotView = new DataView(lastSlotBytes.buffer);
-  lastSlotView.setBigUint64(0, BigInt(lastSlot), true);
-  combinedData.set(lastSlotBytes, 32);
-
-  const entropyHash = hash(Buffer.from(combinedData));
-
-  // Try sliding 8-byte windows through the hashed entropy
-  const maxValid = BigInt("0xFFFFFFFFFFFFFFFF") - (BigInt("0xFFFFFFFFFFFFFFFF") % nPlayers);
-
-  for (let startPos = 0; startPos <= 32 - 8; startPos++) {
+  new DataView(combinedData.buffer).setBigUint64(32, BigInt(lastSlot), true);
+  const entropyHash = createHash("sha256").update(combinedData).digest();
+  const maxU64 = 0xffff_ffff_ffff_ffffn;
+  const maxValid = maxU64 - (maxU64 % nPlayers);
+  for (let startPos = 0; startPos <= 24; startPos += 1) {
     const randomBytes = entropyHash.subarray(startPos, startPos + 8);
-    const randomU64 = new DataView(randomBytes.buffer).getBigUint64(0, true);
-
-    if (randomU64 < maxValid) {
-      return Number(randomU64 % nPlayers);
-    }
+    const randomU64 = new DataView(
+      randomBytes.buffer,
+      randomBytes.byteOffset,
+      randomBytes.byteLength,
+    ).getBigUint64(0, true);
+    if (randomU64 < maxValid) return Number(randomU64 % nPlayers);
   }
-
   throw new Error("Unable to generate unbiased random number");
 }
 
-/**
- * Helper function to get the winner from a list of players
- */
 export function getWinnerFromPlayers(players: TestPlayer[], winnerIndex: number): TestPlayer {
-  if (winnerIndex >= players.length) {
-    throw new Error(`Winner index ${winnerIndex} is out of bounds for ${players.length} players`);
-  }
-  return players[winnerIndex];
-}
-
-export interface GameOutcomeContext {
-  gameAccount: anchor.IdlAccounts<Timba>["game"];
-  winnerIndex: number;
-  winner: TestPlayer;
-  participants: TestPlayer[];
-  pot: anchor.BN;
-}
-
-export async function computeGameOutcome(
-  env: TestEnvironment,
-  gameData: TestGame,
-  participants: TestPlayer[],
-): Promise<GameOutcomeContext> {
-  const gameAccount = env.testUtils
-    ? await env.testUtils.game.fetchGame(gameData.gamePDA)
-    : await env.program.account.game.fetch(gameData.gamePDA);
-  const winnerIndex = calculateWinnerIndex(
-    gameAccount.ticketsCount,
-    gameData.secretKey,
-    Number(gameAccount.lastSlot),
-  );
-  const winner = getWinnerFromPlayers(participants, winnerIndex);
-  const pot = new anchor.BN(gameAccount.totalAmount.toString());
-
-  return { gameAccount, winnerIndex, winner, participants, pot };
+  const winner = players[winnerIndex];
+  if (!winner) throw new Error(`Winner index ${winnerIndex} is out of bounds`);
+  return winner;
 }
 
 export function calculatePayoutBreakdown(
-  pot: anchor.BN,
+  pot: bigint,
   feePercentage: number,
-): { fee: anchor.BN; winnerAmount: anchor.BN } {
-  const fee = pot.mul(new anchor.BN(feePercentage)).div(new anchor.BN(100));
-  const winnerAmount = pot.sub(fee);
-  return { fee, winnerAmount };
+): { fee: bigint; winnerAmount: bigint } {
+  const fee = (pot * BigInt(feePercentage)) / 100n;
+  return { fee, winnerAmount: pot - fee };
 }
 
-const ANCHOR_ERROR_CODE_BY_NUMBER: Record<number, string> = {
+const PROGRAM_ERROR_CODES: Record<number, string> = {
   7000: "UnauthorizedOperator",
   7001: "UnauthorizedPlayer",
   7002: "InvalidCreator",
@@ -1407,224 +801,48 @@ const ANCHOR_ERROR_CODE_BY_NUMBER: Record<number, string> = {
   7101: "GameWaitingForOracle",
   7102: "GameNotReadyForOracle",
   7103: "GameHasActivePlayers",
+  7202: "WinnerIndexMismatch",
   7207: "ParticipantNotFound",
 };
 
-function extractNumericProgramError(error: unknown): number | undefined {
-  const message = getErrorMessage(error);
-
+function getErrorCode(error: unknown): string | undefined {
+  const message = errorToString(error);
   const hexMatch = /custom program error:\s*0x([0-9a-fA-F]+)/i.exec(message);
-  if (hexMatch?.[1]) {
-    return Number.parseInt(hexMatch[1], 16);
+  if (hexMatch?.[1]) return PROGRAM_ERROR_CODES[Number.parseInt(hexMatch[1], 16)];
+  const customMatch = /["']?Custom["']?\s*[:(]\s*(\d+)/i.exec(message);
+  if (customMatch?.[1]) return PROGRAM_ERROR_CODES[Number.parseInt(customMatch[1], 10)];
+  for (const code of Object.values(PROGRAM_ERROR_CODES)) {
+    if (message.includes(code)) return code;
   }
-
-  const customMatch = /"Custom"\s*:\s*(\d+)/.exec(message);
-  if (customMatch?.[1]) {
-    return Number.parseInt(customMatch[1], 10);
-  }
-
-  const instructionMatch = /InstructionError\D+(\d+)\D+Custom\D+(\d+)/i.exec(message);
-  if (instructionMatch?.[2]) {
-    return Number.parseInt(instructionMatch[2], 10);
-  }
-
   return undefined;
 }
 
-type AnchorErrorLike = {
-  error?: {
-    errorCode?: { code?: unknown };
-    errorMessage?: unknown;
-    errorLogs?: unknown;
-  };
-  message?: unknown;
-  transactionLogs?: unknown;
-  logs?: unknown;
-  toString?: () => string;
-};
-
-function asAnchorError(error: unknown): AnchorErrorLike {
-  return typeof error === "object" && error !== null ? (error as AnchorErrorLike) : {};
-}
-
-export function getErrorCode(error: unknown): string | undefined {
-  const anchorCode = asAnchorError(error).error?.errorCode?.code;
-  if (typeof anchorCode === "string" && anchorCode.length > 0) {
-    return anchorCode;
-  }
-
-  const numeric = extractNumericProgramError(error);
-  if (numeric === undefined) {
-    return undefined;
-  }
-
-  return ANCHOR_ERROR_CODE_BY_NUMBER[numeric];
-}
-
-export function getErrorMessage(error: unknown): string {
-  const err = asAnchorError(error);
-  const rawMessage = err.error?.errorMessage ?? err.message ?? err.toString?.();
-  const directMessage = typeof rawMessage === "string" ? rawMessage : undefined;
-
-  const shouldInspectLogs = !directMessage || directMessage === "Unknown action 'undefined'";
-  if (shouldInspectLogs) {
-    const logs = err?.transactionLogs ?? err?.logs ?? err?.error?.errorLogs ?? undefined;
-    if (Array.isArray(logs)) {
-      for (const log of logs) {
-        if (typeof log !== "string") continue;
-        const match = /Error Message: (?<msg>[^.]+)/.exec(log);
-        if (match?.groups?.msg) {
-          return match.groups.msg;
-        }
-      }
-    }
-  }
-
-  return directMessage ?? "Unknown error";
-}
-
-export async function expectAnchorError(
+export async function expectProgramError(
   promise: Promise<unknown>,
   code: string,
   { fallbackSubstring, message }: { fallbackSubstring?: string; message?: string } = {},
 ): Promise<void> {
+  let caught: unknown;
   try {
     await promise;
-    expect.fail(message ?? `Expected Anchor error code ${code}`);
   } catch (error: unknown) {
-    const actualCode = getErrorCode(error);
-
-    if (actualCode) {
-      expect(actualCode).to.equal(code);
-      return;
-    }
-
-    if (fallbackSubstring) {
-      expect(getErrorMessage(error)).to.include(fallbackSubstring);
-      return;
-    }
-
-    expect.fail(`Expected Anchor error code ${code} but received: ${getErrorMessage(error)}`);
+    caught = error;
   }
+  if (caught === undefined) throw new Error(message ?? `Expected program error ${code}`);
+  const actualCode = getErrorCode(caught);
+  if (actualCode) {
+    expect(actualCode).toBe(code);
+    return;
+  }
+  const errorMessage = errorToString(caught);
+  if (fallbackSubstring && errorMessage.includes(fallbackSubstring)) return;
+  throw new Error(`Expected program error ${code} but received: ${errorMessage}`);
 }
 
-/**
- * Hashes a buffer using SHA-256 and returns the digest as a Buffer
- */
-function hash(data: Buffer): Buffer {
-  return createHash("sha256").update(data).digest();
+export async function fetchTokenBalance(rpc: TestRpc, tokenAccount: Address): Promise<bigint> {
+  return (await fetchToken(rpc, tokenAccount, { commitment: "confirmed" })).data.amount;
 }
 
-/**
- * Utility class that combines all managers for easy access
- */
-export class TestUtils {
-  public oracle: OracleManager;
-  public mint: MintManager;
-  public player: PlayerManager;
-  public game: GameManager;
-  public env: TestEnvironment;
-
-  constructor() {
-    this.env = TestEnvironment.getInstance();
-    this.oracle = new OracleManager(this.env.program, this.env.provider);
-    this.mint = new MintManager(this.env.program, this.env.provider);
-    this.player = new PlayerManager(this.env.provider);
-    this.game = new GameManager(this.env.program);
-  }
-
-  /**
-   * Quick setup for a standard test scenario
-   */
-  async quickSetup(): Promise<StandardSetup> {
-    const setup = await this.env.initialize();
-
-    this.env.testUtils = this;
-
-    await this.ensurePlayerBalances(setup);
-
-    return setup;
-  }
-
-  private async ensurePlayerBalances(setup: StandardSetup): Promise<void> {
-    const { mint, players } = setup;
-
-    for (const player of players) {
-      const balance = await this.env.provider.connection.getTokenAccountBalance(
-        player.playerTokenAccount.address,
-      );
-      const currentAmount = new anchor.BN(balance.value.amount);
-
-      if (currentAmount.gte(DEFAULT_PLAYER_BALANCE)) {
-        continue;
-      }
-
-      const deficit = DEFAULT_PLAYER_BALANCE.sub(currentAmount);
-      await this.player.fundPlayer(player, mint, deficit);
-    }
-  }
+export async function gameExists(rpc: TestRpc, game: Address): Promise<boolean> {
+  return (await fetchMaybeGame(rpc, game, { commitment: "confirmed" })).exists;
 }
-
-/**
- * Random utility functions for fuzz testing
- */
-export const RandomUtils = {
-  /**
-   * Generate random integer in range [min, max] (inclusive)
-   */
-  randomInt(min: number, max: number): number {
-    return Math.floor(Math.random() * (max - min + 1)) + min;
-  },
-
-  /**
-   * Generate random boolean with optional probability
-   */
-  randomBoolean(probability: number = 0.5): boolean {
-    return Math.random() < probability;
-  },
-
-  /**
-   * Generate random game type for testing
-   */
-  randomGameType(): GameConfig["gameType"] {
-    const types: GameConfig["gameType"][] = [{ coinflip: {} }, { giveaway: {} }];
-    return types[this.randomInt(0, types.length - 1)] ?? { coinflip: {} };
-  },
-
-  /**
-   * Generate random game configuration for testing
-   */
-  randomGameConfig(maxPlayers: number = 100): GameConfig {
-    const gameType = this.randomGameType();
-    const maxTickets = this.randomInt(2, maxPlayers);
-    const minTickets = this.randomInt(1, Math.min(maxTickets, 10));
-
-    return {
-      gameType,
-      amount: new anchor.BN(this.randomInt(100_000, 10_000_000)),
-      maxTickets: new anchor.BN(maxTickets),
-      minTickets: new anchor.BN(minTickets),
-      timeout: new anchor.BN(this.randomInt(600, 7200)), // 10 minutes to 2 hours
-      isPrivate: this.randomBoolean(0.1), // 10% chance of private game
-    };
-  },
-
-  /**
-   * Shuffle an array using Fisher-Yates algorithm
-   */
-  shuffle<T>(array: T[]): T[] {
-    const shuffled = [...array];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-    return shuffled;
-  },
-
-  /**
-   * Generate random token amount for testing
-   */
-  randomTokenAmount(min: number = 1000, max: number = 100_000_000): anchor.BN {
-    return new anchor.BN(this.randomInt(min, max));
-  },
-};

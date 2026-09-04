@@ -1,15 +1,16 @@
-import { expect } from "chai";
+import { describe, expect, test } from "bun:test";
 import {
   TestEnvironment,
   TestUtils,
   calculateWinnerIndex,
   coinflipGameConfig,
-  expectAnchorError,
+  expectProgramError,
+  fetchTokenBalance,
   getWinnerFromPlayers,
 } from "./test-helpers.ts";
 
-describe("Anchor TypeScript Client Smoke", () => {
-  it("executes a complete coinflip lifecycle through the generated client", async () => {
+describe("Kit TypeScript Client Smoke", () => {
+  test("executes a complete coinflip lifecycle through the generated client", async () => {
     const env = TestEnvironment.getInstance();
     const testUtils = new TestUtils();
     await env.initialize();
@@ -30,22 +31,18 @@ describe("Anchor TypeScript Client Smoke", () => {
       Number(game.lastSlot),
     );
     const winner = getWinnerFromPlayers([creator, participant], winnerIndex);
-    const balanceBefore = await env.provider.connection.getTokenAccountBalance(
-      winner.playerTokenAccount.address,
-    );
+    const balanceBefore = await fetchTokenBalance(env.rpc, winner.playerTokenAccount);
     await testUtils.game.completeGame(
       gameData,
-      winner.player.publicKey,
-      creator.player.publicKey,
+      winner.player.address,
+      creator.player.address,
       oracle.operator,
       winnerIndex,
     );
-    const balanceAfter = await env.provider.connection.getTokenAccountBalance(
-      winner.playerTokenAccount.address,
-    );
-    expect(BigInt(balanceAfter.value.amount) > BigInt(balanceBefore.value.amount)).to.equal(true);
-    await expectAnchorError(testUtils.game.fetchGame(gameData.gamePDA), "AccountDoesNotExist", {
-      fallbackSubstring: "Account does not exist",
+    const balanceAfter = await fetchTokenBalance(env.rpc, winner.playerTokenAccount);
+    expect(balanceAfter > balanceBefore).toBe(true);
+    await expectProgramError(testUtils.game.fetchGame(gameData.gamePDA), "AccountDoesNotExist", {
+      fallbackSubstring: "Account not found",
     });
   });
 });
