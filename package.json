@@ -28,10 +28,5 @@
     "lint": "eslint . --max-warnings 0",
     "generate:client": "bun run scripts/generate-client.ts",
     "lint:fix": "eslint . --fix"
-  },
-  "overrides": {
-    "diff": "8.0.3",
-    "serialize-javascript": "7.0.5",
-    "uuid": "11.1.1"
   }
 }

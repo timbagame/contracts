@@ -22,11 +22,6 @@
       },
     },
   },
-  "overrides": {
-    "diff": "8.0.3",
-    "serialize-javascript": "7.0.5",
-    "uuid": "11.1.1",
-  },
   "packages": {
     "@codama/cli": ["@codama/cli@1.6.2", "", { "dependencies": { "@codama/nodes": "1.10.2", "@codama/visitors": "1.10.2", "@codama/visitors-core": "1.10.2", "commander": "^15.0.0", "picocolors": "^1.1.1", "prompts": "^2.4.2" }, "bin": { "codama": "bin/cli.cjs" } }, "sha512-UFrWJxtELsPHOoG8soVuUqv/nSSUebLccaN3WQ43+5J7pFBetscEUsoy20lzV2gxYEfvYf6JqyuIUXGDmtnj9g=="],
 
