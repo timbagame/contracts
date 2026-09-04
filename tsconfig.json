@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "types": ["mocha", "node"],
+    "types": ["bun", "node"],
     "typeRoots": ["./node_modules/@types"],
     "target": "ES2022",
     "module": "CommonJS",
@@ -20,5 +20,6 @@
     "allowUnreachableCode": false,
     "allowUnusedLabels": false,
     "lib": ["ES2022"]
-  }
+  },
+  "exclude": ["scripts"]
 }

@@ -3,38 +3,30 @@
   "version": "0.3.0",
   "type": "module",
   "devDependencies": {
+    "@codama/nodes-from-anchor": "1.5.5",
+    "@codama/renderers-js": "2.4.0",
     "@eslint/js": "^10.0.1",
-    "@solana/web3.js": "^1.98.4",
-    "@types/bn.js": "^5.2.0",
-    "@types/chai": "^5.2.3",
-    "@types/mocha": "^10.0.10",
-    "chai": "^6.2.2",
+    "@solana/kit": "8.2.0",
+    "@solana-program/system": "0.14.1",
+    "@solana-program/token": "0.16.1",
+    "@types/bun": "^1.4.0",
+    "codama": "1.10.2",
     "eslint": "^10.9.1",
     "eslint-config-prettier": "^10.1.8",
-    "fast-check": "^4.9.0",
     "globals": "^17.12.0",
-    "mocha": "^12.0.0",
     "prettier": "^3.9.6",
-    "ts-mocha": "^11.1.0",
-    "ts-node": "^10.9.2",
     "typescript": "6.0.3",
     "typescript-eslint": "^8.69.0"
   },
   "license": "BUSL-1.1",
   "private": true,
   "scripts": {
+    "check:generated": "bun run generate:client && git diff --exit-code -- tests/generated",
     "typecheck": "tsc --noEmit",
     "format": "prettier . --write",
     "format:check": "prettier . --check",
     "lint": "eslint . --max-warnings 0",
+    "generate:client": "bun run scripts/generate-client.ts",
     "lint:fix": "eslint . --fix"
-  },
-  "dependencies": {
-    "@anchor-lang/core": "1.1.2"
-  },
-  "overrides": {
-    "diff": "8.0.3",
-    "serialize-javascript": "7.0.5",
-    "uuid": "11.1.1"
   }
 }

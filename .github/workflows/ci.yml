@@ -100,10 +100,12 @@ jobs:
         run: solana-keygen new --no-bip39-passphrase --silent --force --outfile ~/.config/solana/id.json
 
       - name: Build program and generated clients
-        run: anchor build --ignore-keys
+        run: |
+          anchor build --ignore-keys
+          bun run generate:client
 
-      - name: Check generated IDL and TypeScript client drift
-        run: git diff --exit-code -- target/idl target/types
+      - name: Check generated client drift
+        run: git diff --exit-code -- target/idl target/types tests/generated
 
       - name: Run test suite
         run: anchor test --skip-build

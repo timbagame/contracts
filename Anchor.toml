@@ -21,7 +21,7 @@ cluster = "localnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
-test = "cargo test -p timba-test-harness && bun run ts-mocha -p ./tsconfig.json -t 1000000 'tests/**/*.test.ts'"
+test = "cargo test -p timba-test-harness && bun test --max-concurrency 1 --timeout 1000000 tests"
 
 [test]
 startup_wait = 8000
