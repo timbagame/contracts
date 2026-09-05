@@ -26,4 +26,4 @@ test = "cargo test -p timba-test-harness && bun test --max-concurrency 1 --timeo
 [test]
 startup_wait = 8000
 shutdown_wait = 2000
-upgradeable = true
+upgradeable = false
