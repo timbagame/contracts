@@ -128,4 +128,4 @@ jobs:
         run: git diff --exit-code -- target/idl target/types tests/generated
 
       - name: Run test suite
-        run: NO_DNA=1 anchor test --skip-build
+        run: anchor test --skip-build
