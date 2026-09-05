@@ -9,14 +9,15 @@
     "@solana/kit": "8.2.0",
     "@solana-program/system": "0.14.1",
     "@solana-program/token": "0.16.1",
-    "@types/bun": "^1.4.0",
+    "@types/bun": "^1.4.1",
     "codama": "1.10.2",
-    "eslint": "^10.9.1",
+    "eslint": "^10.10.0",
     "eslint-config-prettier": "^10.1.8",
     "globals": "^17.12.0",
     "prettier": "^3.9.6",
-    "typescript": "6.0.3",
-    "typescript-eslint": "^8.69.0"
+    "typescript": "npm:@typescript/typescript6@6.0.2",
+    "typescript-eslint": "^8.69.0",
+    "@typescript/native": "npm:typescript@7.0.2"
   },
   "license": "BUSL-1.1",
   "private": true,
@@ -28,5 +29,6 @@
     "lint": "eslint . --max-warnings 0",
     "generate:client": "bun run scripts/generate-client.ts",
     "lint:fix": "eslint . --fix"
-  }
+  },
+  "packageManager": "bun@1.4.1"
 }
