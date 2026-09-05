@@ -21,7 +21,7 @@ custom-panic = []
 idl-build = [
   "anchor-lang/idl-build",
   "anchor-spl/idl-build",
-  # Anchor SPL 1.1.2's IDL builder references token-interface types
+  # Anchor SPL 1.2.0's IDL builder references token-interface types
   # unconditionally. This feature is IDL-only and is not in the SBF build.
   "anchor-spl/token_2022",
 ]
