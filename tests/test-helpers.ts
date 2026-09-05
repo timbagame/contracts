@@ -101,7 +101,9 @@ export function errorToString(error: unknown): string {
     return error.toString();
   }
   try {
-    return JSON.stringify(error);
+    return JSON.stringify(error, (_key, value) =>
+      typeof value === "bigint" ? value.toString() : value,
+    );
   } catch {
     return String(error);
   }
@@ -120,7 +122,9 @@ async function confirmTransaction(
     ]);
     const status = statuses[0];
     if (status?.err) {
-      throw new Error(`Transaction ${transactionSignature} failed: ${JSON.stringify(status.err)}`);
+      throw new Error(
+        `Transaction ${transactionSignature} failed: ${JSON.stringify(status.err, (_key, value) => (typeof value === "bigint" ? value.toString() : value))}`,
+      );
     }
     if (status?.confirmationStatus === "confirmed" || status?.confirmationStatus === "finalized") {
       return;
@@ -809,7 +813,7 @@ function getErrorCode(error: unknown): string | undefined {
   const message = errorToString(error);
   const hexMatch = /custom program error:\s*0x([0-9a-fA-F]+)/i.exec(message);
   if (hexMatch?.[1]) return PROGRAM_ERROR_CODES[Number.parseInt(hexMatch[1], 16)];
-  const customMatch = /["']?Custom["']?\s*[:(]\s*(\d+)/i.exec(message);
+  const customMatch = /["']?Custom["']?\s*[:(]\s*["']?(\d+)/i.exec(message);
   if (customMatch?.[1]) return PROGRAM_ERROR_CODES[Number.parseInt(customMatch[1], 10)];
   for (const code of Object.values(PROGRAM_ERROR_CODES)) {
     if (message.includes(code)) return code;

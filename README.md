@@ -58,10 +58,10 @@ The oracle signature authorizes game creation but does not make creation policy 
 
 The repository pins or tests these versions:
 
-- Rust 1.98.0
-- Solana CLI 3.1.10
-- Anchor CLI 1.1.2
-- Bun 1.4.0
+- Rust 1.98.1
+- Solana CLI 4.2.2
+- Anchor CLI 1.2.0
+- Bun 1.4.1
 - Surfpool 1.5.0
 
 Use `rust-toolchain.toml`, `Anchor.toml`, and `.github/workflows/ci.yml` as the version sources of truth.
@@ -130,3 +130,7 @@ git diff -- target/idl/timba.json target/types/timba.ts tests/generated
 ## License
 
 This repository uses the [Business Source License 1.1](./LICENSE).
+
+## Cross-repository integration
+
+The shared local-validator suite lives in the sibling `operations/integration` directory. Run `bun run test:integration --web` from `operations`; see its README for pinned toolchains, candidate protocol packages and CI credentials.
