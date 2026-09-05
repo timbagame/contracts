@@ -62,7 +62,7 @@ The repository pins or tests these versions:
 - Solana CLI 4.2.2
 - Anchor CLI 1.2.0
 - Bun 1.4.1
-- Surfpool 1.5.0
+- Surfpool 1.5.0 (verify `surfpool --version`; 1.4.0 failed to execute the upgraded program)
 
 Use `rust-toolchain.toml`, `Anchor.toml`, and `.github/workflows/ci.yml` as the version sources of truth.
 

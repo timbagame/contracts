@@ -52,6 +52,27 @@ jobs:
           tar -xjf "$RUNNER_TEMP/agave.tar.bz2" -C "$RUNNER_TEMP"
           echo "$RUNNER_TEMP/solana-release/bin" >> "$GITHUB_PATH"
 
+      - name: Cache Surfpool
+        id: surfpool-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.local/share/timba-surfpool
+          key: surfpool-${{ runner.os }}-${{ runner.arch }}-${{ env.SURFPOOL_SHA256 }}
+
+      - name: Install Surfpool
+        if: steps.surfpool-cache.outputs.cache-hit != 'true'
+        run: |
+          curl -fsSL "https://github.com/solana-foundation/surfpool/releases/download/${SURFPOOL_VERSION}/surfpool-linux-x64.tar.gz" -o "$RUNNER_TEMP/surfpool.tar.gz"
+          echo "${SURFPOOL_SHA256}  $RUNNER_TEMP/surfpool.tar.gz" | sha256sum --check
+          mkdir -p "$RUNNER_TEMP/surfpool-extract"
+          tar -xzf "$RUNNER_TEMP/surfpool.tar.gz" -C "$RUNNER_TEMP/surfpool-extract"
+          install -Dm755 "$RUNNER_TEMP/surfpool-extract/surfpool" "$HOME/.local/share/timba-surfpool/surfpool"
+
+      - name: Verify Surfpool version
+        run: |
+          test "$("$HOME/.local/share/timba-surfpool/surfpool" --version)" = "surfpool ${SURFPOOL_VERSION#v}"
+          echo "$HOME/.local/share/timba-surfpool" >> "$GITHUB_PATH"
+
       - name: Install Anchor CLI
         run: |
           curl -fsSL "https://github.com/solana-foundation/anchor/releases/download/v${ANCHOR_VERSION}/anchor-${ANCHOR_VERSION}-x86_64-unknown-linux-gnu" -o /tmp/anchor
@@ -107,4 +128,4 @@ jobs:
         run: git diff --exit-code -- target/idl target/types tests/generated
 
       - name: Run test suite
-        run: anchor test --skip-build --validator legacy
+        run: NO_DNA=1 anchor test --skip-build
