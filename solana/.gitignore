@@ -1,0 +1,13 @@
+.anchor
+
+# Ignore all of target, but allow committing just the IDL and types for CI
+target/**
+!target/idl/
+!target/types/
+!target/idl/timba.json
+!target/types/timba.ts
+
+**/*.rs.bk
+node_modules
+test-ledger
+.yarn

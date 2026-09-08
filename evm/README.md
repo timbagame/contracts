@@ -6,14 +6,14 @@ Solidity coinflips and giveaways for EVM networks. This is a separate, UUPS-upgr
 
 Pinned tooling: Foundry **1.8.1**, Solidity **0.8.30**, OpenZeppelin **5.7.0**, forge-std **1.16.2**. Dependencies are git submodules pinned to commits in the parent repository and `foundry.lock`. Compilation targets **Cancun** because the selected OpenZeppelin release uses Cancun instructions. Confirm that a target L2 supports Cancun before deploying.
 
-From the repository root:
+From the `evm/` directory:
 
 ```bash
-git submodule update --init --recursive
-forge fmt --root evm --check
-forge build --root evm --sizes
-forge test --root evm --gas-report
-bash evm/script/local-smoke.sh
+git -C .. submodule update --init --recursive
+forge fmt --check
+forge build --sizes
+forge test --gas-report
+bash script/local-smoke.sh
 ```
 
 The smoke test starts its own Anvil instance, uses public local-only keys, broadcasts deployment and the complete coinflip lifecycle, checks mined receipts, and stops the node. It uses port 18545 by default; override `TIMBA_SMOKE_PORT` if needed. Never fund these test keys on public networks.
@@ -21,7 +21,7 @@ The smoke test starts its own Anvil instance, uses public local-only keys, broad
 `abi/Timba.json` is the exported client interface. Regenerate with:
 
 ```bash
-forge inspect --root evm Timba abi --json > evm/abi/Timba.json
+forge inspect Timba abi --json > abi/Timba.json
 ```
 
 ## Rules and limits
@@ -89,7 +89,7 @@ There is no on-chain token registration or allowlist. Each creation signature bi
 Use an encrypted Foundry keystore or hardware wallet supported by Forge. Set `TIMBA_OPERATOR` to the intended operator and `TIMBA_UPGRADE_AUTHORITY` to the upgrade administrator (ideally a separate multisig):
 
 ```bash
-TIMBA_OPERATOR=0x... TIMBA_UPGRADE_AUTHORITY=0x... forge script --root evm script/Deploy.s.sol:Deploy \
+TIMBA_OPERATOR=0x... TIMBA_UPGRADE_AUTHORITY=0x... forge script script/Deploy.s.sol:Deploy \
   --rpc-url "$RPC_URL" --account deployer --broadcast --verify
 ```
 
@@ -102,11 +102,11 @@ UUPS upgrades replace the implementation while keeping the proxy address, token 
 Deploy the reviewed new implementation, then upgrade using the upgrade authority's keystore:
 
 ```bash
-TIMBA_PROXY=0x... TIMBA_IMPLEMENTATION=0x... forge script --root evm script/Upgrade.s.sol:Upgrade \
+TIMBA_PROXY=0x... TIMBA_IMPLEMENTATION=0x... forge script script/Upgrade.s.sol:Upgrade \
   --rpc-url "$RPC_URL" --account upgrade-admin --broadcast
 ```
 
-This script is for upgrades without a migration call. Upgrades needing initialization of new fields require reviewed migration calldata. UUPS checks that the target supports the proxy interface; **it does not validate storage compatibility**. Preserve existing storage slot ordering, field types, and the layouts of Game and OracleConfig; never reorder, remove, or repurpose them. Review the old/new compiler storage layouts (`forge inspect --root evm Timba storage-layout`) and test upgrades with active games before broadcast. Dependencies use OpenZeppelin namespaced storage; new Timba fields must also respect existing layout.
+This script is for upgrades without a migration call. Upgrades needing initialization of new fields require reviewed migration calldata. UUPS checks that the target supports the proxy interface; **it does not validate storage compatibility**. Preserve existing storage slot ordering, field types, and the layouts of Game and OracleConfig; never reorder, remove, or repurpose them. Review the old/new compiler storage layouts (`forge inspect Timba storage-layout`) and test upgrades with active games before broadcast. Dependencies use OpenZeppelin namespaced storage; new Timba fields must also respect existing layout.
 
 Completed/closed games retain their record and participant indexes. Paid-out funds are removed from liabilities; retaining records does not retain prizes. EVM storage is paid when written, with no recurring rent. Unlike Solana account closure, deleting entries does not return the original storage cost: clearing slots consumes gas and can provide only limited transaction gas refunds. Clearing every participant would require work proportional to game size. The current implementation therefore retains terminal history; optional future cleanup should be bounded/batched, preserve replay protection, and rely on events for historical queries.
 

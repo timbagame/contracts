@@ -18,7 +18,7 @@ fn shared_vectors_execute_on_solana() {
         .map(|_| fixture.funded_player(token.mint.pubkey(), 10_000))
         .collect();
     let baseline = fixture.svm.clone();
-    for line in include_str!("../../../fixtures/lifecycle.csv")
+    for line in include_str!("../../../../fixtures/lifecycle.csv")
         .lines()
         .skip(1)
     {

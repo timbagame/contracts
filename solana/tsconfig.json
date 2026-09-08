@@ -21,5 +21,5 @@
     "allowUnusedLabels": false,
     "lib": ["ES2022"]
   },
-  "exclude": ["scripts", "evm"]
+  "exclude": ["scripts"]
 }

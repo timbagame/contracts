@@ -255,7 +255,7 @@ fn validates_positive_timeout_and_maximum_pot_before_creation() {
 
 #[test]
 fn shared_lifecycle_and_fee_vectors() {
-    let vectors = include_str!("../../../fixtures/lifecycle.csv");
+    let vectors = include_str!("../../../../fixtures/lifecycle.csv");
     for line in vectors.lines().skip(1) {
         let v: Vec<u64> = line.split(',').map(|x| x.parse().unwrap()).collect();
         let game = Game {
