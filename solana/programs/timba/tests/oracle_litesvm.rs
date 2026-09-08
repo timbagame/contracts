@@ -147,6 +147,10 @@ fn initializes_oracle_and_persists_configuration() {
 fn rejects_invalid_oracle_configurations() {
     let invalid = [
         OracleConfig {
+            min_timeout: 0,
+            ..config()
+        },
+        OracleConfig {
             fee_percentage: 11,
             ..config()
         },
@@ -188,6 +192,10 @@ fn rejects_invalid_updates_without_mutating_oracle() {
     let mut fixture = Fixture::new();
     assert!(fixture.initialize(config()));
     let invalid = [
+        OracleConfig {
+            min_timeout: 0,
+            ..config()
+        },
         OracleConfig {
             fee_percentage: 11,
             ..config()

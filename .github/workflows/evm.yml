@@ -1,0 +1,56 @@
+name: EVM Contracts CI
+
+on:
+  push:
+    branches: [main]
+    paths: ["fixtures/**", "evm/**", ".gitmodules", ".github/workflows/evm.yml"]
+  pull_request:
+    branches: [main]
+    paths: ["fixtures/**", "evm/**", ".gitmodules", ".github/workflows/evm.yml"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: evm-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  evm:
+    runs-on: ubuntu-26.04
+    defaults:
+      run:
+        working-directory: evm
+    env:
+      FOUNDRY_VERSION: v1.8.1
+      FOUNDRY_SHA256: 37b45855232e57624d90113b049ca54f0c92055bb5c1997fcbdc3076c7b89c10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: recursive
+      - name: Install verified Foundry release
+        run: |
+          curl --fail --location --retry 3 "https://github.com/foundry-rs/foundry/releases/download/${FOUNDRY_VERSION}/foundry_${FOUNDRY_VERSION}_linux_amd64.tar.gz" -o "$RUNNER_TEMP/foundry.tar.gz"
+          echo "${FOUNDRY_SHA256}  $RUNNER_TEMP/foundry.tar.gz" | sha256sum --check
+          mkdir -p "$RUNNER_TEMP/foundry-bin"
+          tar -xzf "$RUNNER_TEMP/foundry.tar.gz" -C "$RUNNER_TEMP/foundry-bin"
+          echo "$RUNNER_TEMP/foundry-bin" >> "$GITHUB_PATH"
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.svm
+            evm/cache
+            evm/out
+          key: evm-${{ runner.os }}-${{ env.FOUNDRY_VERSION }}-${{ hashFiles('evm/foundry.toml', 'evm/foundry.lock', 'evm/src/**', 'evm/test/**', 'evm/script/**') }}
+      - name: Format
+        run: forge fmt --check
+      - name: Build and check deployment size
+        run: forge build --sizes
+      - name: Tests, fuzzing, invariants and gas report
+        run: forge test --gas-report
+      - name: Local RPC lifecycle smoke test
+        run: bash script/local-smoke.sh
+      - name: Verify exported ABI
+        run: |
+          forge inspect Timba abi --json > abi/Timba.json
+          git diff --exit-code -- abi/Timba.json

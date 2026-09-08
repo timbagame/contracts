@@ -1,4 +1,6 @@
-# Timba Contracts Deployment Guide
+# Timba Solana Deployment Guide
+
+Run commands from `solana/`.
 
 This guide defines the public build, upgrade, migration, and verification process for Timba Contracts v0.3.0.
 
@@ -28,11 +30,11 @@ The command must return `32Jr4JnXWvqq9GqPQynkooHsszaucUUvZfNLh2hdX2L5`.
 | Rust            | 1.98.1  |
 | Solana CLI      | 4.2.2   |
 | Anchor CLI      | 1.2.0   |
-| Bun             | 1.4.1   |
+| Bun             | 1.4.2   |
 | Surfpool        | 1.5.0   |
 | `solana-verify` | 0.5.1   |
 
-Use `rust-toolchain.toml`, `Anchor.toml`, and `.github/workflows/ci.yml` as the repository sources of truth. A verifiable build also requires a container runtime supported by Anchor.
+Use `rust-toolchain.toml`, `Anchor.toml`, and `../.github/workflows/solana.yml` as the repository sources of truth. A verifiable build also requires a container runtime supported by Anchor.
 
 Before signing a release, record the tool versions:
 
@@ -199,8 +201,8 @@ solana-verify verify-from-repo \
   --program-id 32Jr4JnXWvqq9GqPQynkooHsszaucUUvZfNLh2hdX2L5 \
   --commit-hash <COMMIT_SHA> \
   --library-name timba \
-  --mount-path programs/timba \
-  --workspace-path . \
+  --mount-path solana/programs/timba \
+  --workspace-path solana \
   --keypair <UPGRADE_AUTHORITY_SIGNER>
 ```
 

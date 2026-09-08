@@ -1,0 +1,21 @@
+[profile.default]
+src = "src"
+test = "test"
+script = "script"
+libs = ["lib"]
+solc_version = "0.8.30"
+evm_version = "cancun"
+# Compile tests against ordinary deployment bytecode; avoid dynamic-link preprocessor differences.
+dynamic_test_linking = false
+fs_permissions = [{ access = "read", path = "../fixtures" }, { access = "read", path = "./test/fixtures" }]
+optimizer = true
+optimizer_runs = 200
+remappings = ["@openzeppelin/contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts/", "@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/", "forge-std/=lib/forge-std/src/"]
+
+[profile.default.fuzz]
+runs = 256
+
+[profile.default.invariant]
+runs = 128
+depth = 64
+fail_on_revert = true
