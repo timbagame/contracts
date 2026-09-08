@@ -216,3 +216,19 @@ fn ticket_capacity_matches_cpi_allocation_limit() {
         u32::MAX
     ));
 }
+
+#[test]
+fn duration_ceiling_applies_even_with_legacy_oracle_limits() {
+    use timba::state::MAX_GAME_TIMEOUT;
+    assert_eq!(MAX_GAME_TIMEOUT, 2_592_000);
+    assert!(Oracle::is_valid_timeout(MAX_GAME_TIMEOUT, 1));
+    assert!(!Oracle::is_valid_timeout(MAX_GAME_TIMEOUT + 1, 1));
+    let oracle = Oracle {
+        min_timeout: 1,
+        max_timeout: u64::MAX,
+        ..Oracle::default()
+    };
+    assert!(oracle.is_valid_timeout_range(MAX_GAME_TIMEOUT));
+    assert!(!oracle.is_valid_timeout_range(MAX_GAME_TIMEOUT + 1));
+    assert!(!oracle.is_valid_timeout_range(u64::MAX));
+}

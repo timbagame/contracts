@@ -91,7 +91,7 @@ The recovery boundary is:
 created_at + timeout + current_oracle_buffer_time
 ```
 
-The Oracle buffer extends the game's configured timeout for recovery purposes. It is not a timer that starts when the game fills or otherwise becomes ready. The value is read from the live Oracle account and is not stored in each game. An operator update therefore changes the recovery boundary for open games, but the program restricts the buffer to 1 through 3,600 seconds.
+The Oracle buffer extends the game's configured timeout for recovery purposes. It is not a timer that starts when the game fills or otherwise becomes ready. The value is read from the live Oracle account and is not stored in each game. An operator update therefore changes the recovery boundary for open games, but the program restricts the buffer to 1 through 86,400 seconds (one day). Game duration is capped at 2,592,000 seconds (30 days); the Oracle may configure a lower maximum.
 
 Before timeout, participants cannot unjoin and the creator cannot remove them. Joining is therefore a commitment for the configured game duration. At timeout, a game below `min_tickets` is not completable, so participant removal becomes available immediately.
 

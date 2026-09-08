@@ -167,6 +167,10 @@ fn rejects_invalid_oracle_configurations() {
             ..config()
         },
         OracleConfig {
+            max_timeout: timba::state::MAX_GAME_TIMEOUT + 1,
+            ..config()
+        },
+        OracleConfig {
             max_timeout: 4,
             min_timeout: 5,
             ..config()
@@ -205,6 +209,10 @@ fn rejects_invalid_updates_without_mutating_oracle() {
             ..config()
         },
         OracleConfig {
+            max_timeout: timba::state::MAX_GAME_TIMEOUT + 1,
+            ..config()
+        },
+        OracleConfig {
             max_timeout: 4,
             min_timeout: 5,
             ..config()
@@ -221,3 +229,21 @@ fn rejects_invalid_updates_without_mutating_oracle() {
     assert_eq!(state.min_timeout, config().min_timeout);
 }
 use timba_test_harness as timba;
+
+#[test]
+fn accepts_maximum_duration_and_buffer_on_initialize_and_update() {
+    let maximum = OracleConfig {
+        max_timeout: timba::state::MAX_GAME_TIMEOUT,
+        oracle_buffer_time: timba::state::MAX_ORACLE_BUFFER_TIME,
+        ..config()
+    };
+    let mut initialized = Fixture::new();
+    assert!(initialized.initialize(maximum.clone()));
+    assert_eq!(initialized.oracle_state().max_timeout, 2_592_000);
+    assert_eq!(initialized.oracle_state().oracle_buffer_time, 86_400);
+    let mut updated = Fixture::new();
+    assert!(updated.initialize(config()));
+    assert!(updated.update(maximum));
+    assert_eq!(updated.oracle_state().max_timeout, 2_592_000);
+    assert_eq!(updated.oracle_state().oracle_buffer_time, 86_400);
+}

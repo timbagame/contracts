@@ -31,7 +31,9 @@ pub const MIN_COMPETITIVE_PLAYERS: u32 = 2;
 /// Minimum players required for giveaway games
 pub const MIN_GIVEAWAY_PLAYERS: u32 = 1;
 /// Longest period the oracle may exclusively settle a ready game.
-pub const MAX_ORACLE_BUFFER_TIME: u64 = 60 * 60;
+pub const MAX_ORACLE_BUFFER_TIME: u64 = 24 * 60 * 60;
+/// Longest supported game duration: a fixed 30-day month.
+pub const MAX_GAME_TIMEOUT: u64 = 30 * 24 * 60 * 60;
 /// Base size of Game excluding variable-length Vec data
 pub const GAME_BASE_SIZE: usize = 8
     + 32 // creator
@@ -105,7 +107,7 @@ impl Oracle {
     /// Validates timeout is within oracle's allowed range
     #[must_use]
     pub fn is_valid_timeout_range(&self, timeout: u64) -> bool {
-        timeout >= self.min_timeout && timeout <= self.max_timeout
+        timeout <= MAX_GAME_TIMEOUT && timeout >= self.min_timeout && timeout <= self.max_timeout
     }
 
     /// Validates fee percentage is within valid range (0-10)
@@ -123,7 +125,7 @@ impl Oracle {
     /// Validates timeout parameters are in correct order
     #[must_use]
     pub fn is_valid_timeout(max_timeout: u64, min_timeout: u64) -> bool {
-        max_timeout >= min_timeout
+        max_timeout <= MAX_GAME_TIMEOUT && max_timeout >= min_timeout
     }
 
     /// Validates ticket count fits the game account allocation
