@@ -185,7 +185,7 @@ pub struct InitializeGame<'info> {
             + (config.max_tickets.min(MAX_GAME_TICKETS) as usize * 32),
         seeds = [GAME_SEED, random_hash.as_ref()],
         bump,
-        constraint = config.amount > 0 @ ErrorCode::InvalidAmount,
+        constraint = Game::is_valid_stake(config.game_type, config.amount, config.max_tickets) @ ErrorCode::InvalidAmount,
         constraint = oracle.is_valid_timeout_range(config.timeout) @ ErrorCode::InvalidTimeout,
         constraint = Game::is_valid_tickets_count(config.max_tickets, config.min_tickets, oracle.max_tickets) @ ErrorCode::InvalidTicketsCount,
         constraint = Game::is_valid_game_type_tickets(config.game_type, config.max_tickets, config.min_tickets) @ ErrorCode::InvalidTicketsCount,

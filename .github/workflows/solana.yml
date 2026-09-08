@@ -1,10 +1,12 @@
-name: Contracts CI
+name: Solana CI
 
 on:
   push:
     branches: [main]
+    paths: ["solana/**", "fixtures/**", ".github/workflows/solana.yml", ".prettierrc.json"]
   pull_request:
     branches: [main]
+    paths: ["solana/**", "fixtures/**", ".github/workflows/solana.yml", ".prettierrc.json"]
 
 env:
   RUST_VERSION: 1.98.1
@@ -21,7 +23,10 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  contracts:
+  solana:
+    defaults:
+      run:
+        working-directory: solana
     runs-on: ubuntu-26.04
     permissions:
       contents: read
@@ -41,7 +46,7 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.bun/install/cache
-          key: bun-install-${{ runner.os }}-${{ hashFiles('bun.lock', 'package.json') }}
+          key: bun-install-${{ runner.os }}-${{ hashFiles('solana/bun.lock', 'solana/package.json') }}
           restore-keys: |
             bun-install-${{ runner.os }}-
 
@@ -100,10 +105,10 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-            target
-            !target/idl
-            !target/types
-          key: cargo-contracts-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', 'rust-toolchain.toml') }}
+            solana/target
+            !solana/target/idl
+            !solana/target/types
+          key: cargo-contracts-${{ runner.os }}-${{ hashFiles('solana/Cargo.lock', 'solana/rust-toolchain.toml') }}
           restore-keys: |
             cargo-contracts-${{ runner.os }}-
 
@@ -112,9 +117,6 @@ jobs:
 
       - name: Typecheck
         run: bun x tsc -p tsconfig.json --noEmit
-
-      - name: Run Clippy
-        run: cargo clippy --workspace --all-targets -- -D warnings
 
       - name: Create test wallet
         run: solana-keygen new --no-bip39-passphrase --silent --force --outfile ~/.config/solana/id.json
@@ -126,6 +128,10 @@ jobs:
 
       - name: Check generated client drift
         run: git diff --exit-code -- target/idl target/types tests/generated
+
+      # LiteSVM tests embed target/deploy/timba.so during compilation.
+      - name: Run Clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
 
       - name: Run test suite
         run: anchor test --skip-build

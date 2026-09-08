@@ -130,3 +130,7 @@ path = "../programs/timba/tests/unjoin_refund_close_litesvm.rs"
 [[test]]
 name = "winner_guards_litesvm"
 path = "../programs/timba/tests/winner_guards_litesvm.rs"
+
+[[test]]
+name = "shared_behavior_litesvm"
+path = "../programs/timba/tests/shared_behavior_litesvm.rs"
