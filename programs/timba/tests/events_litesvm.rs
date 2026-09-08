@@ -45,7 +45,7 @@ fn emits_oracle_configuration_event() {
             config: OracleConfig {
                 fee_percentage: 7,
                 oracle_buffer_time: 6,
-                max_tickets: 1_000,
+                max_tickets: timba::state::MAX_GAME_TICKETS,
                 max_timeout: 1_000,
                 min_timeout: 2,
             },

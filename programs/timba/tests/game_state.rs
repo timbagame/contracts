@@ -201,3 +201,18 @@ fn single_ticket_always_selects_first_participant() {
     assert_eq!(game.calculate_winner_index([1; 32]), Some(0));
 }
 use timba_test_harness as timba;
+
+#[test]
+fn ticket_capacity_matches_cpi_allocation_limit() {
+    use timba::state::{GAME_BASE_SIZE, MAX_GAME_TICKETS};
+    assert_eq!(MAX_GAME_TICKETS, 315);
+    assert!(GAME_BASE_SIZE + 4 + MAX_GAME_TICKETS as usize * 32 <= 10_240);
+    assert!(Oracle::is_valid_tickets_count(MAX_GAME_TICKETS));
+    assert!(!Oracle::is_valid_tickets_count(MAX_GAME_TICKETS + 1));
+    assert!(Game::is_valid_tickets_count(MAX_GAME_TICKETS, 2, u32::MAX));
+    assert!(!Game::is_valid_tickets_count(
+        MAX_GAME_TICKETS + 1,
+        2,
+        u32::MAX
+    ));
+}

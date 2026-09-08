@@ -137,7 +137,7 @@ impl TimbaFixture {
                 config: OracleConfig {
                     fee_percentage: 5,
                     oracle_buffer_time: 5,
-                    max_tickets: 2_048,
+                    max_tickets: timba::state::MAX_GAME_TICKETS,
                     max_timeout: 86_400,
                     min_timeout: 1,
                 },

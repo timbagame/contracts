@@ -18,7 +18,7 @@ fn config() -> OracleConfig {
     OracleConfig {
         fee_percentage: 5,
         oracle_buffer_time: 10,
-        max_tickets: 1_024,
+        max_tickets: timba::state::MAX_GAME_TICKETS,
         max_timeout: 86_400,
         min_timeout: 1,
     }
@@ -163,6 +163,10 @@ fn rejects_invalid_oracle_configurations() {
             ..config()
         },
         OracleConfig {
+            max_tickets: timba::state::MAX_GAME_TICKETS + 1,
+            ..config()
+        },
+        OracleConfig {
             max_timeout: 4,
             min_timeout: 5,
             ..config()
@@ -194,6 +198,10 @@ fn rejects_invalid_updates_without_mutating_oracle() {
         },
         OracleConfig {
             max_tickets: 0,
+            ..config()
+        },
+        OracleConfig {
+            max_tickets: timba::state::MAX_GAME_TICKETS + 1,
             ..config()
         },
         OracleConfig {

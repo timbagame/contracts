@@ -78,3 +78,40 @@ fn rejects_invalid_giveaway_ticket_count() {
     );
 }
 use timba_test_harness as timba;
+
+#[test]
+fn enforces_game_allocation_boundary() {
+    for capacity in [315, 316, u32::MAX] {
+        let mut fixture = common::TimbaFixture::new();
+        let token = fixture.token_fixture();
+        let (creator, ata) = fixture.funded_player(token.mint.pubkey(), 10_000);
+        let (game, instruction) = fixture.initialize_game_instruction(
+            &token,
+            creator.pubkey(),
+            ata,
+            GameConfig {
+                game_type: GameType::Coinflip,
+                amount: 1_000,
+                max_tickets: capacity,
+                min_tickets: 2,
+                timeout: 60,
+                is_private: false,
+            },
+            [99; 32],
+        );
+        let operator = fixture.operator.insecure_clone();
+        let result = fixture.send_result(&[instruction], &[&operator, &creator]);
+        if capacity == 315 {
+            assert!(result.is_ok());
+            assert_eq!(fixture.svm.get_account(&game).unwrap().data.len(), 10_210);
+        } else {
+            let error = result.unwrap_err();
+            assert!(error
+                .meta
+                .logs
+                .iter()
+                .any(|line| line.contains("InvalidTicketsCount")));
+            assert!(fixture.svm.get_account(&game).is_none());
+        }
+    }
+}

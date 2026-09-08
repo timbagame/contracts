@@ -179,10 +179,10 @@ pub struct InitializeGame<'info> {
     #[account(
         init,
         payer = creator,
-        // Base + participants vec prefix + 32 bytes per ticket
+        // Bound allocation before constraints run so oversized requests return InvalidTicketsCount.
         space = GAME_BASE_SIZE
             + 4
-            + (config.max_tickets as usize * 32),
+            + (config.max_tickets.min(MAX_GAME_TICKETS) as usize * 32),
         seeds = [GAME_SEED, random_hash.as_ref()],
         bump,
         constraint = config.amount > 0 @ ErrorCode::InvalidAmount,

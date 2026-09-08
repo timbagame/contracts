@@ -316,7 +316,7 @@ export class OracleManager {
     const defaults: OracleConfig = {
       feePercentage: 1,
       oracleBufferTime: 2,
-      maxTickets: 50_000,
+      maxTickets: 315,
       maxTimeout: 86_400,
       minTimeout: 1,
       ...config,
