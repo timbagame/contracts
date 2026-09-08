@@ -47,6 +47,12 @@ pub const GAME_BASE_SIZE: usize = 8
     + 1  // is_private
     + 8; // total_amount
 
+/// Largest participant vector that fits in a single CPI account allocation.
+#[allow(clippy::cast_possible_truncation)] // CPI allocation limit is 10,240 bytes, well below u32::MAX.
+pub const MAX_GAME_TICKETS: u32 =
+    ((anchor_lang::solana_program::account_info::MAX_PERMITTED_DATA_INCREASE - GAME_BASE_SIZE - 4)
+        / 32) as u32;
+
 // GAME TYPES
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Copy)]
@@ -120,10 +126,10 @@ impl Oracle {
         max_timeout >= min_timeout
     }
 
-    /// Validates ticket count is positive
+    /// Validates ticket count fits the game account allocation
     #[must_use]
     pub fn is_valid_tickets_count(max_tickets: u32) -> bool {
-        max_tickets > 0
+        max_tickets > 0 && max_tickets <= MAX_GAME_TICKETS
     }
 }
 
@@ -433,7 +439,9 @@ impl Game {
 
     #[must_use]
     pub fn is_valid_tickets_count(max_tickets: u32, min_tickets: u32, oracle_max: u32) -> bool {
-        max_tickets <= oracle_max && min_tickets <= max_tickets
+        Oracle::is_valid_tickets_count(max_tickets)
+            && max_tickets <= oracle_max
+            && min_tickets <= max_tickets
     }
 
     #[must_use]
