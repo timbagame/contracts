@@ -60,7 +60,7 @@ fn rejects_invalid_coinflip_ticket_and_timeout_configuration() {
     rejected(coinflip(3, 4, 60), 22);
     rejected(coinflip(2_049, 2, 60), 23);
     rejected(coinflip(2, 2, 0), 24);
-    rejected(coinflip(2, 2, 86_401), 25);
+    rejected(coinflip(2, 2, timba::state::MAX_GAME_TIMEOUT + 1), 25);
 }
 
 #[test]
@@ -114,4 +114,25 @@ fn enforces_game_allocation_boundary() {
             assert!(fixture.svm.get_account(&game).is_none());
         }
     }
+}
+
+#[test]
+fn creates_game_at_maximum_duration() {
+    let mut fixture = common::TimbaFixture::new();
+    let token = fixture.token_fixture();
+    let (creator, ata) = fixture.funded_player(token.mint.pubkey(), 10_000);
+    fixture.initialize_game(
+        &token,
+        &creator,
+        ata,
+        GameConfig {
+            game_type: GameType::Coinflip,
+            amount: 1_000,
+            max_tickets: 2,
+            min_tickets: 2,
+            timeout: timba::state::MAX_GAME_TIMEOUT,
+            is_private: false,
+        },
+        [98; 32],
+    );
 }
