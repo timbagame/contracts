@@ -107,7 +107,10 @@ impl Oracle {
     /// Validates timeout is within oracle's allowed range
     #[must_use]
     pub fn is_valid_timeout_range(&self, timeout: u64) -> bool {
-        timeout <= MAX_GAME_TIMEOUT && timeout >= self.min_timeout && timeout <= self.max_timeout
+        timeout > 0
+            && timeout <= MAX_GAME_TIMEOUT
+            && timeout >= self.min_timeout
+            && timeout <= self.max_timeout
     }
 
     /// Validates fee percentage is within valid range (0-10)
@@ -125,7 +128,7 @@ impl Oracle {
     /// Validates timeout parameters are in correct order
     #[must_use]
     pub fn is_valid_timeout(max_timeout: u64, min_timeout: u64) -> bool {
-        max_timeout <= MAX_GAME_TIMEOUT && max_timeout >= min_timeout
+        min_timeout > 0 && max_timeout <= MAX_GAME_TIMEOUT && max_timeout >= min_timeout
     }
 
     /// Validates ticket count fits the game account allocation
@@ -325,6 +328,14 @@ impl Game {
                 .unwrap_or(u64::MAX);
         let winner_amount = self.total_amount - fee_amount;
         (winner_amount, fee_amount)
+    }
+
+    /// Reject a configuration that could overflow before any player deposits.
+    #[must_use]
+    pub fn is_valid_stake(game_type: GameType, amount: u64, max_tickets: u32) -> bool {
+        amount > 0
+            && (game_type == GameType::Giveaway
+                || amount.checked_mul(u64::from(max_tickets)).is_some())
     }
 
     /// Validation helpers for account constraints

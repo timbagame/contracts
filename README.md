@@ -1,6 +1,8 @@
 # Timba Contracts
 
-Timba Contracts is an Anchor program for token-based coinflip and giveaway games on Solana.
+Timba Contracts contains token-based coinflip and giveaway games on Solana and EVM networks.
+
+The Solidity implementation, Foundry tooling, and deployment instructions are in [evm/README.md](./evm/README.md). The rest of this page describes the Solana program.
 
 The current branch targets v0.3.0. This release removes `GameToken` accounts and changes the instruction and client interfaces while preserving the v0.2 `Oracle` and `Game` account layouts. Read [DEPLOYMENT.md](./DEPLOYMENT.md) before upgrading an existing deployment.
 

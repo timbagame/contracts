@@ -3,8 +3,10 @@ name: Contracts CI
 on:
   push:
     branches: [main]
+    paths-ignore: ["evm/**", ".gitmodules", ".github/workflows/evm.yml"]
   pull_request:
     branches: [main]
+    paths-ignore: ["evm/**", ".gitmodules", ".github/workflows/evm.yml"]
 
 env:
   RUST_VERSION: 1.98.1

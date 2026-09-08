@@ -232,3 +232,50 @@ fn duration_ceiling_applies_even_with_legacy_oracle_limits() {
     assert!(!oracle.is_valid_timeout_range(MAX_GAME_TIMEOUT + 1));
     assert!(!oracle.is_valid_timeout_range(u64::MAX));
 }
+
+#[test]
+fn validates_positive_timeout_and_maximum_pot_before_creation() {
+    assert!(!Oracle::is_valid_timeout(10, 0));
+    assert!(!Oracle::is_valid_timeout(0, 0));
+    let oracle = Oracle {
+        min_timeout: 0,
+        max_timeout: 10,
+        ..Oracle::default()
+    };
+    assert!(!oracle.is_valid_timeout_range(0));
+    assert!(Game::is_valid_stake(GameType::Coinflip, u64::MAX / 4, 4));
+    assert!(!Game::is_valid_stake(
+        GameType::Coinflip,
+        u64::MAX / 4 + 1,
+        4
+    ));
+    assert!(Game::is_valid_stake(GameType::Giveaway, u64::MAX, 4));
+    assert!(!Game::is_valid_stake(GameType::Giveaway, 0, 4));
+}
+
+#[test]
+fn shared_lifecycle_and_fee_vectors() {
+    let vectors = include_str!("../../../fixtures/lifecycle.csv");
+    for line in vectors.lines().skip(1) {
+        let v: Vec<u64> = line.split(',').map(|x| x.parse().unwrap()).collect();
+        let game = Game {
+            game_type: if v[0] == 0 {
+                GameType::Coinflip
+            } else {
+                GameType::Giveaway
+            },
+            tickets_count: u32::try_from(v[1]).unwrap(),
+            min_tickets: u32::try_from(v[2]).unwrap(),
+            max_tickets: u32::try_from(v[3]).unwrap(),
+            created_at: 1_000,
+            timeout: 100,
+            total_amount: if v[0] == 0 { v[7] * v[1] } else { v[7] },
+            ..Game::default()
+        };
+        assert_eq!(game.waiting_for_oracle(10, v[4]), v[5] == 1, "{line}");
+        assert_eq!(game.can_unjoin(10, v[4]), v[6] == 1, "{line}");
+        let (prize, fee) = game.calculate_amounts(u8::try_from(v[8]).unwrap());
+        assert_eq!(fee, v[9], "{line}");
+        assert_eq!(prize + fee, game.total_amount, "{line}");
+    }
+}

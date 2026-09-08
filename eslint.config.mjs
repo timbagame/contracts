@@ -5,7 +5,7 @@ import tseslint from "typescript-eslint";
 
 export default tseslint.config(
   {
-    ignores: ["node_modules/**", "target/**", "tests/fixtures/**", "tests/generated/**"],
+    ignores: ["evm/**", "node_modules/**", "target/**", "tests/fixtures/**", "tests/generated/**"],
   },
   js.configs.recommended,
   ...tseslint.configs.strict,
