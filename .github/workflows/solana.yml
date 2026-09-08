@@ -118,9 +118,6 @@ jobs:
       - name: Typecheck
         run: bun x tsc -p tsconfig.json --noEmit
 
-      - name: Run Clippy
-        run: cargo clippy --workspace --all-targets -- -D warnings
-
       - name: Create test wallet
         run: solana-keygen new --no-bip39-passphrase --silent --force --outfile ~/.config/solana/id.json
 
@@ -131,6 +128,10 @@ jobs:
 
       - name: Check generated client drift
         run: git diff --exit-code -- target/idl target/types tests/generated
+
+      # LiteSVM tests embed target/deploy/timba.so during compilation.
+      - name: Run Clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
 
       - name: Run test suite
         run: anchor test --skip-build
