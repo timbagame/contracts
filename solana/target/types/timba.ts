@@ -1856,6 +1856,11 @@ export type Timba = {
       "msg": "Invalid oracle buffer time"
     },
     {
+      "code": 7305,
+      "name": "invalidCommitment",
+      "msg": "Invalid commitment"
+    },
+    {
       "code": 7401,
       "name": "invalidTokenMint",
       "msg": "Token mint mismatch"

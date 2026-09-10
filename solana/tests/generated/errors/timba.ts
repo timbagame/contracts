@@ -68,6 +68,8 @@ export const TIMBA_ERROR__INVALID_AMOUNT = 0x1c86; // 7302
 export const TIMBA_ERROR__INVALID_SECRET_KEY = 0x1c87; // 7303
 /** InvalidOracleBufferTime: Invalid oracle buffer time */
 export const TIMBA_ERROR__INVALID_ORACLE_BUFFER_TIME = 0x1c88; // 7304
+/** InvalidCommitment: Invalid commitment */
+export const TIMBA_ERROR__INVALID_COMMITMENT = 0x1c89; // 7305
 /** InvalidTokenMint: Token mint mismatch */
 export const TIMBA_ERROR__INVALID_TOKEN_MINT = 0x1ce9; // 7401
 
@@ -83,6 +85,7 @@ export type TimbaError =
   | typeof TIMBA_ERROR__GAME_WAITING_FOR_ORACLE
   | typeof TIMBA_ERROR__INSUFFICIENT_BALANCE
   | typeof TIMBA_ERROR__INVALID_AMOUNT
+  | typeof TIMBA_ERROR__INVALID_COMMITMENT
   | typeof TIMBA_ERROR__INVALID_CREATOR
   | typeof TIMBA_ERROR__INVALID_ORACLE_BUFFER_TIME
   | typeof TIMBA_ERROR__INVALID_SECRET_KEY
@@ -115,6 +118,7 @@ if (process.env["NODE_ENV"] !== "production") {
     [TIMBA_ERROR__GAME_WAITING_FOR_ORACLE]: `Awaiting oracle`,
     [TIMBA_ERROR__INSUFFICIENT_BALANCE]: `Insufficient balance`,
     [TIMBA_ERROR__INVALID_AMOUNT]: `Invalid config value`,
+    [TIMBA_ERROR__INVALID_COMMITMENT]: `Invalid commitment`,
     [TIMBA_ERROR__INVALID_CREATOR]: `Creator mismatch`,
     [TIMBA_ERROR__INVALID_ORACLE_BUFFER_TIME]: `Invalid oracle buffer time`,
     [TIMBA_ERROR__INVALID_SECRET_KEY]: `Secret key mismatch`,

@@ -185,6 +185,7 @@ pub struct InitializeGame<'info> {
             + (config.max_tickets.min(MAX_GAME_TICKETS) as usize * 32),
         seeds = [GAME_SEED, random_hash.as_ref()],
         bump,
+        constraint = random_hash != [0u8; 32] @ ErrorCode::InvalidCommitment,
         constraint = Game::is_valid_stake(config.game_type, config.amount, config.max_tickets) @ ErrorCode::InvalidAmount,
         constraint = oracle.is_valid_timeout_range(config.timeout) @ ErrorCode::InvalidTimeout,
         constraint = Game::is_valid_tickets_count(config.max_tickets, config.min_tickets, oracle.max_tickets) @ ErrorCode::InvalidTicketsCount,

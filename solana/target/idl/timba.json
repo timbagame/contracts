@@ -1850,6 +1850,11 @@
       "msg": "Invalid oracle buffer time"
     },
     {
+      "code": 7305,
+      "name": "InvalidCommitment",
+      "msg": "Invalid commitment"
+    },
+    {
       "code": 7401,
       "name": "InvalidTokenMint",
       "msg": "Token mint mismatch"
