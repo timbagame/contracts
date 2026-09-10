@@ -124,6 +124,10 @@ pub enum ErrorCode {
     #[msg("Invalid oracle buffer time")]
     InvalidOracleBufferTime = 1304,
 
+    /// The game commitment must not be all zeros
+    #[msg("Invalid commitment")]
+    InvalidCommitment = 1305,
+
     // TOKEN ERRORS (1400-1499)
     /// Token mint account does not match expected value
     #[msg("Token mint mismatch")]

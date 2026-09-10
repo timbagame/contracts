@@ -2,7 +2,7 @@ mod common;
 
 use {
     solana_signer::Signer,
-    timba::{state::GameType, GameConfig},
+    timba::{error::ErrorCode, state::GameType, GameConfig},
 };
 
 fn rejected(config: GameConfig, seed: u8) {
@@ -43,6 +43,34 @@ fn rejects_zero_amount() {
 
     let operator = fixture.operator.insecure_clone();
     assert!(!fixture.send(&[instruction], &[&operator, &creator]));
+    assert!(fixture.svm.get_account(&game).is_none());
+}
+
+#[test]
+fn rejects_zero_commitment() {
+    let mut fixture = common::TimbaFixture::new();
+    let token = fixture.token_fixture();
+    let (creator, creator_ata) = fixture.funded_player(token.mint.pubkey(), 10_000);
+    let (game, instruction) = fixture.initialize_game_instruction(
+        &token,
+        creator.pubkey(),
+        creator_ata,
+        GameConfig {
+            game_type: GameType::Coinflip,
+            amount: 1_000,
+            max_tickets: 2,
+            min_tickets: 2,
+            timeout: 60,
+            is_private: false,
+        },
+        [0; 32],
+    );
+
+    let operator = fixture.operator.insecure_clone();
+    assert_eq!(
+        common::custom_error_code(fixture.send_result(&[instruction], &[&operator, &creator])),
+        common::anchor_error(ErrorCode::InvalidCommitment)
+    );
     assert!(fixture.svm.get_account(&game).is_none());
 }
 
