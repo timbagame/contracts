@@ -20,11 +20,14 @@ for key in a11ce b0b cafe; do
 done
 forge script script/LocalSmoke.s.sol:LocalSmoke --rpc-url "$rpc" --broadcast --slow
 # Verify mined receipts, not just Forge's pre-broadcast simulation.
-python3 - <<'PY'
-import json
-from pathlib import Path
-run = json.loads(Path('broadcast/LocalSmoke.s.sol/31337/run-latest.json').read_text())
-assert len(run['receipts']) == 10
-assert all(receipt['status'] == '0x1' for receipt in run['receipts'])
-print('Verified 10 successful mined transactions.')
-PY
+bun -e '
+const run = await Bun.file("broadcast/LocalSmoke.s.sol/31337/run-latest.json").json();
+const valid =
+  Array.isArray(run.receipts) &&
+  run.receipts.length === 10 &&
+  run.receipts.every((receipt) => receipt.status === "0x1");
+if (!valid) {
+  throw new Error("Expected 10 successful mined transactions.");
+}
+console.log("Verified 10 successful mined transactions.");
+'

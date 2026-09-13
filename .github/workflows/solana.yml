@@ -5,8 +5,8 @@ on:
     branches: [main]
     paths:
       [
-        "scripts/check-coverage.py",
-        "scripts/test_coverage_gate.py",
+        "scripts/check-coverage.ts",
+        "scripts/check-coverage.test.ts",
         "coverage-solana.json",
         "solana/**",
         "fixtures/**",
@@ -17,8 +17,8 @@ on:
     branches: [main]
     paths:
       [
-        "scripts/check-coverage.py",
-        "scripts/test_coverage_gate.py",
+        "scripts/check-coverage.ts",
+        "scripts/check-coverage.test.ts",
         "coverage-solana.json",
         "solana/**",
         "fixtures/**",
@@ -174,10 +174,10 @@ jobs:
         run: anchor coverage --skip-run --output target/coverage/sbf.lcov
       - name: Test coverage gate
         working-directory: .
-        run: python3 scripts/test_coverage_gate.py
+        run: bun test scripts/check-coverage.test.ts
       - name: Enforce 95% line coverage
         working-directory: .
-        run: python3 scripts/check-coverage.py coverage-solana.json solana/target/coverage/sbf.lcov
+        run: bun run scripts/check-coverage.ts coverage-solana.json solana/target/coverage/sbf.lcov
       - name: Upload Solana coverage
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
