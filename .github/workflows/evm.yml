@@ -73,7 +73,7 @@ jobs:
       - name: Test coverage gate
         working-directory: .
         run: python3 scripts/test_coverage_gate.py
-      - name: Enforce 85% line coverage
+      - name: Enforce 95% line coverage
         working-directory: .
         run: python3 scripts/check-coverage.py coverage-evm.json evm/coverage/lcov.info
       - name: Upload EVM coverage
