@@ -1,0 +1,6 @@
+{
+  "roots": ["solana/programs/timba/src"],
+  "extensions": [".rs"],
+  "reportBase": "solana",
+  "exclude": ["solana/programs/timba/src/instructions/mod.rs"]
+}

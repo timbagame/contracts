@@ -3,10 +3,28 @@ name: Solana CI
 on:
   push:
     branches: [main]
-    paths: ["solana/**", "fixtures/**", ".github/workflows/solana.yml", ".prettierrc.json"]
+    paths:
+      [
+        "scripts/check-coverage.py",
+        "scripts/test_coverage_gate.py",
+        "coverage-solana.json",
+        "solana/**",
+        "fixtures/**",
+        ".github/workflows/solana.yml",
+        ".prettierrc.json",
+      ]
   pull_request:
     branches: [main]
-    paths: ["solana/**", "fixtures/**", ".github/workflows/solana.yml", ".prettierrc.json"]
+    paths:
+      [
+        "scripts/check-coverage.py",
+        "scripts/test_coverage_gate.py",
+        "coverage-solana.json",
+        "solana/**",
+        "fixtures/**",
+        ".github/workflows/solana.yml",
+        ".prettierrc.json",
+      ]
 
 env:
   RUST_VERSION: 1.98.1
@@ -135,3 +153,35 @@ jobs:
 
       - name: Run test suite
         run: anchor test --skip-build
+
+      - name: Build SBF with source locations for coverage
+        env:
+          CARGO_PROFILE_RELEASE_DEBUG: "2"
+          CARGO_PROFILE_RELEASE_STRIP: none
+        run: |
+          anchor build --ignore-keys --no-idl -- --disable-remap-cwd
+          # Anchor 1.2.0's DWARF lookup uses the older target directory name.
+          mkdir -p target/sbpf-solana-solana/release
+          cp target/sbpfv3-solana-solana/release/timba.so target/sbpf-solana-solana/release/timba.so
+      - name: Collect SBF execution traces
+        env:
+          SBF_TRACE_DIR: ${{ github.workspace }}/solana/target/coverage/traces
+          SBF_TRACE_FILTER: program_id == 32Jr4JnXWvqq9GqPQynkooHsszaucUUvZfNLh2hdX2L5
+        run: |
+          rm -rf target/coverage
+          cargo test -p timba-test-harness --features coverage
+      - name: Generate Solana source coverage
+        run: anchor coverage --skip-run --output target/coverage/sbf.lcov
+      - name: Test coverage gate
+        working-directory: .
+        run: python3 scripts/test_coverage_gate.py
+      - name: Enforce 85% line coverage
+        working-directory: .
+        run: python3 scripts/check-coverage.py coverage-solana.json solana/target/coverage/sbf.lcov
+      - name: Upload Solana coverage
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: coverage-solana
+          path: solana/target/coverage/sbf.lcov
+          if-no-files-found: error
