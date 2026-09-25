@@ -126,7 +126,3 @@ git diff -- target/idl/timba.json target/types/timba.ts tests/generated
 
 - [SECURITY.md](./SECURITY.md) defines the trust model, authority boundaries, recovery rules, and known risks.
 - [DEPLOYMENT.md](./DEPLOYMENT.md) defines the v0.3.0 migration and reproducible mainnet release process.
-
-## License
-
-This repository uses the [Business Source License 1.1](../LICENSE).

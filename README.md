@@ -89,14 +89,10 @@ The smoke test runs a full coinflip on a local Anvil node.
 
 ## Reporting a vulnerability
 
-Please do not open a public issue for security problems. If private vulnerability reporting is enabled, use this repository's **Security** tab. Otherwise, contact the maintainers privately through [@timba_game](https://x.com/timba_game) and ask for a secure channel before sharing details. Never post unrevealed secrets or private keys.
+Please do not open a public issue for security problems. Report them privately through this repository's [Security tab](https://github.com/timbagame/contracts/security/advisories/new). Never post unrevealed secrets or private keys.
 
 ## Related
 
 - [timbagame/protocol](https://github.com/timbagame/protocol): TypeScript clients, IDLs, ABIs and winner verification
 - [timba.cc](https://timba.cc): play on the web and verify games
 - [@playtimbabot](https://t.me/playtimbabot): play in Telegram
-
-## License
-
-[Business Source License 1.1](LICENSE). Non-production use is permitted. Each version converts to the MIT License on 2030-02-26, or four years after its first public release, whichever comes first.
