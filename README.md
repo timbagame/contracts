@@ -14,7 +14,7 @@ Players stake tokens into a game, the program holds the funds, and a winner is p
 1. **Create.** The creator picks a token, an amount, player limits and a timeout. The Timba oracle generates a random 32-byte secret, and the game stores its SHA-256 hash as a commitment. The oracle co-signs creation, so games can only use tokens it has approved.
 2. **Join.** In a coinflip every player stakes the same amount. In a giveaway the creator funds the prize and players join for free. Each wallet gets one entry.
 3. **Settle.** A game is ready when it is full, or when it has reached its minimum players and its timeout has passed. The oracle then reveals the secret. The program checks it against the commitment, computes the winner, pays out and takes the fee.
-4. **Recover.** If a game never fills, players get their stakes back at expiry. If a ready game is never settled, funds unlock after a recovery buffer so they cannot be stuck behind the oracle.
+4. **Recover.** If a game is still below its minimum player count at expiry, players can take their stakes back right away. A game that reached its minimum is ready instead, and if it is never settled its funds unlock after a recovery buffer, so they cannot be stuck behind the oracle.
 
 ### Winner selection
 
@@ -61,6 +61,7 @@ Requires Rust 1.98.1, Solana CLI 4.2.2, Anchor CLI 1.2.0 and [Bun](https://bun.s
 
 ```bash
 cd solana
+solana-keygen new --no-bip39-passphrase --outfile ~/.config/solana/id.json  # skip if you already have one
 bun install --frozen-lockfile
 anchor build --ignore-keys
 anchor test --skip-build
@@ -70,7 +71,7 @@ Mainnet releases use a verifiable build. [solana/DEPLOYMENT.md](solana/DEPLOYMEN
 
 ### EVM
 
-Requires Foundry 1.8.1. Dependencies are git submodules.
+Requires Foundry 1.8.1, plus [Bun](https://bun.sh) for the smoke test. Dependencies are git submodules.
 
 ```bash
 git submodule update --init --recursive
@@ -88,7 +89,7 @@ The smoke test runs a full coinflip on a local Anvil node.
 
 ## Reporting a vulnerability
 
-Please do not open a public issue for security problems. Use this repository's **Security** tab to report privately. Never post unrevealed secrets or private keys.
+Please do not open a public issue for security problems. If private vulnerability reporting is enabled, use this repository's **Security** tab. Otherwise, contact the maintainers privately through [@timba_game](https://x.com/timba_game) and ask for a secure channel before sharing details. Never post unrevealed secrets or private keys.
 
 ## Related
 
