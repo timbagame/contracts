@@ -26,6 +26,5 @@ Local tests are not an independent security audit.
 ## Reporting
 
 Do not publish unrevealed secrets, credentials or exploit details in an issue.
-If GitHub private vulnerability reporting is enabled, use this repository's
-Security tab. Otherwise arrange a private reporting channel with the maintainers
-before sharing sensitive details.
+Report vulnerabilities privately through this repository's
+[Security tab](https://github.com/timbagame/contracts/security/advisories/new).

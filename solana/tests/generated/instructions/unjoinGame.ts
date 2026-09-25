@@ -31,13 +31,16 @@ import {
   type ReadonlyAccount,
   type ReadonlySignerAccount,
   type ReadonlyUint8Array,
-  type TransactionSigner,
   type WritableAccount,
 } from "@solana/kit";
 import {
   getAccountMetaFactory,
   getAddressFromResolvedInstructionAccount,
+  type InstructionAccountInput,
+  type InstructionAccountInputAddress,
+  type InstructionSignerInput,
   type ResolvedInstructionAccount,
+  type ResolvedInstructionAccountMeta,
 } from "@solana/kit/program-client-core";
 import { findGameVaultPda, findOraclePda } from "../pdas/index.ts";
 import { TIMBA_PROGRAM_ADDRESS } from "../programs/index.ts";
@@ -116,40 +119,40 @@ export function getUnjoinGameInstructionDataCodec(): FixedSizeCodec<
 }
 
 export type UnjoinGameAsyncInput<
-  TAccountGame extends string = string,
-  TAccountPlayer extends string = string,
-  TAccountAuthority extends string = string,
-  TAccountOracle extends string = string,
-  TAccountTokenMint extends string = string,
-  TAccountGameVault extends string = string,
-  TAccountGameVaultTokenAccount extends string = string,
-  TAccountTokenProgram extends string = string,
-  TAccountAssociatedTokenProgram extends string = string,
-  TAccountPlayerTokenAccount extends string = string,
+  TAccountGame extends InstructionAccountInput = InstructionAccountInput,
+  TAccountPlayer extends InstructionAccountInput = InstructionAccountInput,
+  TAccountAuthority extends InstructionSignerInput = InstructionSignerInput,
+  TAccountOracle extends InstructionAccountInput = InstructionAccountInput,
+  TAccountTokenMint extends InstructionAccountInput = InstructionAccountInput,
+  TAccountGameVault extends InstructionAccountInput = InstructionAccountInput,
+  TAccountGameVaultTokenAccount extends InstructionAccountInput = InstructionAccountInput,
+  TAccountTokenProgram extends InstructionAccountInput = InstructionAccountInput,
+  TAccountAssociatedTokenProgram extends InstructionAccountInput = InstructionAccountInput,
+  TAccountPlayerTokenAccount extends InstructionAccountInput = InstructionAccountInput,
 > = {
-  game: Address<TAccountGame>;
-  player: Address<TAccountPlayer>;
-  authority: TransactionSigner<TAccountAuthority>;
-  oracle?: Address<TAccountOracle>;
-  tokenMint: Address<TAccountTokenMint>;
-  gameVault?: Address<TAccountGameVault>;
-  gameVaultTokenAccount?: Address<TAccountGameVaultTokenAccount>;
-  tokenProgram?: Address<TAccountTokenProgram>;
-  associatedTokenProgram?: Address<TAccountAssociatedTokenProgram>;
-  playerTokenAccount: Address<TAccountPlayerTokenAccount>;
+  game: TAccountGame;
+  player: TAccountPlayer;
+  authority: TAccountAuthority;
+  oracle?: TAccountOracle;
+  tokenMint: TAccountTokenMint;
+  gameVault?: TAccountGameVault;
+  gameVaultTokenAccount?: TAccountGameVaultTokenAccount;
+  tokenProgram?: TAccountTokenProgram;
+  associatedTokenProgram?: TAccountAssociatedTokenProgram;
+  playerTokenAccount: TAccountPlayerTokenAccount;
 };
 
 export async function getUnjoinGameInstructionAsync<
-  TAccountGame extends string,
-  TAccountPlayer extends string,
-  TAccountAuthority extends string,
-  TAccountOracle extends string,
-  TAccountTokenMint extends string,
-  TAccountGameVault extends string,
-  TAccountGameVaultTokenAccount extends string,
-  TAccountTokenProgram extends string,
-  TAccountAssociatedTokenProgram extends string,
-  TAccountPlayerTokenAccount extends string,
+  TAccountGame extends InstructionAccountInput,
+  TAccountPlayer extends InstructionAccountInput,
+  TAccountAuthority extends InstructionSignerInput,
+  TAccountOracle extends InstructionAccountInput,
+  TAccountTokenMint extends InstructionAccountInput,
+  TAccountGameVault extends InstructionAccountInput,
+  TAccountGameVaultTokenAccount extends InstructionAccountInput,
+  TAccountTokenProgram extends InstructionAccountInput,
+  TAccountAssociatedTokenProgram extends InstructionAccountInput,
+  TAccountPlayerTokenAccount extends InstructionAccountInput,
   TProgramAddress extends Address = typeof TIMBA_PROGRAM_ADDRESS,
 >(
   input: UnjoinGameAsyncInput<
@@ -168,33 +171,69 @@ export async function getUnjoinGameInstructionAsync<
 ): Promise<
   UnjoinGameInstruction<
     TProgramAddress,
-    TAccountGame,
-    TAccountPlayer,
-    TAccountAuthority,
-    TAccountOracle,
-    TAccountTokenMint,
-    TAccountGameVault,
-    TAccountGameVaultTokenAccount,
-    TAccountTokenProgram,
-    TAccountAssociatedTokenProgram,
-    TAccountPlayerTokenAccount
+    ResolvedInstructionAccountMeta<TAccountGame, InstructionAccountInputAddress<TAccountGame>>,
+    ResolvedInstructionAccountMeta<TAccountPlayer, InstructionAccountInputAddress<TAccountPlayer>>,
+    ResolvedInstructionAccountMeta<
+      TAccountAuthority,
+      InstructionAccountInputAddress<TAccountAuthority>
+    >,
+    ResolvedInstructionAccountMeta<TAccountOracle, InstructionAccountInputAddress<TAccountOracle>>,
+    ResolvedInstructionAccountMeta<
+      TAccountTokenMint,
+      InstructionAccountInputAddress<TAccountTokenMint>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountGameVault,
+      InstructionAccountInputAddress<TAccountGameVault>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountGameVaultTokenAccount,
+      InstructionAccountInputAddress<TAccountGameVaultTokenAccount>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountTokenProgram,
+      InstructionAccountInputAddress<TAccountTokenProgram>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountAssociatedTokenProgram,
+      InstructionAccountInputAddress<TAccountAssociatedTokenProgram>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountPlayerTokenAccount,
+      InstructionAccountInputAddress<TAccountPlayerTokenAccount>
+    >
   >
 > {
   // Program address.
   const programAddress = config?.programAddress ?? TIMBA_PROGRAM_ADDRESS;
 
+  // Account meta helper.
+  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
+
   // Original accounts.
   const originalAccounts = {
-    game: { value: input.game ?? null, isWritable: true },
-    player: { value: input.player ?? null, isWritable: false },
-    authority: { value: input.authority ?? null, isWritable: false },
-    oracle: { value: input.oracle ?? null, isWritable: false },
-    tokenMint: { value: input.tokenMint ?? null, isWritable: false },
-    gameVault: { value: input.gameVault ?? null, isWritable: false },
-    gameVaultTokenAccount: { value: input.gameVaultTokenAccount ?? null, isWritable: true },
-    tokenProgram: { value: input.tokenProgram ?? null, isWritable: false },
-    associatedTokenProgram: { value: input.associatedTokenProgram ?? null, isWritable: false },
-    playerTokenAccount: { value: input.playerTokenAccount ?? null, isWritable: true },
+    game: { value: input.game ?? null, isSigner: false, isWritable: true },
+    player: { value: input.player ?? null, isSigner: false, isWritable: false },
+    authority: { value: input.authority ?? null, isSigner: true, isWritable: false },
+    oracle: { value: input.oracle ?? null, isSigner: false, isWritable: false },
+    tokenMint: { value: input.tokenMint ?? null, isSigner: false, isWritable: false },
+    gameVault: { value: input.gameVault ?? null, isSigner: false, isWritable: false },
+    gameVaultTokenAccount: {
+      value: input.gameVaultTokenAccount ?? null,
+      isSigner: false,
+      isWritable: true,
+    },
+    tokenProgram: { value: input.tokenProgram ?? null, isSigner: false, isWritable: false },
+    associatedTokenProgram: {
+      value: input.associatedTokenProgram ?? null,
+      isSigner: false,
+      isWritable: false,
+    },
+    playerTokenAccount: {
+      value: input.playerTokenAccount ?? null,
+      isSigner: false,
+      isWritable: true,
+    },
   };
   const accounts = originalAccounts as Record<
     keyof typeof originalAccounts,
@@ -239,7 +278,6 @@ export async function getUnjoinGameInstructionAsync<
       "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL" as Address<"ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL">;
   }
 
-  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
   return Object.freeze({
     accounts: [
       getAccountMeta("game", accounts.game),
@@ -257,54 +295,75 @@ export async function getUnjoinGameInstructionAsync<
     programAddress,
   } as UnjoinGameInstruction<
     TProgramAddress,
-    TAccountGame,
-    TAccountPlayer,
-    TAccountAuthority,
-    TAccountOracle,
-    TAccountTokenMint,
-    TAccountGameVault,
-    TAccountGameVaultTokenAccount,
-    TAccountTokenProgram,
-    TAccountAssociatedTokenProgram,
-    TAccountPlayerTokenAccount
+    ResolvedInstructionAccountMeta<TAccountGame, InstructionAccountInputAddress<TAccountGame>>,
+    ResolvedInstructionAccountMeta<TAccountPlayer, InstructionAccountInputAddress<TAccountPlayer>>,
+    ResolvedInstructionAccountMeta<
+      TAccountAuthority,
+      InstructionAccountInputAddress<TAccountAuthority>
+    >,
+    ResolvedInstructionAccountMeta<TAccountOracle, InstructionAccountInputAddress<TAccountOracle>>,
+    ResolvedInstructionAccountMeta<
+      TAccountTokenMint,
+      InstructionAccountInputAddress<TAccountTokenMint>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountGameVault,
+      InstructionAccountInputAddress<TAccountGameVault>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountGameVaultTokenAccount,
+      InstructionAccountInputAddress<TAccountGameVaultTokenAccount>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountTokenProgram,
+      InstructionAccountInputAddress<TAccountTokenProgram>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountAssociatedTokenProgram,
+      InstructionAccountInputAddress<TAccountAssociatedTokenProgram>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountPlayerTokenAccount,
+      InstructionAccountInputAddress<TAccountPlayerTokenAccount>
+    >
   >);
 }
 
 export type UnjoinGameInput<
-  TAccountGame extends string = string,
-  TAccountPlayer extends string = string,
-  TAccountAuthority extends string = string,
-  TAccountOracle extends string = string,
-  TAccountTokenMint extends string = string,
-  TAccountGameVault extends string = string,
-  TAccountGameVaultTokenAccount extends string = string,
-  TAccountTokenProgram extends string = string,
-  TAccountAssociatedTokenProgram extends string = string,
-  TAccountPlayerTokenAccount extends string = string,
+  TAccountGame extends InstructionAccountInput = InstructionAccountInput,
+  TAccountPlayer extends InstructionAccountInput = InstructionAccountInput,
+  TAccountAuthority extends InstructionSignerInput = InstructionSignerInput,
+  TAccountOracle extends InstructionAccountInput = InstructionAccountInput,
+  TAccountTokenMint extends InstructionAccountInput = InstructionAccountInput,
+  TAccountGameVault extends InstructionAccountInput = InstructionAccountInput,
+  TAccountGameVaultTokenAccount extends InstructionAccountInput = InstructionAccountInput,
+  TAccountTokenProgram extends InstructionAccountInput = InstructionAccountInput,
+  TAccountAssociatedTokenProgram extends InstructionAccountInput = InstructionAccountInput,
+  TAccountPlayerTokenAccount extends InstructionAccountInput = InstructionAccountInput,
 > = {
-  game: Address<TAccountGame>;
-  player: Address<TAccountPlayer>;
-  authority: TransactionSigner<TAccountAuthority>;
-  oracle: Address<TAccountOracle>;
-  tokenMint: Address<TAccountTokenMint>;
-  gameVault: Address<TAccountGameVault>;
-  gameVaultTokenAccount: Address<TAccountGameVaultTokenAccount>;
-  tokenProgram?: Address<TAccountTokenProgram>;
-  associatedTokenProgram?: Address<TAccountAssociatedTokenProgram>;
-  playerTokenAccount: Address<TAccountPlayerTokenAccount>;
+  game: TAccountGame;
+  player: TAccountPlayer;
+  authority: TAccountAuthority;
+  oracle: TAccountOracle;
+  tokenMint: TAccountTokenMint;
+  gameVault: TAccountGameVault;
+  gameVaultTokenAccount: TAccountGameVaultTokenAccount;
+  tokenProgram?: TAccountTokenProgram;
+  associatedTokenProgram?: TAccountAssociatedTokenProgram;
+  playerTokenAccount: TAccountPlayerTokenAccount;
 };
 
 export function getUnjoinGameInstruction<
-  TAccountGame extends string,
-  TAccountPlayer extends string,
-  TAccountAuthority extends string,
-  TAccountOracle extends string,
-  TAccountTokenMint extends string,
-  TAccountGameVault extends string,
-  TAccountGameVaultTokenAccount extends string,
-  TAccountTokenProgram extends string,
-  TAccountAssociatedTokenProgram extends string,
-  TAccountPlayerTokenAccount extends string,
+  TAccountGame extends InstructionAccountInput,
+  TAccountPlayer extends InstructionAccountInput,
+  TAccountAuthority extends InstructionSignerInput,
+  TAccountOracle extends InstructionAccountInput,
+  TAccountTokenMint extends InstructionAccountInput,
+  TAccountGameVault extends InstructionAccountInput,
+  TAccountGameVaultTokenAccount extends InstructionAccountInput,
+  TAccountTokenProgram extends InstructionAccountInput,
+  TAccountAssociatedTokenProgram extends InstructionAccountInput,
+  TAccountPlayerTokenAccount extends InstructionAccountInput,
   TProgramAddress extends Address = typeof TIMBA_PROGRAM_ADDRESS,
 >(
   input: UnjoinGameInput<
@@ -322,32 +381,68 @@ export function getUnjoinGameInstruction<
   config?: { programAddress?: TProgramAddress },
 ): UnjoinGameInstruction<
   TProgramAddress,
-  TAccountGame,
-  TAccountPlayer,
-  TAccountAuthority,
-  TAccountOracle,
-  TAccountTokenMint,
-  TAccountGameVault,
-  TAccountGameVaultTokenAccount,
-  TAccountTokenProgram,
-  TAccountAssociatedTokenProgram,
-  TAccountPlayerTokenAccount
+  ResolvedInstructionAccountMeta<TAccountGame, InstructionAccountInputAddress<TAccountGame>>,
+  ResolvedInstructionAccountMeta<TAccountPlayer, InstructionAccountInputAddress<TAccountPlayer>>,
+  ResolvedInstructionAccountMeta<
+    TAccountAuthority,
+    InstructionAccountInputAddress<TAccountAuthority>
+  >,
+  ResolvedInstructionAccountMeta<TAccountOracle, InstructionAccountInputAddress<TAccountOracle>>,
+  ResolvedInstructionAccountMeta<
+    TAccountTokenMint,
+    InstructionAccountInputAddress<TAccountTokenMint>
+  >,
+  ResolvedInstructionAccountMeta<
+    TAccountGameVault,
+    InstructionAccountInputAddress<TAccountGameVault>
+  >,
+  ResolvedInstructionAccountMeta<
+    TAccountGameVaultTokenAccount,
+    InstructionAccountInputAddress<TAccountGameVaultTokenAccount>
+  >,
+  ResolvedInstructionAccountMeta<
+    TAccountTokenProgram,
+    InstructionAccountInputAddress<TAccountTokenProgram>
+  >,
+  ResolvedInstructionAccountMeta<
+    TAccountAssociatedTokenProgram,
+    InstructionAccountInputAddress<TAccountAssociatedTokenProgram>
+  >,
+  ResolvedInstructionAccountMeta<
+    TAccountPlayerTokenAccount,
+    InstructionAccountInputAddress<TAccountPlayerTokenAccount>
+  >
 > {
   // Program address.
   const programAddress = config?.programAddress ?? TIMBA_PROGRAM_ADDRESS;
 
+  // Account meta helper.
+  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
+
   // Original accounts.
   const originalAccounts = {
-    game: { value: input.game ?? null, isWritable: true },
-    player: { value: input.player ?? null, isWritable: false },
-    authority: { value: input.authority ?? null, isWritable: false },
-    oracle: { value: input.oracle ?? null, isWritable: false },
-    tokenMint: { value: input.tokenMint ?? null, isWritable: false },
-    gameVault: { value: input.gameVault ?? null, isWritable: false },
-    gameVaultTokenAccount: { value: input.gameVaultTokenAccount ?? null, isWritable: true },
-    tokenProgram: { value: input.tokenProgram ?? null, isWritable: false },
-    associatedTokenProgram: { value: input.associatedTokenProgram ?? null, isWritable: false },
-    playerTokenAccount: { value: input.playerTokenAccount ?? null, isWritable: true },
+    game: { value: input.game ?? null, isSigner: false, isWritable: true },
+    player: { value: input.player ?? null, isSigner: false, isWritable: false },
+    authority: { value: input.authority ?? null, isSigner: true, isWritable: false },
+    oracle: { value: input.oracle ?? null, isSigner: false, isWritable: false },
+    tokenMint: { value: input.tokenMint ?? null, isSigner: false, isWritable: false },
+    gameVault: { value: input.gameVault ?? null, isSigner: false, isWritable: false },
+    gameVaultTokenAccount: {
+      value: input.gameVaultTokenAccount ?? null,
+      isSigner: false,
+      isWritable: true,
+    },
+    tokenProgram: { value: input.tokenProgram ?? null, isSigner: false, isWritable: false },
+    associatedTokenProgram: {
+      value: input.associatedTokenProgram ?? null,
+      isSigner: false,
+      isWritable: false,
+    },
+    playerTokenAccount: {
+      value: input.playerTokenAccount ?? null,
+      isSigner: false,
+      isWritable: true,
+    },
   };
   const accounts = originalAccounts as Record<
     keyof typeof originalAccounts,
@@ -364,7 +459,6 @@ export function getUnjoinGameInstruction<
       "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL" as Address<"ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL">;
   }
 
-  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
   return Object.freeze({
     accounts: [
       getAccountMeta("game", accounts.game),
@@ -382,16 +476,37 @@ export function getUnjoinGameInstruction<
     programAddress,
   } as UnjoinGameInstruction<
     TProgramAddress,
-    TAccountGame,
-    TAccountPlayer,
-    TAccountAuthority,
-    TAccountOracle,
-    TAccountTokenMint,
-    TAccountGameVault,
-    TAccountGameVaultTokenAccount,
-    TAccountTokenProgram,
-    TAccountAssociatedTokenProgram,
-    TAccountPlayerTokenAccount
+    ResolvedInstructionAccountMeta<TAccountGame, InstructionAccountInputAddress<TAccountGame>>,
+    ResolvedInstructionAccountMeta<TAccountPlayer, InstructionAccountInputAddress<TAccountPlayer>>,
+    ResolvedInstructionAccountMeta<
+      TAccountAuthority,
+      InstructionAccountInputAddress<TAccountAuthority>
+    >,
+    ResolvedInstructionAccountMeta<TAccountOracle, InstructionAccountInputAddress<TAccountOracle>>,
+    ResolvedInstructionAccountMeta<
+      TAccountTokenMint,
+      InstructionAccountInputAddress<TAccountTokenMint>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountGameVault,
+      InstructionAccountInputAddress<TAccountGameVault>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountGameVaultTokenAccount,
+      InstructionAccountInputAddress<TAccountGameVaultTokenAccount>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountTokenProgram,
+      InstructionAccountInputAddress<TAccountTokenProgram>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountAssociatedTokenProgram,
+      InstructionAccountInputAddress<TAccountAssociatedTokenProgram>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountPlayerTokenAccount,
+      InstructionAccountInputAddress<TAccountPlayerTokenAccount>
+    >
   >);
 }
 
