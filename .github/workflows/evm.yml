@@ -15,16 +15,6 @@ on:
       ]
   pull_request:
     branches: [main]
-    paths:
-      [
-        "scripts/check-coverage.ts",
-        "scripts/check-coverage.test.ts",
-        "coverage-evm.json",
-        "fixtures/**",
-        "evm/**",
-        ".gitmodules",
-        ".github/workflows/evm.yml",
-      ]
 
 permissions:
   contents: read
