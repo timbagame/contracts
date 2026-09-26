@@ -15,16 +15,7 @@ on:
       ]
   pull_request:
     branches: [main]
-    paths:
-      [
-        "scripts/check-coverage.ts",
-        "scripts/check-coverage.test.ts",
-        "coverage-solana.json",
-        "solana/**",
-        "fixtures/**",
-        ".github/workflows/solana.yml",
-        ".prettierrc.json",
-      ]
+
 
 env:
   RUST_VERSION: 1.98.1
