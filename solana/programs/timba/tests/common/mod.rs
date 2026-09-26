@@ -18,8 +18,7 @@ use {
     solana_rent::Rent,
     solana_signer::Signer,
     solana_system_interface::instruction as system_instruction,
-    solana_transaction::versioned::VersionedTransaction,
-    solana_transaction_error::TransactionError,
+    solana_transaction::{versioned::VersionedTransaction, TransactionError},
     spl_associated_token_account_interface::{
         address::get_associated_token_address_with_program_id,
         instruction::create_associated_token_account, program::ID as ASSOCIATED_TOKEN_PROGRAM_ID,
