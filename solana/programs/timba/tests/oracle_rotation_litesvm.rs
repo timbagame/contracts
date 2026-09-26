@@ -4,7 +4,7 @@ use {
     solana_keypair::Keypair,
     solana_sha256_hasher::hash,
     solana_signer::Signer,
-    timba::{state::GameType, GameConfig, OracleConfig},
+    timba::{error::ErrorCode, state::GameType, GameConfig, OracleConfig},
 };
 
 fn config() -> OracleConfig {
@@ -49,7 +49,12 @@ fn rotated_operator_controls_private_join_and_completion() {
         random_hash,
         &new_operator,
     );
-    assert!(!fixture.join_game(&token, game, &creator, creator_ata));
+    let unsigned = fixture.join_instruction(&token, game, creator.pubkey(), creator_ata);
+    let payer = fixture.operator.insecure_clone();
+    assert_eq!(
+        common::custom_error_code(fixture.send_result(&[unsigned], &[&payer, &creator])),
+        common::anchor_error(ErrorCode::PrivateGameAccessDenied)
+    );
     let wrong = fixture.join_instruction_with_operator(
         &token,
         game,
@@ -58,7 +63,10 @@ fn rotated_operator_controls_private_join_and_completion() {
         Some(old_operator.pubkey()),
     );
     let payer = fixture.operator.insecure_clone();
-    assert!(!fixture.send(&[wrong], &[&payer, &creator]));
+    assert_eq!(
+        common::custom_error_code(fixture.send_result(&[wrong], &[&payer, &creator])),
+        common::anchor_error(ErrorCode::PrivateGameAccessDenied)
+    );
     let first = fixture.join_instruction_with_operator(
         &token,
         game,
@@ -101,7 +109,10 @@ fn rotated_operator_controls_private_join_and_completion() {
         old_operator.pubkey(),
     );
     let payer = fixture.operator.insecure_clone();
-    assert!(!fixture.send(&[old_completion], &[&payer]));
+    assert_eq!(
+        common::custom_error_code(fixture.send_result(&[old_completion], &[&payer])),
+        common::anchor_error(ErrorCode::UnauthorizedOperator)
+    );
     let completion = fixture.complete_instruction(
         &token,
         game,

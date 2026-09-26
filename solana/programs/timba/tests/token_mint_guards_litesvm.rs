@@ -3,7 +3,7 @@ mod common;
 use {
     solana_sha256_hasher::hash,
     solana_signer::Signer,
-    timba::{state::GameType, GameConfig},
+    timba::{error::ErrorCode, state::GameType, GameConfig},
 };
 
 #[test]
@@ -30,18 +30,29 @@ fn rejects_wrong_token_context_for_join_complete_and_unjoin() {
         random_hash,
     );
 
-    assert!(!fixture.join_game(&wrong_token, game, &creator, creator_wrong_ata));
+    // Fund the wrong-mint account so the mint guard, not the balance guard, rejects the join.
+    fixture.set_token_balance(creator_wrong_ata, 10_000);
+    let wrong_join =
+        fixture.join_instruction(&wrong_token, game, creator.pubkey(), creator_wrong_ata);
+    let operator = fixture.operator.insecure_clone();
+    assert_eq!(
+        common::custom_error_code(fixture.send_result(&[wrong_join], &[&operator, &creator])),
+        common::anchor_error(ErrorCode::InvalidTokenMint)
+    );
     assert!(fixture.join_game(&expected_token, game, &creator, creator_ata));
-    assert!(!fixture.complete_game(
-        &wrong_token,
-        game,
-        random_hash,
-        secret,
-        0,
-        creator.pubkey(),
-        creator_wrong_ata,
-        creator.pubkey(),
-    ));
+    assert_eq!(
+        fixture.complete_game_error(
+            &wrong_token,
+            game,
+            random_hash,
+            secret,
+            0,
+            creator.pubkey(),
+            creator_wrong_ata,
+            creator.pubkey(),
+        ),
+        common::anchor_error(ErrorCode::InvalidTokenMint)
+    );
     let instruction = fixture.unjoin_instruction(
         &wrong_token,
         game,
@@ -50,6 +61,11 @@ fn rejects_wrong_token_context_for_join_complete_and_unjoin() {
         creator_wrong_ata,
     );
     let operator = fixture.operator.insecure_clone();
-    assert!(!fixture.send(&[instruction], &[&operator, &creator]));
+    assert_eq!(
+        common::custom_error_code(fixture.send_result(&[instruction], &[&operator, &creator])),
+        common::anchor_error(ErrorCode::InvalidTokenMint)
+    );
+    assert_eq!(fixture.token_balance(creator_ata), 9_000);
+    assert_eq!(fixture.token_balance(expected_token.vault_ata), 1_000);
 }
 use timba_test_harness as timba;
