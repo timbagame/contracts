@@ -41,6 +41,57 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # Fast checks that need neither the Solana toolchain nor a program build.
+  lint:
+    defaults:
+      run:
+        working-directory: solana
+    runs-on: ubuntu-26.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Restore Bun cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.bun/install/cache
+          key: bun-install-${{ runner.os }}-${{ hashFiles('solana/bun.lock', 'solana/package.json') }}
+          restore-keys: |
+            bun-install-${{ runner.os }}-
+
+      - name: Install JS dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Audit dependencies
+        run: bun audit
+
+      - name: Check formatting
+        run: bun run format:check
+
+      - name: Lint
+        run: bun run lint
+
+      - name: Check Rust formatting
+        run: cargo fmt --all -- --check
+
+      # target/idl and target/types are committed; the build job checks them for drift.
+      - name: Typecheck
+        run: bun x tsc -p tsconfig.json --noEmit
+
+      - name: Test coverage gate
+        working-directory: .
+        run: bun test scripts/check-coverage.test.ts
+
   solana:
     defaults:
       run:
@@ -68,12 +119,29 @@ jobs:
           restore-keys: |
             bun-install-${{ runner.os }}-
 
+      # cargo-build-sbf downloads its platform tools into ~/.cache/solana on first use and
+      # links them from the release directory, so both are cached together.
+      - name: Cache Solana CLI and SBF platform tools
+        id: solana-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.local/share/timba-agave
+            ~/.cache/solana
+          key: agave-${{ runner.os }}-${{ runner.arch }}-${{ env.SOLANA_SHA256 }}
+
       - name: Install Solana CLI
+        if: steps.solana-cache.outputs.cache-hit != 'true'
         run: |
           curl -fsSL "https://github.com/anza-xyz/agave/releases/download/v${SOLANA_VERSION}/solana-release-x86_64-unknown-linux-gnu.tar.bz2" -o "$RUNNER_TEMP/agave.tar.bz2"
           echo "${SOLANA_SHA256}  $RUNNER_TEMP/agave.tar.bz2" | sha256sum --check
-          tar -xjf "$RUNNER_TEMP/agave.tar.bz2" -C "$RUNNER_TEMP"
-          echo "$RUNNER_TEMP/solana-release/bin" >> "$GITHUB_PATH"
+          mkdir -p "$HOME/.local/share/timba-agave"
+          tar -xjf "$RUNNER_TEMP/agave.tar.bz2" -C "$HOME/.local/share/timba-agave"
+
+      - name: Verify Solana CLI version
+        run: |
+          echo "$HOME/.local/share/timba-agave/solana-release/bin" >> "$GITHUB_PATH"
+          "$HOME/.local/share/timba-agave/solana-release/bin/solana" --version | grep -F "solana-cli ${SOLANA_VERSION} "
 
       - name: Cache Surfpool
         id: surfpool-cache
@@ -105,18 +173,6 @@ jobs:
       - name: Install JS dependencies
         run: bun install --frozen-lockfile
 
-      - name: Audit dependencies
-        run: bun audit
-
-      - name: Check formatting
-        run: bun run format:check
-
-      - name: Lint
-        run: bun run lint
-
-      - name: Check Rust formatting
-        run: cargo fmt --all -- --check
-
       - name: Cache Cargo
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -132,9 +188,6 @@ jobs:
 
       - name: Restore generated clients
         run: git restore --source=HEAD -- target/idl target/types
-
-      - name: Typecheck
-        run: bun x tsc -p tsconfig.json --noEmit
 
       - name: Create test wallet
         run: solana-keygen new --no-bip39-passphrase --silent --force --outfile ~/.config/solana/id.json
@@ -172,9 +225,6 @@ jobs:
           cargo test -p timba-test-harness --features coverage
       - name: Generate Solana source coverage
         run: anchor coverage --skip-run --output target/coverage/sbf.lcov
-      - name: Test coverage gate
-        working-directory: .
-        run: bun test scripts/check-coverage.test.ts
       - name: Enforce 95% line coverage
         working-directory: .
         run: bun run scripts/check-coverage.ts coverage-solana.json solana/target/coverage/sbf.lcov
