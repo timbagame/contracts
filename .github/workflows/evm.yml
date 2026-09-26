@@ -45,7 +45,8 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          submodules: recursive
+          # Remappings point only at the top-level libs; their nested submodules are unused.
+          submodules: true
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: 1.4.2
@@ -63,6 +64,9 @@ jobs:
             evm/cache
             evm/out
           key: evm-${{ runner.os }}-${{ env.FOUNDRY_VERSION }}-${{ hashFiles('evm/foundry.toml', 'evm/foundry.lock', 'evm/src/**', 'evm/test/**', 'evm/script/**') }}
+          # Forge's compilation cache is incremental, so a stale entry still saves recompiling unchanged files.
+          restore-keys: |
+            evm-${{ runner.os }}-${{ env.FOUNDRY_VERSION }}-
       - name: Format
         run: forge fmt --check
       - name: Build and check deployment size

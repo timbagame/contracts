@@ -669,6 +669,59 @@ contract TimbaTest is Test {
         assertEq(token.balanceOf(alice), 1_000_000 ether);
     }
 
+    function testInitializeRejectsInvalidAuthorities() public {
+        Timba implementation = new Timba();
+        for (uint256 i; i < 3; i++) {
+            address proxy = vm.computeCreateAddress(address(this), vm.getNonce(address(this)));
+            address initialOperator = i == 0 ? proxy : operator;
+            address authority = i == 1 ? address(0) : i == 2 ? proxy : address(0xad);
+            vm.expectRevert(Timba.InvalidAuthorization.selector);
+            new ERC1967Proxy(
+                address(implementation), abi.encodeCall(Timba.initialize, (initialOperator, authority, defaults()))
+            );
+        }
+    }
+
+    function testNonceInvalidationMustIncrease() public {
+        vm.startPrank(alice);
+        vm.expectRevert(Timba.InvalidAuthorization.selector);
+        timba.invalidateCreationNonce(0);
+        timba.invalidateCreationNonce(5);
+        vm.expectRevert(Timba.InvalidAuthorization.selector);
+        timba.invalidateCreationNonce(5);
+        vm.stopPrank();
+        assertEq(timba.creationNonces(alice), 5);
+    }
+
+    function testRejectZeroCommitmentAndSelfToken() public {
+        Timba.CreateRequest memory r = request(Timba.GameType.Giveaway);
+        r.commitment = bytes32(0);
+        bytes memory signature = sign(timba.creationDigest(r));
+        vm.prank(alice);
+        vm.expectRevert(Timba.InvalidGame.selector);
+        timba.createGame(r, signature, false);
+        r = request(Timba.GameType.Giveaway);
+        r.token = address(timba);
+        signature = sign(timba.creationDigest(r));
+        vm.prank(alice);
+        vm.expectRevert(Timba.InvalidToken.selector);
+        timba.createGame(r, signature, false);
+    }
+
+    function testRejectStrangerCloseAndNonParticipantRefund() public {
+        bytes32 game = create(request(Timba.GameType.Giveaway), false);
+        vm.prank(bob);
+        vm.expectRevert(Timba.InvalidAuthorization.selector);
+        timba.closeGame(game);
+        vm.prank(operator);
+        vm.expectRevert(Timba.GameUnavailable.selector);
+        timba.winnerIndex(game, SECRET);
+        vm.warp(timba.getGame(game).expiresAt);
+        vm.prank(bob);
+        vm.expectRevert(Timba.EntryUnavailable.selector);
+        timba.refundPlayer(game, bob);
+    }
+
     function testGasMaximumParticipants() public {
         Timba.CreateRequest memory r = request(Timba.GameType.Giveaway);
         r.maxPlayers = 1_000;
