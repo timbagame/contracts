@@ -1,5 +1,5 @@
 {
-  "roots": ["evm/src"],
+  "roots": ["evm/src", "evm/script"],
   "extensions": [".sol"],
   "reportBase": "evm"
 }

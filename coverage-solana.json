@@ -2,5 +2,8 @@
   "roots": ["solana/programs/timba/src"],
   "extensions": [".rs"],
   "reportBase": "solana",
-  "exclude": ["solana/programs/timba/src/instructions/mod.rs"]
+  "exclude": ["solana/programs/timba/src/instructions/mod.rs"],
+  "excludeReasons": {
+    "solana/programs/timba/src/instructions/mod.rs": "Only `mod`/`pub use` declarations: no executable lines, so it never appears in LCOV."
+  }
 }

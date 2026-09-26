@@ -11,7 +11,7 @@ use {
     litesvm::types::TransactionMetadata,
     solana_keypair::Keypair,
     solana_signer::Signer,
-    timba::events::OracleClosed,
+    timba::{error::ErrorCode, events::OracleClosed},
 };
 
 fn event<E: Event>(metadata: &TransactionMetadata) -> E {
@@ -73,17 +73,21 @@ fn current_close_requires_operator_and_upgrade_authority() {
     let wrong_operator =
         close_oracle_instruction(&fixture, outsider.pubkey(), upgrade_authority.pubkey());
     let payer = fixture.operator.insecure_clone();
-    assert!(fixture
-        .send_result(&[wrong_operator], &[&payer, &outsider, &upgrade_authority])
-        .is_err());
+    assert_eq!(
+        common::custom_error_code(
+            fixture.send_result(&[wrong_operator], &[&payer, &outsider, &upgrade_authority])
+        ),
+        common::anchor_error(ErrorCode::UnauthorizedOperator)
+    );
     assert!(fixture.svm.get_account(&fixture.oracle).is_some());
 
     let wrong_authority =
         close_oracle_instruction(&fixture, fixture.operator.pubkey(), outsider.pubkey());
     let payer = fixture.operator.insecure_clone();
-    assert!(fixture
-        .send_result(&[wrong_authority], &[&payer, &outsider])
-        .is_err());
+    assert_eq!(
+        common::custom_error_code(fixture.send_result(&[wrong_authority], &[&payer, &outsider])),
+        common::anchor_error(ErrorCode::UnauthorizedOperator)
+    );
     assert!(fixture.svm.get_account(&fixture.oracle).is_some());
 
     let close = close_oracle_instruction(

@@ -43,6 +43,11 @@ pub fn anchor_error(code: ErrorCode) -> u32 {
     u32::from(code)
 }
 
+/// On-chain custom error number for an Anchor framework error (account constraints etc.).
+pub fn framework_error(code: anchor_lang::error::ErrorCode) -> u32 {
+    u32::from(code)
+}
+
 /// Extract a program `Custom(u32)` from a failed LiteSVM transaction.
 pub fn custom_error_code(result: TransactionResult) -> u32 {
     match result.expect_err("transaction should fail").err {
@@ -457,6 +462,33 @@ impl TimbaFixture {
         );
         let operator = self.operator.insecure_clone();
         self.send(&[instruction], &[&operator])
+    }
+
+    /// Submit a completion signed by the current operator and return the program error code.
+    pub fn complete_game_error(
+        &mut self,
+        token: &TokenFixture,
+        game: Pubkey,
+        random_hash: [u8; 32],
+        secret_key: [u8; 32],
+        winner_index: u32,
+        winner: Pubkey,
+        winner_ata: Pubkey,
+        creator: Pubkey,
+    ) -> u32 {
+        let instruction = self.complete_instruction(
+            token,
+            game,
+            random_hash,
+            secret_key,
+            winner_index,
+            winner,
+            winner_ata,
+            creator,
+            self.operator.pubkey(),
+        );
+        let operator = self.operator.insecure_clone();
+        custom_error_code(self.send_result(&[instruction], &[&operator]))
     }
 
     #[allow(clippy::too_many_arguments)]

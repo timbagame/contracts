@@ -1,11 +1,12 @@
 mod common;
 
 use {
-    anchor_lang::AccountDeserialize,
+    anchor_lang::{error::ErrorCode as AnchorErrorCode, AccountDeserialize},
     solana_keypair::Keypair,
     solana_sha256_hasher::hash,
     solana_signer::Signer,
     timba::{
+        error::ErrorCode,
         state::{Game, GameType},
         GameConfig,
     },
@@ -73,57 +74,71 @@ fn rejects_wrong_and_out_of_bounds_winner_indexes() {
     } else {
         (setup.second.pubkey(), setup.second_ata)
     };
-    assert!(!setup.fixture.complete_game(
-        &setup.token,
-        setup.game,
-        setup.random_hash,
-        setup.secret,
-        wrong,
-        winner,
-        ata,
-        setup.creator.pubkey(),
-    ));
-    assert!(!setup.fixture.complete_game(
-        &setup.token,
-        setup.game,
-        setup.random_hash,
-        setup.secret,
-        2,
-        winner,
-        ata,
-        setup.creator.pubkey(),
-    ));
+    assert_eq!(
+        setup.fixture.complete_game_error(
+            &setup.token,
+            setup.game,
+            setup.random_hash,
+            setup.secret,
+            wrong,
+            winner,
+            ata,
+            setup.creator.pubkey(),
+        ),
+        common::anchor_error(ErrorCode::WinnerIndexMismatch)
+    );
+    assert_eq!(
+        setup.fixture.complete_game_error(
+            &setup.token,
+            setup.game,
+            setup.random_hash,
+            setup.secret,
+            2,
+            winner,
+            ata,
+            setup.creator.pubkey(),
+        ),
+        common::anchor_error(ErrorCode::WinnerIndexMismatch)
+    );
+    assert_eq!(setup.fixture.token_balance(setup.token.vault_ata), 2_000);
 }
 
 #[test]
 fn rejects_nonparticipant_winner_and_mismatched_winner_ata() {
     let mut setup = ready_game(44);
     let (outsider, outsider_ata) = setup.fixture.empty_player(setup.token.mint.pubkey());
-    assert!(!setup.fixture.complete_game(
-        &setup.token,
-        setup.game,
-        setup.random_hash,
-        setup.secret,
-        setup.winner_index,
-        outsider.pubkey(),
-        outsider_ata,
-        setup.creator.pubkey(),
-    ));
+    assert_eq!(
+        setup.fixture.complete_game_error(
+            &setup.token,
+            setup.game,
+            setup.random_hash,
+            setup.secret,
+            setup.winner_index,
+            outsider.pubkey(),
+            outsider_ata,
+            setup.creator.pubkey(),
+        ),
+        common::anchor_error(ErrorCode::WinnerPubkeyMismatch)
+    );
     let winner = if setup.winner_index == 0 {
         setup.creator.pubkey()
     } else {
         setup.second.pubkey()
     };
-    assert!(!setup.fixture.complete_game(
-        &setup.token,
-        setup.game,
-        setup.random_hash,
-        setup.secret,
-        setup.winner_index,
-        winner,
-        outsider_ata,
-        setup.creator.pubkey(),
-    ));
+    assert_eq!(
+        setup.fixture.complete_game_error(
+            &setup.token,
+            setup.game,
+            setup.random_hash,
+            setup.secret,
+            setup.winner_index,
+            winner,
+            outsider_ata,
+            setup.creator.pubkey(),
+        ),
+        common::framework_error(AnchorErrorCode::ConstraintTokenOwner)
+    );
+    assert_eq!(setup.fixture.token_balance(setup.token.vault_ata), 2_000);
 }
 
 #[test]
@@ -134,32 +149,42 @@ fn rejects_invalid_secret_creator_and_oracle_operator() {
     } else {
         (setup.second.pubkey(), setup.second_ata)
     };
-    assert!(!setup.fixture.complete_game(
-        &setup.token,
-        setup.game,
-        setup.random_hash,
-        [99; 32],
-        setup.winner_index,
-        winner,
-        ata,
-        setup.creator.pubkey(),
-    ));
-    assert!(!setup.fixture.complete_game(
-        &setup.token,
-        setup.game,
-        setup.random_hash,
-        setup.secret,
-        setup.winner_index,
-        winner,
-        ata,
-        setup.second.pubkey(),
-    ));
+    assert_eq!(
+        setup.fixture.complete_game_error(
+            &setup.token,
+            setup.game,
+            setup.random_hash,
+            [99; 32],
+            setup.winner_index,
+            winner,
+            ata,
+            setup.creator.pubkey(),
+        ),
+        common::anchor_error(ErrorCode::InvalidSecretKey)
+    );
+    assert_eq!(
+        setup.fixture.complete_game_error(
+            &setup.token,
+            setup.game,
+            setup.random_hash,
+            setup.secret,
+            setup.winner_index,
+            winner,
+            ata,
+            setup.second.pubkey(),
+        ),
+        common::anchor_error(ErrorCode::InvalidCreator)
+    );
     let outsider = Keypair::new();
     setup
         .fixture
         .svm
         .airdrop(&outsider.pubkey(), 1_000_000_000)
         .unwrap();
+    // Give the outsider a fee account so the operator check, not account loading, rejects it.
+    setup
+        .fixture
+        .create_ata(outsider.pubkey(), setup.token.mint.pubkey());
     let instruction = setup.fixture.complete_instruction(
         &setup.token,
         setup.game,
@@ -172,7 +197,15 @@ fn rejects_invalid_secret_creator_and_oracle_operator() {
         outsider.pubkey(),
     );
     let payer = setup.fixture.operator.insecure_clone();
-    assert!(!setup.fixture.send(&[instruction], &[&payer, &outsider]));
+    assert_eq!(
+        common::custom_error_code(
+            setup
+                .fixture
+                .send_result(&[instruction], &[&payer, &outsider])
+        ),
+        common::anchor_error(ErrorCode::UnauthorizedOperator)
+    );
+    assert_eq!(setup.fixture.token_balance(setup.token.vault_ata), 2_000);
 }
 
 #[test]
@@ -194,15 +227,18 @@ fn valid_completion_closes_game_and_cannot_settle_twice() {
         setup.creator.pubkey(),
     ));
     assert!(setup.fixture.svm.get_account(&setup.game).is_none());
-    assert!(!setup.fixture.complete_game(
-        &setup.token,
-        setup.game,
-        setup.random_hash,
-        setup.secret,
-        setup.winner_index,
-        winner,
-        ata,
-        setup.creator.pubkey(),
-    ));
+    assert_eq!(
+        setup.fixture.complete_game_error(
+            &setup.token,
+            setup.game,
+            setup.random_hash,
+            setup.secret,
+            setup.winner_index,
+            winner,
+            ata,
+            setup.creator.pubkey(),
+        ),
+        common::framework_error(AnchorErrorCode::AccountNotInitialized)
+    );
 }
 use timba_test_harness as timba;
