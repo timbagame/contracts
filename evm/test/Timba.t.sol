@@ -310,6 +310,27 @@ contract TimbaTest is Test {
         timba.completeGame(game, SECRET);
     }
 
+    function testWinnerIndexResamplesBiasedEntropy() public {
+        bytes32 game = create(request(Timba.GameType.Coinflip), true);
+        uint256 entryBlock = 52;
+        vm.roll(entryBlock);
+        join(game, bob);
+        // Rejection is ~n/2^256 likely for real games; a forged participant count of 2^255 + 1 puts the
+        // rejection threshold at 2^255 - 1, so roughly half of all samples fall in the biased tail.
+        uint256 n = (uint256(1) << 255) + 1;
+        uint256 threshold = n - 2;
+        bytes32 participantsSlot = bytes32(uint256(keccak256(abi.encode(game, uint256(3)))) + 7);
+        assertEq(uint256(vm.load(address(timba), participantsSlot)), 2);
+        vm.store(address(timba), participantsSlot, bytes32(n));
+        bytes32 first = keccak256(abi.encode(block.chainid, address(timba), game, SECRET, entryBlock));
+        bytes32 second = keccak256(abi.encode(first, uint256(0)));
+        assertLt(uint256(first), threshold);
+        assertGe(uint256(second), threshold);
+        uint256 index = timba.winnerIndex(game, SECRET);
+        assertEq(index, uint256(second) % n);
+        assertTrue(index != uint256(first) % n);
+    }
+
     function testGiveawayPaysPrizeAndCreatorCanRecoverUnderfilled() public {
         Timba.CreateRequest memory r = request(Timba.GameType.Giveaway);
         bytes32 game = create(r, false);
