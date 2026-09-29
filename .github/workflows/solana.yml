@@ -1,18 +1,6 @@
 name: Solana CI
 
 on:
-  push:
-    branches: [main]
-    paths:
-      [
-        "scripts/check-coverage.ts",
-        "scripts/check-coverage.test.ts",
-        "coverage-solana.json",
-        "solana/**",
-        "fixtures/**",
-        ".github/workflows/solana.yml",
-        ".prettierrc.json",
-      ]
   pull_request:
     branches: [main]
 
