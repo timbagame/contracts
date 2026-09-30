@@ -15,15 +15,26 @@ export function supplementSourceHits(sbf: string, host: string, base: string): s
     }
   }
   return sbf
-    .split(/\r?\n/)
-    .map((entry) => {
-      if (entry.startsWith("SF:")) source = resolve(base, entry.slice(3));
-      if (!entry.startsWith("DA:")) return entry;
-      const [line, count, ...checksum] = entry.slice(3).split(",");
-      const total = Number(count) + (hits.get(`${source}\0${line}`) ?? 0);
-      return `DA:${line},${total}${checksum.length ? `,${checksum.join(",")}` : ""}`;
+    .split("end_of_record")
+    .map((record) => {
+      const entries = record.split(/\r?\n/).map((entry) => {
+        if (entry.startsWith("SF:")) source = resolve(base, entry.slice(3));
+        if (!entry.startsWith("DA:")) return entry;
+        const [line, count, ...checksum] = entry.slice(3).split(",");
+        const total = Number(count) + (hits.get(`${source}\0${line}`) ?? 0);
+        return `DA:${line},${total}${checksum.length ? `,${checksum.join(",")}` : ""}`;
+      });
+      const lines = entries.filter((entry) => entry.startsWith("DA:"));
+      const covered = lines.filter((entry) => Number(entry.split(",")[1]) > 0).length;
+      return entries
+        .map((entry) => {
+          if (entry.startsWith("LH:")) return `LH:${covered}`;
+          if (entry.startsWith("LF:")) return `LF:${lines.length}`;
+          return entry;
+        })
+        .join("\n");
     })
-    .join("\n");
+    .join("end_of_record");
 }
 
 if (import.meta.main) {
