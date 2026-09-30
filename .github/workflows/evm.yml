@@ -18,8 +18,8 @@ jobs:
       run:
         working-directory: evm
     env:
-      FOUNDRY_VERSION: v1.8.1
-      FOUNDRY_SHA256: 37b45855232e57624d90113b049ca54f0c92055bb5c1997fcbdc3076c7b89c10
+      FOUNDRY_VERSION: v1.8.3
+      FOUNDRY_SHA256: 7ca48e6ca3cac1bce1403ca67e5bc1dc3bc1fd818199c9957c7165079c228568
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
