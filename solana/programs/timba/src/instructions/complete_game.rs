@@ -19,6 +19,13 @@ pub fn handler(
         ErrorCode::GameNotReadyForOracle
     );
 
+    // Reject an out-of-bounds input before comparing it with the derived winner.
+    // Comparing first makes WinnerIndexOutOfRange unreachable for every input.
+    require!(
+        winner_index < game.tickets_count,
+        ErrorCode::WinnerIndexOutOfRange
+    );
+
     // 1. Recompute winner index deterministically from secret key + game state (append order canonical)
     let calculated_winner_index = game
         .calculate_winner_index(secret_key)
@@ -26,12 +33,6 @@ pub fn handler(
     require!(
         winner_index == calculated_winner_index,
         ErrorCode::WinnerIndexMismatch
-    );
-
-    // 2. Bounds check: ensure index < tickets_count
-    require!(
-        winner_index < game.tickets_count,
-        ErrorCode::WinnerIndexOutOfRange
     );
 
     // 3. Direct positional identity check: append order is canonical participant ordering

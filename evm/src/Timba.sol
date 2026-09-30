@@ -288,6 +288,12 @@ contract Timba is Ownable2StepUpgradeable, EIP712Upgradeable, UUPSUpgradeable, R
         if (n == 0) revert GameUnavailable();
         // Block number is a public, influenceable input, NOT an independent source of randomness.
         bytes32 entropy = keccak256(abi.encode(block.chainid, address(this), gameId, secret, game.lastEntryBlock));
+        return _sampleWinner(entropy, n);
+    }
+
+    // Keep rejection sampling separate from game storage so the bounded failure
+    // path can be tested with adversarial entropy without changing game behavior.
+    function _sampleWinner(bytes32 entropy, uint256 n) internal pure returns (uint256) {
         uint256 threshold;
         unchecked {
             threshold = (0 - n) % n;
@@ -295,9 +301,13 @@ contract Timba is Ownable2StepUpgradeable, EIP712Upgradeable, UUPSUpgradeable, R
         for (uint256 i; i < 32; i++) {
             uint256 sample = uint256(entropy);
             if (sample >= threshold) return sample % n;
-            entropy = keccak256(abi.encode(entropy, i));
+            entropy = _rehashWinnerEntropy(entropy, i);
         }
         revert RandomnessUnavailable();
+    }
+
+    function _rehashWinnerEntropy(bytes32 entropy, uint256 round) internal pure virtual returns (bytes32) {
+        return keccak256(abi.encode(entropy, round));
     }
 
     function refundPlayer(bytes32 gameId, address player) external nonReentrant {
