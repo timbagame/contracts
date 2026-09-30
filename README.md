@@ -71,7 +71,7 @@ Mainnet releases use a verifiable build. [solana/DEPLOYMENT.md](solana/DEPLOYMEN
 
 ### EVM
 
-Requires Foundry 1.8.1, plus [Bun](https://bun.sh) for the smoke test. Dependencies are git submodules.
+Requires Foundry 1.8.3, plus [Bun](https://bun.sh) for the smoke test. Dependencies are git submodules.
 
 ```bash
 git submodule update --init --recursive
