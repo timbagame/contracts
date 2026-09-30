@@ -96,3 +96,11 @@ Please do not open a public issue for security problems. Report them privately t
 - [timbagame/protocol](https://github.com/timbagame/protocol): TypeScript clients, IDLs, ABIs and winner verification
 - [timba.cc](https://timba.cc): play on the web and verify games
 - [@playtimbabot](https://t.me/playtimbabot): play in Telegram
+
+### Coverage gate
+
+Pull requests require 100% first-party executable line coverage for both chains.
+Solana uses the deployed SBF binary's line inventory and execution traces, supplemented
+with matching host LLVM hits from direct state tests. This covers defensive state guards
+that account validation rejects before the deployed handler can reach them. The raw SBF,
+host and combined reports are retained as CI artifacts. EVM uses Forge LCOV.

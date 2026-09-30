@@ -58,7 +58,7 @@ jobs:
       - name: Test coverage gate
         working-directory: .
         run: bun test scripts/check-coverage.test.ts
-      - name: Enforce 95% line coverage
+      - name: Enforce 100% line coverage
         working-directory: .
         run: bun run scripts/check-coverage.ts coverage-evm.json evm/coverage/lcov.info
       - name: Upload EVM coverage

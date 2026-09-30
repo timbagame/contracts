@@ -98,7 +98,7 @@ fn rejects_wrong_and_out_of_bounds_winner_indexes() {
             ata,
             setup.creator.pubkey(),
         ),
-        common::anchor_error(ErrorCode::WinnerIndexMismatch)
+        common::anchor_error(ErrorCode::WinnerIndexOutOfRange)
     );
     assert_eq!(setup.fixture.token_balance(setup.token.vault_ata), 2_000);
 }

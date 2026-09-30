@@ -34,6 +34,7 @@ jobs:
         uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
         with:
           toolchain: ${{ env.RUST_VERSION }}
+          components: llvm-tools-preview
 
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
@@ -68,7 +69,7 @@ jobs:
 
       - name: Test coverage gate
         working-directory: .
-        run: bun test scripts/check-coverage.test.ts
+        run: bun test scripts/*.test.ts
 
   solana:
     defaults:
@@ -84,6 +85,7 @@ jobs:
         uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
         with:
           toolchain: ${{ env.RUST_VERSION }}
+          components: llvm-tools-preview
 
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
@@ -203,13 +205,20 @@ jobs:
           cargo test -p timba-test-harness --features coverage
       - name: Generate Solana source coverage
         run: anchor coverage --skip-run --output target/coverage/sbf.lcov
-      - name: Enforce 95% line coverage
+      - name: Measure host-side defensive paths
+        run: |
+          cargo install cargo-llvm-cov --version 0.9.1 --locked
+          cargo llvm-cov -p timba-test-harness --lib --test game_state --lcov --output-path target/coverage/host.lcov
+      - name: Supplement SBF inventory with matching host source hits
         working-directory: .
-        run: bun run scripts/check-coverage.ts coverage-solana.json solana/target/coverage/sbf.lcov
+        run: bun run scripts/supplement-sbf-coverage.ts solana/target/coverage/sbf.lcov solana/target/coverage/host.lcov solana/target/coverage/combined.lcov
+      - name: Enforce 100% line coverage
+        working-directory: .
+        run: bun run scripts/check-coverage.ts coverage-solana.json solana/target/coverage/combined.lcov
       - name: Upload Solana coverage
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: coverage-solana
-          path: solana/target/coverage/sbf.lcov
+          path: solana/target/coverage/*.lcov
           if-no-files-found: error

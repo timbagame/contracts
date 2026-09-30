@@ -1,3 +1,38 @@
+use std::alloc::{GlobalAlloc, Layout, System};
+use std::cell::Cell;
+
+// Fail only the next allocation on this test's thread. Other concurrently
+// running tests and error-reporting allocations stay intact.
+thread_local! {
+    static FAIL_NEXT_ALLOCATION: Cell<bool> = const { Cell::new(false) };
+}
+struct AllocationFailure;
+#[global_allocator]
+static ALLOCATOR: AllocationFailure = AllocationFailure;
+unsafe impl GlobalAlloc for AllocationFailure {
+    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+        if FAIL_NEXT_ALLOCATION
+            .try_with(|flag| flag.replace(false))
+            .unwrap_or(false)
+        {
+            return std::ptr::null_mut();
+        }
+        unsafe { System.alloc(layout) }
+    }
+    unsafe fn dealloc(&self, pointer: *mut u8, layout: Layout) {
+        unsafe { System.dealloc(pointer, layout) }
+    }
+    unsafe fn realloc(&self, pointer: *mut u8, layout: Layout, size: usize) -> *mut u8 {
+        if FAIL_NEXT_ALLOCATION
+            .try_with(|flag| flag.replace(false))
+            .unwrap_or(false)
+        {
+            return std::ptr::null_mut();
+        }
+        unsafe { System.realloc(pointer, layout, size) }
+    }
+}
+
 use anchor_lang::prelude::Pubkey;
 use timba::{
     state::{Game, GameType, Oracle, MAX_ORACLE_BUFFER_TIME},
@@ -278,4 +313,49 @@ fn shared_lifecycle_and_fee_vectors() {
         assert_eq!(fee, v[9], "{line}");
         assert_eq!(prize + fee, game.total_amount, "{line}");
     }
+}
+
+#[test]
+fn participant_allocation_failure_preserves_game_state() {
+    let player = Pubkey::new_unique();
+    let mut game = Game {
+        ticket_amount: 100,
+        max_tickets: 2,
+        ..Game::default()
+    };
+    FAIL_NEXT_ALLOCATION.with(|flag| flag.set(true));
+    let error = game.add_player_to_game(player).unwrap_err();
+    assert_eq!(
+        error,
+        anchor_lang::error::Error::from(timba::error::ErrorCode::ParticipantStorageExceeded)
+    );
+    assert!(game.participants.is_empty());
+    assert_eq!(game.tickets_count, 0);
+    assert_eq!(game.total_amount, 0);
+    assert_eq!(game.add_player_to_game(player).unwrap(), 0);
+    assert_eq!(game.participants, vec![player]);
+}
+
+#[test]
+fn direct_removal_rejects_empty_and_invalid_positions_without_mutation() {
+    let mut empty = Game::default();
+    assert_eq!(
+        empty.remove_player_at(0).unwrap_err(),
+        anchor_lang::error::Error::from(timba::error::ErrorCode::ParticipantNotFound)
+    );
+    let player = Pubkey::new_unique();
+    let mut game = Game {
+        tickets_count: 1,
+        total_amount: 100,
+        ticket_amount: 100,
+        participants: vec![player],
+        ..Game::default()
+    };
+    assert_eq!(
+        game.remove_player_at(1).unwrap_err(),
+        anchor_lang::error::Error::from(timba::error::ErrorCode::ParticipantIndexOutOfRange)
+    );
+    assert_eq!(game.participants, vec![player]);
+    assert_eq!(game.tickets_count, 1);
+    assert_eq!(game.total_amount, 100);
 }
