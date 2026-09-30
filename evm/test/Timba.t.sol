@@ -75,6 +75,18 @@ contract TimbaV2 is Timba {
     }
 }
 
+// A test-only entropy source exercises exhaustion deterministically. The deployed
+// Timba implementation continues to use keccak256 for every rehash.
+contract ExhaustedEntropyTimba is Timba {
+    function sample(bytes32 entropy, uint256 entries) external pure returns (uint256) {
+        return _sampleWinner(entropy, entries);
+    }
+
+    function _rehashWinnerEntropy(bytes32, uint256) internal pure override returns (bytes32) {
+        return bytes32(0);
+    }
+}
+
 contract TimbaTest is Test {
     Timba internal timba;
     Token internal token;
@@ -329,6 +341,13 @@ contract TimbaTest is Test {
         uint256 index = timba.winnerIndex(game, SECRET);
         assertEq(index, uint256(second) % n);
         assertTrue(index != uint256(first) % n);
+    }
+
+    function testWinnerSamplingRejectsAfterItsBoundedRetryBudget() public {
+        ExhaustedEntropyTimba sampler = new ExhaustedEntropyTimba();
+        uint256 entries = (uint256(1) << 255) + 1;
+        vm.expectRevert(Timba.RandomnessUnavailable.selector);
+        sampler.sample(bytes32(0), entries);
     }
 
     function testGiveawayPaysPrizeAndCreatorCanRecoverUnderfilled() public {

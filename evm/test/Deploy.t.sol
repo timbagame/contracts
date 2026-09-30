@@ -8,6 +8,15 @@ contract DeployTest is Test {
     bytes32 private constant IMPLEMENTATION_SLOT = 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;
 
     function testDeploysInitializedProxyWithOperationalDefaults() public {
+        // vm.setEnv mutates the process environment. Exercise both paths in one
+        // test so parallel Forge tests cannot overwrite each other's authority.
+        vm.setEnv("TIMBA_OPERATOR", vm.toString(makeAddr("operator")));
+        vm.setEnv("TIMBA_UPGRADE_AUTHORITY", vm.toString(address(0)));
+        Deploy script = new Deploy();
+        vm.expectRevert(Timba.InvalidAuthorization.selector);
+        script.run();
+        vm.stopBroadcast();
+
         address operator = makeAddr("operator");
         address authority = makeAddr("authority");
         vm.setEnv("TIMBA_OPERATOR", vm.toString(operator));
@@ -27,13 +36,5 @@ contract DeployTest is Test {
         assertTrue(implementation != address(0) && implementation != address(deployment));
         vm.expectRevert();
         Timba(implementation).initialize(operator, authority, Timba.OracleConfig(1, 1 hours, 5 minutes, 1 days, 100));
-    }
-
-    function testRejectsMissingUpgradeAuthority() public {
-        vm.setEnv("TIMBA_OPERATOR", vm.toString(makeAddr("operator")));
-        vm.setEnv("TIMBA_UPGRADE_AUTHORITY", vm.toString(address(0)));
-        Deploy script = new Deploy();
-        vm.expectRevert(Timba.InvalidAuthorization.selector);
-        script.run();
     }
 }
