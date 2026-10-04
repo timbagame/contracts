@@ -28,10 +28,10 @@ The command must return `32Jr4JnXWvqq9GqPQynkooHsszaucUUvZfNLh2hdX2L5`.
 | Tool            | Version |
 | --------------- | ------- |
 | Rust            | 1.98.1  |
-| Solana CLI      | 4.2.2   |
+| Solana CLI      | 4.3.0   |
 | Anchor CLI      | 1.2.0   |
 | Bun             | 1.4.2   |
-| Surfpool        | 1.5.0   |
+| Surfpool        | 1.6.0   |
 | `solana-verify` | 0.5.1   |
 
 Use `rust-toolchain.toml`, `Anchor.toml`, and `../.github/workflows/solana.yml` as the repository sources of truth. A verifiable build also requires a container runtime supported by Anchor.
@@ -101,7 +101,7 @@ Build the verifiable executable with the pinned Solana toolchain:
 anchor build \
   --verifiable \
   --program-name timba \
-  --solana-version 4.2.2
+  --solana-version 4.3.0
 ```
 
 The production artifact is:

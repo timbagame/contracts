@@ -94,7 +94,7 @@ There is no shared build.
 <details>
 <summary><b>Build and test: Solana</b></summary>
 
-Requires Rust 1.98.1, Solana CLI 4.2.2, Anchor CLI 1.2.0 and [Bun](https://bun.sh) 1.4.2.
+Requires Rust 1.98.1, Solana CLI 4.3.0, Anchor CLI 1.2.0 and [Bun](https://bun.sh) 1.4.2.
 
 ```bash
 cd solana
@@ -112,7 +112,7 @@ Mainnet releases use a verifiable build.
 <details>
 <summary><b>Build and test: EVM</b></summary>
 
-Requires Foundry 1.8.3, plus [Bun](https://bun.sh) for the smoke test.
+Requires Foundry 1.8.4, plus [Bun](https://bun.sh) for the smoke test.
 Dependencies are git submodules.
 
 ```bash

@@ -59,10 +59,10 @@ The oracle signature authorizes game creation but does not make creation policy 
 The repository pins or tests these versions:
 
 - Rust 1.98.1
-- Solana CLI 4.2.2
+- Solana CLI 4.3.0
 - Anchor CLI 1.2.0
 - Bun 1.4.2
-- Surfpool 1.5.0 (verify `surfpool --version`; 1.4.0 failed to execute the upgraded program)
+- Surfpool 1.6.0 (verify `surfpool --version`; 1.4.0 failed to execute the upgraded program)
 
 Use `rust-toolchain.toml`, `Anchor.toml`, and `../.github/workflows/solana.yml` as the version sources of truth.
 
