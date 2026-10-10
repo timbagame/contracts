@@ -1,4 +1,11 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["config:recommended", "group:all"]
+  "extends": ["config:recommended", "group:all"],
+  "packageRules": [
+    {
+      "description": "litesvm 0.18 requires solana-rent ~4.4. Drop this once litesvm allows newer.",
+      "matchDepNames": ["solana-rent"],
+      "allowedVersions": "~4.4"
+    }
+  ]
 }
