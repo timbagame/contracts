@@ -4,10 +4,7 @@ use {
     anchor_lang::{
         prelude::Pubkey,
         solana_program::{
-            bpf_loader_upgradeable,
-            instruction::Instruction,
-            program_pack::Pack,
-            system_program,
+            bpf_loader_upgradeable, instruction::Instruction, program_pack::Pack, system_program,
         },
         InstructionData, ToAccountMetas,
     },
