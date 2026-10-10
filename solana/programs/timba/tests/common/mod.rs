@@ -4,16 +4,14 @@ use {
     anchor_lang::{
         prelude::Pubkey,
         solana_program::{
-            bpf_loader_upgradeable::{self, UpgradeableLoaderState},
-            instruction::Instruction,
-            program_pack::Pack,
-            system_program,
+            bpf_loader_upgradeable, instruction::Instruction, program_pack::Pack, system_program,
         },
         InstructionData, ToAccountMetas,
     },
     litesvm::{types::TransactionResult, LiteSVM},
     solana_instruction::error::InstructionError,
     solana_keypair::Keypair,
+    solana_loader_v3_interface::state::UpgradeableLoaderState,
     solana_message::{Message, VersionedMessage},
     solana_rent::Rent,
     solana_signer::Signer,
@@ -65,13 +63,10 @@ pub fn set_program_upgrade_authority(
     let mut account = svm
         .get_account(&program_data)
         .expect("upgradeable program data must exist");
-    let metadata = bincode::serde::encode_to_vec(
-        UpgradeableLoaderState::ProgramData {
-            slot: svm.get_sysvar::<anchor_lang::prelude::Clock>().slot,
-            upgrade_authority_address: Some(authority),
-        },
-        bincode::config::legacy(),
-    )
+    let metadata = wincode::serialize(&UpgradeableLoaderState::ProgramData {
+        slot: svm.get_sysvar::<anchor_lang::prelude::Clock>().slot,
+        upgrade_authority_address: Some(authority.to_bytes().into()),
+    })
     .unwrap();
     account.data[..metadata.len()].copy_from_slice(&metadata);
     svm.set_account(program_data, account).unwrap();
