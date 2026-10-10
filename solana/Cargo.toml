@@ -3,8 +3,8 @@ members  = ["programs/*", "test-harness"]
 resolver = "2"
 
 [workspace.dependencies]
-anchor-lang = "=1.2.1"
-anchor-spl  = { version = "=1.2.1", default-features = false, features = ["solana-v3"] }
+anchor-lang = "=1.2.0"
+anchor-spl  = { version = "=1.2.0", default-features = false }
 solana-sha256-hasher = "3.1.0"
 
 [profile.dev]
