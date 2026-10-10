@@ -27,7 +27,7 @@ jobs:
           submodules: true
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
-          bun-version: 1.4.2
+          bun-version: 1.4.3
       - name: Install verified Foundry release
         run: |
           curl --fail --location --retry 3 "https://github.com/foundry-rs/foundry/releases/download/${FOUNDRY_VERSION}/foundry_${FOUNDRY_VERSION}_linux_amd64.tar.gz" -o "$RUNNER_TEMP/foundry.tar.gz"

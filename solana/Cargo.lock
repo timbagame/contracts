@@ -1727,9 +1727,9 @@ dependencies = [
 
 [[package]]
 name = "litesvm"
-version = "0.17.0"
+version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f223c0ac2ac307d1f9ba0fcfeaa5a34f216fa5e25d5fdd1e22f898e6785a8bab"
+checksum = "f110f47eaae011bdb78f18b8302736e8b45d83874c0990538885ce37d4768e2d"
 dependencies = [
  "agave-feature-set",
  "agave-reserved-account-keys",
@@ -2487,9 +2487,9 @@ dependencies = [
 
 [[package]]
 name = "solana-address-lookup-table-interface"
-version = "3.1.0"
+version = "3.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "115b4f773acc4f3f3cb986b0d335e9845c0368c82b0940410935bc11ae065578"
+checksum = "8dedafa11d25554279235dd0539d378adc144183eca65072a302c9592cc6a591"
 dependencies = [
  "bincode",
  "bytemuck",

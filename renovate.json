@@ -1,4 +1,39 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["config:recommended", "group:all"]
+  "extends": [
+    "config:recommended",
+    "group:all"
+  ],
+  "packageRules": [
+    {
+      "description": "anchor-spl 1.2.1's solana-v3 feature links the Token-2022 proof crates, which fail to link for sbpfv3. 1.2.1 only adds Solana v4 support, which litesvm doesn't use yet.",
+      "matchDepNames": [
+        "anchor-lang",
+        "anchor-spl"
+      ],
+      "allowedVersions": "!/^1\\.2\\.1$/"
+    },
+    {
+      "description": "litesvm 0.18 requires solana-rent ~4.4. Drop this once litesvm allows newer.",
+      "matchDepNames": [
+        "solana-rent"
+      ],
+      "allowedVersions": "~4.4"
+    },
+    {
+      "description": "Test SDK crates must match the versions litesvm uses. Bump them together with litesvm.",
+      "matchDepNames": [
+        "solana-instruction",
+        "solana-keypair",
+        "solana-loader-v3-interface",
+        "solana-message",
+        "solana-signer",
+        "solana-transaction"
+      ],
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "enabled": false
+    }
+  ]
 }
