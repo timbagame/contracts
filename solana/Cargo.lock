@@ -4464,7 +4464,7 @@ dependencies = [
  "base64 0.23.1",
  "bincode 2.0.1",
  "litesvm",
- "solana-instruction 3.5.1",
+ "solana-instruction 4.0.0",
  "solana-keypair",
  "solana-message",
  "solana-rent 4.4.0",
