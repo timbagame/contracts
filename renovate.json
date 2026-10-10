@@ -1,11 +1,31 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["config:recommended", "group:all"],
+  "extends": [
+    "config:recommended",
+    "group:all"
+  ],
   "packageRules": [
     {
       "description": "litesvm 0.18 requires solana-rent ~4.4. Drop this once litesvm allows newer.",
-      "matchDepNames": ["solana-rent"],
+      "matchDepNames": [
+        "solana-rent"
+      ],
       "allowedVersions": "~4.4"
+    },
+    {
+      "description": "Test SDK crates must match the versions litesvm uses. Bump them together with litesvm.",
+      "matchDepNames": [
+        "solana-instruction",
+        "solana-keypair",
+        "solana-loader-v3-interface",
+        "solana-message",
+        "solana-signer",
+        "solana-transaction"
+      ],
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "enabled": false
     }
   ]
 }
