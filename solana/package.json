@@ -8,7 +8,7 @@
     "@eslint/js": "^10.0.1",
     "@solana-program/system": "0.15.0",
     "@solana-program/token": "0.17.0",
-    "@solana/kit": "8.4.0",
+    "@solana/kit": "8.5.0",
     "@types/bun": "^1.4.2",
     "@typescript/native": "npm:typescript@7.0.2",
     "codama": "1.11.0",
