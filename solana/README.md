@@ -52,7 +52,7 @@ The oracle signature authorizes game creation but does not make creation policy 
 - `test-harness` compiles the program as a host-side library for Rust tests.
 - `tests` contains Kit integration tests and the Codama-generated v0.3 client.
 - `target/idl/timba.json`, `target/types/timba.ts`, and `tests/generated` are committed generated artifacts.
-- `../.github/workflows/solana.yml` defines the supported CI toolchain.
+- `../.github/workflows/ci.yml` defines the supported CI toolchain.
 
 ## Toolchain
 
@@ -64,7 +64,7 @@ The repository pins or tests these versions:
 - Bun 1.4.2
 - Surfpool 1.6.0 (verify `surfpool --version`; 1.4.0 failed to execute the upgraded program)
 
-Use `rust-toolchain.toml`, `Anchor.toml`, and `../.github/workflows/solana.yml` as the version sources of truth.
+Use `rust-toolchain.toml`, `Anchor.toml`, and `../.github/workflows/ci.yml` as the version sources of truth.
 
 ## Local setup
 

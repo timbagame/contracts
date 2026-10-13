@@ -34,7 +34,7 @@ The command must return `32Jr4JnXWvqq9GqPQynkooHsszaucUUvZfNLh2hdX2L5`.
 | Surfpool        | 1.6.0   |
 | `solana-verify` | 0.5.1   |
 
-Use `rust-toolchain.toml`, `Anchor.toml`, and `../.github/workflows/solana.yml` as the repository sources of truth. A verifiable build also requires a container runtime supported by Anchor.
+Use `rust-toolchain.toml`, `Anchor.toml`, and `../.github/workflows/ci.yml` as the repository sources of truth. A verifiable build also requires a container runtime supported by Anchor.
 
 Before signing a release, record the tool versions:
 
