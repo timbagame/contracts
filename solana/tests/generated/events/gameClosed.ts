@@ -25,6 +25,7 @@ import {
   type FixedSizeCodec,
   type FixedSizeDecoder,
   type FixedSizeEncoder,
+  type HasAddress,
   type ReadonlyUint8Array,
 } from "@solana/kit";
 
@@ -45,7 +46,7 @@ export type GameClosedEvent = {
 
 export type GameClosedEventArgs = {
   /** Game that was closed */
-  gameKey: Address;
+  gameKey: Address | HasAddress;
   /** Closure timestamp */
   timestamp: number | bigint;
 };

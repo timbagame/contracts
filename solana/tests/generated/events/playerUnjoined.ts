@@ -29,6 +29,7 @@ import {
   type Codec,
   type Decoder,
   type Encoder,
+  type HasAddress,
   type Option,
   type OptionOrNullable,
   type ReadonlyUint8Array,
@@ -63,9 +64,9 @@ export type PlayerUnjoinedEvent = {
 
 export type PlayerUnjoinedEventArgs = {
   /** Game that was left */
-  gameKey: Address;
+  gameKey: Address | HasAddress;
   /** Player who left */
-  player: Address;
+  player: Address | HasAddress;
   /** Remaining total amount after unjoin */
   totalAmount: number | bigint;
   /** Remaining total tickets count */
@@ -73,7 +74,7 @@ export type PlayerUnjoinedEventArgs = {
   /** Ticket index associated with this unjoin operation */
   ticketIndex: number;
   /** Participant moved into `ticket_index` by O(1) removal, if any */
-  movedParticipant: OptionOrNullable<Address>;
+  movedParticipant: OptionOrNullable<Address | HasAddress>;
   /** Last slot for entropy */
   lastSlot: number | bigint;
   /** Timestamp of the unjoin */

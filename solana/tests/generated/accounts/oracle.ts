@@ -36,6 +36,7 @@ import {
   type FixedSizeCodec,
   type FixedSizeDecoder,
   type FixedSizeEncoder,
+  type HasAddress,
   type MaybeAccount,
   type MaybeEncodedAccount,
   type ReadonlyUint8Array,
@@ -67,7 +68,7 @@ export type Oracle = {
 
 export type OracleArgs = {
   /** Operator that can update oracle settings */
-  operator: Address;
+  operator: Address | HasAddress;
   /** Percentage of game amount taken as fee (0-10) */
   feePercentage: number;
   /** Buffer time in seconds after game timeout before cancellation is allowed */
