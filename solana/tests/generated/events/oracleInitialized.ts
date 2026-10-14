@@ -29,6 +29,7 @@ import {
   type FixedSizeCodec,
   type FixedSizeDecoder,
   type FixedSizeEncoder,
+  type HasAddress,
   type ReadonlyUint8Array,
 } from "@solana/kit";
 
@@ -57,7 +58,7 @@ export type OracleInitializedEvent = {
 
 export type OracleInitializedEventArgs = {
   /** Operator that controls the oracle */
-  operator: Address;
+  operator: Address | HasAddress;
   /** Fee percentage taken from game winnings (0-10) */
   feePercentage: number;
   /** Buffer time in seconds after game timeout */

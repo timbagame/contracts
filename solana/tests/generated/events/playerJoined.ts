@@ -27,6 +27,7 @@ import {
   type FixedSizeCodec,
   type FixedSizeDecoder,
   type FixedSizeEncoder,
+  type HasAddress,
   type ReadonlyUint8Array,
 } from "@solana/kit";
 
@@ -57,9 +58,9 @@ export type PlayerJoinedEvent = {
 
 export type PlayerJoinedEventArgs = {
   /** Game that was joined */
-  gameKey: Address;
+  gameKey: Address | HasAddress;
   /** Player who joined */
-  player: Address;
+  player: Address | HasAddress;
   /** Total prize amount after join */
   totalAmount: number | bigint;
   /** Total number of tickets after join */

@@ -29,6 +29,7 @@ import {
   type FixedSizeCodec,
   type FixedSizeDecoder,
   type FixedSizeEncoder,
+  type HasAddress,
   type ReadonlyUint8Array,
 } from "@solana/kit";
 
@@ -59,9 +60,9 @@ export type OracleUpdatedEvent = {
 
 export type OracleUpdatedEventArgs = {
   /** Previous operator */
-  oldOperator: Address;
+  oldOperator: Address | HasAddress;
   /** New operator */
-  newOperator: Address;
+  newOperator: Address | HasAddress;
   /** Updated fee percentage */
   feePercentage: number;
   /** Updated buffer time */

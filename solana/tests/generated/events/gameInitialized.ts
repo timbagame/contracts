@@ -29,6 +29,7 @@ import {
   type FixedSizeCodec,
   type FixedSizeDecoder,
   type FixedSizeEncoder,
+  type HasAddress,
   type ReadonlyUint8Array,
 } from "@solana/kit";
 import {
@@ -73,9 +74,9 @@ export type GameInitializedEvent = {
 
 export type GameInitializedEventArgs = {
   /** Game account address */
-  gameKey: Address;
+  gameKey: Address | HasAddress;
   /** Game creator */
-  creator: Address;
+  creator: Address | HasAddress;
   /** Type of game created */
   gameType: GameTypeArgs;
   /** Amount per player (or total prize for giveaways) */
@@ -87,7 +88,7 @@ export type GameInitializedEventArgs = {
   /** Minimum tickets required */
   minTickets: number;
   /** Token mint used for the game */
-  tokenMint: Address;
+  tokenMint: Address | HasAddress;
   /** Whether game is private */
   isPrivate: boolean;
   /** Game creation timestamp */
