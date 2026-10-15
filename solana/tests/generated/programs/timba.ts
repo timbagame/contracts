@@ -534,76 +534,108 @@ export function timbaProgram(config: { programAddress?: Address | HasAddress } =
             addSelfPlanAndSendFunctions(
               client,
               getCloseGameInstructionAsync(input, {
-                programAddress: instructionConfig?.programAddress ?? config.programAddress,
+                programAddress:
+                  instructionConfig?.programAddress ??
+                  config.programAddress ??
+                  TIMBA_PROGRAM_ADDRESS,
               }),
             ),
           closeOracle: (input, instructionConfig) =>
             addSelfPlanAndSendFunctions(
               client,
               getCloseOracleInstructionAsync(input, {
-                programAddress: instructionConfig?.programAddress ?? config.programAddress,
+                programAddress:
+                  instructionConfig?.programAddress ??
+                  config.programAddress ??
+                  TIMBA_PROGRAM_ADDRESS,
               }),
             ),
           completeGame: (input, instructionConfig) =>
             addSelfPlanAndSendFunctions(
               client,
               getCompleteGameInstructionAsync(input, {
-                programAddress: instructionConfig?.programAddress ?? config.programAddress,
+                programAddress:
+                  instructionConfig?.programAddress ??
+                  config.programAddress ??
+                  TIMBA_PROGRAM_ADDRESS,
               }),
             ),
           initializeGame: (input, instructionConfig) =>
             addSelfPlanAndSendFunctions(
               client,
               getInitializeGameInstructionAsync(input, {
-                programAddress: instructionConfig?.programAddress ?? config.programAddress,
+                programAddress:
+                  instructionConfig?.programAddress ??
+                  config.programAddress ??
+                  TIMBA_PROGRAM_ADDRESS,
               }),
             ),
           initializeOracle: (input, instructionConfig) =>
             addSelfPlanAndSendFunctions(
               client,
               getInitializeOracleInstructionAsync(input, {
-                programAddress: instructionConfig?.programAddress ?? config.programAddress,
+                programAddress:
+                  instructionConfig?.programAddress ??
+                  config.programAddress ??
+                  TIMBA_PROGRAM_ADDRESS,
               }),
             ),
           joinGame: (input, instructionConfig) =>
             addSelfPlanAndSendFunctions(
               client,
               getJoinGameInstructionAsync(input, {
-                programAddress: instructionConfig?.programAddress ?? config.programAddress,
+                programAddress:
+                  instructionConfig?.programAddress ??
+                  config.programAddress ??
+                  TIMBA_PROGRAM_ADDRESS,
               }),
             ),
           operatorCloseGame: (input, instructionConfig) =>
             addSelfPlanAndSendFunctions(
               client,
               getOperatorCloseGameInstructionAsync(input, {
-                programAddress: instructionConfig?.programAddress ?? config.programAddress,
+                programAddress:
+                  instructionConfig?.programAddress ??
+                  config.programAddress ??
+                  TIMBA_PROGRAM_ADDRESS,
               }),
             ),
           unjoinGame: (input, instructionConfig) =>
             addSelfPlanAndSendFunctions(
               client,
               getUnjoinGameInstructionAsync(input, {
-                programAddress: instructionConfig?.programAddress ?? config.programAddress,
+                programAddress:
+                  instructionConfig?.programAddress ??
+                  config.programAddress ??
+                  TIMBA_PROGRAM_ADDRESS,
               }),
             ),
           updateOracle: (input, instructionConfig) =>
             addSelfPlanAndSendFunctions(
               client,
               getUpdateOracleInstructionAsync(input, {
-                programAddress: instructionConfig?.programAddress ?? config.programAddress,
+                programAddress:
+                  instructionConfig?.programAddress ??
+                  config.programAddress ??
+                  TIMBA_PROGRAM_ADDRESS,
               }),
             ),
         },
         pdas: {
           oracle: (pdaConfig) =>
-            findOraclePda({ programAddress: pdaConfig?.programAddress ?? config.programAddress }),
+            findOraclePda({
+              programAddress:
+                pdaConfig?.programAddress ?? config.programAddress ?? TIMBA_PROGRAM_ADDRESS,
+            }),
           gameVault: (seeds, pdaConfig) =>
             findGameVaultPda(seeds, {
-              programAddress: pdaConfig?.programAddress ?? config.programAddress,
+              programAddress:
+                pdaConfig?.programAddress ?? config.programAddress ?? TIMBA_PROGRAM_ADDRESS,
             }),
           game: (seeds, pdaConfig) =>
             findGamePda(seeds, {
-              programAddress: pdaConfig?.programAddress ?? config.programAddress,
+              programAddress:
+                pdaConfig?.programAddress ?? config.programAddress ?? TIMBA_PROGRAM_ADDRESS,
             }),
         },
         identifyAccount: identifyTimbaAccount,
