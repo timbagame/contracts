@@ -129,7 +129,7 @@ export function decodeOracle<TAddress extends string = string>(
 
 export async function fetchOracle<TAddress extends string = string>(
   rpc: Parameters<typeof fetchEncodedAccount>[0],
-  address: Address<TAddress>,
+  address: Address<TAddress> | HasAddress<TAddress>,
   config?: FetchAccountConfig,
 ): Promise<Account<Oracle, TAddress>> {
   const maybeAccount = await fetchMaybeOracle(rpc, address, config);
@@ -139,16 +139,20 @@ export async function fetchOracle<TAddress extends string = string>(
 
 export async function fetchMaybeOracle<TAddress extends string = string>(
   rpc: Parameters<typeof fetchEncodedAccount>[0],
-  address: Address<TAddress>,
+  address: Address<TAddress> | HasAddress<TAddress>,
   config?: FetchAccountConfig,
 ): Promise<MaybeAccount<Oracle, TAddress>> {
-  const maybeAccount = await fetchEncodedAccount(rpc, address, config);
+  const maybeAccount = await fetchEncodedAccount(
+    rpc,
+    typeof address === "string" ? address : address.address,
+    config,
+  );
   return decodeOracle(maybeAccount);
 }
 
 export async function fetchAllOracle(
   rpc: Parameters<typeof fetchEncodedAccounts>[0],
-  addresses: Array<Address>,
+  addresses: Array<Address | HasAddress>,
   config?: FetchAccountsConfig,
 ): Promise<Account<Oracle>[]> {
   const maybeAccounts = await fetchAllMaybeOracle(rpc, addresses, config);
@@ -158,10 +162,14 @@ export async function fetchAllOracle(
 
 export async function fetchAllMaybeOracle(
   rpc: Parameters<typeof fetchEncodedAccounts>[0],
-  addresses: Array<Address>,
+  addresses: Array<Address | HasAddress>,
   config?: FetchAccountsConfig,
 ): Promise<MaybeAccount<Oracle>[]> {
-  const maybeAccounts = await fetchEncodedAccounts(rpc, addresses, config);
+  const maybeAccounts = await fetchEncodedAccounts(
+    rpc,
+    addresses.map((a) => (typeof a === "string" ? a : a.address)),
+    config,
+  );
   return maybeAccounts.map((maybeAccount) => decodeOracle(maybeAccount));
 }
 

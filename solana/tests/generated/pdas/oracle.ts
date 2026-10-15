@@ -10,15 +10,19 @@ import {
   getBytesEncoder,
   getProgramDerivedAddress,
   type Address,
+  type HasAddress,
   type ProgramDerivedAddress,
 } from "@solana/kit";
 
 export async function findOraclePda(
-  config: { programAddress?: Address | undefined } = {},
+  config: { programAddress?: Address | HasAddress | undefined } = {},
 ): Promise<ProgramDerivedAddress> {
   const {
-    programAddress = "32Jr4JnXWvqq9GqPQynkooHsszaucUUvZfNLh2hdX2L5" as Address<"32Jr4JnXWvqq9GqPQynkooHsszaucUUvZfNLh2hdX2L5">,
+    programAddress:
+      programAddressInput = "32Jr4JnXWvqq9GqPQynkooHsszaucUUvZfNLh2hdX2L5" as Address<"32Jr4JnXWvqq9GqPQynkooHsszaucUUvZfNLh2hdX2L5">,
   } = config;
+  const programAddress =
+    typeof programAddressInput === "string" ? programAddressInput : programAddressInput.address;
   return await getProgramDerivedAddress({
     programAddress,
     seeds: [getBytesEncoder().encode(new Uint8Array([111, 114, 97, 99, 108, 101]))],

@@ -23,6 +23,7 @@ import {
   type ExtendedClient,
   type GetAccountInfoApi,
   type GetMultipleAccountsApi,
+  type HasAddress,
   type Instruction,
   type InstructionWithData,
   type ReadonlyUint8Array,
@@ -472,30 +473,39 @@ export type TimbaPluginAccounts = {
 export type TimbaPluginInstructions = {
   closeGame: (
     input: CloseGameAsyncInput,
+    config?: { programAddress?: Address | HasAddress },
   ) => ReturnType<typeof getCloseGameInstructionAsync> & SelfPlanAndSendFunctions;
   closeOracle: (
     input: CloseOracleAsyncInput,
+    config?: { programAddress?: Address | HasAddress },
   ) => ReturnType<typeof getCloseOracleInstructionAsync> & SelfPlanAndSendFunctions;
   completeGame: (
     input: CompleteGameAsyncInput,
+    config?: { programAddress?: Address | HasAddress },
   ) => ReturnType<typeof getCompleteGameInstructionAsync> & SelfPlanAndSendFunctions;
   initializeGame: (
     input: InitializeGameAsyncInput,
+    config?: { programAddress?: Address | HasAddress },
   ) => ReturnType<typeof getInitializeGameInstructionAsync> & SelfPlanAndSendFunctions;
   initializeOracle: (
     input: InitializeOracleAsyncInput,
+    config?: { programAddress?: Address | HasAddress },
   ) => ReturnType<typeof getInitializeOracleInstructionAsync> & SelfPlanAndSendFunctions;
   joinGame: (
     input: JoinGameAsyncInput,
+    config?: { programAddress?: Address | HasAddress },
   ) => ReturnType<typeof getJoinGameInstructionAsync> & SelfPlanAndSendFunctions;
   operatorCloseGame: (
     input: OperatorCloseGameAsyncInput,
+    config?: { programAddress?: Address | HasAddress },
   ) => ReturnType<typeof getOperatorCloseGameInstructionAsync> & SelfPlanAndSendFunctions;
   unjoinGame: (
     input: UnjoinGameAsyncInput,
+    config?: { programAddress?: Address | HasAddress },
   ) => ReturnType<typeof getUnjoinGameInstructionAsync> & SelfPlanAndSendFunctions;
   updateOracle: (
     input: UpdateOracleAsyncInput,
+    config?: { programAddress?: Address | HasAddress },
   ) => ReturnType<typeof getUpdateOracleInstructionAsync> & SelfPlanAndSendFunctions;
 };
 
@@ -509,7 +519,7 @@ export type TimbaPluginRequirements = ClientWithRpc<GetAccountInfoApi & GetMulti
   ClientWithTransactionPlanning &
   ClientWithTransactionSending;
 
-export function timbaProgram() {
+export function timbaProgram(config: { programAddress?: Address | HasAddress } = {}) {
   return <T extends TimbaPluginRequirements>(
     client: T,
   ): ExtendedClient<T, { timba: TimbaPlugin }> => {
@@ -520,26 +530,114 @@ export function timbaProgram() {
           oracle: addSelfFetchFunctions(client, getOracleCodec()),
         },
         instructions: {
-          closeGame: (input) =>
-            addSelfPlanAndSendFunctions(client, getCloseGameInstructionAsync(input)),
-          closeOracle: (input) =>
-            addSelfPlanAndSendFunctions(client, getCloseOracleInstructionAsync(input)),
-          completeGame: (input) =>
-            addSelfPlanAndSendFunctions(client, getCompleteGameInstructionAsync(input)),
-          initializeGame: (input) =>
-            addSelfPlanAndSendFunctions(client, getInitializeGameInstructionAsync(input)),
-          initializeOracle: (input) =>
-            addSelfPlanAndSendFunctions(client, getInitializeOracleInstructionAsync(input)),
-          joinGame: (input) =>
-            addSelfPlanAndSendFunctions(client, getJoinGameInstructionAsync(input)),
-          operatorCloseGame: (input) =>
-            addSelfPlanAndSendFunctions(client, getOperatorCloseGameInstructionAsync(input)),
-          unjoinGame: (input) =>
-            addSelfPlanAndSendFunctions(client, getUnjoinGameInstructionAsync(input)),
-          updateOracle: (input) =>
-            addSelfPlanAndSendFunctions(client, getUpdateOracleInstructionAsync(input)),
+          closeGame: (input, instructionConfig) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getCloseGameInstructionAsync(input, {
+                programAddress:
+                  instructionConfig?.programAddress ??
+                  config.programAddress ??
+                  TIMBA_PROGRAM_ADDRESS,
+              }),
+            ),
+          closeOracle: (input, instructionConfig) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getCloseOracleInstructionAsync(input, {
+                programAddress:
+                  instructionConfig?.programAddress ??
+                  config.programAddress ??
+                  TIMBA_PROGRAM_ADDRESS,
+              }),
+            ),
+          completeGame: (input, instructionConfig) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getCompleteGameInstructionAsync(input, {
+                programAddress:
+                  instructionConfig?.programAddress ??
+                  config.programAddress ??
+                  TIMBA_PROGRAM_ADDRESS,
+              }),
+            ),
+          initializeGame: (input, instructionConfig) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getInitializeGameInstructionAsync(input, {
+                programAddress:
+                  instructionConfig?.programAddress ??
+                  config.programAddress ??
+                  TIMBA_PROGRAM_ADDRESS,
+              }),
+            ),
+          initializeOracle: (input, instructionConfig) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getInitializeOracleInstructionAsync(input, {
+                programAddress:
+                  instructionConfig?.programAddress ??
+                  config.programAddress ??
+                  TIMBA_PROGRAM_ADDRESS,
+              }),
+            ),
+          joinGame: (input, instructionConfig) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getJoinGameInstructionAsync(input, {
+                programAddress:
+                  instructionConfig?.programAddress ??
+                  config.programAddress ??
+                  TIMBA_PROGRAM_ADDRESS,
+              }),
+            ),
+          operatorCloseGame: (input, instructionConfig) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getOperatorCloseGameInstructionAsync(input, {
+                programAddress:
+                  instructionConfig?.programAddress ??
+                  config.programAddress ??
+                  TIMBA_PROGRAM_ADDRESS,
+              }),
+            ),
+          unjoinGame: (input, instructionConfig) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getUnjoinGameInstructionAsync(input, {
+                programAddress:
+                  instructionConfig?.programAddress ??
+                  config.programAddress ??
+                  TIMBA_PROGRAM_ADDRESS,
+              }),
+            ),
+          updateOracle: (input, instructionConfig) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getUpdateOracleInstructionAsync(input, {
+                programAddress:
+                  instructionConfig?.programAddress ??
+                  config.programAddress ??
+                  TIMBA_PROGRAM_ADDRESS,
+              }),
+            ),
         },
-        pdas: { oracle: findOraclePda, gameVault: findGameVaultPda, game: findGamePda },
+        pdas: {
+          oracle: (pdaConfig) =>
+            findOraclePda({
+              programAddress:
+                pdaConfig?.programAddress ?? config.programAddress ?? TIMBA_PROGRAM_ADDRESS,
+            }),
+          gameVault: (seeds, pdaConfig) =>
+            findGameVaultPda(seeds, {
+              programAddress:
+                pdaConfig?.programAddress ?? config.programAddress ?? TIMBA_PROGRAM_ADDRESS,
+            }),
+          game: (seeds, pdaConfig) =>
+            findGamePda(seeds, {
+              programAddress:
+                pdaConfig?.programAddress ?? config.programAddress ?? TIMBA_PROGRAM_ADDRESS,
+            }),
+        },
         identifyAccount: identifyTimbaAccount,
         identifyInstruction: identifyTimbaInstruction,
         parseInstruction: parseTimbaInstruction,

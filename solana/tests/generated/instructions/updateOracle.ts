@@ -134,7 +134,7 @@ export async function getUpdateOracleInstructionAsync<
     TAccountOldOracleOperator,
     TAccountNewOracleOperator
   >,
-  config?: { programAddress?: TProgramAddress },
+  config?: { programAddress?: TProgramAddress | { readonly address: TProgramAddress } },
 ): Promise<
   UpdateOracleInstruction<
     TProgramAddress,
@@ -150,7 +150,9 @@ export async function getUpdateOracleInstructionAsync<
   >
 > {
   // Program address.
-  const programAddress = config?.programAddress ?? TIMBA_PROGRAM_ADDRESS;
+  const programAddressInput = config?.programAddress ?? TIMBA_PROGRAM_ADDRESS;
+  const programAddress =
+    typeof programAddressInput === "string" ? programAddressInput : programAddressInput.address;
 
   // Account meta helper.
   const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
@@ -222,7 +224,7 @@ export function getUpdateOracleInstruction<
   TProgramAddress extends Address = typeof TIMBA_PROGRAM_ADDRESS,
 >(
   input: UpdateOracleInput<TAccountOracle, TAccountOldOracleOperator, TAccountNewOracleOperator>,
-  config?: { programAddress?: TProgramAddress },
+  config?: { programAddress?: TProgramAddress | { readonly address: TProgramAddress } },
 ): UpdateOracleInstruction<
   TProgramAddress,
   ResolvedInstructionAccountMeta<TAccountOracle, InstructionAccountInputAddress<TAccountOracle>>,
@@ -236,7 +238,9 @@ export function getUpdateOracleInstruction<
   >
 > {
   // Program address.
-  const programAddress = config?.programAddress ?? TIMBA_PROGRAM_ADDRESS;
+  const programAddressInput = config?.programAddress ?? TIMBA_PROGRAM_ADDRESS;
+  const programAddress =
+    typeof programAddressInput === "string" ? programAddressInput : programAddressInput.address;
 
   // Account meta helper.
   const getAccountMeta = getAccountMetaFactory(programAddress, "programId");

@@ -33,7 +33,13 @@ await codama.accept(
 const generatedFiles = new Bun.Glob("**/*.ts").scan({ absolute: true, cwd: output });
 for await (const generatedFile of generatedFiles) {
   const source = await Bun.file(generatedFile).text();
-  const typescriptSource = source.replaceAll(
+  // Renderer 2.7.0 forwards an explicitly undefined program address from
+  // plugins. Keep the builder's default while supporting exact optional types.
+  const strictSource = source.replaceAll(
+    "?? config.programAddress",
+    "?? config.programAddress ?? TIMBA_PROGRAM_ADDRESS",
+  );
+  const typescriptSource = strictSource.replaceAll(
     /(from\s+["'])(\.\.?\/[^"']+)(["'])/g,
     (_match, prefix: string, specifier: string, suffix: string) => {
       const target = specifier.split("/").at(-1);
