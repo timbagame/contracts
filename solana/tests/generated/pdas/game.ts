@@ -11,6 +11,7 @@ import {
   getBytesEncoder,
   getProgramDerivedAddress,
   type Address,
+  type HasAddress,
   type ProgramDerivedAddress,
   type ReadonlyUint8Array,
 } from "@solana/kit";
@@ -21,11 +22,14 @@ export type GameSeeds = {
 
 export async function findGamePda(
   seeds: GameSeeds,
-  config: { programAddress?: Address | undefined } = {},
+  config: { programAddress?: Address | HasAddress | undefined } = {},
 ): Promise<ProgramDerivedAddress> {
   const {
-    programAddress = "32Jr4JnXWvqq9GqPQynkooHsszaucUUvZfNLh2hdX2L5" as Address<"32Jr4JnXWvqq9GqPQynkooHsszaucUUvZfNLh2hdX2L5">,
+    programAddress:
+      programAddressInput = "32Jr4JnXWvqq9GqPQynkooHsszaucUUvZfNLh2hdX2L5" as Address<"32Jr4JnXWvqq9GqPQynkooHsszaucUUvZfNLh2hdX2L5">,
   } = config;
+  const programAddress =
+    typeof programAddressInput === "string" ? programAddressInput : programAddressInput.address;
   return await getProgramDerivedAddress({
     programAddress,
     seeds: [
