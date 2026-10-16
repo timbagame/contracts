@@ -8,8 +8,8 @@
         "@codama/nodes-from-anchor": "1.5.6",
         "@codama/renderers-js": "2.7.0",
         "@eslint/js": "^10.0.1",
-        "@solana-program/system": "0.15.0",
-        "@solana-program/token": "0.17.0",
+        "@solana-program/system": "0.16.0",
+        "@solana-program/token": "0.18.0",
         "@solana/kit": "8.5.0",
         "@types/bun": "^1.4.2",
         "@typescript/native": "npm:typescript@7.0.2",
@@ -82,9 +82,9 @@
 
     "@noble/hashes": ["@noble/hashes@2.4.0", "", {}, "sha512-X5XaVWZIBCT7HHZGm5I7ZQXDwLG+bGXuSrMQAW+7Zvl87h1kmc1ZB1VSRJcpUfoUrGQp4Fkoxm5kZ+Ms+aW+eA=="],
 
-    "@solana-program/system": ["@solana-program/system@0.15.0", "", { "peerDependencies": { "@solana/kit": "^8.3.0" } }, "sha512-xE08wZCyNRhOaO/XNRd9A3kSLfUrTe/BnmAHhql8uqc2eriNy2ZmnvaGRrs0m+kOSihvUbANzHljmJsTzGL5kg=="],
+    "@solana-program/system": ["@solana-program/system@0.16.0", "", { "peerDependencies": { "@solana/kit": "^8.5.0" } }, "sha512-/RG6q2E2vG/XpdOt8Jj/kbQktPlL5JyJuNGAeN9wDcxKDKQtrGTJpDrJgQUxiEy23fsPNXQbLN8XeCtYoMof3Q=="],
 
-    "@solana-program/token": ["@solana-program/token@0.17.0", "", { "dependencies": { "@solana-program/system": "^0.15.0" }, "peerDependencies": { "@solana/kit": "^8.3.0" } }, "sha512-l7EhF3lCWXXdOllGI8qnbF4Pj7pCT/5zJTW2lPsNUQfa7G28pnFhSssHW2GCW7dzGttSHgPdJYdQRB5rvQoN9Q=="],
+    "@solana-program/token": ["@solana-program/token@0.18.0", "", { "dependencies": { "@solana-program/system": "^0.16.0" }, "peerDependencies": { "@solana/kit": "^8.5.0" } }, "sha512-YNN13I4BxBnGPGk0NzP/LLQMCmJVdunbtgqjl7/Gfp1fDXQrKXh9df8xu+2ayNdvjGJYC4c9D5vZpVetHdyJaQ=="],
 
     "@solana/accounts": ["@solana/accounts@8.5.0", "", { "dependencies": { "@solana/addresses": "8.5.0", "@solana/codecs-core": "8.5.0", "@solana/codecs-strings": "8.5.0", "@solana/errors": "8.5.0", "@solana/rpc-spec": "8.5.0", "@solana/rpc-types": "8.5.0" }, "peerDependencies": { "typescript": ">=5.4.0" }, "optionalPeers": ["typescript"] }, "sha512-vwwXYCobg1oG4kFeUEsGiNORjPujI2ff3yKLp6lCa7QBIlKaD7kZ2QRI3PZFYcNrMJ6HYNwNeZXR7ixg02pWdA=="],
 
