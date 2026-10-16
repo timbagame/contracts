@@ -3,7 +3,7 @@ src = "src"
 test = "test"
 script = "script"
 libs = ["lib"]
-solc_version = "0.8.30"
+solc_version = "0.8.37"
 evm_version = "cancun"
 # Compile tests against ordinary deployment bytecode; avoid dynamic-link preprocessor differences.
 dynamic_test_linking = false

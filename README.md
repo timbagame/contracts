@@ -9,7 +9,7 @@ Anyone can recompute the winner from public data after the game settles.
 | Chain  | Implementation                | Status                                                          | Docs                                                           |
 | ------ | ----------------------------- | --------------------------------------------------------------- | -------------------------------------------------------------- |
 | Solana | Rust, Anchor 1.2, SPL Token   | Mainnet, program `32Jr4JnXWvqq9GqPQynkooHsszaucUUvZfNLh2hdX2L5` | [README](solana/README.md), [deployment](solana/DEPLOYMENT.md) |
-| EVM    | Solidity 0.8.30, UUPS, ERC-20 | Not deployed to a public network yet                            | [README](evm/README.md)                                        |
+| EVM    | Solidity 0.8.37, UUPS, ERC-20 | Not deployed to a public network yet                            | [README](evm/README.md)                                        |
 
 ## Trust model
 
