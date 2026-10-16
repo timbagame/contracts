@@ -31,7 +31,7 @@ The command must return `32Jr4JnXWvqq9GqPQynkooHsszaucUUvZfNLh2hdX2L5`.
 | Solana CLI      | 4.3.2   |
 | Anchor CLI      | 1.2.0   |
 | Bun             | 1.4.3   |
-| Surfpool        | 1.6.1   |
+| Surfpool        | 1.6.0   |
 | `solana-verify` | 0.5.1   |
 
 Use `rust-toolchain.toml`, `Anchor.toml`, and `../.github/workflows/ci.yml` as the repository sources of truth. A verifiable build also requires a container runtime supported by Anchor.
