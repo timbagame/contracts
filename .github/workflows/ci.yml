@@ -10,9 +10,9 @@ permissions:
 env:
   RUST_VERSION: 1.99.1
   BUN_VERSION: 1.4.3
-  SOLANA_VERSION: 4.3.2
+  SOLANA_VERSION: v4.3.2
   SOLANA_SHA256: 5c9599d7fa397375df69d58e8d4f550ee45463dd6d1ecad9e5a1f053ce8e0933
-  ANCHOR_VERSION: 1.2.0
+  ANCHOR_VERSION: v1.2.0
   ANCHOR_SHA256: 0c9c41a3292c281cc6eadb78d6e1c8224d8324a34b0736a89d640fd314db05b7
   SURFPOOL_VERSION: v1.6.0
   SURFPOOL_SHA256: cb471b00aa3b7d603338eb74ebfec1d23959ecba005b5f1be42ba8d174107fc2
@@ -181,7 +181,7 @@ jobs:
       - name: Install Solana CLI
         if: steps.solana-cache.outputs.cache-hit != 'true'
         run: |
-          curl -fsSL "https://github.com/anza-xyz/agave/releases/download/v${SOLANA_VERSION}/solana-release-x86_64-unknown-linux-gnu.tar.bz2" -o "$RUNNER_TEMP/agave.tar.bz2"
+          curl -fsSL "https://github.com/anza-xyz/agave/releases/download/${SOLANA_VERSION}/solana-release-x86_64-unknown-linux-gnu.tar.bz2" -o "$RUNNER_TEMP/agave.tar.bz2"
           echo "${SOLANA_SHA256}  $RUNNER_TEMP/agave.tar.bz2" | sha256sum --check
           mkdir -p "$HOME/.local/share/timba-agave"
           tar -xjf "$RUNNER_TEMP/agave.tar.bz2" -C "$HOME/.local/share/timba-agave"
@@ -189,7 +189,7 @@ jobs:
       - name: Verify Solana CLI version
         run: |
           echo "$HOME/.local/share/timba-agave/solana-release/bin" >> "$GITHUB_PATH"
-          "$HOME/.local/share/timba-agave/solana-release/bin/solana" --version | grep -F "solana-cli ${SOLANA_VERSION} "
+          "$HOME/.local/share/timba-agave/solana-release/bin/solana" --version | grep -F "solana-cli ${SOLANA_VERSION#v} "
 
       - name: Cache Surfpool
         id: surfpool-cache
@@ -214,7 +214,7 @@ jobs:
 
       - name: Install Anchor CLI
         run: |
-          curl -fsSL "https://github.com/solana-foundation/anchor/releases/download/v${ANCHOR_VERSION}/anchor-${ANCHOR_VERSION}-x86_64-unknown-linux-gnu" -o /tmp/anchor
+          curl -fsSL "https://github.com/solana-foundation/anchor/releases/download/${ANCHOR_VERSION}/anchor-${ANCHOR_VERSION#v}-x86_64-unknown-linux-gnu" -o /tmp/anchor
           echo "${ANCHOR_SHA256}  /tmp/anchor" | sha256sum --check
           install -Dm755 /tmp/anchor "$HOME/.local/bin/anchor"
 
