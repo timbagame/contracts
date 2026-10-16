@@ -1,23 +1,24 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": [
-    "config:recommended",
-    "group:all"
+  "extends": ["config:recommended", "group:all"],
+  "ignorePaths": [
+    "**/node_modules/**",
+    "**/bower_components/**",
+    "**/vendor/**",
+    "**/examples/**",
+    "**/__tests__/**",
+    "**/tests/**",
+    "**/__fixtures__/**"
   ],
   "packageRules": [
     {
-      "description": "anchor-spl 1.2.1's solana-v3 feature links the Token-2022 proof crates, which fail to link for sbpfv3. 1.2.1 only adds Solana v4 support, which litesvm doesn't use yet.",
-      "matchDepNames": [
-        "anchor-lang",
-        "anchor-spl"
-      ],
-      "allowedVersions": "!/^1\\.2\\.1$/"
+      "description": "anchor-spl 1.2.1's solana-v3 feature links the Token-2022 proof crates, which fail to link for sbpfv3. 1.2.1 only adds Solana v4 support, which litesvm doesn't use yet. The Anchor CLI stays on the same version as the crates.",
+      "matchDepNames": ["anchor-lang", "anchor-spl", "solana-foundation/anchor"],
+      "allowedVersions": "!/^v?1\\.2\\.1$/"
     },
     {
       "description": "litesvm 0.18 requires solana-rent ~4.4. Drop this once litesvm allows newer.",
-      "matchDepNames": [
-        "solana-rent"
-      ],
+      "matchDepNames": ["solana-rent"],
       "allowedVersions": "~4.4"
     },
     {
@@ -30,10 +31,106 @@
         "solana-signer",
         "solana-transaction"
       ],
-      "matchUpdateTypes": [
-        "major"
-      ],
+      "matchUpdateTypes": ["major"],
       "enabled": false
+    },
+    {
+      "description": "Surfpool 1.6.1 makes unjoin-race.test.ts fail with GameExpired on every run.",
+      "matchDepNames": ["solana-foundation/surfpool"],
+      "allowedVersions": "!/^v1\\.6\\.1$/"
+    }
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Rust toolchain in CI and rust-toolchain.toml",
+      "managerFilePatterns": ["/^\\.github/workflows/ci\\.yml$/", "/(^|/)rust-toolchain\\.toml$/"],
+      "matchStrings": [
+        "RUST_VERSION: (?<currentValue>\\d+\\.\\d+\\.\\d+)",
+        "channel = \"(?<currentValue>\\d+\\.\\d+\\.\\d+)\""
+      ],
+      "depNameTemplate": "rust",
+      "packageNameTemplate": "rust-lang/rust",
+      "datasourceTemplate": "github-releases"
+    },
+    {
+      "customType": "regex",
+      "description": "Bun version in CI",
+      "managerFilePatterns": ["/^\\.github/workflows/ci\\.yml$/"],
+      "matchStrings": ["BUN_VERSION: (?<currentValue>\\d+\\.\\d+\\.\\d+)"],
+      "depNameTemplate": "bun",
+      "datasourceTemplate": "npm"
+    },
+    {
+      "customType": "regex",
+      "description": "anza-xyz/agave release binary CI downloads and checks against a SHA-256",
+      "managerFilePatterns": ["/^\\.github/workflows/ci\\.yml$/"],
+      "matchStrings": [
+        "SOLANA_VERSION: (?<currentValue>v\\S+)\\s+SOLANA_SHA256: (?<currentDigest>[a-f0-9]{64})"
+      ],
+      "depNameTemplate": "anza-xyz/agave",
+      "datasourceTemplate": "github-release-attachments"
+    },
+    {
+      "customType": "regex",
+      "description": "solana-foundation/anchor release binary CI downloads and checks against a SHA-256",
+      "managerFilePatterns": ["/^\\.github/workflows/ci\\.yml$/"],
+      "matchStrings": [
+        "ANCHOR_VERSION: (?<currentValue>v\\S+)\\s+ANCHOR_SHA256: (?<currentDigest>[a-f0-9]{64})"
+      ],
+      "depNameTemplate": "solana-foundation/anchor",
+      "datasourceTemplate": "github-release-attachments"
+    },
+    {
+      "customType": "regex",
+      "description": "solana-foundation/surfpool release binary CI downloads and checks against a SHA-256",
+      "managerFilePatterns": ["/^\\.github/workflows/ci\\.yml$/"],
+      "matchStrings": [
+        "SURFPOOL_VERSION: (?<currentValue>v\\S+)\\s+SURFPOOL_SHA256: (?<currentDigest>[a-f0-9]{64})"
+      ],
+      "depNameTemplate": "solana-foundation/surfpool",
+      "datasourceTemplate": "github-release-attachments"
+    },
+    {
+      "customType": "regex",
+      "description": "foundry-rs/foundry release binary CI downloads and checks against a SHA-256",
+      "managerFilePatterns": ["/^\\.github/workflows/ci\\.yml$/"],
+      "matchStrings": [
+        "FOUNDRY_VERSION: (?<currentValue>v\\S+)\\s+FOUNDRY_SHA256: (?<currentDigest>[a-f0-9]{64})"
+      ],
+      "depNameTemplate": "foundry-rs/foundry",
+      "datasourceTemplate": "github-release-attachments"
+    },
+    {
+      "customType": "regex",
+      "description": "anchor_version in Anchor.toml",
+      "managerFilePatterns": ["/(^|/)Anchor\\.toml$/"],
+      "matchStrings": ["anchor_version = \"(?<currentValue>[^\"]+)\""],
+      "depNameTemplate": "solana-foundation/anchor",
+      "datasourceTemplate": "github-releases",
+      "extractVersionTemplate": "^v(?<version>.+)$"
+    },
+    {
+      "customType": "regex",
+      "description": "solana_version in Anchor.toml",
+      "managerFilePatterns": ["/(^|/)Anchor\\.toml$/"],
+      "matchStrings": ["solana_version = \"(?<currentValue>[^\"]+)\""],
+      "depNameTemplate": "anza-xyz/agave",
+      "datasourceTemplate": "github-releases",
+      "extractVersionTemplate": "^v(?<version>.+)$"
+    },
+    {
+      "customType": "regex",
+      "description": "Solidity compiler in foundry.toml and contract pragmas",
+      "managerFilePatterns": ["/(^|/)foundry\\.toml$/", "/^evm/(src|script|test)/.+\\.sol$/"],
+      "matchStrings": [
+        "solc_version = \"(?<currentValue>[^\"]+)\"",
+        "pragma solidity (?<currentValue>\\d+\\.\\d+\\.\\d+);"
+      ],
+      "depNameTemplate": "solidity",
+      "packageNameTemplate": "argotorg/solidity",
+      "datasourceTemplate": "github-releases",
+      "extractVersionTemplate": "^v(?<version>.+)$"
     }
   ]
 }
