@@ -1,15 +1,6 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["config:recommended", "group:all"],
-  "ignorePaths": [
-    "**/node_modules/**",
-    "**/bower_components/**",
-    "**/vendor/**",
-    "**/examples/**",
-    "**/__tests__/**",
-    "**/tests/**",
-    "**/__fixtures__/**"
-  ],
   "packageRules": [
     {
       "description": "anchor-spl 1.2.1's solana-v3 feature links the Token-2022 proof crates, which fail to link for sbpfv3. 1.2.1 only adds Solana v4 support, which litesvm doesn't use yet. The Anchor CLI stays on the same version as the crates.",
@@ -117,8 +108,8 @@
     },
     {
       "customType": "regex",
-      "description": "Solidity compiler in foundry.toml and contract pragmas",
-      "managerFilePatterns": ["/(^|/)foundry\\.toml$/", "/^evm/(src|script|test)/.+\\.sol$/"],
+      "description": "Solidity compiler in foundry.toml and contract pragmas. Tests use ^ so they need no updates.",
+      "managerFilePatterns": ["/(^|/)foundry\\.toml$/", "/^evm/(src|script)/.+\\.sol$/"],
       "matchStrings": [
         "solc_version = \"(?<currentValue>[^\"]+)\"",
         "pragma solidity (?<currentValue>\\d+\\.\\d+\\.\\d+);"
