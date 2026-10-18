@@ -8,14 +8,8 @@ permissions:
   contents: read
 
 env:
-  RUST_VERSION: 1.99.1
-  BUN_VERSION: 1.4.3
-  SOLANA_VERSION: v4.3.2
-  SOLANA_SHA256: 5c9599d7fa397375df69d58e8d4f550ee45463dd6d1ecad9e5a1f053ce8e0933
-  ANCHOR_VERSION: v1.2.0
-  ANCHOR_SHA256: 0c9c41a3292c281cc6eadb78d6e1c8224d8324a34b0736a89d640fd314db05b7
-  SURFPOOL_VERSION: v1.6.0
-  SURFPOOL_SHA256: cb471b00aa3b7d603338eb74ebfec1d23959ecba005b5f1be42ba8d174107fc2
+  # mise installs only what mise.lock lists, checking each download's checksum.
+  MISE_LOCKED: "1"
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -28,34 +22,26 @@ jobs:
     defaults:
       run:
         working-directory: evm
-    env:
-      FOUNDRY_VERSION: v1.8.5
-      FOUNDRY_SHA256: 6c66ffcc55fa4249197721baa3098bc208014ea1d8aa04b2ed50ac6bccffb226
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # Remappings point only at the top-level libs; their nested submodules are unused.
           submodules: true
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+      - name: Install Bun and Foundry
+        uses: jdx/mise-action@9b200bcecbfd6303e69a4a261b2e09e3757440a7 # v5.2.0
         with:
-          bun-version: 1.4.3
-      - name: Install verified Foundry release
-        run: |
-          curl --fail --location --retry 3 "https://github.com/foundry-rs/foundry/releases/download/${FOUNDRY_VERSION}/foundry_${FOUNDRY_VERSION}_linux_amd64.tar.gz" -o "$RUNNER_TEMP/foundry.tar.gz"
-          echo "${FOUNDRY_SHA256}  $RUNNER_TEMP/foundry.tar.gz" | sha256sum --check
-          mkdir -p "$RUNNER_TEMP/foundry-bin"
-          tar -xzf "$RUNNER_TEMP/foundry.tar.gz" -C "$RUNNER_TEMP/foundry-bin"
-          echo "$RUNNER_TEMP/foundry-bin" >> "$GITHUB_PATH"
+          install_args: bun github:foundry-rs/foundry
+          cache_key_prefix: mise-evm
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             ~/.svm
             evm/cache
             evm/out
-          key: evm-${{ runner.os }}-${{ env.FOUNDRY_VERSION }}-${{ hashFiles('evm/foundry.toml', 'evm/foundry.lock', 'evm/src/**', 'evm/test/**', 'evm/script/**') }}
+          key: evm-${{ runner.os }}-${{ hashFiles('mise.lock') }}-${{ hashFiles('evm/foundry.toml', 'evm/foundry.lock', 'evm/src/**', 'evm/test/**', 'evm/script/**') }}
           # Forge's compilation cache is incremental, so a stale entry still saves recompiling unchanged files.
           restore-keys: |
-            evm-${{ runner.os }}-${{ env.FOUNDRY_VERSION }}-
+            evm-${{ runner.os }}-${{ hashFiles('mise.lock') }}-
       - name: Format
         run: forge fmt --check
       - name: Build and check deployment size
@@ -99,14 +85,16 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
-        with:
-          toolchain: ${{ env.RUST_VERSION }}
-          components: llvm-tools-preview
+        # Installs the channel and components pinned in rust-toolchain.toml.
+        run: |
+          rustup toolchain install
+          rustup component add llvm-tools-preview
 
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+      - name: Install Bun
+        uses: jdx/mise-action@9b200bcecbfd6303e69a4a261b2e09e3757440a7 # v5.2.0
         with:
-          bun-version: ${{ env.BUN_VERSION }}
+          install_args: bun
+          cache_key_prefix: mise-lint
 
       - name: Restore Bun cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -150,14 +138,16 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
-        with:
-          toolchain: ${{ env.RUST_VERSION }}
-          components: llvm-tools-preview
+        # Installs the channel and components pinned in rust-toolchain.toml.
+        run: |
+          rustup toolchain install
+          rustup component add llvm-tools-preview
 
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+      - name: Install Bun, Solana CLI, Surfpool, Anchor CLI and cargo-llvm-cov
+        uses: jdx/mise-action@9b200bcecbfd6303e69a4a261b2e09e3757440a7 # v5.2.0
         with:
-          bun-version: ${{ env.BUN_VERSION }}
+          install_args: bun github:anza-xyz/agave github:solana-foundation/surfpool github:solana-foundation/anchor cargo:cargo-llvm-cov
+          cache_key_prefix: mise-solana
 
       - name: Restore Bun cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -167,56 +157,12 @@ jobs:
           restore-keys: |
             bun-install-${{ runner.os }}-
 
-      # cargo-build-sbf downloads its platform tools into ~/.cache/solana on first use and
-      # links them from the release directory, so both are cached together.
-      - name: Cache Solana CLI and SBF platform tools
-        id: solana-cache
+      # cargo-build-sbf downloads its platform tools into ~/.cache/solana on first use.
+      - name: Cache SBF platform tools
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: |
-            ~/.local/share/timba-agave
-            ~/.cache/solana
-          key: agave-${{ runner.os }}-${{ runner.arch }}-${{ env.SOLANA_SHA256 }}
-
-      - name: Install Solana CLI
-        if: steps.solana-cache.outputs.cache-hit != 'true'
-        run: |
-          curl -fsSL "https://github.com/anza-xyz/agave/releases/download/${SOLANA_VERSION}/solana-release-x86_64-unknown-linux-gnu.tar.bz2" -o "$RUNNER_TEMP/agave.tar.bz2"
-          echo "${SOLANA_SHA256}  $RUNNER_TEMP/agave.tar.bz2" | sha256sum --check
-          mkdir -p "$HOME/.local/share/timba-agave"
-          tar -xjf "$RUNNER_TEMP/agave.tar.bz2" -C "$HOME/.local/share/timba-agave"
-
-      - name: Verify Solana CLI version
-        run: |
-          echo "$HOME/.local/share/timba-agave/solana-release/bin" >> "$GITHUB_PATH"
-          "$HOME/.local/share/timba-agave/solana-release/bin/solana" --version | grep -F "solana-cli ${SOLANA_VERSION#v} "
-
-      - name: Cache Surfpool
-        id: surfpool-cache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: ~/.local/share/timba-surfpool
-          key: surfpool-${{ runner.os }}-${{ runner.arch }}-${{ env.SURFPOOL_SHA256 }}
-
-      - name: Install Surfpool
-        if: steps.surfpool-cache.outputs.cache-hit != 'true'
-        run: |
-          curl -fsSL "https://github.com/solana-foundation/surfpool/releases/download/${SURFPOOL_VERSION}/surfpool-linux-x64.tar.gz" -o "$RUNNER_TEMP/surfpool.tar.gz"
-          echo "${SURFPOOL_SHA256}  $RUNNER_TEMP/surfpool.tar.gz" | sha256sum --check
-          mkdir -p "$RUNNER_TEMP/surfpool-extract"
-          tar -xzf "$RUNNER_TEMP/surfpool.tar.gz" -C "$RUNNER_TEMP/surfpool-extract"
-          install -Dm755 "$RUNNER_TEMP/surfpool-extract/surfpool" "$HOME/.local/share/timba-surfpool/surfpool"
-
-      - name: Verify Surfpool version
-        run: |
-          test "$("$HOME/.local/share/timba-surfpool/surfpool" --version)" = "surfpool ${SURFPOOL_VERSION#v}"
-          echo "$HOME/.local/share/timba-surfpool" >> "$GITHUB_PATH"
-
-      - name: Install Anchor CLI
-        run: |
-          curl -fsSL "https://github.com/solana-foundation/anchor/releases/download/${ANCHOR_VERSION}/anchor-${ANCHOR_VERSION#v}-x86_64-unknown-linux-gnu" -o /tmp/anchor
-          echo "${ANCHOR_SHA256}  /tmp/anchor" | sha256sum --check
-          install -Dm755 /tmp/anchor "$HOME/.local/bin/anchor"
+          path: ~/.cache/solana
+          key: sbf-tools-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('mise.lock') }}
 
       - name: Install JS dependencies
         run: bun install --frozen-lockfile
@@ -275,7 +221,6 @@ jobs:
         run: anchor coverage --skip-run --output target/coverage/sbf.lcov
       - name: Measure host-side defensive paths
         run: |
-          cargo install cargo-llvm-cov --version 0.9.1 --locked
           cargo llvm-cov -p timba-test-harness --lib --test game_state --lcov --output-path target/coverage/host.lcov
       - name: Supplement SBF inventory with matching host source hits
         working-directory: .
