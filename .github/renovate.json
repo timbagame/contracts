@@ -43,15 +43,11 @@
   "customManagers": [
     {
       "customType": "regex",
-      "description": "Rust toolchain in CI and rust-toolchain.toml",
-      "managerFilePatterns": ["/^\\.github/workflows/ci\\.yml$/", "/(^|/)rust-toolchain\\.toml$/"],
-      "matchStrings": [
-        "RUST_VERSION: (?<currentValue>\\d+\\.\\d+\\.\\d+)",
-        "channel = \"(?<currentValue>\\d+\\.\\d+\\.\\d+)\""
-      ],
+      "description": "Rust toolchain in CI. Renovate reads rust-toolchain.toml by itself; same datasource keeps both in step.",
+      "managerFilePatterns": ["/^\\.github/workflows/ci\\.yml$/"],
+      "matchStrings": ["RUST_VERSION: (?<currentValue>\\d+\\.\\d+\\.\\d+)"],
       "depNameTemplate": "rust",
-      "packageNameTemplate": "rust-lang/rust",
-      "datasourceTemplate": "github-releases"
+      "datasourceTemplate": "rust-version"
     },
     {
       "customType": "regex",
