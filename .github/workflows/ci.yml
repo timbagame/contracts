@@ -28,7 +28,7 @@ jobs:
           # Remappings point only at the top-level libs; their nested submodules are unused.
           submodules: true
       - name: Install Bun and Foundry
-        uses: jdx/mise-action@9b200bcecbfd6303e69a4a261b2e09e3757440a7 # v5.2.0
+        uses: jdx/mise-action@8418fedb1110381a0d3ba51a7a415d7c1b884550 # v5.2.2
         with:
           install_args: bun github:foundry-rs/foundry
           cache_key_prefix: mise-evm
@@ -91,7 +91,7 @@ jobs:
           rustup component add llvm-tools-preview
 
       - name: Install Bun
-        uses: jdx/mise-action@9b200bcecbfd6303e69a4a261b2e09e3757440a7 # v5.2.0
+        uses: jdx/mise-action@8418fedb1110381a0d3ba51a7a415d7c1b884550 # v5.2.2
         with:
           install_args: bun
           cache_key_prefix: mise-lint
@@ -144,7 +144,7 @@ jobs:
           rustup component add llvm-tools-preview
 
       - name: Install Bun, Solana CLI, Surfpool, Anchor CLI and cargo-llvm-cov
-        uses: jdx/mise-action@9b200bcecbfd6303e69a4a261b2e09e3757440a7 # v5.2.0
+        uses: jdx/mise-action@8418fedb1110381a0d3ba51a7a415d7c1b884550 # v5.2.2
         with:
           install_args: bun github:anza-xyz/agave github:solana-foundation/surfpool github:solana-foundation/anchor cargo:cargo-llvm-cov
           cache_key_prefix: mise-solana
