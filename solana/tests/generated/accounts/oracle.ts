@@ -30,12 +30,15 @@ import {
   transformEncoder,
   type Account,
   type Address,
+  type ClientWithRpc,
   type EncodedAccount,
   type FetchAccountConfig,
   type FetchAccountsConfig,
   type FixedSizeCodec,
   type FixedSizeDecoder,
   type FixedSizeEncoder,
+  type GetAccountInfoApi,
+  type GetMultipleAccountsApi,
   type HasAddress,
   type MaybeAccount,
   type MaybeEncodedAccount,
@@ -128,7 +131,7 @@ export function decodeOracle<TAddress extends string = string>(
 }
 
 export async function fetchOracle<TAddress extends string = string>(
-  rpc: Parameters<typeof fetchEncodedAccount>[0],
+  rpc: Parameters<typeof fetchEncodedAccount>[0] | ClientWithRpc<GetAccountInfoApi>,
   address: Address<TAddress> | HasAddress<TAddress>,
   config?: FetchAccountConfig,
 ): Promise<Account<Oracle, TAddress>> {
@@ -138,12 +141,12 @@ export async function fetchOracle<TAddress extends string = string>(
 }
 
 export async function fetchMaybeOracle<TAddress extends string = string>(
-  rpc: Parameters<typeof fetchEncodedAccount>[0],
+  rpc: Parameters<typeof fetchEncodedAccount>[0] | ClientWithRpc<GetAccountInfoApi>,
   address: Address<TAddress> | HasAddress<TAddress>,
   config?: FetchAccountConfig,
 ): Promise<MaybeAccount<Oracle, TAddress>> {
   const maybeAccount = await fetchEncodedAccount(
-    rpc,
+    "rpc" in rpc ? rpc.rpc : rpc,
     typeof address === "string" ? address : address.address,
     config,
   );
@@ -151,7 +154,7 @@ export async function fetchMaybeOracle<TAddress extends string = string>(
 }
 
 export async function fetchAllOracle(
-  rpc: Parameters<typeof fetchEncodedAccounts>[0],
+  rpc: Parameters<typeof fetchEncodedAccounts>[0] | ClientWithRpc<GetMultipleAccountsApi>,
   addresses: Array<Address | HasAddress>,
   config?: FetchAccountsConfig,
 ): Promise<Account<Oracle>[]> {
@@ -161,12 +164,12 @@ export async function fetchAllOracle(
 }
 
 export async function fetchAllMaybeOracle(
-  rpc: Parameters<typeof fetchEncodedAccounts>[0],
+  rpc: Parameters<typeof fetchEncodedAccounts>[0] | ClientWithRpc<GetMultipleAccountsApi>,
   addresses: Array<Address | HasAddress>,
   config?: FetchAccountsConfig,
 ): Promise<MaybeAccount<Oracle>[]> {
   const maybeAccounts = await fetchEncodedAccounts(
-    rpc,
+    "rpc" in rpc ? rpc.rpc : rpc,
     addresses.map((a) => (typeof a === "string" ? a : a.address)),
     config,
   );
