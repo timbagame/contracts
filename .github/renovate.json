@@ -34,7 +34,7 @@
       "enabled": false
     },
     {
-      "description": "Surfpool 1.6.1 makes unjoin-race.test.ts fail with GameExpired on every run.",
+      "description": "Surfpool 1.6.1 makes refund-race.test.ts fail with GameExpired on every run.",
       "matchPackageNames": ["solana-foundation/surfpool"],
       "allowedVersions": "!/^v?1\\.6\\.1$/"
     }
