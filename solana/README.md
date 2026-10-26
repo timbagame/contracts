@@ -23,7 +23,7 @@ Only the legacy SPL Token program is supported. Token-2022 mints are rejected by
 ## Game lifecycle
 
 1. The oracle service generates a 32-byte secret and its SHA-256 commitment.
-2. The creator and current oracle operator sign `initialize_game`. The creator pays account rent and funds the prize for a giveaway.
+2. The creator and current oracle operator sign `create_game`. The creator pays account rent and funds the prize for a giveaway.
 3. Players call `join_game`. A private game also requires the current oracle operator to sign each join.
 4. A game becomes ready when it is full, or when its minimum ticket count is met and its timeout has elapsed.
 5. Once the game is ready and before its recovery boundary, the oracle operator reveals the secret through `complete_game`. The program verifies the commitment, recomputes the winner, transfers the payout and fee, and closes the game account.
@@ -37,9 +37,9 @@ The oracle signature authorizes game creation but does not make creation policy 
 | --------------------- | ------------------------------------------------- | ------------------------------------------------------------ |
 | `initialize_oracle`   | Intended operator and program upgrade authority   | Creates the global Oracle PDA                                |
 | `update_oracle`       | Current and new operators                         | Updates configuration and optionally rotates the operator    |
-| `initialize_game`     | Creator and current operator                      | Creates a game from an approved commitment                   |
+| `create_game`         | Creator and current operator                      | Creates a game from an approved commitment                   |
 | `join_game`           | Player; current operator also signs private joins | Adds one unique participant                                  |
-| `unjoin_game`         | Participant or game creator                       | Removes a participant and refunds a coinflip stake           |
+| `refund_player`       | Participant or game creator                       | Removes a participant and refunds a coinflip stake           |
 | `complete_game`       | Current operator                                  | Reveals the secret and settles the game                      |
 | `close_game`          | Game creator                                      | Closes an eligible game and refunds an unused giveaway prize |
 | `operator_close_game` | Current operator                                  | Cleans up an expired, empty game                             |
@@ -111,7 +111,7 @@ To run a focused Rust test:
 
 ```bash
 cargo test -p timba-test-harness --test fees_litesvm
-cargo test -p timba-test-harness unjoin
+cargo test -p timba-test-harness refund
 ```
 
 After changing the program interface, rebuild and commit the IDL, Anchor types, and Kit client:

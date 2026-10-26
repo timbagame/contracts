@@ -8,10 +8,10 @@
 
 export * from "./gameClosed.ts";
 export * from "./gameCompleted.ts";
-export * from "./gameInitialized.ts";
+export * from "./gameCreated.ts";
 export * from "./operatorGameClosed.ts";
 export * from "./oracleClosed.ts";
 export * from "./oracleInitialized.ts";
 export * from "./oracleUpdated.ts";
 export * from "./playerJoined.ts";
-export * from "./playerUnjoined.ts";
+export * from "./playerRefunded.ts";

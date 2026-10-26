@@ -7,7 +7,7 @@ use {
 };
 
 #[test]
-fn rejects_wrong_token_context_for_join_complete_and_unjoin() {
+fn rejects_wrong_token_context_for_join_complete_and_refund() {
     let mut fixture = common::TimbaFixture::new();
     let expected_token = fixture.token_fixture();
     let wrong_token = fixture.token_fixture();
@@ -15,7 +15,7 @@ fn rejects_wrong_token_context_for_join_complete_and_unjoin() {
     let creator_wrong_ata = fixture.create_ata(creator.pubkey(), wrong_token.mint.pubkey());
     let secret = [29; 32];
     let random_hash = hash(&secret).to_bytes();
-    let game = fixture.initialize_game(
+    let game = fixture.create_game(
         &expected_token,
         &creator,
         creator_ata,
@@ -53,7 +53,7 @@ fn rejects_wrong_token_context_for_join_complete_and_unjoin() {
         ),
         common::anchor_error(ErrorCode::InvalidTokenMint)
     );
-    let instruction = fixture.unjoin_instruction(
+    let instruction = fixture.refund_player_instruction(
         &wrong_token,
         game,
         creator.pubkey(),

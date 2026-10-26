@@ -14,7 +14,7 @@ fn creates_games_with_a_precreated_mint_derived_vault() {
     let token = fixture.token_fixture();
     assert!(fixture.svm.get_account(&token.vault_ata).is_some());
     let (creator, creator_ata) = fixture.funded_player(token.mint.pubkey(), 10_000);
-    let game = fixture.initialize_game(
+    let game = fixture.create_game(
         &token,
         &creator,
         creator_ata,
@@ -48,7 +48,7 @@ fn rejects_a_missing_or_noncanonical_mint_vault() {
         game_vault,
     };
     let (creator, creator_ata) = fixture.funded_player(missing_vault.mint.pubkey(), 10_000);
-    let (game, instruction) = fixture.initialize_game_instruction(
+    let (game, instruction) = fixture.create_game_instruction(
         &missing_vault,
         creator.pubkey(),
         creator_ata,
@@ -68,7 +68,7 @@ fn rejects_a_missing_or_noncanonical_mint_vault() {
 
     let token = fixture.token_fixture();
     let (player, player_ata) = fixture.funded_player(token.mint.pubkey(), 10_000);
-    let game = fixture.initialize_game(
+    let game = fixture.create_game(
         &token,
         &player,
         player_ata,

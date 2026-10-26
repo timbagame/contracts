@@ -15,7 +15,8 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 contract Timba is Ownable2StepUpgradeable, EIP712Upgradeable, UUPSUpgradeable, ReentrancyGuardTransient {
     using SafeERC20 for IERC20;
 
-    uint32 public constant MAX_PLAYERS = 1_000;
+    /// @dev Matches the Solana program, whose Game account fits at most 315 tickets.
+    uint32 public constant MAX_PLAYERS = 315;
     uint32 public constant MAX_TIMEOUT = 30 days;
     uint32 public constant MAX_BUFFER = 1 days;
     uint8 public constant MAX_FEE = 10;
@@ -91,7 +92,9 @@ contract Timba is Ownable2StepUpgradeable, EIP712Upgradeable, UUPSUpgradeable, R
     error InvalidTransfer();
     error GameUnavailable();
     error EntryUnavailable();
-    error RecoveryUnavailable();
+    error GameNotExpired();
+    error OracleBufferNotExpired();
+    error GameHasActivePlayers();
     error InvalidReveal();
     error RandomnessUnavailable();
 
@@ -316,7 +319,7 @@ contract Timba is Ownable2StepUpgradeable, EIP712Upgradeable, UUPSUpgradeable, R
     function refundPlayer(bytes32 gameId, address player) external nonReentrant {
         Game storage game = _openGame(gameId);
         if (msg.sender != player && msg.sender != game.creator) revert InvalidAuthorization();
-        if (!_canRecover(game)) revert RecoveryUnavailable();
+        _requireUnlocked(game);
         uint256 index = participantIndex[gameId][player];
         if (index == 0) revert EntryUnavailable();
         uint256 last = game.participants.length - 1;
@@ -337,11 +340,17 @@ contract Timba is Ownable2StepUpgradeable, EIP712Upgradeable, UUPSUpgradeable, R
     function closeGame(bytes32 gameId) external nonReentrant {
         Game storage game = _openGame(gameId);
         bool empty = game.participants.length == 0;
-        if (msg.sender != game.creator) {
-            if (msg.sender != owner()) revert InvalidAuthorization();
-            if (!empty || block.timestamp < uint256(game.expiresAt) + config.buffer) revert RecoveryUnavailable();
-        } else if (!empty && (game.gameType == GameType.Coinflip || !_canRecover(game))) {
-            revert RecoveryUnavailable();
+        if (msg.sender == game.creator) {
+            // Coinflip entries are refunded one by one; a giveaway closes once entries unlock.
+            if (!empty) {
+                if (game.gameType == GameType.Coinflip) revert GameHasActivePlayers();
+                _requireUnlocked(game);
+            }
+        } else if (msg.sender == owner()) {
+            if (!empty) revert GameHasActivePlayers();
+            if (block.timestamp < uint256(game.expiresAt) + config.buffer) revert OracleBufferNotExpired();
+        } else {
+            revert InvalidAuthorization();
         }
         uint256 refund = game.totalAmount;
         game.totalAmount = 0;
@@ -364,9 +373,12 @@ contract Timba is Ownable2StepUpgradeable, EIP712Upgradeable, UUPSUpgradeable, R
         return count == game.maxPlayers || (count >= game.minPlayers && block.timestamp >= game.expiresAt);
     }
 
-    function _canRecover(Game storage game) private view returns (bool) {
-        return block.timestamp >= game.expiresAt
-            && (!_ready(game) || block.timestamp >= uint256(game.expiresAt) + config.buffer);
+    /// @dev Entries unlock at expiry, or after the oracle buffer if the game is ready to settle.
+    function _requireUnlocked(Game storage game) private view {
+        if (block.timestamp < game.expiresAt) revert GameNotExpired();
+        if (_ready(game) && block.timestamp < uint256(game.expiresAt) + config.buffer) {
+            revert OracleBufferNotExpired();
+        }
     }
 
     function _deposit(address token, address from, uint256 amount) private {

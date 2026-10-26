@@ -172,7 +172,7 @@ impl<'info> GameVaultContext<'info> {
 
 #[derive(Accounts)]
 #[instruction(config: GameConfig, random_hash: [u8; 32])]
-pub struct InitializeGame<'info> {
+pub struct CreateGame<'info> {
     #[account(
         init,
         payer = creator,
@@ -276,7 +276,7 @@ pub struct CompleteGame<'info> {
 }
 
 #[derive(Accounts)]
-pub struct UnjoinGame<'info> {
+pub struct RefundPlayer<'info> {
     #[account(
         mut,
         constraint = game.token_mint == game_vault_ctx.token_mint.key() @ ErrorCode::InvalidTokenMint,

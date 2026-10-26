@@ -21,7 +21,7 @@ fn rejects_join_at_and_after_timeout_without_sleeping() {
     let token = fixture.token_fixture();
     let (creator, creator_ata) = fixture.funded_player(token.mint.pubkey(), 10_000);
     let (player, player_ata) = fixture.funded_player(token.mint.pubkey(), 10_000);
-    let game = fixture.initialize_game(
+    let game = fixture.create_game(
         &token,
         &creator,
         creator_ata,
@@ -51,7 +51,7 @@ fn rejects_completion_before_minimum_participants_join() {
     let (player, player_ata) = fixture.funded_player(token.mint.pubkey(), 10_000);
     let secret = [12; 32];
     let random_hash = hash(&secret).to_bytes();
-    let game = fixture.initialize_game(
+    let game = fixture.create_game(
         &token,
         &creator,
         creator_ata,

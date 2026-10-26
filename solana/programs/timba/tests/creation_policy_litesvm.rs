@@ -16,7 +16,7 @@ fn operator_can_approve_any_positive_creation_amount() {
     let token = fixture.token_fixture();
     let (creator, creator_ata) = fixture.funded_player(token.mint.pubkey(), 1);
 
-    let game = fixture.initialize_game(
+    let game = fixture.create_game(
         &token,
         &creator,
         creator_ata,

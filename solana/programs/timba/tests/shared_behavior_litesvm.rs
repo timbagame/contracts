@@ -40,7 +40,7 @@ fn shared_vectors_execute_on_solana() {
         ));
         let secret = [42; 32];
         let commitment = hash(&secret).to_bytes();
-        let game = fixture.initialize_game(
+        let game = fixture.create_game(
             &token,
             &creator,
             creator_ata,
@@ -66,8 +66,13 @@ fn shared_vectors_execute_on_solana() {
         clock.unix_timestamp = i64::try_from(v[4]).unwrap();
         fixture.svm.set_sysvar(&clock);
         if let Some((player, ata)) = players[..count].first() {
-            let ix =
-                fixture.unjoin_instruction(&token, game, player.pubkey(), creator.pubkey(), *ata);
+            let ix = fixture.refund_player_instruction(
+                &token,
+                game,
+                player.pubkey(),
+                creator.pubkey(),
+                *ata,
+            );
             assert_eq!(
                 fixture.send(&[ix], &[&operator, &creator]),
                 v[6] == 1,

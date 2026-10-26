@@ -9,7 +9,7 @@ fn rejects_unfillable_pot_before_any_deposit() {
     let mut fixture = common::TimbaFixture::new();
     let token = fixture.token_fixture();
     let (creator, ata) = fixture.empty_player(token.mint.pubkey());
-    let (game, instruction) = fixture.initialize_game_instruction(
+    let (game, instruction) = fixture.create_game_instruction(
         &token,
         creator.pubkey(),
         ata,

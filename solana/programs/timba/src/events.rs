@@ -122,26 +122,26 @@ impl PlayerJoined {
 
 /// Emitted when a player leaves a game before completion
 #[event]
-pub struct PlayerUnjoined {
+pub struct PlayerRefunded {
     /// Game that was left
     pub game_key: Pubkey,
     /// Player who left
     pub player: Pubkey,
-    /// Remaining total amount after unjoin
+    /// Remaining total amount after the refund
     pub total_amount: u64,
     /// Remaining total tickets count
     pub tickets_count: u32,
-    /// Ticket index associated with this unjoin operation
+    /// Ticket index associated with this refund
     pub ticket_index: u32,
     /// Participant moved into `ticket_index` by O(1) removal, if any
     pub moved_participant: Option<Pubkey>,
     /// Last slot for entropy
     pub last_slot: u64,
-    /// Timestamp of the unjoin
+    /// Timestamp of the refund
     pub timestamp: u64,
 }
 
-impl PlayerUnjoined {
+impl PlayerRefunded {
     #[must_use]
     pub fn new(
         game: &Account<'_, Game>,
@@ -168,7 +168,7 @@ impl PlayerUnjoined {
 
 /// Emitted when a new game is created
 #[event]
-pub struct GameInitialized {
+pub struct GameCreated {
     /// Game account address
     pub game_key: Pubkey,
     /// Game creator
@@ -193,7 +193,7 @@ pub struct GameInitialized {
     pub timeout: u64,
 }
 
-impl GameInitialized {
+impl GameCreated {
     #[must_use]
     pub fn new(game: &Account<'_, Game>) -> Self {
         Self {

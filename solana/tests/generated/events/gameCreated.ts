@@ -39,15 +39,15 @@ import {
   type GameTypeArgs,
 } from "../types/index.ts";
 
-export const GAME_INITIALIZED_EVENT_DISCRIMINATOR: ReadonlyUint8Array = new Uint8Array([
-  82, 221, 11, 2, 244, 52, 240, 250,
+export const GAME_CREATED_EVENT_DISCRIMINATOR: ReadonlyUint8Array = new Uint8Array([
+  218, 25, 150, 94, 177, 112, 96, 2,
 ]);
 
-export function getGameInitializedEventDiscriminatorBytes(): ReadonlyUint8Array {
-  return fixEncoderSize(getBytesEncoder(), 8).encode(GAME_INITIALIZED_EVENT_DISCRIMINATOR);
+export function getGameCreatedEventDiscriminatorBytes(): ReadonlyUint8Array {
+  return fixEncoderSize(getBytesEncoder(), 8).encode(GAME_CREATED_EVENT_DISCRIMINATOR);
 }
 
-export type GameInitializedEvent = {
+export type GameCreatedEvent = {
   /** Game account address */
   gameKey: Address;
   /** Game creator */
@@ -72,7 +72,7 @@ export type GameInitializedEvent = {
   timeout: bigint;
 };
 
-export type GameInitializedEventArgs = {
+export type GameCreatedEventArgs = {
   /** Game account address */
   gameKey: Address | HasAddress;
   /** Game creator */
@@ -97,8 +97,8 @@ export type GameInitializedEventArgs = {
   timeout: number | bigint;
 };
 
-/** Gets the encoder for {@link GameInitializedEventArgs} event data. */
-export function getGameInitializedEventEncoder(): FixedSizeEncoder<GameInitializedEventArgs> {
+/** Gets the encoder for {@link GameCreatedEventArgs} event data. */
+export function getGameCreatedEventEncoder(): FixedSizeEncoder<GameCreatedEventArgs> {
   return getHiddenPrefixEncoder(
     getStructEncoder([
       ["gameKey", getAddressEncoder()],
@@ -113,12 +113,12 @@ export function getGameInitializedEventEncoder(): FixedSizeEncoder<GameInitializ
       ["createdAt", getU64Encoder()],
       ["timeout", getU64Encoder()],
     ]),
-    [getConstantEncoder(GAME_INITIALIZED_EVENT_DISCRIMINATOR)],
+    [getConstantEncoder(GAME_CREATED_EVENT_DISCRIMINATOR)],
   );
 }
 
-/** Gets the decoder for {@link GameInitializedEvent} event data. */
-export function getGameInitializedEventDecoder(): FixedSizeDecoder<GameInitializedEvent> {
+/** Gets the decoder for {@link GameCreatedEvent} event data. */
+export function getGameCreatedEventDecoder(): FixedSizeDecoder<GameCreatedEvent> {
   return getHiddenPrefixDecoder(
     getStructDecoder([
       ["gameKey", getAddressDecoder()],
@@ -133,26 +133,19 @@ export function getGameInitializedEventDecoder(): FixedSizeDecoder<GameInitializ
       ["createdAt", getU64Decoder()],
       ["timeout", getU64Decoder()],
     ]),
-    [getConstantDecoder(GAME_INITIALIZED_EVENT_DISCRIMINATOR)],
+    [getConstantDecoder(GAME_CREATED_EVENT_DISCRIMINATOR)],
   );
 }
 
-/** Gets the codec for {@link GameInitializedEvent} event data. */
-export function getGameInitializedEventCodec(): FixedSizeCodec<
-  GameInitializedEventArgs,
-  GameInitializedEvent
-> {
-  return combineCodec(getGameInitializedEventEncoder(), getGameInitializedEventDecoder());
+/** Gets the codec for {@link GameCreatedEvent} event data. */
+export function getGameCreatedEventCodec(): FixedSizeCodec<GameCreatedEventArgs, GameCreatedEvent> {
+  return combineCodec(getGameCreatedEventEncoder(), getGameCreatedEventDecoder());
 }
 
-/** Parses the provided bytes into {@link GameInitializedEvent} event data. */
-export function parseGameInitializedEvent(
-  data: ReadonlyUint8Array | Uint8Array,
-): GameInitializedEvent {
-  if (containsBytes(data, GAME_INITIALIZED_EVENT_DISCRIMINATOR, 0)) {
-    return getGameInitializedEventDecoder().decode(data);
+/** Parses the provided bytes into {@link GameCreatedEvent} event data. */
+export function parseGameCreatedEvent(data: ReadonlyUint8Array | Uint8Array): GameCreatedEvent {
+  if (containsBytes(data, GAME_CREATED_EVENT_DISCRIMINATOR, 0)) {
+    return getGameCreatedEventDecoder().decode(data);
   }
-  throw new Error(
-    'The provided data does not match the "GameInitializedEvent" event discriminators.',
-  );
+  throw new Error('The provided data does not match the "GameCreatedEvent" event discriminators.');
 }
