@@ -59,7 +59,7 @@ fn preserves_named_configuration_and_authorization_errors() {
     let mut fixture = common::TimbaFixture::new();
     let token = fixture.token_fixture();
     let (creator, creator_ata) = fixture.funded_player(token.mint.pubkey(), 10_000);
-    let (_game, invalid_config) = fixture.initialize_game_instruction(
+    let (_game, invalid_config) = fixture.create_game_instruction(
         &token,
         creator.pubkey(),
         creator_ata,
@@ -84,7 +84,7 @@ fn preserves_named_configuration_and_authorization_errors() {
         .svm
         .airdrop(&outsider.pubkey(), 1_000_000_000)
         .unwrap();
-    let (_game, unauthorized) = fixture.initialize_game_instruction_with_operator(
+    let (_game, unauthorized) = fixture.create_game_instruction_with_operator(
         &token,
         creator.pubkey(),
         creator_ata,
@@ -115,7 +115,7 @@ fn preserves_join_and_buffer_error_codes() {
     let (creator, creator_ata) = fixture.funded_player(token.mint.pubkey(), 10_000);
     let (second, second_ata) = fixture.funded_player(token.mint.pubkey(), 10_000);
     let (poor, poor_ata) = fixture.empty_player(token.mint.pubkey());
-    let game = fixture.initialize_game(
+    let game = fixture.create_game(
         &token,
         &creator,
         creator_ata,
@@ -143,7 +143,7 @@ fn preserves_join_and_buffer_error_codes() {
         common::anchor_error(ErrorCode::AlreadyJoined)
     );
     assert!(fixture.join_game(&token, game, &second, second_ata));
-    let early_unjoin = fixture.unjoin_instruction(
+    let early_refund = fixture.refund_player_instruction(
         &token,
         game,
         creator.pubkey(),
@@ -152,7 +152,7 @@ fn preserves_join_and_buffer_error_codes() {
     );
     let payer = fixture.operator.insecure_clone();
     assert_eq!(
-        common::custom_error_code(fixture.send_result(&[early_unjoin], &[&payer, &creator])),
+        common::custom_error_code(fixture.send_result(&[early_refund], &[&payer, &creator])),
         common::anchor_error(ErrorCode::GameNotExpired)
     );
 }

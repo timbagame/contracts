@@ -1,8 +1,8 @@
 use crate::utils::get_clock_snapshot;
-use crate::{events::GameInitialized, GameConfig};
+use crate::{events::GameCreated, GameConfig};
 use anchor_lang::prelude::*;
 
-pub fn handler(ctx: Context<super::InitializeGame>, config: GameConfig) -> Result<()> {
+pub fn handler(ctx: Context<super::CreateGame>, config: GameConfig) -> Result<()> {
     let game = &mut ctx.accounts.game;
     let (current_time, current_slot) = get_clock_snapshot()?;
 
@@ -23,7 +23,7 @@ pub fn handler(ctx: Context<super::InitializeGame>, config: GameConfig) -> Resul
         )?;
     }
 
-    emit!(GameInitialized::new(game));
+    emit!(GameCreated::new(game));
 
     Ok(())
 }

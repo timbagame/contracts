@@ -88,12 +88,12 @@ pub mod timba {
     }
 
     /// Creates a new game with specified configuration
-    pub fn initialize_game(
-        ctx: Context<InitializeGame>,
+    pub fn create_game(
+        ctx: Context<CreateGame>,
         config: GameConfig,
         _random_hash: [u8; 32],
     ) -> Result<()> {
-        instructions::initialize_game::handler(ctx, config)
+        instructions::create_game::handler(ctx, config)
     }
 
     /// Allows a player to join an existing game
@@ -102,8 +102,8 @@ pub mod timba {
     }
 
     /// Allows a player to leave a game before completion (with refund)
-    pub fn unjoin_game(ctx: Context<UnjoinGame>) -> Result<()> {
-        instructions::unjoin_game::handler(ctx)
+    pub fn refund_player(ctx: Context<RefundPlayer>) -> Result<()> {
+        instructions::refund_player::handler(ctx)
     }
 
     /// Closes a game with no active players (creator only)

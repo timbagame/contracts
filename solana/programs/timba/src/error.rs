@@ -50,7 +50,7 @@ pub enum ErrorCode {
     #[msg("Game not expired")]
     GameNotExpired = 1105,
 
-    /// Oracle buffer time has not expired yet for late unjoin / close operations
+    /// Oracle buffer time has not expired yet for late refund / close operations
     #[msg("Oracle buffer active")]
     OracleBufferNotExpired = 1106,
 

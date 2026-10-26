@@ -28,13 +28,13 @@ forge inspect Timba abi --json > abi/Timba.json
 
 | Setting         | Contract limit           | Deployment script default |
 | --------------- | ------------------------ | ------------------------- |
-| Players         | 1,000                    | 100                       |
+| Players         | 315                      | 100                       |
 | Minimum entries | Coinflip: 2; giveaway: 1 | Supplied per game         |
 | Game duration   | 1 second–30 days         | 5 minutes–24 hours        |
 | Oracle buffer   | 1 second–1 day           | 1 hour                    |
 | Fee             | 0–10%, whole percentages | 1%                        |
 
-The 1,000-player ceiling bounds storage and view responses. Joins and refunds use indexed membership and swap removal; settlement selects one participant and never loops over all entrants. Gas tests exercise settlement with 1,000 participants. Unlike Solana, there is no preallocated account with a 315-ticket limit. The client limit can remain 100.
+The 315-player ceiling matches the Solana program, whose Game account fits at most 315 tickets, so both chains share one limit. Joins and refunds use indexed membership and swap removal; settlement selects one participant and never loops over all entrants. Gas tests exercise settlement at the ceiling. The client limit can remain 100.
 
 - Coinflip entrants each deposit the same amount. Giveaway creation deposits the prize; entrants pay no stake.
 - The creator may atomically join during creation. There is one entry per address per game.
@@ -43,6 +43,7 @@ The 1,000-player ceiling bounds storage and view responses. Joins and refunds us
 - Under-minimum games permit refunds at expiry. Ready games permit recovery at `expiresAt + current buffer`, at which point settlement is forbidden.
 - Only the participant or creator can request a participant refund. Payment always goes to that participant.
 - Creators can close empty games immediately. Populated coinflips must refund every participant individually before closure. Giveaways can close at their recovery boundary and return the prize to their creator.
+- Early refunds and closures revert with `GameNotExpired` before expiry, `OracleBufferNotExpired` while a ready game awaits settlement, and `GameHasActivePlayers` when closing a populated coinflip or when the operator closes a populated game. The names match the Solana error codes.
 - The operator can close only empty games after the recovery boundary, with any prize returned to the creator. There is no operator custody-withdrawal function.
 - Fee and buffer are live settings. Changing the duration/player limits applies only to new games. Token policy is enforced by the Oracle when signing creation requests; there is no on-chain token list.
 

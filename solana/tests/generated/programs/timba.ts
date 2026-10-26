@@ -46,38 +46,38 @@ import {
   getCloseGameInstructionAsync,
   getCloseOracleInstructionAsync,
   getCompleteGameInstructionAsync,
-  getInitializeGameInstructionAsync,
+  getCreateGameInstructionAsync,
   getInitializeOracleInstructionAsync,
   getJoinGameInstructionAsync,
   getOperatorCloseGameInstructionAsync,
-  getUnjoinGameInstructionAsync,
+  getRefundPlayerInstructionAsync,
   getUpdateOracleInstructionAsync,
   parseCloseGameInstruction,
   parseCloseOracleInstruction,
   parseCompleteGameInstruction,
-  parseInitializeGameInstruction,
+  parseCreateGameInstruction,
   parseInitializeOracleInstruction,
   parseJoinGameInstruction,
   parseOperatorCloseGameInstruction,
-  parseUnjoinGameInstruction,
+  parseRefundPlayerInstruction,
   parseUpdateOracleInstruction,
   type CloseGameAsyncInput,
   type CloseOracleAsyncInput,
   type CompleteGameAsyncInput,
-  type InitializeGameAsyncInput,
+  type CreateGameAsyncInput,
   type InitializeOracleAsyncInput,
   type JoinGameAsyncInput,
   type OperatorCloseGameAsyncInput,
   type ParsedCloseGameInstruction,
   type ParsedCloseOracleInstruction,
   type ParsedCompleteGameInstruction,
-  type ParsedInitializeGameInstruction,
+  type ParsedCreateGameInstruction,
   type ParsedInitializeOracleInstruction,
   type ParsedJoinGameInstruction,
   type ParsedOperatorCloseGameInstruction,
-  type ParsedUnjoinGameInstruction,
+  type ParsedRefundPlayerInstruction,
   type ParsedUpdateOracleInstruction,
-  type UnjoinGameAsyncInput,
+  type RefundPlayerAsyncInput,
   type UpdateOracleAsyncInput,
 } from "../instructions/index.ts";
 import { findGamePda, findGameVaultPda, findOraclePda } from "../pdas/index.ts";
@@ -125,13 +125,13 @@ export function identifyTimbaAccount(
 export enum TimbaEvent {
   GameClosed,
   GameCompleted,
-  GameInitialized,
+  GameCreated,
   OperatorGameClosed,
   OracleClosed,
   OracleInitialized,
   OracleUpdated,
   PlayerJoined,
-  PlayerUnjoined,
+  PlayerRefunded,
 }
 
 export function identifyTimbaEvent(
@@ -164,12 +164,12 @@ export function identifyTimbaEvent(
     containsBytes(
       data,
       fixEncoderSize(getBytesEncoder(), 8).encode(
-        new Uint8Array([82, 221, 11, 2, 244, 52, 240, 250]),
+        new Uint8Array([218, 25, 150, 94, 177, 112, 96, 2]),
       ),
       0,
     )
   ) {
-    return TimbaEvent.GameInitialized;
+    return TimbaEvent.GameCreated;
   }
   if (
     containsBytes(
@@ -230,12 +230,12 @@ export function identifyTimbaEvent(
     containsBytes(
       data,
       fixEncoderSize(getBytesEncoder(), 8).encode(
-        new Uint8Array([191, 34, 140, 22, 253, 20, 237, 73]),
+        new Uint8Array([83, 218, 165, 174, 105, 50, 123, 107]),
       ),
       0,
     )
   ) {
-    return TimbaEvent.PlayerUnjoined;
+    return TimbaEvent.PlayerRefunded;
   }
   throw new Error("The provided event could not be identified as a timba event.");
 }
@@ -244,11 +244,11 @@ export enum TimbaInstruction {
   CloseGame,
   CloseOracle,
   CompleteGame,
-  InitializeGame,
+  CreateGame,
   InitializeOracle,
   JoinGame,
   OperatorCloseGame,
-  UnjoinGame,
+  RefundPlayer,
   UpdateOracle,
 }
 
@@ -293,12 +293,12 @@ export function identifyTimbaInstruction(
     containsBytes(
       data,
       fixEncoderSize(getBytesEncoder(), 8).encode(
-        new Uint8Array([44, 62, 102, 247, 126, 208, 130, 215]),
+        new Uint8Array([124, 69, 75, 66, 184, 220, 72, 206]),
       ),
       0,
     )
   ) {
-    return TimbaInstruction.InitializeGame;
+    return TimbaInstruction.CreateGame;
   }
   if (
     containsBytes(
@@ -337,12 +337,12 @@ export function identifyTimbaInstruction(
     containsBytes(
       data,
       fixEncoderSize(getBytesEncoder(), 8).encode(
-        new Uint8Array([105, 123, 174, 143, 207, 2, 17, 206]),
+        new Uint8Array([251, 32, 76, 233, 171, 106, 120, 46]),
       ),
       0,
     )
   ) {
-    return TimbaInstruction.UnjoinGame;
+    return TimbaInstruction.RefundPlayer;
   }
   if (
     containsBytes(
@@ -367,9 +367,7 @@ export type ParsedTimbaInstruction<
   | ({ instructionType: TimbaInstruction.CloseGame } & ParsedCloseGameInstruction<TProgram>)
   | ({ instructionType: TimbaInstruction.CloseOracle } & ParsedCloseOracleInstruction<TProgram>)
   | ({ instructionType: TimbaInstruction.CompleteGame } & ParsedCompleteGameInstruction<TProgram>)
-  | ({
-      instructionType: TimbaInstruction.InitializeGame;
-    } & ParsedInitializeGameInstruction<TProgram>)
+  | ({ instructionType: TimbaInstruction.CreateGame } & ParsedCreateGameInstruction<TProgram>)
   | ({
       instructionType: TimbaInstruction.InitializeOracle;
     } & ParsedInitializeOracleInstruction<TProgram>)
@@ -377,7 +375,7 @@ export type ParsedTimbaInstruction<
   | ({
       instructionType: TimbaInstruction.OperatorCloseGame;
     } & ParsedOperatorCloseGameInstruction<TProgram>)
-  | ({ instructionType: TimbaInstruction.UnjoinGame } & ParsedUnjoinGameInstruction<TProgram>)
+  | ({ instructionType: TimbaInstruction.RefundPlayer } & ParsedRefundPlayerInstruction<TProgram>)
   | ({ instructionType: TimbaInstruction.UpdateOracle } & ParsedUpdateOracleInstruction<TProgram>);
 
 export function parseTimbaInstruction<TProgram extends string>(
@@ -406,11 +404,11 @@ export function parseTimbaInstruction<TProgram extends string>(
         ...parseCompleteGameInstruction(instruction),
       };
     }
-    case TimbaInstruction.InitializeGame: {
+    case TimbaInstruction.CreateGame: {
       assertIsInstructionWithAccounts(instruction);
       return {
-        instructionType: TimbaInstruction.InitializeGame,
-        ...parseInitializeGameInstruction(instruction),
+        instructionType: TimbaInstruction.CreateGame,
+        ...parseCreateGameInstruction(instruction),
       };
     }
     case TimbaInstruction.InitializeOracle: {
@@ -434,11 +432,11 @@ export function parseTimbaInstruction<TProgram extends string>(
         ...parseOperatorCloseGameInstruction(instruction),
       };
     }
-    case TimbaInstruction.UnjoinGame: {
+    case TimbaInstruction.RefundPlayer: {
       assertIsInstructionWithAccounts(instruction);
       return {
-        instructionType: TimbaInstruction.UnjoinGame,
-        ...parseUnjoinGameInstruction(instruction),
+        instructionType: TimbaInstruction.RefundPlayer,
+        ...parseRefundPlayerInstruction(instruction),
       };
     }
     case TimbaInstruction.UpdateOracle: {
@@ -483,10 +481,10 @@ export type TimbaPluginInstructions = {
     input: CompleteGameAsyncInput,
     config?: { programAddress?: Address | HasAddress },
   ) => ReturnType<typeof getCompleteGameInstructionAsync> & SelfPlanAndSendFunctions;
-  initializeGame: (
-    input: InitializeGameAsyncInput,
+  createGame: (
+    input: CreateGameAsyncInput,
     config?: { programAddress?: Address | HasAddress },
-  ) => ReturnType<typeof getInitializeGameInstructionAsync> & SelfPlanAndSendFunctions;
+  ) => ReturnType<typeof getCreateGameInstructionAsync> & SelfPlanAndSendFunctions;
   initializeOracle: (
     input: InitializeOracleAsyncInput,
     config?: { programAddress?: Address | HasAddress },
@@ -499,10 +497,10 @@ export type TimbaPluginInstructions = {
     input: OperatorCloseGameAsyncInput,
     config?: { programAddress?: Address | HasAddress },
   ) => ReturnType<typeof getOperatorCloseGameInstructionAsync> & SelfPlanAndSendFunctions;
-  unjoinGame: (
-    input: UnjoinGameAsyncInput,
+  refundPlayer: (
+    input: RefundPlayerAsyncInput,
     config?: { programAddress?: Address | HasAddress },
-  ) => ReturnType<typeof getUnjoinGameInstructionAsync> & SelfPlanAndSendFunctions;
+  ) => ReturnType<typeof getRefundPlayerInstructionAsync> & SelfPlanAndSendFunctions;
   updateOracle: (
     input: UpdateOracleAsyncInput,
     config?: { programAddress?: Address | HasAddress },
@@ -560,10 +558,10 @@ export function timbaProgram(config: { programAddress?: Address | HasAddress } =
                   TIMBA_PROGRAM_ADDRESS,
               }),
             ),
-          initializeGame: (input, instructionConfig) =>
+          createGame: (input, instructionConfig) =>
             addSelfPlanAndSendFunctions(
               client,
-              getInitializeGameInstructionAsync(input, {
+              getCreateGameInstructionAsync(input, {
                 programAddress:
                   instructionConfig?.programAddress ??
                   config.programAddress ??
@@ -600,10 +598,10 @@ export function timbaProgram(config: { programAddress?: Address | HasAddress } =
                   TIMBA_PROGRAM_ADDRESS,
               }),
             ),
-          unjoinGame: (input, instructionConfig) =>
+          refundPlayer: (input, instructionConfig) =>
             addSelfPlanAndSendFunctions(
               client,
-              getUnjoinGameInstructionAsync(input, {
+              getRefundPlayerInstructionAsync(input, {
                 programAddress:
                   instructionConfig?.programAddress ??
                   config.programAddress ??

@@ -12,7 +12,7 @@ fn non_creator_cannot_close_game() {
     let token = fixture.token_fixture();
     let (creator, creator_ata) = fixture.funded_player(token.mint.pubkey(), 10_000);
     let (outsider, outsider_ata) = fixture.funded_player(token.mint.pubkey(), 10_000);
-    let game = fixture.initialize_game(
+    let game = fixture.create_game(
         &token,
         &creator,
         creator_ata,
@@ -38,7 +38,7 @@ fn non_operator_cannot_approve_game_initialization() {
     let (creator, creator_ata) = fixture.funded_player(token.mint.pubkey(), 10_000);
     let outsider = Keypair::new();
     let random_hash = [48; 32];
-    let (game, mut instruction) = fixture.initialize_game_instruction(
+    let (game, mut instruction) = fixture.create_game_instruction(
         &token,
         creator.pubkey(),
         creator_ata,
@@ -58,7 +58,7 @@ fn non_operator_cannot_approve_game_initialization() {
         .accounts
         .iter_mut()
         .find(|account| account.pubkey == operator_key && account.is_signer)
-        .expect("initialize_game must require the oracle operator signer");
+        .expect("create_game must require the oracle operator signer");
     oracle_operator.pubkey = outsider.pubkey();
 
     let operator = fixture.operator.insecure_clone();

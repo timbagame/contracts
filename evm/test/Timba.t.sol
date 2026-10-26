@@ -113,7 +113,7 @@ contract TimbaTest is Test {
     }
 
     function defaults() internal pure returns (Timba.OracleConfig memory) {
-        return Timba.OracleConfig(1, 1 hours, 1, 30 days, 1_000);
+        return Timba.OracleConfig(1, 1 hours, 1, 30 days, 315);
     }
 
     function fund(address user, Token asset) internal {
@@ -254,7 +254,7 @@ contract TimbaTest is Test {
             }
             vm.warp(1_000);
             vm.prank(operator);
-            timba.configure(Timba.OracleConfig(uint8(v[8]), 10, 1, 30 days, 1_000));
+            timba.configure(Timba.OracleConfig(uint8(v[8]), 10, 1, 30 days, 315));
             Timba.CreateRequest memory r = request(Timba.GameType(v[0]));
             r.amount = v[7];
             r.minPlayers = uint32(v[2]);
@@ -376,12 +376,18 @@ contract TimbaTest is Test {
         uint256 expiry = timba.getGame(game).expiresAt;
         vm.warp(expiry + 1 hours - 1);
         vm.prank(alice);
-        vm.expectRevert(Timba.RecoveryUnavailable.selector);
+        vm.expectRevert(Timba.OracleBufferNotExpired.selector);
         timba.refundPlayer(game, alice);
         vm.warp(expiry + 1 hours);
         vm.prank(operator);
         vm.expectRevert(Timba.GameUnavailable.selector);
         timba.completeGame(game, SECRET);
+        vm.prank(alice);
+        vm.expectRevert(Timba.GameHasActivePlayers.selector);
+        timba.closeGame(game);
+        vm.prank(operator);
+        vm.expectRevert(Timba.GameHasActivePlayers.selector);
+        timba.closeGame(game);
         vm.prank(alice);
         timba.refundPlayer(game, alice);
         assertEq(timba.participantIndex(game, bob), 1);
@@ -393,10 +399,10 @@ contract TimbaTest is Test {
         assertEq(token.balanceOf(address(timba)), 0);
     }
 
-    function testUnderfilledRefundAtExpiryAndNoEarlyUnjoin() public {
+    function testUnderfilledRefundAtExpiryAndNoEarlyRefund() public {
         bytes32 game = create(request(Timba.GameType.Coinflip), true);
         vm.prank(alice);
-        vm.expectRevert(Timba.RecoveryUnavailable.selector);
+        vm.expectRevert(Timba.GameNotExpired.selector);
         timba.refundPlayer(game, alice);
         vm.warp(timba.getGame(game).expiresAt);
         vm.prank(alice);
@@ -407,7 +413,7 @@ contract TimbaTest is Test {
     function testOperatorCleanupCannotTakeGiveawayFunds() public {
         bytes32 game = create(request(Timba.GameType.Giveaway), false);
         vm.prank(operator);
-        vm.expectRevert(Timba.RecoveryUnavailable.selector);
+        vm.expectRevert(Timba.OracleBufferNotExpired.selector);
         timba.closeGame(game);
         vm.warp(timba.getGame(game).expiresAt + 1 hours);
         vm.prank(operator);
@@ -689,7 +695,7 @@ contract TimbaTest is Test {
         join(game, bob);
         uint256 expiry = timba.getGame(game).expiresAt;
         vm.prank(alice);
-        vm.expectRevert(Timba.RecoveryUnavailable.selector);
+        vm.expectRevert(Timba.GameNotExpired.selector);
         timba.closeGame(game);
         Timba.OracleConfig memory c = defaults();
         c.buffer = 1 days;
@@ -697,7 +703,7 @@ contract TimbaTest is Test {
         timba.configure(c);
         vm.warp(expiry + 1 hours);
         vm.prank(alice);
-        vm.expectRevert(Timba.RecoveryUnavailable.selector);
+        vm.expectRevert(Timba.OracleBufferNotExpired.selector);
         timba.closeGame(game);
         vm.warp(expiry + 1 days);
         vm.prank(alice);
@@ -760,15 +766,15 @@ contract TimbaTest is Test {
 
     function testGasMaximumParticipants() public {
         Timba.CreateRequest memory r = request(Timba.GameType.Giveaway);
-        r.maxPlayers = 1_000;
+        r.maxPlayers = timba.MAX_PLAYERS();
         bytes32 game = create(r, false);
-        for (uint256 i; i < 1_000; i++) {
+        for (uint256 i; i < r.maxPlayers; i++) {
             join(game, address(uint160(i + 10_000)));
         }
         uint256 beforeGas = gasleft();
         vm.prank(operator);
         timba.completeGame(game, SECRET);
-        emit log_named_uint("settlement gas at 1000 players", beforeGas - gasleft());
+        emit log_named_uint("settlement gas at maximum players", beforeGas - gasleft());
         assertEq(token.balanceOf(address(timba)), 0);
     }
 }

@@ -34,7 +34,7 @@ fn rotated_operator_controls_private_join_and_completion() {
     let (second, second_ata) = fixture.funded_player(token.mint.pubkey(), 10_000);
     let secret = [49; 32];
     let random_hash = hash(&secret).to_bytes();
-    let game = fixture.initialize_game_with_operator(
+    let game = fixture.create_game_with_operator(
         &token,
         &creator,
         creator_ata,

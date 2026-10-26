@@ -22,7 +22,7 @@ fn full_game_returns_game_full() {
     let (first, first_ata) = fixture.funded_player(token.mint.pubkey(), 10_000);
     let (second, second_ata) = fixture.funded_player(token.mint.pubkey(), 10_000);
     let (third, third_ata) = fixture.funded_player(token.mint.pubkey(), 10_000);
-    let game = fixture.initialize_game(
+    let game = fixture.create_game(
         &token,
         &first,
         first_ata,
@@ -60,7 +60,7 @@ fn rejects_duplicate_participant() {
     let mut fixture = common::TimbaFixture::new();
     let token = fixture.token_fixture();
     let (player, player_ata) = fixture.funded_player(token.mint.pubkey(), 10_000);
-    let game = fixture.initialize_game(
+    let game = fixture.create_game(
         &token,
         &player,
         player_ata,
@@ -86,7 +86,7 @@ fn transaction_with_two_final_seat_joins_is_atomic() {
     let (first, first_ata) = fixture.funded_player(token.mint.pubkey(), 10_000);
     let (second, second_ata) = fixture.funded_player(token.mint.pubkey(), 10_000);
     let (third, third_ata) = fixture.funded_player(token.mint.pubkey(), 10_000);
-    let game = fixture.initialize_game(
+    let game = fixture.create_game(
         &token,
         &first,
         first_ata,
@@ -116,7 +116,7 @@ fn rejects_join_with_insufficient_token_balance() {
     let token = fixture.token_fixture();
     let (creator, creator_ata) = fixture.funded_player(token.mint.pubkey(), 10_000);
     let (poor_player, poor_ata) = fixture.empty_player(token.mint.pubkey());
-    let game = fixture.initialize_game(
+    let game = fixture.create_game(
         &token,
         &creator,
         creator_ata,

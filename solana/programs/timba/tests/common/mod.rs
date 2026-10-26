@@ -238,7 +238,7 @@ impl TimbaFixture {
         (player, ata)
     }
 
-    pub fn initialize_game(
+    pub fn create_game(
         &mut self,
         token: &TokenFixture,
         creator: &Keypair,
@@ -247,7 +247,7 @@ impl TimbaFixture {
         random_hash: [u8; 32],
     ) -> Pubkey {
         let oracle_operator = self.operator.insecure_clone();
-        self.initialize_game_with_operator(
+        self.create_game_with_operator(
             token,
             creator,
             creator_ata,
@@ -257,7 +257,7 @@ impl TimbaFixture {
         )
     }
 
-    pub fn initialize_game_with_operator(
+    pub fn create_game_with_operator(
         &mut self,
         token: &TokenFixture,
         creator: &Keypair,
@@ -266,7 +266,7 @@ impl TimbaFixture {
         random_hash: [u8; 32],
         oracle_operator: &Keypair,
     ) -> Pubkey {
-        let (game, instruction) = self.initialize_game_instruction_with_operator(
+        let (game, instruction) = self.create_game_instruction_with_operator(
             token,
             creator.pubkey(),
             creator_ata,
@@ -284,7 +284,7 @@ impl TimbaFixture {
         game
     }
 
-    pub fn initialize_game_instruction(
+    pub fn create_game_instruction(
         &self,
         token: &TokenFixture,
         creator: Pubkey,
@@ -292,7 +292,7 @@ impl TimbaFixture {
         config: GameConfig,
         random_hash: [u8; 32],
     ) -> (Pubkey, Instruction) {
-        self.initialize_game_instruction_with_operator(
+        self.create_game_instruction_with_operator(
             token,
             creator,
             creator_ata,
@@ -302,7 +302,7 @@ impl TimbaFixture {
         )
     }
 
-    pub fn initialize_game_instruction_with_operator(
+    pub fn create_game_instruction_with_operator(
         &self,
         token: &TokenFixture,
         creator: Pubkey,
@@ -314,12 +314,12 @@ impl TimbaFixture {
         let game = Pubkey::find_program_address(&[b"game", &random_hash], &timba::id()).0;
         let instruction = Instruction::new_with_bytes(
             timba::id(),
-            &timba::instruction::InitializeGame {
+            &timba::instruction::CreateGame {
                 config,
                 _random_hash: random_hash,
             }
             .data(),
-            timba::accounts::InitializeGame {
+            timba::accounts::CreateGame {
                 game,
                 creator,
                 oracle: self.oracle,
@@ -388,20 +388,25 @@ impl TimbaFixture {
         )
     }
 
-    pub fn unjoin_game(
+    pub fn refund_player(
         &mut self,
         token: &TokenFixture,
         game: Pubkey,
         player: &Keypair,
         player_ata: Pubkey,
     ) -> bool {
-        let instruction =
-            self.unjoin_instruction(token, game, player.pubkey(), player.pubkey(), player_ata);
+        let instruction = self.refund_player_instruction(
+            token,
+            game,
+            player.pubkey(),
+            player.pubkey(),
+            player_ata,
+        );
         let operator = self.operator.insecure_clone();
         self.send(&[instruction], &[&operator, player])
     }
 
-    pub fn unjoin_instruction(
+    pub fn refund_player_instruction(
         &self,
         token: &TokenFixture,
         game: Pubkey,
@@ -411,8 +416,8 @@ impl TimbaFixture {
     ) -> Instruction {
         Instruction::new_with_bytes(
             timba::id(),
-            &timba::instruction::UnjoinGame {}.data(),
-            timba::accounts::UnjoinGame {
+            &timba::instruction::RefundPlayer {}.data(),
+            timba::accounts::RefundPlayer {
                 game,
                 player,
                 authority,

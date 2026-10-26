@@ -17,7 +17,7 @@ fn fills_high_capacity_game_with_exact_ordered_participants() {
     for _ in 0..65 {
         players.push(fixture.funded_player(token.mint.pubkey(), 750_000));
     }
-    let game = fixture.initialize_game(
+    let game = fixture.create_game(
         &token,
         &players[0].0,
         players[0].1,

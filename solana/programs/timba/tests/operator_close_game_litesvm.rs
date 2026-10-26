@@ -63,7 +63,7 @@ fn operator_cleanup_requires_authorization_empty_game_and_deadline() {
     let token = fixture.token_fixture();
     let (creator, creator_ata) = fixture.funded_player(token.mint.pubkey(), 10_000);
     let empty_game =
-        fixture.initialize_game(&token, &creator, creator_ata, coinflip_config(), [60; 32]);
+        fixture.create_game(&token, &creator, creator_ata, coinflip_config(), [60; 32]);
     let empty_game_rent = fixture.svm.get_account(&empty_game).unwrap().lamports;
 
     let outsider = Keypair::new();
@@ -100,7 +100,7 @@ fn operator_cleanup_requires_authorization_empty_game_and_deadline() {
     );
 
     let active_game =
-        fixture.initialize_game(&token, &creator, creator_ata, coinflip_config(), [61; 32]);
+        fixture.create_game(&token, &creator, creator_ata, coinflip_config(), [61; 32]);
     assert!(fixture.join_game(&token, active_game, &creator, creator_ata));
     let active_deadline = cleanup_deadline(&fixture, active_game);
     set_time(&mut fixture, active_deadline);
@@ -152,7 +152,7 @@ fn operator_cleanup_refunds_empty_giveaway_to_creator() {
     let token = fixture.token_fixture();
     let (creator, creator_ata) = fixture.funded_player(token.mint.pubkey(), 5_000);
     let (_outsider, outsider_ata) = fixture.empty_player(token.mint.pubkey());
-    let game = fixture.initialize_game(
+    let game = fixture.create_game(
         &token,
         &creator,
         creator_ata,

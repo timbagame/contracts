@@ -27,7 +27,7 @@ fn two_player_game() -> (
     let token = fixture.token_fixture();
     let (creator, creator_ata) = fixture.funded_player(token.mint.pubkey(), 10_000);
     let (second, second_ata) = fixture.funded_player(token.mint.pubkey(), 10_000);
-    let game = fixture.initialize_game(
+    let game = fixture.create_game(
         &token,
         &creator,
         creator_ata,
@@ -55,14 +55,14 @@ fn two_player_game() -> (
 }
 
 #[test]
-fn unjoin_refunds_exact_ticket_amount_after_buffer() {
+fn refund_returns_exact_ticket_amount_after_buffer() {
     let (mut fixture, token, creator, creator_ata, _second, _second_ata, game) = two_player_game();
     let game_state = state(&fixture, game);
     let before = fixture.token_balance(creator_ata);
     let mut clock = fixture.svm.get_sysvar::<Clock>();
     clock.unix_timestamp = (game_state.created_at + game_state.timeout + 5) as i64;
     fixture.svm.set_sysvar(&clock);
-    assert!(fixture.unjoin_game(&token, game, &creator, creator_ata));
+    assert!(fixture.refund_player(&token, game, &creator, creator_ata));
     assert_eq!(fixture.token_balance(creator_ata) - before, 1_000);
     assert_eq!(fixture.token_balance(token.vault_ata), 1_000);
 }
@@ -73,7 +73,7 @@ fn creator_cannot_remove_participant_before_underfilled_game_times_out() {
     let token = fixture.token_fixture();
     let (creator, creator_ata) = fixture.funded_player(token.mint.pubkey(), 10_000);
     let (participant, participant_ata) = fixture.funded_player(token.mint.pubkey(), 10_000);
-    let game = fixture.initialize_game(
+    let game = fixture.create_game(
         &token,
         &creator,
         creator_ata,
@@ -88,7 +88,7 @@ fn creator_cannot_remove_participant_before_underfilled_game_times_out() {
         [18; 32],
     );
     assert!(fixture.join_game(&token, game, &participant, participant_ata));
-    let early_instruction = fixture.unjoin_instruction(
+    let early_instruction = fixture.refund_player_instruction(
         &token,
         game,
         participant.pubkey(),
@@ -104,7 +104,7 @@ fn creator_cannot_remove_participant_before_underfilled_game_times_out() {
     clock.unix_timestamp = (game_state.created_at + game_state.timeout) as i64;
     fixture.svm.set_sysvar(&clock);
 
-    let expired_instruction = fixture.unjoin_instruction(
+    let expired_instruction = fixture.refund_player_instruction(
         &token,
         game,
         participant.pubkey(),
@@ -124,8 +124,8 @@ fn close_is_blocked_with_players_then_succeeds_after_refunds() {
     let mut clock = fixture.svm.get_sysvar::<Clock>();
     clock.unix_timestamp = (game_state.created_at + game_state.timeout + 5) as i64;
     fixture.svm.set_sysvar(&clock);
-    assert!(fixture.unjoin_game(&token, game, &creator, creator_ata));
-    assert!(fixture.unjoin_game(&token, game, &second, second_ata));
+    assert!(fixture.refund_player(&token, game, &creator, creator_ata));
+    assert!(fixture.refund_player(&token, game, &second, second_ata));
     assert!(fixture.close_game(&token, game, &creator, creator_ata));
     assert!(fixture.svm.get_account(&game).is_none());
 }

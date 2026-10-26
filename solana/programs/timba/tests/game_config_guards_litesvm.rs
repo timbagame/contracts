@@ -9,13 +9,8 @@ fn rejected(config: GameConfig, seed: u8) {
     let mut fixture = common::TimbaFixture::new();
     let token = fixture.token_fixture();
     let (creator, creator_ata) = fixture.funded_player(token.mint.pubkey(), 10_000);
-    let (game, instruction) = fixture.initialize_game_instruction(
-        &token,
-        creator.pubkey(),
-        creator_ata,
-        config,
-        [seed; 32],
-    );
+    let (game, instruction) =
+        fixture.create_game_instruction(&token, creator.pubkey(), creator_ata, config, [seed; 32]);
     let operator = fixture.operator.insecure_clone();
     assert!(!fixture.send(&[instruction], &[&operator, &creator]));
     assert!(fixture.svm.get_account(&game).is_none());
@@ -26,7 +21,7 @@ fn rejects_zero_amount() {
     let mut fixture = common::TimbaFixture::new();
     let token = fixture.token_fixture();
     let (creator, creator_ata) = fixture.funded_player(token.mint.pubkey(), 10_000);
-    let (game, instruction) = fixture.initialize_game_instruction(
+    let (game, instruction) = fixture.create_game_instruction(
         &token,
         creator.pubkey(),
         creator_ata,
@@ -51,7 +46,7 @@ fn rejects_zero_commitment() {
     let mut fixture = common::TimbaFixture::new();
     let token = fixture.token_fixture();
     let (creator, creator_ata) = fixture.funded_player(token.mint.pubkey(), 10_000);
-    let (game, instruction) = fixture.initialize_game_instruction(
+    let (game, instruction) = fixture.create_game_instruction(
         &token,
         creator.pubkey(),
         creator_ata,
@@ -113,7 +108,7 @@ fn enforces_game_allocation_boundary() {
         let mut fixture = common::TimbaFixture::new();
         let token = fixture.token_fixture();
         let (creator, ata) = fixture.funded_player(token.mint.pubkey(), 10_000);
-        let (game, instruction) = fixture.initialize_game_instruction(
+        let (game, instruction) = fixture.create_game_instruction(
             &token,
             creator.pubkey(),
             ata,
@@ -149,7 +144,7 @@ fn creates_game_at_maximum_duration() {
     let mut fixture = common::TimbaFixture::new();
     let token = fixture.token_fixture();
     let (creator, ata) = fixture.funded_player(token.mint.pubkey(), 10_000);
-    fixture.initialize_game(
+    fixture.create_game(
         &token,
         &creator,
         ata,
