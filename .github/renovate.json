@@ -34,9 +34,9 @@
       "enabled": false
     },
     {
-      "description": "Surfpool 1.6.1 makes refund-race.test.ts fail with GameExpired on every run.",
-      "matchPackageNames": ["solana-foundation/surfpool"],
-      "allowedVersions": "!/^v?1\\.6\\.1$/"
+      "description": "Foundry libraries follow release tags, never branch commits. The submodule (.gitmodules branch) and evm/foundry.lock move together in the grouped PR.",
+      "matchFileNames": [".gitmodules", "evm/foundry.lock"],
+      "versioning": "semver"
     }
   ],
   "customManagers": [
@@ -73,6 +73,18 @@
       "packageNameTemplate": "argotorg/solidity",
       "datasourceTemplate": "github-releases",
       "extractVersionTemplate": "^v(?<version>.+)$"
+    },
+    {
+      "customType": "regex",
+      "description": "Foundry library tags and commits in foundry.lock",
+      "managerFilePatterns": ["/(^|/)foundry\\.lock$/"],
+      "matchStrings": [
+        "\"lib/(?<depName>[^\"]+)\": \\{\\s*\"tag\": \\{\\s*\"name\": \"(?<currentValue>[^\"]+)\",\\s*\"rev\": \"(?<currentDigest>[0-9a-f]{40})\""
+      ],
+      "packageNameTemplate": "https://github.com/{{#if (equals depName 'forge-std')}}foundry-rs{{else}}OpenZeppelin{{/if}}/{{depName}}",
+      "datasourceTemplate": "git-tags",
+      "versioningTemplate": "semver"
     }
-  ]
+  ],
+  "git-submodules": { "enabled": true }
 }
