@@ -72,7 +72,7 @@ The commitment is `SHA256(secret)` over the raw 32-byte secret. Settlement verif
 entropy = keccak256(abi.encode(chainId, contractAddress, gameId, secret, lastEntryBlock))
 ```
 
-Here `chainId` and `lastEntryBlock` are uint256, the contract is address, and gameId/secret are bytes32. This encoding deliberately differs from Solana's secret-plus-little-endian-slot formula. Use separate client implementations and the exported `winnerIndex` view for comparison.
+Here `chainId` and `lastEntryBlock` are encoded as uint256 words, the contract is address, and gameId/secret are bytes32. This encoding deliberately differs from Solana's secret-plus-little-endian-slot formula. Use separate client implementations and the exported `winnerIndex` view for comparison.
 
 Let `n` be the participant count and `threshold = 2^256 mod n`. Interpret entropy as an unsigned 256-bit integer. Accept values at least threshold, choosing `value % n`; otherwise rehash `keccak256(abi.encode(entropy, uint256(round)))`, starting at round zero, for at most 32 attempts. Failure reverts instead of introducing a biased fallback. The selected address comes directly from the participant array; callers cannot choose a payout recipient.
 
@@ -82,7 +82,7 @@ Let `n` be the participant count and `threshold = 2^256 mod n`. Interpret entrop
 
 There is no on-chain token registration or allowlist. Each creation signature binds the token address, so the Oracle approves tokens off-chain by deciding what to sign. Only conventional ERC-20 tokens are supported. OpenZeppelin SafeERC20 and ReentrancyGuardTransient protect transfers and lifecycle mutations. Exact balance deltas reject fee-on-transfer behavior on incoming and outgoing transfers. Rebasing, malicious, or arbitrarily pausable tokens remain unsuitable; a token's own freeze/upgrade powers can prevent recovery despite these checks.
 
-`liabilities(token)` tracks total outstanding game funds, and every payment reduces only its game's amount. Each game stores its terminal status and participant data; nonces and game identifiers are not recycled. Unsolicited token transfers are not credited to a game and have no sweep function. Native ETH is used for transaction gas, not stakes; use an approved wrapped token if appropriate.
+Each game's `totalAmount` holds its outstanding funds, and every payment reduces only its game's amount. Each game stores its terminal status and participant data; nonces and game identifiers are not recycled. Unsolicited token transfers are not credited to a game and have no sweep function. Native ETH is used for transaction gas, not stakes; use an approved wrapped token if appropriate.
 
 ## Deployment
 
@@ -108,7 +108,7 @@ TIMBA_PROXY=0x... TIMBA_IMPLEMENTATION=0x... forge script script/Upgrade.s.sol:U
 
 This script is for upgrades without a migration call. Upgrades needing initialization of new fields require reviewed migration calldata. UUPS checks that the target supports the proxy interface; **it does not validate storage compatibility**. Preserve existing storage slot ordering, field types, and the layouts of Game and OracleConfig; never reorder, remove, or repurpose them. Review the old/new compiler storage layouts (`forge inspect Timba storage-layout`) and test upgrades with active games before broadcast. Dependencies use OpenZeppelin namespaced storage; new Timba fields must also respect existing layout.
 
-Completed/closed games retain their record and participant indexes. Paid-out funds are removed from liabilities; retaining records does not retain prizes. EVM storage is paid when written, with no recurring rent. Unlike Solana account closure, deleting entries does not return the original storage cost: clearing slots consumes gas and can provide only limited transaction gas refunds. Clearing every participant would require work proportional to game size. The current implementation therefore retains terminal history; optional future cleanup should be bounded/batched, preserve replay protection, and rely on events for historical queries.
+Completed/closed games retain their record and participant indexes. Paid-out funds leave the game's `totalAmount`; retaining records does not retain prizes. EVM storage is paid when written, with no recurring rent. Unlike Solana account closure, deleting entries does not return the original storage cost: clearing slots consumes gas and can provide only limited transaction gas refunds. Clearing every participant would require work proportional to game size. The current implementation therefore retains terminal history; optional future cleanup should be bounded/batched, preserve replay protection, and rely on events for historical queries.
 
 Tests upgrade funded games and verify game fields, configuration, participant indexes, nonces, signature domains, settlement, and recovery. The local Anvil smoke also upgrades between joining and settlement.
 

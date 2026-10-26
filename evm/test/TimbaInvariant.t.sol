@@ -104,7 +104,6 @@ contract GameHandler is Test {
                 assertEq(g.totalAmount, 0);
             }
         }
-        assertEq(timba.liabilities(address(token)), total);
         assertEq(token.balanceOf(address(timba)), total);
         uint256 balances = total + token.balanceOf(operator);
         for (uint256 i; i < 4; i++) {

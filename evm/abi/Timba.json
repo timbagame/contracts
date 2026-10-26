@@ -483,9 +483,14 @@
             "internalType": "address"
           },
           {
-            "name": "token",
-            "type": "address",
-            "internalType": "address"
+            "name": "minPlayers",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "maxPlayers",
+            "type": "uint32",
+            "internalType": "uint32"
           },
           {
             "name": "gameType",
@@ -503,19 +508,19 @@
             "internalType": "bool"
           },
           {
-            "name": "minPlayers",
-            "type": "uint32",
-            "internalType": "uint32"
-          },
-          {
-            "name": "maxPlayers",
-            "type": "uint32",
-            "internalType": "uint32"
+            "name": "token",
+            "type": "address",
+            "internalType": "address"
           },
           {
             "name": "expiresAt",
-            "type": "uint64",
-            "internalType": "uint64"
+            "type": "uint48",
+            "internalType": "uint48"
+          },
+          {
+            "name": "lastEntryBlock",
+            "type": "uint48",
+            "internalType": "uint48"
           },
           {
             "name": "ticketAmount",
@@ -531,11 +536,6 @@
             "name": "commitment",
             "type": "bytes32",
             "internalType": "bytes32"
-          },
-          {
-            "name": "lastEntryBlock",
-            "type": "uint256",
-            "internalType": "uint256"
           },
           {
             "name": "participants",
@@ -661,25 +661,6 @@
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "liabilities",
-    "inputs": [
-      {
-        "name": "token",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "amount",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -1012,9 +993,9 @@
       },
       {
         "name": "expiresAt",
-        "type": "uint64",
+        "type": "uint48",
         "indexed": false,
-        "internalType": "uint64"
+        "internalType": "uint48"
       }
     ],
     "anonymous": false

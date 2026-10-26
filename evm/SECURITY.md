@@ -12,8 +12,7 @@ bind the chain, proxy, creator, token, terms, commitment, nonce and deadline.
 Nonces prevent replay but do not prove secret freshness. The Oracle must retire
 commitments across retries and deployments.
 
-Custody is pooled per ERC-20 at the proxy with per-game balances and aggregate
-liabilities. Transfers use exact balance-delta checks and reentrancy protection.
+Custody is pooled per ERC-20 at the proxy with per-game balances. Transfers use exact balance-delta checks and reentrancy protection.
 Rebasing, transfer-tax and malicious tokens are unsuitable; token freeze/upgrade
 powers can block recovery. Native ETH is not accepted as a stake.
 

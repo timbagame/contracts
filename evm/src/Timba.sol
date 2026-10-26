@@ -57,26 +57,27 @@ contract Timba is Ownable2StepUpgradeable, EIP712Upgradeable, UUPSUpgradeable, R
         uint256 deadline;
     }
 
+    // Packed into two slots ahead of the amounts: creation writes one fewer slot and
+    // the first entry updates an existing slot instead of a new one.
     struct Game {
         address creator;
-        address token;
+        uint32 minPlayers;
+        uint32 maxPlayers;
         GameType gameType;
         Status status;
         bool isPrivate;
-        uint32 minPlayers;
-        uint32 maxPlayers;
-        uint64 expiresAt;
+        address token;
+        uint48 expiresAt;
+        uint48 lastEntryBlock;
         uint256 ticketAmount;
         uint256 totalAmount;
         bytes32 commitment;
-        uint256 lastEntryBlock;
         address[] participants;
     }
 
     // Preserve this storage layout and the Game/OracleConfig layouts in future upgrades.
     OracleConfig public config;
     mapping(address creator => uint256 nonce) public creationNonces;
-    mapping(address token => uint256 amount) public liabilities;
     mapping(bytes32 gameId => Game game) private games;
     mapping(bytes32 gameId => mapping(address player => uint256 indexPlusOne)) public participantIndex;
 
@@ -98,7 +99,7 @@ contract Timba is Ownable2StepUpgradeable, EIP712Upgradeable, UUPSUpgradeable, R
     event UpgradeAuthorityProposed(address indexed current, address indexed proposed);
     event UpgradeAuthorityTransferred(address indexed previous, address indexed current);
     event NonceInvalidated(address indexed creator, uint256 nonce);
-    event GameCreated(bytes32 indexed gameId, address indexed creator, CreateRequest request, uint64 expiresAt);
+    event GameCreated(bytes32 indexed gameId, address indexed creator, CreateRequest request, uint48 expiresAt);
     event PlayerJoined(bytes32 indexed gameId, address indexed player, uint256 index, uint256 entryBlock);
     event PlayerRefunded(
         bytes32 indexed gameId, address indexed player, uint256 amount, uint256 removedIndex, address movedParticipant
@@ -147,7 +148,7 @@ contract Timba is Ownable2StepUpgradeable, EIP712Upgradeable, UUPSUpgradeable, R
         if (msg.sender != upgradeAuthority) revert InvalidAuthorization();
     }
 
-    function configure(OracleConfig calldata next) external nonReentrant onlyOwner {
+    function configure(OracleConfig calldata next) external onlyOwner {
         _configure(next);
     }
 
@@ -209,7 +210,7 @@ contract Timba is Ownable2StepUpgradeable, EIP712Upgradeable, UUPSUpgradeable, R
             request.amount == 0 || request.commitment == bytes32(0) || request.minPlayers < minimum
                 || request.maxPlayers < request.minPlayers || request.maxPlayers > limits.maxPlayers
                 || request.timeout < limits.minTimeout || request.timeout > limits.maxTimeout
-                || block.timestamp > type(uint64).max - request.timeout - MAX_BUFFER
+                || block.timestamp > type(uint48).max - request.timeout - MAX_BUFFER
         ) revert InvalidGame();
         if (request.gameType == GameType.Coinflip && request.amount > type(uint256).max / request.maxPlayers) {
             revert InvalidGame();
@@ -224,7 +225,7 @@ contract Timba is Ownable2StepUpgradeable, EIP712Upgradeable, UUPSUpgradeable, R
         game.isPrivate = request.isPrivate;
         game.minPlayers = request.minPlayers;
         game.maxPlayers = request.maxPlayers;
-        game.expiresAt = uint64(block.timestamp + request.timeout);
+        game.expiresAt = uint48(block.timestamp + request.timeout);
         game.commitment = request.commitment;
         if (request.gameType == GameType.Coinflip) {
             game.ticketAmount = request.amount;
@@ -258,7 +259,7 @@ contract Timba is Ownable2StepUpgradeable, EIP712Upgradeable, UUPSUpgradeable, R
         ) revert EntryUnavailable();
         game.participants.push(player);
         participantIndex[gameId][player] = game.participants.length;
-        game.lastEntryBlock = block.number;
+        game.lastEntryBlock = uint48(block.number);
         game.totalAmount += game.ticketAmount;
         if (game.ticketAmount != 0) _deposit(game.token, player, game.ticketAmount);
         emit PlayerJoined(gameId, player, game.participants.length - 1, game.lastEntryBlock);
@@ -266,15 +267,17 @@ contract Timba is Ownable2StepUpgradeable, EIP712Upgradeable, UUPSUpgradeable, R
 
     function completeGame(bytes32 gameId, bytes32 secret) external nonReentrant onlyOwner {
         Game storage game = _openGame(gameId);
-        if (!_ready(game) || block.timestamp >= uint256(game.expiresAt) + config.buffer) revert GameUnavailable();
+        OracleConfig memory current = config;
+        if (!_ready(game) || block.timestamp >= uint256(game.expiresAt) + current.buffer) revert GameUnavailable();
         address winner = game.participants[_winner(gameId, game, secret)];
         uint256 total = game.totalAmount;
-        uint256 fee = Math.mulDiv(total, config.feePercentage, 100);
+        uint256 fee = Math.mulDiv(total, current.feePercentage, 100);
+        uint256 prize = total - fee;
         game.totalAmount = 0;
         game.status = Status.Completed;
-        _pay(game.token, winner, total - fee);
-        _pay(game.token, owner(), fee);
-        emit GameCompleted(gameId, winner, total - fee, fee, secret);
+        _pay(game.token, winner, prize);
+        _pay(game.token, msg.sender, fee);
+        emit GameCompleted(gameId, winner, prize, fee, secret);
     }
 
     function winnerIndex(bytes32 gameId, bytes32 secret) external view returns (uint256) {
@@ -325,7 +328,7 @@ contract Timba is Ownable2StepUpgradeable, EIP712Upgradeable, UUPSUpgradeable, R
         }
         game.participants.pop();
         delete participantIndex[gameId][player];
-        game.lastEntryBlock = block.number;
+        game.lastEntryBlock = uint48(block.number);
         game.totalAmount -= game.ticketAmount;
         _pay(game.token, player, game.ticketAmount);
         emit PlayerRefunded(gameId, player, game.ticketAmount, index - 1, moved);
@@ -371,7 +374,6 @@ contract Timba is Ownable2StepUpgradeable, EIP712Upgradeable, UUPSUpgradeable, R
         uint256 beforeBalance = asset.balanceOf(address(this));
         asset.safeTransferFrom(from, address(this), amount);
         if (asset.balanceOf(address(this)) != beforeBalance + amount) revert InvalidTransfer();
-        liabilities[token] += amount;
     }
 
     function _pay(address token, address to, uint256 amount) private {
@@ -379,7 +381,6 @@ contract Timba is Ownable2StepUpgradeable, EIP712Upgradeable, UUPSUpgradeable, R
         IERC20 asset = IERC20(token);
         uint256 beforeBalance = asset.balanceOf(address(this));
         uint256 recipientBalance = asset.balanceOf(to);
-        liabilities[token] -= amount;
         asset.safeTransfer(to, amount);
         if (
             asset.balanceOf(address(this)) + amount != beforeBalance || asset.balanceOf(to) != recipientBalance + amount
