@@ -19,7 +19,7 @@ use {
     solana_transaction::{versioned::VersionedTransaction, TransactionError},
     spl_associated_token_account_interface::{
         address::get_associated_token_address_with_program_id,
-        instruction::create_associated_token_account, program::ID as ASSOCIATED_TOKEN_PROGRAM_ID,
+        instruction::create_associated_token_account,
     },
     spl_token_interface::{
         instruction as token_instruction,
@@ -329,7 +329,6 @@ impl TimbaFixture {
                     game_vault: token.game_vault,
                     game_vault_token_account: token.vault_ata,
                     token_program: TOKEN_PROGRAM_ID,
-                    associated_token_program: ASSOCIATED_TOKEN_PROGRAM_ID,
                 },
                 creator_token_account: creator_ata,
                 system_program: system_program::ID,
@@ -381,7 +380,6 @@ impl TimbaFixture {
                     game_vault: token.game_vault,
                     game_vault_token_account: token.vault_ata,
                     token_program: TOKEN_PROGRAM_ID,
-                    associated_token_program: ASSOCIATED_TOKEN_PROGRAM_ID,
                 },
                 player_token_account: player_ata,
                 oracle: self.oracle,
@@ -424,7 +422,6 @@ impl TimbaFixture {
                     game_vault: token.game_vault,
                     game_vault_token_account: token.vault_ata,
                     token_program: TOKEN_PROGRAM_ID,
-                    associated_token_program: ASSOCIATED_TOKEN_PROGRAM_ID,
                 },
                 player_token_account: player_ata,
             }
@@ -518,7 +515,6 @@ impl TimbaFixture {
                     game_vault: token.game_vault,
                     game_vault_token_account: token.vault_ata,
                     token_program: TOKEN_PROGRAM_ID,
-                    associated_token_program: ASSOCIATED_TOKEN_PROGRAM_ID,
                 },
                 oracle: self.oracle,
                 oracle_operator,
@@ -562,7 +558,6 @@ impl TimbaFixture {
                     game_vault: token.game_vault,
                     game_vault_token_account: token.vault_ata,
                     token_program: TOKEN_PROGRAM_ID,
-                    associated_token_program: ASSOCIATED_TOKEN_PROGRAM_ID,
                 },
                 creator_token_account: creator_ata,
             }
@@ -590,7 +585,6 @@ impl TimbaFixture {
                     game_vault: token.game_vault,
                     game_vault_token_account: token.vault_ata,
                     token_program: TOKEN_PROGRAM_ID,
-                    associated_token_program: ASSOCIATED_TOKEN_PROGRAM_ID,
                 },
                 creator,
                 creator_token_account: creator_ata,

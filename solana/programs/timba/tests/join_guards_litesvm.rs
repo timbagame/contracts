@@ -45,6 +45,14 @@ fn full_game_returns_game_full() {
         common::custom_error_code(fixture.send_result(&[instruction], &[&operator, &third])),
         common::anchor_error(ErrorCode::GameFull)
     );
+
+    // A full game reports GameFull before duplicate or balance checks.
+    let duplicate = fixture.join_instruction(&token, game, first.pubkey(), first_ata);
+    let operator = fixture.operator.insecure_clone();
+    assert_eq!(
+        common::custom_error_code(fixture.send_result(&[duplicate], &[&operator, &first])),
+        common::anchor_error(ErrorCode::GameFull)
+    );
 }
 
 #[test]

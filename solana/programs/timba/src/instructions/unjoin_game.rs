@@ -6,25 +6,20 @@ use anchor_lang::prelude::*;
 pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
     let vault_bump = ctx.bumps.game_vault_ctx.game_vault;
     let game = &mut ctx.accounts.game;
-
     let oracle = &ctx.accounts.oracle;
     let (current_time, current_slot) = get_clock_snapshot()?;
     let player_key = ctx.accounts.player.key();
-    let player_index = game
-        .participant_index(&player_key)
-        .ok_or(ErrorCode::ParticipantNotFound)?;
 
     // Entries are committed until timeout. A failed underfilled game unlocks at
     // timeout; a ready game unlocks only after the oracle recovery boundary.
+    require!(game.is_expired(current_time), ErrorCode::GameNotExpired);
     require!(
         game.can_unjoin(oracle.oracle_buffer_time, current_time),
         ErrorCode::OracleBufferNotExpired
     );
 
-    // No need to check completion explicitly: completed games are closed (see CompleteGame: close = creator)
-
     // Remove the exact participant (single ticket per player).
-    let removal = game.remove_player_at(player_index)?;
+    let removal = game.remove_participant(&player_key)?;
     game.last_slot = current_slot;
 
     // Refund player directly

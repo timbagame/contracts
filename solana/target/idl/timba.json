@@ -142,10 +142,6 @@
             {
               "name": "token_program",
               "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
-            },
-            {
-              "name": "associated_token_program",
-              "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
             }
           ]
         },
@@ -394,10 +390,6 @@
             {
               "name": "token_program",
               "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
-            },
-            {
-              "name": "associated_token_program",
-              "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
             }
           ]
         },
@@ -730,10 +722,6 @@
             {
               "name": "token_program",
               "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
-            },
-            {
-              "name": "associated_token_program",
-              "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
             }
           ]
         },
@@ -910,7 +898,6 @@
         },
         {
           "name": "player",
-          "writable": true,
           "signer": true
         },
         {
@@ -1010,10 +997,6 @@
             {
               "name": "token_program",
               "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
-            },
-            {
-              "name": "associated_token_program",
-              "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
             }
           ]
         },
@@ -1232,10 +1215,6 @@
             {
               "name": "token_program",
               "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
-            },
-            {
-              "name": "associated_token_program",
-              "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
             }
           ]
         },
@@ -1441,10 +1420,6 @@
             {
               "name": "token_program",
               "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
-            },
-            {
-              "name": "associated_token_program",
-              "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
             }
           ]
         },
@@ -1756,8 +1731,8 @@
     },
     {
       "code": 7105,
-      "name": "GameAlreadyCompleted",
-      "msg": "Game already settled"
+      "name": "GameNotExpired",
+      "msg": "Game not expired"
     },
     {
       "code": 7106,

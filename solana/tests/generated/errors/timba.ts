@@ -31,8 +31,8 @@ export const TIMBA_ERROR__GAME_NOT_READY_FOR_ORACLE = 0x1bbe; // 7102
 export const TIMBA_ERROR__GAME_HAS_ACTIVE_PLAYERS = 0x1bbf; // 7103
 /** GameExpired: Game expired */
 export const TIMBA_ERROR__GAME_EXPIRED = 0x1bc0; // 7104
-/** GameAlreadyCompleted: Game already settled */
-export const TIMBA_ERROR__GAME_ALREADY_COMPLETED = 0x1bc1; // 7105
+/** GameNotExpired: Game not expired */
+export const TIMBA_ERROR__GAME_NOT_EXPIRED = 0x1bc1; // 7105
 /** OracleBufferNotExpired: Oracle buffer active */
 export const TIMBA_ERROR__ORACLE_BUFFER_NOT_EXPIRED = 0x1bc2; // 7106
 /** ParticipantStorageExceeded: Participant store full */
@@ -77,11 +77,11 @@ export const TIMBA_ERROR__INVALID_TOKEN_MINT = 0x1ce9; // 7401
 export type TimbaError =
   | typeof TIMBA_ERROR__ALREADY_JOINED
   | typeof TIMBA_ERROR__ARITHMETIC_OVERFLOW
-  | typeof TIMBA_ERROR__GAME_ALREADY_COMPLETED
   | typeof TIMBA_ERROR__GAME_CLEANUP_NOT_AVAILABLE
   | typeof TIMBA_ERROR__GAME_EXPIRED
   | typeof TIMBA_ERROR__GAME_FULL
   | typeof TIMBA_ERROR__GAME_HAS_ACTIVE_PLAYERS
+  | typeof TIMBA_ERROR__GAME_NOT_EXPIRED
   | typeof TIMBA_ERROR__GAME_NOT_READY_FOR_ORACLE
   | typeof TIMBA_ERROR__GAME_WAITING_FOR_ORACLE
   | typeof TIMBA_ERROR__INSUFFICIENT_BALANCE
@@ -110,11 +110,11 @@ if (process.env["NODE_ENV"] !== "production") {
   timbaErrorMessages = {
     [TIMBA_ERROR__ALREADY_JOINED]: `Already joined`,
     [TIMBA_ERROR__ARITHMETIC_OVERFLOW]: `Arithmetic overflow`,
-    [TIMBA_ERROR__GAME_ALREADY_COMPLETED]: `Game already settled`,
     [TIMBA_ERROR__GAME_CLEANUP_NOT_AVAILABLE]: `Game cleanup not available`,
     [TIMBA_ERROR__GAME_EXPIRED]: `Game expired`,
     [TIMBA_ERROR__GAME_FULL]: `Game full`,
     [TIMBA_ERROR__GAME_HAS_ACTIVE_PLAYERS]: `Active players remain`,
+    [TIMBA_ERROR__GAME_NOT_EXPIRED]: `Game not expired`,
     [TIMBA_ERROR__GAME_NOT_READY_FOR_ORACLE]: `Oracle not ready`,
     [TIMBA_ERROR__GAME_WAITING_FOR_ORACLE]: `Awaiting oracle`,
     [TIMBA_ERROR__INSUFFICIENT_BALANCE]: `Insufficient balance`,

@@ -1,5 +1,4 @@
 use anchor_lang::prelude::*;
-use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token::{transfer_checked, Mint, Token, TokenAccount, TransferChecked};
 
 use crate::error::ErrorCode;
@@ -112,8 +111,6 @@ pub struct GameVaultContext<'info> {
     pub game_vault_token_account: Account<'info, TokenAccount>,
 
     pub token_program: Program<'info, Token>,
-
-    pub associated_token_program: Program<'info, AssociatedToken>,
 }
 
 impl<'info> GameVaultContext<'info> {
@@ -216,13 +213,12 @@ pub struct InitializeGame<'info> {
 pub struct JoinGame<'info> {
     #[account(
         mut,
-        constraint = game.is_not_full() @ ErrorCode::GameFull,
+        constraint = game.tickets_count < game.max_tickets @ ErrorCode::GameFull,
         constraint = game.can_join_private(oracle_operator.as_ref(), &oracle.operator) @ ErrorCode::PrivateGameAccessDenied,
         constraint = game.has_sufficient_balance_for_join(player_token_account.amount) @ ErrorCode::InsufficientBalance,
         constraint = game.token_mint == game_vault_ctx.token_mint.key() @ ErrorCode::InvalidTokenMint,
     )]
     pub game: Account<'info, Game>,
-    #[account(mut)]
     pub player: Signer<'info>,
     pub oracle_operator: Option<Signer<'info>>,
     pub game_vault_ctx: GameVaultContext<'info>,
@@ -247,7 +243,6 @@ pub struct CompleteGame<'info> {
         bump,
         constraint = game.is_creator(&creator.key()) @ ErrorCode::InvalidCreator,
         constraint = Game::verify_secret_key(random_hash, secret_key) @ ErrorCode::InvalidSecretKey,
-        constraint = game.total_amount > 0 @ ErrorCode::GameAlreadyCompleted,
         constraint = game.token_mint == game_vault_ctx.token_mint.key() @ ErrorCode::InvalidTokenMint,
     )]
     pub game: Account<'info, Game>,
@@ -336,7 +331,6 @@ pub struct OperatorCloseGame<'info> {
         mut,
         close = oracle_operator,
         constraint = game.tickets_count == 0 @ ErrorCode::GameHasActivePlayers,
-        constraint = game.participants.is_empty() @ ErrorCode::GameHasActivePlayers,
         constraint = game.token_mint == game_vault_ctx.token_mint.key() @ ErrorCode::InvalidTokenMint,
     )]
     pub game: Account<'info, Game>,

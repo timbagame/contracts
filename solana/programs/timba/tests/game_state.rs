@@ -132,8 +132,8 @@ fn completion_and_unjoin_windows_cover_all_states() {
     assert!(game.can_unjoin(5, 115));
     game.tickets_count = 3;
     assert!(game.is_ready_for_completion(100));
-    game.complete();
-    assert!(!game.waiting_for_oracle(5, 100));
+    assert!(game.waiting_for_oracle(5, 100));
+    assert!(!game.can_unjoin(5, 100));
 }
 
 #[test]
@@ -234,6 +234,11 @@ fn single_ticket_always_selects_first_participant() {
         ..Game::default()
     };
     assert_eq!(game.calculate_winner_index([1; 32]), Some(0));
+}
+
+#[test]
+fn empty_game_has_no_winner_index() {
+    assert_eq!(Game::default().calculate_winner_index([1; 32]), None);
 }
 use timba_test_harness as timba;
 
@@ -337,10 +342,10 @@ fn participant_allocation_failure_preserves_game_state() {
 }
 
 #[test]
-fn direct_removal_rejects_empty_and_invalid_positions_without_mutation() {
+fn removal_rejects_missing_participants_without_mutation() {
     let mut empty = Game::default();
     assert_eq!(
-        empty.remove_player_at(0).unwrap_err(),
+        empty.remove_participant(&Pubkey::new_unique()).unwrap_err(),
         anchor_lang::error::Error::from(timba::error::ErrorCode::ParticipantNotFound)
     );
     let player = Pubkey::new_unique();
@@ -352,8 +357,8 @@ fn direct_removal_rejects_empty_and_invalid_positions_without_mutation() {
         ..Game::default()
     };
     assert_eq!(
-        game.remove_player_at(1).unwrap_err(),
-        anchor_lang::error::Error::from(timba::error::ErrorCode::ParticipantIndexOutOfRange)
+        game.remove_participant(&Pubkey::new_unique()).unwrap_err(),
+        anchor_lang::error::Error::from(timba::error::ErrorCode::ParticipantNotFound)
     );
     assert_eq!(game.participants, vec![player]);
     assert_eq!(game.tickets_count, 1);

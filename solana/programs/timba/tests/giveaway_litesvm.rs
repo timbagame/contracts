@@ -5,6 +5,7 @@ use {
     solana_sha256_hasher::hash,
     solana_signer::Signer,
     timba::{
+        error::ErrorCode,
         state::{Game, GameType},
         GameConfig,
     },
@@ -95,10 +96,28 @@ fn ready_giveaway_blocks_close_until_buffer_then_refunds_full_prize() {
         [40; 32],
     );
     assert!(fixture.join_game(&token, game, &participant, participant_ata));
-    assert!(!fixture.close_game(&token, game, &creator, creator_ata));
+    let close = |fixture: &mut common::TimbaFixture| {
+        let instruction =
+            fixture.close_game_instruction(&token, game, creator.pubkey(), creator_ata);
+        let operator = fixture.operator.insecure_clone();
+        common::custom_error_code(fixture.send_result(&[instruction], &[&operator, &creator]))
+    };
+    assert_eq!(
+        close(&mut fixture),
+        common::anchor_error(ErrorCode::GameNotExpired)
+    );
+
     let game_state = state(&fixture, game);
+    let expiry = game_state.created_at + game_state.timeout;
     let mut clock = fixture.svm.get_sysvar::<Clock>();
-    clock.unix_timestamp = (game_state.created_at + game_state.timeout + 5) as i64;
+    clock.unix_timestamp = expiry as i64;
+    fixture.svm.set_sysvar(&clock);
+    assert_eq!(
+        close(&mut fixture),
+        common::anchor_error(ErrorCode::GameWaitingForOracle)
+    );
+
+    clock.unix_timestamp = (expiry + 5) as i64;
     fixture.svm.set_sysvar(&clock);
     assert!(fixture.close_game(&token, game, &creator, creator_ata));
     assert_eq!(fixture.token_balance(creator_ata), 5_000);

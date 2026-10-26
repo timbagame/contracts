@@ -20,7 +20,7 @@ fn error_codes_are_sequential_within_each_category() {
             ErrorCode::GameNotReadyForOracle as u32,
             ErrorCode::GameHasActivePlayers as u32,
             ErrorCode::GameExpired as u32,
-            ErrorCode::GameAlreadyCompleted as u32,
+            ErrorCode::GameNotExpired as u32,
             ErrorCode::OracleBufferNotExpired as u32,
             ErrorCode::ParticipantStorageExceeded as u32,
             ErrorCode::GameCleanupNotAvailable as u32,
@@ -153,7 +153,7 @@ fn preserves_join_and_buffer_error_codes() {
     let payer = fixture.operator.insecure_clone();
     assert_eq!(
         common::custom_error_code(fixture.send_result(&[early_unjoin], &[&payer, &creator])),
-        common::anchor_error(ErrorCode::OracleBufferNotExpired)
+        common::anchor_error(ErrorCode::GameNotExpired)
     );
 }
 use timba_test_harness as timba;

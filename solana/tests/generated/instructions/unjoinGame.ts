@@ -64,8 +64,6 @@ export type UnjoinGameInstruction<
   TAccountGameVaultTokenAccount extends string | AccountMeta<string> = string,
   TAccountTokenProgram extends string | AccountMeta<string> =
     "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
-  TAccountAssociatedTokenProgram extends string | AccountMeta<string> =
-    "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL",
   TAccountPlayerTokenAccount extends string | AccountMeta<string> = string,
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
@@ -86,9 +84,6 @@ export type UnjoinGameInstruction<
       TAccountTokenProgram extends string
         ? ReadonlyAccount<TAccountTokenProgram>
         : TAccountTokenProgram,
-      TAccountAssociatedTokenProgram extends string
-        ? ReadonlyAccount<TAccountAssociatedTokenProgram>
-        : TAccountAssociatedTokenProgram,
       TAccountPlayerTokenAccount extends string
         ? WritableAccount<TAccountPlayerTokenAccount>
         : TAccountPlayerTokenAccount,
@@ -127,7 +122,6 @@ export type UnjoinGameAsyncInput<
   TAccountGameVault extends InstructionAccountInput = InstructionAccountInput,
   TAccountGameVaultTokenAccount extends InstructionAccountInput = InstructionAccountInput,
   TAccountTokenProgram extends InstructionAccountInput = InstructionAccountInput,
-  TAccountAssociatedTokenProgram extends InstructionAccountInput = InstructionAccountInput,
   TAccountPlayerTokenAccount extends InstructionAccountInput = InstructionAccountInput,
 > = {
   game: TAccountGame;
@@ -138,7 +132,6 @@ export type UnjoinGameAsyncInput<
   gameVault?: TAccountGameVault;
   gameVaultTokenAccount?: TAccountGameVaultTokenAccount;
   tokenProgram?: TAccountTokenProgram;
-  associatedTokenProgram?: TAccountAssociatedTokenProgram;
   playerTokenAccount: TAccountPlayerTokenAccount;
 };
 
@@ -151,7 +144,6 @@ export async function getUnjoinGameInstructionAsync<
   TAccountGameVault extends InstructionAccountInput,
   TAccountGameVaultTokenAccount extends InstructionAccountInput,
   TAccountTokenProgram extends InstructionAccountInput,
-  TAccountAssociatedTokenProgram extends InstructionAccountInput,
   TAccountPlayerTokenAccount extends InstructionAccountInput,
   TProgramAddress extends Address = typeof TIMBA_PROGRAM_ADDRESS,
 >(
@@ -164,7 +156,6 @@ export async function getUnjoinGameInstructionAsync<
     TAccountGameVault,
     TAccountGameVaultTokenAccount,
     TAccountTokenProgram,
-    TAccountAssociatedTokenProgram,
     TAccountPlayerTokenAccount
   >,
   config?: { programAddress?: TProgramAddress | { readonly address: TProgramAddress } },
@@ -195,10 +186,6 @@ export async function getUnjoinGameInstructionAsync<
       InstructionAccountInputAddress<TAccountTokenProgram>
     >,
     ResolvedInstructionAccountMeta<
-      TAccountAssociatedTokenProgram,
-      InstructionAccountInputAddress<TAccountAssociatedTokenProgram>
-    >,
-    ResolvedInstructionAccountMeta<
       TAccountPlayerTokenAccount,
       InstructionAccountInputAddress<TAccountPlayerTokenAccount>
     >
@@ -226,11 +213,6 @@ export async function getUnjoinGameInstructionAsync<
       isWritable: true,
     },
     tokenProgram: { value: input.tokenProgram ?? null, isSigner: false, isWritable: false },
-    associatedTokenProgram: {
-      value: input.associatedTokenProgram ?? null,
-      isSigner: false,
-      isWritable: false,
-    },
     playerTokenAccount: {
       value: input.playerTokenAccount ?? null,
       isSigner: false,
@@ -275,10 +257,6 @@ export async function getUnjoinGameInstructionAsync<
       ],
     });
   }
-  if (!accounts.associatedTokenProgram.value) {
-    accounts.associatedTokenProgram.value =
-      "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL" as Address<"ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL">;
-  }
 
   return Object.freeze({
     accounts: [
@@ -290,7 +268,6 @@ export async function getUnjoinGameInstructionAsync<
       getAccountMeta("gameVault", accounts.gameVault),
       getAccountMeta("gameVaultTokenAccount", accounts.gameVaultTokenAccount),
       getAccountMeta("tokenProgram", accounts.tokenProgram),
-      getAccountMeta("associatedTokenProgram", accounts.associatedTokenProgram),
       getAccountMeta("playerTokenAccount", accounts.playerTokenAccount),
     ],
     data: getUnjoinGameInstructionDataEncoder().encode({}),
@@ -321,10 +298,6 @@ export async function getUnjoinGameInstructionAsync<
       InstructionAccountInputAddress<TAccountTokenProgram>
     >,
     ResolvedInstructionAccountMeta<
-      TAccountAssociatedTokenProgram,
-      InstructionAccountInputAddress<TAccountAssociatedTokenProgram>
-    >,
-    ResolvedInstructionAccountMeta<
       TAccountPlayerTokenAccount,
       InstructionAccountInputAddress<TAccountPlayerTokenAccount>
     >
@@ -340,7 +313,6 @@ export type UnjoinGameInput<
   TAccountGameVault extends InstructionAccountInput = InstructionAccountInput,
   TAccountGameVaultTokenAccount extends InstructionAccountInput = InstructionAccountInput,
   TAccountTokenProgram extends InstructionAccountInput = InstructionAccountInput,
-  TAccountAssociatedTokenProgram extends InstructionAccountInput = InstructionAccountInput,
   TAccountPlayerTokenAccount extends InstructionAccountInput = InstructionAccountInput,
 > = {
   game: TAccountGame;
@@ -351,7 +323,6 @@ export type UnjoinGameInput<
   gameVault: TAccountGameVault;
   gameVaultTokenAccount: TAccountGameVaultTokenAccount;
   tokenProgram?: TAccountTokenProgram;
-  associatedTokenProgram?: TAccountAssociatedTokenProgram;
   playerTokenAccount: TAccountPlayerTokenAccount;
 };
 
@@ -364,7 +335,6 @@ export function getUnjoinGameInstruction<
   TAccountGameVault extends InstructionAccountInput,
   TAccountGameVaultTokenAccount extends InstructionAccountInput,
   TAccountTokenProgram extends InstructionAccountInput,
-  TAccountAssociatedTokenProgram extends InstructionAccountInput,
   TAccountPlayerTokenAccount extends InstructionAccountInput,
   TProgramAddress extends Address = typeof TIMBA_PROGRAM_ADDRESS,
 >(
@@ -377,7 +347,6 @@ export function getUnjoinGameInstruction<
     TAccountGameVault,
     TAccountGameVaultTokenAccount,
     TAccountTokenProgram,
-    TAccountAssociatedTokenProgram,
     TAccountPlayerTokenAccount
   >,
   config?: { programAddress?: TProgramAddress | { readonly address: TProgramAddress } },
@@ -407,10 +376,6 @@ export function getUnjoinGameInstruction<
     InstructionAccountInputAddress<TAccountTokenProgram>
   >,
   ResolvedInstructionAccountMeta<
-    TAccountAssociatedTokenProgram,
-    InstructionAccountInputAddress<TAccountAssociatedTokenProgram>
-  >,
-  ResolvedInstructionAccountMeta<
     TAccountPlayerTokenAccount,
     InstructionAccountInputAddress<TAccountPlayerTokenAccount>
   >
@@ -437,11 +402,6 @@ export function getUnjoinGameInstruction<
       isWritable: true,
     },
     tokenProgram: { value: input.tokenProgram ?? null, isSigner: false, isWritable: false },
-    associatedTokenProgram: {
-      value: input.associatedTokenProgram ?? null,
-      isSigner: false,
-      isWritable: false,
-    },
     playerTokenAccount: {
       value: input.playerTokenAccount ?? null,
       isSigner: false,
@@ -458,10 +418,6 @@ export function getUnjoinGameInstruction<
     accounts.tokenProgram.value =
       "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA" as Address<"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA">;
   }
-  if (!accounts.associatedTokenProgram.value) {
-    accounts.associatedTokenProgram.value =
-      "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL" as Address<"ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL">;
-  }
 
   return Object.freeze({
     accounts: [
@@ -473,7 +429,6 @@ export function getUnjoinGameInstruction<
       getAccountMeta("gameVault", accounts.gameVault),
       getAccountMeta("gameVaultTokenAccount", accounts.gameVaultTokenAccount),
       getAccountMeta("tokenProgram", accounts.tokenProgram),
-      getAccountMeta("associatedTokenProgram", accounts.associatedTokenProgram),
       getAccountMeta("playerTokenAccount", accounts.playerTokenAccount),
     ],
     data: getUnjoinGameInstructionDataEncoder().encode({}),
@@ -504,10 +459,6 @@ export function getUnjoinGameInstruction<
       InstructionAccountInputAddress<TAccountTokenProgram>
     >,
     ResolvedInstructionAccountMeta<
-      TAccountAssociatedTokenProgram,
-      InstructionAccountInputAddress<TAccountAssociatedTokenProgram>
-    >,
-    ResolvedInstructionAccountMeta<
       TAccountPlayerTokenAccount,
       InstructionAccountInputAddress<TAccountPlayerTokenAccount>
     >
@@ -528,8 +479,7 @@ export type ParsedUnjoinGameInstruction<
     gameVault: TAccountMetas[5];
     gameVaultTokenAccount: TAccountMetas[6];
     tokenProgram: TAccountMetas[7];
-    associatedTokenProgram: TAccountMetas[8];
-    playerTokenAccount: TAccountMetas[9];
+    playerTokenAccount: TAccountMetas[8];
   };
   data: UnjoinGameInstructionData;
 };
@@ -542,10 +492,10 @@ export function parseUnjoinGameInstruction<
     InstructionWithAccounts<TAccountMetas> &
     InstructionWithData<ReadonlyUint8Array>,
 ): ParsedUnjoinGameInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 10) {
+  if (instruction.accounts.length < 9) {
     throw new SolanaError(SOLANA_ERROR__PROGRAM_CLIENTS__INSUFFICIENT_ACCOUNT_METAS, {
       actualAccountMetas: instruction.accounts.length,
-      expectedAccountMetas: 10,
+      expectedAccountMetas: 9,
     });
   }
   let accountIndex = 0;
@@ -565,7 +515,6 @@ export function parseUnjoinGameInstruction<
       gameVault: getNextAccount(),
       gameVaultTokenAccount: getNextAccount(),
       tokenProgram: getNextAccount(),
-      associatedTokenProgram: getNextAccount(),
       playerTokenAccount: getNextAccount(),
     },
     data: getUnjoinGameInstructionDataDecoder().decode(instruction.data),

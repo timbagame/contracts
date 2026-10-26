@@ -57,9 +57,8 @@ pub const MAX_GAME_TICKETS: u32 =
 
 // GAME TYPES
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Copy)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Default, PartialEq)]
 #[repr(u8)]
-#[derive(Default)]
 pub enum GameType {
     /// Two or more players compete for the pot
     #[default]
@@ -119,7 +118,7 @@ impl Oracle {
         fee_percentage <= 10
     }
 
-    /// Validates oracle buffer time is strictly positive
+    /// Validates oracle buffer time is positive and at most `MAX_ORACLE_BUFFER_TIME`
     #[must_use]
     pub fn is_valid_buffer_time(oracle_buffer_time: u64) -> bool {
         (1..=MAX_ORACLE_BUFFER_TIME).contains(&oracle_buffer_time)
@@ -242,41 +241,17 @@ impl Game {
         current_time >= expires_at
     }
 
-    /// Checks if the game is waiting for oracle to complete it
+    /// Checks if the game is ready and only the oracle may settle it
     #[must_use]
     pub fn waiting_for_oracle(&self, oracle_buffer_time: u64, current_time: u64) -> bool {
-        // If game is already completed, no need to wait for oracle
-        if self.total_amount == 0 {
-            return false;
-        }
-
-        let expires_at = self.buffer_expires_at(oracle_buffer_time);
-
-        // Mirror `is_buffer_expired` so the two helpers are complementary. Once the
-        // buffer expiry second is reached we should stop reporting "waiting".
-        let still_waiting = if oracle_buffer_time == 0 {
-            current_time <= expires_at
-        } else {
-            current_time < expires_at
-        };
-
-        self.is_ready_for_completion(current_time) && still_waiting
+        self.is_ready_for_completion(current_time)
+            && !self.is_buffer_expired(oracle_buffer_time, current_time)
     }
 
-    /// Determines if participant removal is available at the current moment.
+    /// Checks if entries are unlocked: the game expired and the oracle can no longer settle it
     #[must_use]
     pub fn can_unjoin(&self, oracle_buffer_time: u64, current_time: u64) -> bool {
-        if !self.is_expired(current_time) {
-            return false;
-        }
-
-        !self.is_ready_for_completion(current_time)
-            || self.is_buffer_expired(oracle_buffer_time, current_time)
-    }
-
-    /// Marks the game as completed by setting `total_amount` to zero
-    pub fn complete(&mut self) {
-        self.total_amount = 0;
+        self.is_expired(current_time) && !self.waiting_for_oracle(oracle_buffer_time, current_time)
     }
 
     /// Verifies the secret key matches the random hash using SHA256
@@ -292,8 +267,10 @@ impl Game {
         // Use total tickets count for all game types
         let n_entries = u64::from(self.tickets_count);
 
-        if n_entries == 1 {
-            return Some(0);
+        match n_entries {
+            0 => return None,
+            1 => return Some(0),
+            _ => {}
         }
 
         // Hash secret and slot together without allocation
@@ -344,11 +321,6 @@ impl Game {
         self.creator == *creator
     }
 
-    #[must_use]
-    pub fn is_not_full(&self) -> bool {
-        self.tickets_count < self.max_tickets
-    }
-
     /// Add player to the game and update counters
     pub fn add_player_to_game(&mut self, participant: Pubkey) -> Result<u32> {
         if self.tickets_count >= self.max_tickets {
@@ -384,15 +356,11 @@ impl Game {
         Ok(())
     }
 
-    pub fn remove_player_at(&mut self, index: usize) -> Result<ParticipantRemoval> {
-        if self.tickets_count == 0 {
-            return err!(ErrorCode::ParticipantNotFound);
-        }
-
-        if index >= self.participants.len() {
-            return err!(ErrorCode::ParticipantIndexOutOfRange);
-        }
-
+    /// Removes a participant in O(1) after lookup and reports any participant moved into its slot.
+    pub fn remove_participant(&mut self, participant: &Pubkey) -> Result<ParticipantRemoval> {
+        let index = self
+            .participant_index(participant)
+            .ok_or(ErrorCode::ParticipantNotFound)?;
         let removed_index =
             u32::try_from(index).map_err(|_| ErrorCode::ParticipantIndexOutOfRange)?;
         let moved_participant = if index + 1 < self.participants.len() {
@@ -418,12 +386,6 @@ impl Game {
         })
     }
 
-    #[must_use]
-    pub fn active_participants(&self) -> &[Pubkey] {
-        let len = self.participants.len().min(self.tickets_count as usize);
-        &self.participants[..len]
-    }
-
     /// Returns true if the participant already exists in the active set.
     #[must_use]
     pub fn contains_participant(&self, participant: &Pubkey) -> bool {
@@ -433,21 +395,9 @@ impl Game {
     /// Returns the index of the participant if it is present.
     #[must_use]
     pub fn participant_index(&self, participant: &Pubkey) -> Option<usize> {
-        self.active_participants()
+        self.participants
             .iter()
             .position(|existing| existing == participant)
-    }
-
-    /// Removes a participant in O(1) after lookup and reports any participant moved into its slot.
-    pub fn remove_participant(&mut self, participant: &Pubkey) -> Result<ParticipantRemoval> {
-        if self.tickets_count == 0 {
-            return err!(ErrorCode::ParticipantNotFound);
-        }
-
-        let index = self
-            .participant_index(participant)
-            .ok_or(ErrorCode::ParticipantNotFound)?;
-        self.remove_player_at(index)
     }
 
     #[must_use]

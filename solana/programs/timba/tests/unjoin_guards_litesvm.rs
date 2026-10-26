@@ -1,6 +1,7 @@
 mod common;
 
 use {
+    anchor_lang::prelude::Clock,
     solana_signer::Signer,
     timba::{error::ErrorCode, state::GameType, GameConfig},
 };
@@ -26,6 +27,10 @@ fn rejects_nonparticipant_and_empty_game_unjoins() {
         [15; 32],
     );
     assert!(fixture.join_game(&token, game, &creator, creator_ata));
+    // Entries unlock at timeout, so membership is checked only after expiry.
+    let mut clock = fixture.svm.get_sysvar::<Clock>();
+    clock.unix_timestamp += 31;
+    fixture.svm.set_sysvar(&clock);
     let instruction = fixture.unjoin_instruction(
         &token,
         game,
@@ -53,6 +58,9 @@ fn rejects_nonparticipant_and_empty_game_unjoins() {
         },
         [16; 32],
     );
+    let mut clock = fixture.svm.get_sysvar::<Clock>();
+    clock.unix_timestamp += 31;
+    fixture.svm.set_sysvar(&clock);
     let instruction = fixture.unjoin_instruction(
         &token,
         empty_game,

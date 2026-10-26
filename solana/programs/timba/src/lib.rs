@@ -123,6 +123,6 @@ pub mod timba {
         secret_key: [u8; 32],
         winner_index: u32,
     ) -> Result<()> {
-        instructions::complete_game::handler(ctx, _random_hash, secret_key, winner_index)
+        instructions::complete_game::handler(ctx, secret_key, winner_index)
     }
 }
