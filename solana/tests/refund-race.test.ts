@@ -51,7 +51,7 @@ describe("Refund Race Conditions", () => {
     const [creator, participant] = players;
     const ticketAmount = 1_200_000n;
     const gameData = await testUtils.game.createGame(
-      coinflipGameConfig({ amount: ticketAmount, timeout: 2n, minTickets: 3, maxTickets: 3 }),
+      coinflipGameConfig({ amount: ticketAmount, timeout: 120n, minTickets: 3, maxTickets: 3 }),
       creator.player,
       mint.mint,
     );

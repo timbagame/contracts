@@ -716,6 +716,22 @@ async function tickClock(env: TestEnvironment): Promise<void> {
   ]);
 }
 
+// Surfpool cheatcode: move the cluster clock forward instead of waiting in real time.
+async function timeTravel(absoluteTimestampMs: number): Promise<void> {
+  const response = await fetch(rpcUrl(), {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "surfnet_timeTravel",
+      params: [{ absoluteTimestamp: absoluteTimestampMs }],
+    }),
+  });
+  const body = (await response.json()) as { error?: { message: string } };
+  if (body.error) throw new Error(`surfnet_timeTravel failed: ${body.error.message}`);
+}
+
 export async function awaitOracleCompletionReady(
   gameAccount: BufferReadyGameAccount,
   oracleConfig: OracleConfig,
@@ -728,6 +744,9 @@ export async function awaitOracleCompletionReady(
       : 0;
   const targetTimestamp =
     Number(gameAccount.createdAt) + Number(gameAccount.timeout) + boundedSlack;
+  if ((await getClockUnixTimestamp(env.rpc)) < targetTimestamp) {
+    await timeTravel(Math.ceil(targetTimestamp) * 1000);
+  }
   let start = Date.now();
   let extended = false;
   let previousClockTimestamp: number | undefined;
