@@ -213,6 +213,7 @@ pub struct InitializeGame<'info> {
 pub struct JoinGame<'info> {
     #[account(
         mut,
+        constraint = game.tickets_count < game.max_tickets @ ErrorCode::GameFull,
         constraint = game.can_join_private(oracle_operator.as_ref(), &oracle.operator) @ ErrorCode::PrivateGameAccessDenied,
         constraint = game.has_sufficient_balance_for_join(player_token_account.amount) @ ErrorCode::InsufficientBalance,
         constraint = game.token_mint == game_vault_ctx.token_mint.key() @ ErrorCode::InvalidTokenMint,
