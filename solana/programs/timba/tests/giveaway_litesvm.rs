@@ -32,7 +32,7 @@ fn initialization_requires_prize_and_unused_close_refunds_it() {
     let mut fixture = common::TimbaFixture::new();
     let token = fixture.token_fixture();
     let (poor_creator, poor_ata) = fixture.empty_player(token.mint.pubkey());
-    let (failed_game, instruction) = fixture.initialize_game_instruction(
+    let (failed_game, instruction) = fixture.create_game_instruction(
         &token,
         poor_creator.pubkey(),
         poor_ata,
@@ -44,7 +44,7 @@ fn initialization_requires_prize_and_unused_close_refunds_it() {
     assert!(fixture.svm.get_account(&failed_game).is_none());
 
     let (creator, creator_ata) = fixture.funded_player(token.mint.pubkey(), 5_000);
-    let game = fixture.initialize_game(
+    let game = fixture.create_game(
         &token,
         &creator,
         creator_ata,
@@ -63,7 +63,7 @@ fn underfilled_giveaway_with_participant_closes_only_after_timeout() {
     let token = fixture.token_fixture();
     let (creator, creator_ata) = fixture.funded_player(token.mint.pubkey(), 5_000);
     let (participant, participant_ata) = fixture.empty_player(token.mint.pubkey());
-    let game = fixture.initialize_game(
+    let game = fixture.create_game(
         &token,
         &creator,
         creator_ata,
@@ -88,7 +88,7 @@ fn ready_giveaway_blocks_close_until_buffer_then_refunds_full_prize() {
     let token = fixture.token_fixture();
     let (creator, creator_ata) = fixture.funded_player(token.mint.pubkey(), 5_000);
     let (participant, participant_ata) = fixture.empty_player(token.mint.pubkey());
-    let game = fixture.initialize_game(
+    let game = fixture.create_game(
         &token,
         &creator,
         creator_ata,
@@ -131,7 +131,7 @@ fn giveaway_completion_pays_prize_minus_fee_without_player_funds() {
     let (participant, participant_ata) = fixture.empty_player(token.mint.pubkey());
     let secret = [41; 32];
     let random_hash = hash(&secret).to_bytes();
-    let game = fixture.initialize_game(
+    let game = fixture.create_game(
         &token,
         &creator,
         creator_ata,
@@ -164,7 +164,7 @@ fn single_player_giveaway_stays_committed_and_completes_after_timeout() {
     let (participant, participant_ata) = fixture.empty_player(token.mint.pubkey());
     let secret = [42; 32];
     let random_hash = hash(&secret).to_bytes();
-    let game = fixture.initialize_game(
+    let game = fixture.create_game(
         &token,
         &creator,
         creator_ata,
@@ -174,7 +174,7 @@ fn single_player_giveaway_stays_committed_and_completes_after_timeout() {
     assert!(fixture.join_game(&token, game, &participant, participant_ata));
     let before = state(&fixture, game);
     assert_eq!(before.total_amount, 10_000);
-    assert!(!fixture.unjoin_game(&token, game, &participant, participant_ata));
+    assert!(!fixture.refund_player(&token, game, &participant, participant_ata));
     assert_eq!(state(&fixture, game).total_amount, 10_000);
     let mut clock = fixture.svm.get_sysvar::<Clock>();
     clock.unix_timestamp = (before.created_at + before.timeout) as i64;

@@ -27,7 +27,7 @@ The design is not fully trustless. It depends on the program upgrade authority, 
 | Initialize game      | Creator and current operator                    | Amount must be positive and game limits must match the Oracle configuration  |
 | Join public game     | Player                                          | Player must be unique, game must be open, and the mint must match            |
 | Join private game    | Player and current operator                     | The operator approves each private join                                      |
-| Unjoin               | Participant or game creator                     | Uses the same timeout/recovery rule and refunds only to the participant      |
+| Refund               | Participant or game creator                     | Uses the same timeout/recovery rule and refunds only to the participant      |
 | Complete game        | Current operator                                | Reveal, winner, recipient accounts, amounts, and timing are checked on-chain |
 | Creator close        | Game creator                                    | Empty games close immediately; populated giveaways follow the recovery rule  |
 | Operator close       | Current operator                                | Game must be empty and past the recovery boundary                            |
@@ -47,7 +47,7 @@ The oracle service generates a 32-byte `secret_key` and calculates:
 random_hash = SHA256(secret_key)
 ```
 
-The game PDA uses `random_hash` as a seed. The creator and current operator must both sign `initialize_game`. The creator remains the transaction fee payer. A second game cannot use the same commitment while the first game account exists because it would resolve to the same PDA.
+The game PDA uses `random_hash` as a seed. The creator and current operator must both sign `create_game`. The creator remains the transaction fee payer. A second game cannot use the same commitment while the first game account exists because it would resolve to the same PDA.
 
 The intended signing flow is:
 
@@ -60,7 +60,7 @@ Neither signer must disclose its private key to the other party.
 
 ### Winner calculation
 
-Each join and unjoin updates `last_slot`. During completion, the program:
+Each join and refund updates `last_slot`. During completion, the program:
 
 1. Verifies that `SHA256(secret_key)` equals the commitment used in the game PDA.
 2. Selects index zero directly when the game has one participant.
@@ -93,7 +93,7 @@ created_at + timeout + current_oracle_buffer_time
 
 The Oracle buffer extends the game's configured timeout for recovery purposes. It is not a timer that starts when the game fills or otherwise becomes ready. The value is read from the live Oracle account and is not stored in each game. An operator update therefore changes the recovery boundary for open games, but the program restricts the buffer to 1 through 86,400 seconds (one day). Game duration is capped at 2,592,000 seconds (30 days); the Oracle may configure a lower maximum.
 
-Before timeout, participants cannot unjoin and the creator cannot remove them. Joining is therefore a commitment for the configured game duration. At timeout, a game below `min_tickets` is not completable, so participant removal becomes available immediately.
+Before timeout, participants cannot get a refund and the creator cannot remove them. Joining is therefore a commitment for the configured game duration. At timeout, a game below `min_tickets` is not completable, so participant removal becomes available immediately.
 
 If the game is ready at timeout, participant removal and creator close remain blocked until the recovery boundary. At that boundary, completion is no longer accepted and recovery becomes available. Players and the creator use the same timing rule for participant removal; coinflip refunds always go to the removed player's canonical token account.
 
@@ -107,7 +107,7 @@ An empty game can be closed by its creator immediately. A giveaway with particip
 
 - Each participant transfers one `ticket_amount` to the shared mint vault.
 - A participant can hold only one active entry in a game.
-- A permitted unjoin returns exactly one `ticket_amount`.
+- A permitted refund returns exactly one `ticket_amount`.
 - Completion transfers the pot minus the fee to the winner and transfers the fee to the current Oracle operator.
 - Creator close requires zero participants.
 
@@ -115,7 +115,7 @@ An empty game can be closed by its creator immediately. A giveaway with particip
 
 - The creator transfers the complete prize to the vault during initialization.
 - Players join without transferring tokens.
-- Unjoin removes a participant but transfers no tokens.
+- A giveaway refund removes a participant but transfers no tokens.
 - Completion transfers the prize minus the fee to the winner and the fee to the current Oracle operator.
 - The creator can close an eligible giveaway even when participants remain. The full unspent prize returns to the creator's canonical token account.
 
@@ -156,7 +156,7 @@ Oracle closure does not enumerate, settle, or close games. Normal game instructi
 
 ### Oracle downtime or censorship
 
-The operator can delay or refuse settlement. Coinflip participants can recover their stake when unjoin becomes available. Giveaway participants contributed no tokens, and the creator can recover the prize when close becomes available.
+The operator can delay or refuse settlement. Coinflip participants can recover their stake when refunds become available. Giveaway participants contributed no tokens, and the creator can recover the prize when close becomes available.
 
 ### Oracle key compromise
 
@@ -179,7 +179,7 @@ The upgrade authority can replace the program with different code. Together with
 
 ### Oracle closure with live games
 
-Closing the Oracle can block completion, unjoin, and close instructions because they require the canonical Oracle PDA. Operational controls must prove that no game remains before Oracle closure.
+Closing the Oracle can block completion, refund, and close instructions because they require the canonical Oracle PDA. Operational controls must prove that no game remains before Oracle closure.
 
 ### Unsupported tokens
 

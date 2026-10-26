@@ -39,7 +39,7 @@ fn completion_transfers_the_exact_fee_directly() {
     let (second, second_ata) = fixture.funded_player(token.mint.pubkey(), 10_000);
     let secret = [35; 32];
     let random_hash = hash(&secret).to_bytes();
-    let game = fixture.initialize_game(
+    let game = fixture.create_game(
         &token,
         &creator,
         creator_ata,
@@ -108,7 +108,7 @@ fn near_u64_max_fee_is_transferred_exactly() {
     let participant_ata = fixture.create_ata(participant.pubkey(), token.mint.pubkey());
     let secret = [36; 32];
     let random_hash = hash(&secret).to_bytes();
-    let game = fixture.initialize_game(
+    let game = fixture.create_game(
         &token,
         &creator,
         creator_ata,
@@ -148,7 +148,7 @@ fn oracle_fee_updates_change_existing_game_economics() {
     let (second, second_ata) = fixture.funded_player(token.mint.pubkey(), 10_000);
     let secret = [37; 32];
     let random_hash = hash(&secret).to_bytes();
-    let game = fixture.initialize_game(
+    let game = fixture.create_game(
         &token,
         &creator,
         creator_ata,

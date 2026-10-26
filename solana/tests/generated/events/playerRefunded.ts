@@ -35,54 +35,54 @@ import {
   type ReadonlyUint8Array,
 } from "@solana/kit";
 
-export const PLAYER_UNJOINED_EVENT_DISCRIMINATOR: ReadonlyUint8Array = new Uint8Array([
-  191, 34, 140, 22, 253, 20, 237, 73,
+export const PLAYER_REFUNDED_EVENT_DISCRIMINATOR: ReadonlyUint8Array = new Uint8Array([
+  83, 218, 165, 174, 105, 50, 123, 107,
 ]);
 
-export function getPlayerUnjoinedEventDiscriminatorBytes(): ReadonlyUint8Array {
-  return fixEncoderSize(getBytesEncoder(), 8).encode(PLAYER_UNJOINED_EVENT_DISCRIMINATOR);
+export function getPlayerRefundedEventDiscriminatorBytes(): ReadonlyUint8Array {
+  return fixEncoderSize(getBytesEncoder(), 8).encode(PLAYER_REFUNDED_EVENT_DISCRIMINATOR);
 }
 
-export type PlayerUnjoinedEvent = {
+export type PlayerRefundedEvent = {
   /** Game that was left */
   gameKey: Address;
   /** Player who left */
   player: Address;
-  /** Remaining total amount after unjoin */
+  /** Remaining total amount after the refund */
   totalAmount: bigint;
   /** Remaining total tickets count */
   ticketsCount: number;
-  /** Ticket index associated with this unjoin operation */
+  /** Ticket index associated with this refund */
   ticketIndex: number;
   /** Participant moved into `ticket_index` by O(1) removal, if any */
   movedParticipant: Option<Address>;
   /** Last slot for entropy */
   lastSlot: bigint;
-  /** Timestamp of the unjoin */
+  /** Timestamp of the refund */
   timestamp: bigint;
 };
 
-export type PlayerUnjoinedEventArgs = {
+export type PlayerRefundedEventArgs = {
   /** Game that was left */
   gameKey: Address | HasAddress;
   /** Player who left */
   player: Address | HasAddress;
-  /** Remaining total amount after unjoin */
+  /** Remaining total amount after the refund */
   totalAmount: number | bigint;
   /** Remaining total tickets count */
   ticketsCount: number;
-  /** Ticket index associated with this unjoin operation */
+  /** Ticket index associated with this refund */
   ticketIndex: number;
   /** Participant moved into `ticket_index` by O(1) removal, if any */
   movedParticipant: OptionOrNullable<Address | HasAddress>;
   /** Last slot for entropy */
   lastSlot: number | bigint;
-  /** Timestamp of the unjoin */
+  /** Timestamp of the refund */
   timestamp: number | bigint;
 };
 
-/** Gets the encoder for {@link PlayerUnjoinedEventArgs} event data. */
-export function getPlayerUnjoinedEventEncoder(): Encoder<PlayerUnjoinedEventArgs> {
+/** Gets the encoder for {@link PlayerRefundedEventArgs} event data. */
+export function getPlayerRefundedEventEncoder(): Encoder<PlayerRefundedEventArgs> {
   return getHiddenPrefixEncoder(
     getStructEncoder([
       ["gameKey", getAddressEncoder()],
@@ -94,12 +94,12 @@ export function getPlayerUnjoinedEventEncoder(): Encoder<PlayerUnjoinedEventArgs
       ["lastSlot", getU64Encoder()],
       ["timestamp", getU64Encoder()],
     ]),
-    [getConstantEncoder(PLAYER_UNJOINED_EVENT_DISCRIMINATOR)],
+    [getConstantEncoder(PLAYER_REFUNDED_EVENT_DISCRIMINATOR)],
   );
 }
 
-/** Gets the decoder for {@link PlayerUnjoinedEvent} event data. */
-export function getPlayerUnjoinedEventDecoder(): Decoder<PlayerUnjoinedEvent> {
+/** Gets the decoder for {@link PlayerRefundedEvent} event data. */
+export function getPlayerRefundedEventDecoder(): Decoder<PlayerRefundedEvent> {
   return getHiddenPrefixDecoder(
     getStructDecoder([
       ["gameKey", getAddressDecoder()],
@@ -111,23 +111,23 @@ export function getPlayerUnjoinedEventDecoder(): Decoder<PlayerUnjoinedEvent> {
       ["lastSlot", getU64Decoder()],
       ["timestamp", getU64Decoder()],
     ]),
-    [getConstantDecoder(PLAYER_UNJOINED_EVENT_DISCRIMINATOR)],
+    [getConstantDecoder(PLAYER_REFUNDED_EVENT_DISCRIMINATOR)],
   );
 }
 
-/** Gets the codec for {@link PlayerUnjoinedEvent} event data. */
-export function getPlayerUnjoinedEventCodec(): Codec<PlayerUnjoinedEventArgs, PlayerUnjoinedEvent> {
-  return combineCodec(getPlayerUnjoinedEventEncoder(), getPlayerUnjoinedEventDecoder());
+/** Gets the codec for {@link PlayerRefundedEvent} event data. */
+export function getPlayerRefundedEventCodec(): Codec<PlayerRefundedEventArgs, PlayerRefundedEvent> {
+  return combineCodec(getPlayerRefundedEventEncoder(), getPlayerRefundedEventDecoder());
 }
 
-/** Parses the provided bytes into {@link PlayerUnjoinedEvent} event data. */
-export function parsePlayerUnjoinedEvent(
+/** Parses the provided bytes into {@link PlayerRefundedEvent} event data. */
+export function parsePlayerRefundedEvent(
   data: ReadonlyUint8Array | Uint8Array,
-): PlayerUnjoinedEvent {
-  if (containsBytes(data, PLAYER_UNJOINED_EVENT_DISCRIMINATOR, 0)) {
-    return getPlayerUnjoinedEventDecoder().decode(data);
+): PlayerRefundedEvent {
+  if (containsBytes(data, PLAYER_REFUNDED_EVENT_DISCRIMINATOR, 0)) {
+    return getPlayerRefundedEventDecoder().decode(data);
   }
   throw new Error(
-    'The provided data does not match the "PlayerUnjoinedEvent" event discriminators.',
+    'The provided data does not match the "PlayerRefundedEvent" event discriminators.',
   );
 }

@@ -1,9 +1,9 @@
 use crate::error::ErrorCode;
-use crate::events::PlayerUnjoined;
+use crate::events::PlayerRefunded;
 use crate::utils::get_clock_snapshot;
 use anchor_lang::prelude::*;
 
-pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
+pub fn handler(ctx: Context<super::RefundPlayer>) -> Result<()> {
     let vault_bump = ctx.bumps.game_vault_ctx.game_vault;
     let game = &mut ctx.accounts.game;
     let oracle = &ctx.accounts.oracle;
@@ -14,7 +14,7 @@ pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
     // timeout; a ready game unlocks only after the oracle recovery boundary.
     require!(game.is_expired(current_time), ErrorCode::GameNotExpired);
     require!(
-        game.can_unjoin(oracle.oracle_buffer_time, current_time),
+        game.is_unlocked(oracle.oracle_buffer_time, current_time),
         ErrorCode::OracleBufferNotExpired
     );
 
@@ -29,7 +29,7 @@ pub fn handler(ctx: Context<super::UnjoinGame>) -> Result<()> {
         vault_bump,
     )?;
 
-    emit!(PlayerUnjoined::new(
+    emit!(PlayerRefunded::new(
         game,
         player_key,
         removal.removed_index,

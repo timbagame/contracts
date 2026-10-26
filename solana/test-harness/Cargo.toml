@@ -117,16 +117,16 @@ name = "token_mint_guards_litesvm"
 path = "../programs/timba/tests/token_mint_guards_litesvm.rs"
 
 [[test]]
-name = "unjoin_guards_litesvm"
-path = "../programs/timba/tests/unjoin_guards_litesvm.rs"
+name = "refund_guards_litesvm"
+path = "../programs/timba/tests/refund_guards_litesvm.rs"
 
 [[test]]
-name = "unjoin_litesvm"
-path = "../programs/timba/tests/unjoin_litesvm.rs"
+name = "refund_litesvm"
+path = "../programs/timba/tests/refund_litesvm.rs"
 
 [[test]]
-name = "unjoin_refund_close_litesvm"
-path = "../programs/timba/tests/unjoin_refund_close_litesvm.rs"
+name = "refund_close_litesvm"
+path = "../programs/timba/tests/refund_close_litesvm.rs"
 
 [[test]]
 name = "winner_guards_litesvm"

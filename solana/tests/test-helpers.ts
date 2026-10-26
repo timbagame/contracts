@@ -53,10 +53,10 @@ import {
   findGameVaultPda,
   findOraclePda,
   getCompleteGameInstructionAsync,
-  getInitializeGameInstructionAsync,
+  getCreateGameInstructionAsync,
   getInitializeOracleInstructionAsync,
   getJoinGameInstructionAsync,
-  getUnjoinGameInstructionAsync,
+  getRefundPlayerInstructionAsync,
   type Game,
 } from "./generated/index.ts";
 
@@ -558,7 +558,7 @@ export class GameManager {
     const gameData = await this.generateGamePDA();
     const creatorTokenAccount = await associatedTokenAddress(tokenMint, creator.address);
     const oracleOperator = this.env.oracle?.operatorKeypair ?? (await getDefaultOperatorKeypair());
-    const instruction = await getInitializeGameInstructionAsync({
+    const instruction = await getCreateGameInstructionAsync({
       creator,
       oracleOperator,
       tokenMint,
@@ -596,10 +596,10 @@ export class GameManager {
     await sendInstructions(this.env.rpc, player, [instruction]);
   }
 
-  async buildUnjoinGameInstruction(gamePDA: Address, player: KeyPairSigner) {
+  async buildRefundPlayerInstruction(gamePDA: Address, player: KeyPairSigner) {
     const derived = await deriveGameAccounts(this.env, gamePDA, { player: player.address });
     if (!derived.playerTokenAccount) throw new Error("Missing player token account");
-    return getUnjoinGameInstructionAsync({
+    return getRefundPlayerInstructionAsync({
       game: gamePDA,
       player: player.address,
       authority: player,

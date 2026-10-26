@@ -7,12 +7,12 @@ use {
 };
 
 #[test]
-fn rejects_nonparticipant_and_empty_game_unjoins() {
+fn rejects_nonparticipant_and_empty_game_refunds() {
     let mut fixture = common::TimbaFixture::new();
     let token = fixture.token_fixture();
     let (creator, creator_ata) = fixture.funded_player(token.mint.pubkey(), 10_000);
     let (outsider, outsider_ata) = fixture.funded_player(token.mint.pubkey(), 10_000);
-    let game = fixture.initialize_game(
+    let game = fixture.create_game(
         &token,
         &creator,
         creator_ata,
@@ -31,7 +31,7 @@ fn rejects_nonparticipant_and_empty_game_unjoins() {
     let mut clock = fixture.svm.get_sysvar::<Clock>();
     clock.unix_timestamp += 31;
     fixture.svm.set_sysvar(&clock);
-    let instruction = fixture.unjoin_instruction(
+    let instruction = fixture.refund_player_instruction(
         &token,
         game,
         outsider.pubkey(),
@@ -44,7 +44,7 @@ fn rejects_nonparticipant_and_empty_game_unjoins() {
         common::anchor_error(ErrorCode::ParticipantNotFound)
     );
 
-    let empty_game = fixture.initialize_game(
+    let empty_game = fixture.create_game(
         &token,
         &creator,
         creator_ata,
@@ -61,7 +61,7 @@ fn rejects_nonparticipant_and_empty_game_unjoins() {
     let mut clock = fixture.svm.get_sysvar::<Clock>();
     clock.unix_timestamp += 31;
     fixture.svm.set_sysvar(&clock);
-    let instruction = fixture.unjoin_instruction(
+    let instruction = fixture.refund_player_instruction(
         &token,
         empty_game,
         outsider.pubkey(),

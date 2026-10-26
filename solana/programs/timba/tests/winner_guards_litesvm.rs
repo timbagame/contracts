@@ -32,7 +32,7 @@ fn ready_game(seed: u8) -> ReadyGame {
     let (second, second_ata) = fixture.funded_player(token.mint.pubkey(), 10_000);
     let secret = [seed; 32];
     let random_hash = hash(&secret).to_bytes();
-    let game = fixture.initialize_game(
+    let game = fixture.create_game(
         &token,
         &creator,
         creator_ata,

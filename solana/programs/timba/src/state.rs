@@ -237,7 +237,7 @@ impl Game {
         let expires_at = self.buffer_expires_at(oracle_buffer_time);
         // `Clock::unix_timestamp` is second-resolution, so callers frequently hit the
         // exact expiry moment. Treat the equality case as expired; otherwise players
-        // cannot unjoin until the next whole second elapses.
+        // cannot get a refund until the next whole second elapses.
         current_time >= expires_at
     }
 
@@ -250,7 +250,7 @@ impl Game {
 
     /// Checks if entries are unlocked: the game expired and the oracle can no longer settle it
     #[must_use]
-    pub fn can_unjoin(&self, oracle_buffer_time: u64, current_time: u64) -> bool {
+    pub fn is_unlocked(&self, oracle_buffer_time: u64, current_time: u64) -> bool {
         self.is_expired(current_time) && !self.waiting_for_oracle(oracle_buffer_time, current_time)
     }
 

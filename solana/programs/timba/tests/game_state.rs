@@ -51,9 +51,9 @@ fn buffer_expiry_boundary_is_inclusive() {
         ..Game::default()
     };
     assert!(!game.is_buffer_expired(2, 105));
-    assert!(!game.can_unjoin(2, 105));
+    assert!(!game.is_unlocked(2, 105));
     assert!(game.is_buffer_expired(2, 106));
-    assert!(game.can_unjoin(2, 106));
+    assert!(game.is_unlocked(2, 106));
 }
 
 #[test]
@@ -113,7 +113,7 @@ fn game_initialization_sets_type_specific_amounts() {
 }
 
 #[test]
-fn completion_and_unjoin_windows_cover_all_states() {
+fn completion_and_refund_windows_cover_all_states() {
     let mut game = Game {
         created_at: 100,
         timeout: 10,
@@ -126,14 +126,14 @@ fn completion_and_unjoin_windows_cover_all_states() {
     assert!(!game.is_ready_for_completion(109));
     assert!(game.is_ready_for_completion(110));
     assert!(game.waiting_for_oracle(5, 110));
-    assert!(!game.can_unjoin(5, 110));
+    assert!(!game.is_unlocked(5, 110));
     assert!(game.is_buffer_expired(5, 115));
     assert!(!game.waiting_for_oracle(5, 115));
-    assert!(game.can_unjoin(5, 115));
+    assert!(game.is_unlocked(5, 115));
     game.tickets_count = 3;
     assert!(game.is_ready_for_completion(100));
     assert!(game.waiting_for_oracle(5, 100));
-    assert!(!game.can_unjoin(5, 100));
+    assert!(!game.is_unlocked(5, 100));
 }
 
 #[test]
@@ -148,8 +148,8 @@ fn underfilled_game_unlocks_at_timeout_but_not_before() {
         ..Game::default()
     };
 
-    assert!(!game.can_unjoin(5, 109));
-    assert!(game.can_unjoin(5, 110));
+    assert!(!game.is_unlocked(5, 109));
+    assert!(game.is_unlocked(5, 110));
 }
 
 #[test]
@@ -313,7 +313,7 @@ fn shared_lifecycle_and_fee_vectors() {
             ..Game::default()
         };
         assert_eq!(game.waiting_for_oracle(10, v[4]), v[5] == 1, "{line}");
-        assert_eq!(game.can_unjoin(10, v[4]), v[6] == 1, "{line}");
+        assert_eq!(game.is_unlocked(10, v[4]), v[6] == 1, "{line}");
         let (prize, fee) = game.calculate_amounts(u8::try_from(v[8]).unwrap());
         assert_eq!(fee, v[9], "{line}");
         assert_eq!(prize + fee, game.total_amount, "{line}");

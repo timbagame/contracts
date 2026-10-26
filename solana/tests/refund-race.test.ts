@@ -21,14 +21,14 @@ function memoInstruction(value: string): Instruction {
   };
 }
 
-async function buildSignedUnjoinTx(
+async function buildSignedRefundTx(
   env: TestEnvironment,
   testUtils: TestUtils,
   game: Address,
   player: KeyPairSigner,
   uniqueSeed: number,
 ) {
-  const instruction = await testUtils.game.buildUnjoinGameInstruction(game, player);
+  const instruction = await testUtils.game.buildRefundPlayerInstruction(game, player);
   return buildSignedTransaction(
     env.rpc,
     player,
@@ -36,7 +36,7 @@ async function buildSignedUnjoinTx(
   );
 }
 
-describe("Unjoin Race Conditions", () => {
+describe("Refund Race Conditions", () => {
   let testUtils: TestUtils;
   let env: TestEnvironment;
 
@@ -46,7 +46,7 @@ describe("Unjoin Race Conditions", () => {
     if (!env.oracle) await env.initialize();
   });
 
-  test("settles exactly once when two unjoin attempts race", async () => {
+  test("settles exactly once when two refund attempts race", async () => {
     const { mint, players, oracle } = await testUtils.quickSetup();
     const [creator, participant] = players;
     const ticketAmount = 1_200_000n;
@@ -64,10 +64,10 @@ describe("Unjoin Race Conditions", () => {
 
     const balanceBefore = await fetchTokenBalance(env.rpc, participant.playerTokenAccount);
     const [txA, txB] = await Promise.all([
-      buildSignedUnjoinTx(env, testUtils, gameData.gamePDA, participant.player, 0),
-      buildSignedUnjoinTx(env, testUtils, gameData.gamePDA, participant.player, 1),
+      buildSignedRefundTx(env, testUtils, gameData.gamePDA, participant.player, 0),
+      buildSignedRefundTx(env, testUtils, gameData.gamePDA, participant.player, 1),
     ]);
-    const sendTx = async (signed: Awaited<ReturnType<typeof buildSignedUnjoinTx>>) => {
+    const sendTx = async (signed: Awaited<ReturnType<typeof buildSignedRefundTx>>) => {
       try {
         return {
           ok: true as const,

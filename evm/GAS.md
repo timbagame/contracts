@@ -4,17 +4,17 @@ Measured with Foundry 1.8.6, Solidity 0.8.38, optimizer 200 runs, Cancun, and a 
 
 | Transaction                  |  Gas used |
 | ---------------------------- | --------: |
-| `deploy Timba`               | 3,420,779 |
+| `deploy Timba`               | 3,418,367 |
 | `deploy ERC1967Proxy`        |   276,705 |
 | `deploy SmokeToken`          |   567,814 |
 | `approve(address,uint256)`   |    46,678 |
-| `createGame + creator entry` |   302,937 |
+| `createGame + creator entry` |   302,949 |
 | `approve(address,uint256)`   |    46,678 |
 | `joinGame`                   |   115,841 |
-| `deploy Timba`               | 3,420,779 |
+| `deploy Timba`               | 3,418,367 |
 | `upgradeToAndCall`           |    38,146 |
 | `completeGame`               |    95,699 |
 
-The maximum-capacity test creates a 1,000-player giveaway over separate joins and settles it without iterating over the participant list. Run `forge test --match-test testGasMaximumParticipants -vv` to see its settlement measurement. The test's total gas includes all 1,000 joins and is not the gas of a single production transaction.
+The maximum-capacity test creates a 315-player giveaway over separate joins and settles it without iterating over the participant list. Run `forge test --match-test testGasMaximumParticipants -vv` to see its settlement measurement. The test's total gas includes all 315 joins and is not the gas of a single production transaction.
 
 Regenerate the local receipts with `bash script/local-smoke.sh`; inspect `broadcast/LocalSmoke.s.sol/31337/run-latest.json`. Run `forge test --gas-report` for the broader test suite's function measurements.

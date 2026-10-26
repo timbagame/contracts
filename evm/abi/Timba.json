@@ -1268,6 +1268,16 @@
   },
   {
     "type": "error",
+    "name": "GameHasActivePlayers",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "GameNotExpired",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "GameUnavailable",
     "inputs": []
   },
@@ -1313,6 +1323,11 @@
   },
   {
     "type": "error",
+    "name": "OracleBufferNotExpired",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "OwnableInvalidOwner",
     "inputs": [
       {
@@ -1336,11 +1351,6 @@
   {
     "type": "error",
     "name": "RandomnessUnavailable",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "RecoveryUnavailable",
     "inputs": []
   },
   {

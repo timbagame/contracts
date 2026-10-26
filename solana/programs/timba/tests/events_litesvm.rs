@@ -11,7 +11,7 @@ use {
     solana_signer::Signer,
     timba::{
         events::{
-            GameClosed, GameCompleted, GameInitialized, OracleUpdated, PlayerJoined, PlayerUnjoined,
+            GameClosed, GameCompleted, GameCreated, OracleUpdated, PlayerJoined, PlayerRefunded,
         },
         state::{Game, GameType},
         GameConfig, OracleConfig,
@@ -70,7 +70,7 @@ fn emits_oracle_configuration_event() {
 }
 
 #[test]
-fn emits_initialize_join_unjoin_and_close_events() {
+fn emits_create_join_refund_and_close_events() {
     let mut fixture = common::TimbaFixture::new();
     let token = fixture.token_fixture();
     let (creator, creator_ata) = fixture.funded_player(token.mint.pubkey(), 10_000);
@@ -84,18 +84,13 @@ fn emits_initialize_join_unjoin_and_close_events() {
         timeout: 30,
         is_private: false,
     };
-    let (game, initialize) = fixture.initialize_game_instruction(
-        &token,
-        creator.pubkey(),
-        creator_ata,
-        config,
-        [50; 32],
-    );
+    let (game, initialize) =
+        fixture.create_game_instruction(&token, creator.pubkey(), creator_ata, config, [50; 32]);
     let payer = fixture.operator.insecure_clone();
     let metadata = fixture
         .send_result(&[initialize], &[&payer, &creator])
         .unwrap();
-    let initialized: GameInitialized = event(&metadata);
+    let initialized: GameCreated = event(&metadata);
     assert_eq!(initialized.game_key, game);
     assert_eq!(initialized.creator, creator.pubkey());
     assert_eq!(initialized.ticket_amount, 1_000);
@@ -123,19 +118,24 @@ fn emits_initialize_join_unjoin_and_close_events() {
     clock.unix_timestamp = (game_state.created_at + game_state.timeout + 5) as i64;
     fixture.svm.set_sysvar(&clock);
 
-    let unjoin =
-        fixture.unjoin_instruction(&token, game, second.pubkey(), second.pubkey(), second_ata);
+    let refund = fixture.refund_player_instruction(
+        &token,
+        game,
+        second.pubkey(),
+        second.pubkey(),
+        second_ata,
+    );
     let payer = fixture.operator.insecure_clone();
-    let metadata = fixture.send_result(&[unjoin], &[&payer, &second]).unwrap();
-    let unjoined: PlayerUnjoined = event(&metadata);
-    assert_eq!(unjoined.player, second.pubkey());
-    assert_eq!(unjoined.ticket_index, 1);
-    assert_eq!(unjoined.moved_participant, Some(third.pubkey()));
-    assert_eq!(unjoined.tickets_count, 2);
-    assert_eq!(unjoined.total_amount, 2_000);
+    let metadata = fixture.send_result(&[refund], &[&payer, &second]).unwrap();
+    let refunded: PlayerRefunded = event(&metadata);
+    assert_eq!(refunded.player, second.pubkey());
+    assert_eq!(refunded.ticket_index, 1);
+    assert_eq!(refunded.moved_participant, Some(third.pubkey()));
+    assert_eq!(refunded.tickets_count, 2);
+    assert_eq!(refunded.total_amount, 2_000);
 
-    assert!(fixture.unjoin_game(&token, game, &creator, creator_ata));
-    assert!(fixture.unjoin_game(&token, game, &third, third_ata));
+    assert!(fixture.refund_player(&token, game, &creator, creator_ata));
+    assert!(fixture.refund_player(&token, game, &third, third_ata));
 
     let close = fixture.close_game_instruction(&token, game, creator.pubkey(), creator_ata);
     let payer = fixture.operator.insecure_clone();
@@ -152,7 +152,7 @@ fn emits_completion_event_for_direct_fee_settlement() {
     let (second, second_ata) = fixture.funded_player(token.mint.pubkey(), 10_000);
     let secret = [51; 32];
     let random_hash = hash(&secret).to_bytes();
-    let game = fixture.initialize_game(
+    let game = fixture.create_game(
         &token,
         &creator,
         creator_ata,

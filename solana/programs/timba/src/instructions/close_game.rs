@@ -13,7 +13,7 @@ pub fn handler(ctx: Context<super::CloseGame>) -> Result<()> {
     if game.tickets_count > 0 {
         require!(game.is_expired(current_time), ErrorCode::GameNotExpired);
         require!(
-            game.can_unjoin(oracle.oracle_buffer_time, current_time),
+            game.is_unlocked(oracle.oracle_buffer_time, current_time),
             ErrorCode::GameWaitingForOracle
         );
     }
