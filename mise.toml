@@ -3,6 +3,6 @@
 bun = "1.4.4"
 "github:foundry-rs/foundry" = "v1.8.6"
 "github:anza-xyz/agave" = { version = "v4.3.2", bin_path = "solana-release/bin" }
-"github:solana-foundation/surfpool" = "v1.6.0"
+"github:solana-foundation/surfpool" = "v1.6.1"
 "github:solana-foundation/anchor" = "v1.2.0"
 "cargo:cargo-llvm-cov" = "0.9.1"
