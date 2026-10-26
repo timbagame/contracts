@@ -49,18 +49,11 @@ pub struct OracleClosed {
     pub operator: Pubkey,
 }
 
-struct OracleEventFields {
-    fee_percentage: u8,
-    oracle_buffer_time: u64,
-    max_tickets: u32,
-    max_timeout: u64,
-    min_timeout: u64,
-}
-
-impl OracleEventFields {
+impl OracleInitialized {
     #[must_use]
-    fn new(config: &OracleConfig) -> Self {
+    pub fn from_config(operator: Pubkey, config: &OracleConfig) -> Self {
         Self {
+            operator,
             fee_percentage: config.fee_percentage,
             oracle_buffer_time: config.oracle_buffer_time,
             max_tickets: config.max_tickets,
@@ -70,33 +63,17 @@ impl OracleEventFields {
     }
 }
 
-impl OracleInitialized {
-    #[must_use]
-    pub fn from_config(operator: Pubkey, config: &OracleConfig) -> Self {
-        let fields = OracleEventFields::new(config);
-        Self {
-            operator,
-            fee_percentage: fields.fee_percentage,
-            oracle_buffer_time: fields.oracle_buffer_time,
-            max_tickets: fields.max_tickets,
-            max_timeout: fields.max_timeout,
-            min_timeout: fields.min_timeout,
-        }
-    }
-}
-
 impl OracleUpdated {
     #[must_use]
     pub fn from_config(old_operator: Pubkey, new_operator: Pubkey, config: &OracleConfig) -> Self {
-        let fields = OracleEventFields::new(config);
         Self {
             old_operator,
             new_operator,
-            fee_percentage: fields.fee_percentage,
-            oracle_buffer_time: fields.oracle_buffer_time,
-            max_tickets: fields.max_tickets,
-            max_timeout: fields.max_timeout,
-            min_timeout: fields.min_timeout,
+            fee_percentage: config.fee_percentage,
+            oracle_buffer_time: config.oracle_buffer_time,
+            max_tickets: config.max_tickets,
+            max_timeout: config.max_timeout,
+            min_timeout: config.min_timeout,
         }
     }
 }
@@ -122,28 +99,6 @@ pub struct PlayerJoined {
     pub timestamp: u64,
 }
 
-struct PlayerEventFields {
-    game_key: Pubkey,
-    total_amount: u64,
-    tickets_count: u32,
-}
-
-impl PlayerEventFields {
-    #[must_use]
-    fn new(game_key: Pubkey, total_amount: u64, tickets_count: u32) -> Self {
-        Self {
-            game_key,
-            total_amount,
-            tickets_count,
-        }
-    }
-
-    #[must_use]
-    fn from_account(game: &Account<'_, Game>) -> Self {
-        Self::new(game.key(), game.total_amount, game.tickets_count)
-    }
-}
-
 impl PlayerJoined {
     #[must_use]
     pub fn new(
@@ -153,12 +108,11 @@ impl PlayerJoined {
         last_slot: u64,
         timestamp: u64,
     ) -> Self {
-        let fields = PlayerEventFields::from_account(game);
         Self {
-            game_key: fields.game_key,
+            game_key: game.key(),
             player,
-            total_amount: fields.total_amount,
-            tickets_count: fields.tickets_count,
+            total_amount: game.total_amount,
+            tickets_count: game.tickets_count,
             ticket_index,
             last_slot,
             timestamp,
@@ -197,12 +151,11 @@ impl PlayerUnjoined {
         last_slot: u64,
         timestamp: u64,
     ) -> Self {
-        let fields = PlayerEventFields::from_account(game);
         Self {
-            game_key: fields.game_key,
+            game_key: game.key(),
             player,
-            total_amount: fields.total_amount,
-            tickets_count: fields.tickets_count,
+            total_amount: game.total_amount,
+            tickets_count: game.tickets_count,
             ticket_index,
             moved_participant,
             last_slot,
@@ -242,10 +195,10 @@ pub struct GameInitialized {
 
 impl GameInitialized {
     #[must_use]
-    pub fn new(game: &Account<'_, Game>, creator: Pubkey) -> Self {
+    pub fn new(game: &Account<'_, Game>) -> Self {
         Self {
             game_key: game.key(),
-            creator,
+            creator: game.creator,
             game_type: game.game_type,
             ticket_amount: game.ticket_amount,
             total_amount: game.total_amount,

@@ -1,12 +1,12 @@
 use crate::error::ErrorCode;
 use crate::events::OperatorGameClosed;
-use crate::utils::get_current_time;
+use crate::utils::get_clock_snapshot;
 use anchor_lang::prelude::*;
 
 pub fn handler(ctx: Context<super::OperatorCloseGame>) -> Result<()> {
     let vault_bump = ctx.bumps.game_vault_ctx.game_vault;
     let game = &ctx.accounts.game;
-    let current_time = get_current_time()?;
+    let (current_time, _) = get_clock_snapshot()?;
 
     require!(
         game.is_buffer_expired(ctx.accounts.oracle.oracle_buffer_time, current_time),

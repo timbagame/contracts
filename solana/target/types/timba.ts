@@ -148,10 +148,6 @@ export type Timba = {
             {
               "name": "tokenProgram",
               "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
-            },
-            {
-              "name": "associatedTokenProgram",
-              "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
             }
           ]
         },
@@ -400,10 +396,6 @@ export type Timba = {
             {
               "name": "tokenProgram",
               "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
-            },
-            {
-              "name": "associatedTokenProgram",
-              "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
             }
           ]
         },
@@ -736,10 +728,6 @@ export type Timba = {
             {
               "name": "tokenProgram",
               "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
-            },
-            {
-              "name": "associatedTokenProgram",
-              "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
             }
           ]
         },
@@ -916,7 +904,6 @@ export type Timba = {
         },
         {
           "name": "player",
-          "writable": true,
           "signer": true
         },
         {
@@ -1016,10 +1003,6 @@ export type Timba = {
             {
               "name": "tokenProgram",
               "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
-            },
-            {
-              "name": "associatedTokenProgram",
-              "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
             }
           ]
         },
@@ -1238,10 +1221,6 @@ export type Timba = {
             {
               "name": "tokenProgram",
               "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
-            },
-            {
-              "name": "associatedTokenProgram",
-              "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
             }
           ]
         },
@@ -1447,10 +1426,6 @@ export type Timba = {
             {
               "name": "tokenProgram",
               "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
-            },
-            {
-              "name": "associatedTokenProgram",
-              "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
             }
           ]
         },
@@ -1762,8 +1737,8 @@ export type Timba = {
     },
     {
       "code": 7105,
-      "name": "gameAlreadyCompleted",
-      "msg": "Game already settled"
+      "name": "gameNotExpired",
+      "msg": "Game not expired"
     },
     {
       "code": 7106,

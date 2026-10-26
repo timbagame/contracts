@@ -78,8 +78,6 @@ export type InitializeGameInstruction<
   TAccountGameVaultTokenAccount extends string | AccountMeta<string> = string,
   TAccountTokenProgram extends string | AccountMeta<string> =
     "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
-  TAccountAssociatedTokenProgram extends string | AccountMeta<string> =
-    "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL",
   TAccountCreatorTokenAccount extends string | AccountMeta<string> = string,
   TAccountSystemProgram extends string | AccountMeta<string> = "11111111111111111111111111111111",
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
@@ -103,9 +101,6 @@ export type InitializeGameInstruction<
       TAccountTokenProgram extends string
         ? ReadonlyAccount<TAccountTokenProgram>
         : TAccountTokenProgram,
-      TAccountAssociatedTokenProgram extends string
-        ? ReadonlyAccount<TAccountAssociatedTokenProgram>
-        : TAccountAssociatedTokenProgram,
       TAccountCreatorTokenAccount extends string
         ? WritableAccount<TAccountCreatorTokenAccount>
         : TAccountCreatorTokenAccount,
@@ -197,7 +192,6 @@ export type InitializeGameAsyncInput<
   TAccountGameVault extends InstructionAccountInput = InstructionAccountInput,
   TAccountGameVaultTokenAccount extends InstructionAccountInput = InstructionAccountInput,
   TAccountTokenProgram extends InstructionAccountInput = InstructionAccountInput,
-  TAccountAssociatedTokenProgram extends InstructionAccountInput = InstructionAccountInput,
   TAccountCreatorTokenAccount extends InstructionAccountInput = InstructionAccountInput,
   TAccountSystemProgram extends InstructionAccountInput = InstructionAccountInput,
 > = {
@@ -209,7 +203,6 @@ export type InitializeGameAsyncInput<
   gameVault?: TAccountGameVault;
   gameVaultTokenAccount?: TAccountGameVaultTokenAccount;
   tokenProgram?: TAccountTokenProgram;
-  associatedTokenProgram?: TAccountAssociatedTokenProgram;
   creatorTokenAccount: TAccountCreatorTokenAccount;
   systemProgram?: TAccountSystemProgram;
   gameType: InitializeGameInstructionDataArgs["gameType"];
@@ -230,7 +223,6 @@ export async function getInitializeGameInstructionAsync<
   TAccountGameVault extends InstructionAccountInput,
   TAccountGameVaultTokenAccount extends InstructionAccountInput,
   TAccountTokenProgram extends InstructionAccountInput,
-  TAccountAssociatedTokenProgram extends InstructionAccountInput,
   TAccountCreatorTokenAccount extends InstructionAccountInput,
   TAccountSystemProgram extends InstructionAccountInput,
   TProgramAddress extends Address = typeof TIMBA_PROGRAM_ADDRESS,
@@ -244,7 +236,6 @@ export async function getInitializeGameInstructionAsync<
     TAccountGameVault,
     TAccountGameVaultTokenAccount,
     TAccountTokenProgram,
-    TAccountAssociatedTokenProgram,
     TAccountCreatorTokenAccount,
     TAccountSystemProgram
   >,
@@ -279,10 +270,6 @@ export async function getInitializeGameInstructionAsync<
       InstructionAccountInputAddress<TAccountTokenProgram>
     >,
     ResolvedInstructionAccountMeta<
-      TAccountAssociatedTokenProgram,
-      InstructionAccountInputAddress<TAccountAssociatedTokenProgram>
-    >,
-    ResolvedInstructionAccountMeta<
       TAccountCreatorTokenAccount,
       InstructionAccountInputAddress<TAccountCreatorTokenAccount>
     >,
@@ -314,11 +301,6 @@ export async function getInitializeGameInstructionAsync<
       isWritable: true,
     },
     tokenProgram: { value: input.tokenProgram ?? null, isSigner: false, isWritable: false },
-    associatedTokenProgram: {
-      value: input.associatedTokenProgram ?? null,
-      isSigner: false,
-      isWritable: false,
-    },
     creatorTokenAccount: {
       value: input.creatorTokenAccount ?? null,
       isSigner: false,
@@ -373,10 +355,6 @@ export async function getInitializeGameInstructionAsync<
       ],
     });
   }
-  if (!accounts.associatedTokenProgram.value) {
-    accounts.associatedTokenProgram.value =
-      "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL" as Address<"ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL">;
-  }
   if (!accounts.systemProgram.value) {
     accounts.systemProgram.value =
       "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
@@ -392,7 +370,6 @@ export async function getInitializeGameInstructionAsync<
       getAccountMeta("gameVault", accounts.gameVault),
       getAccountMeta("gameVaultTokenAccount", accounts.gameVaultTokenAccount),
       getAccountMeta("tokenProgram", accounts.tokenProgram),
-      getAccountMeta("associatedTokenProgram", accounts.associatedTokenProgram),
       getAccountMeta("creatorTokenAccount", accounts.creatorTokenAccount),
       getAccountMeta("systemProgram", accounts.systemProgram),
     ],
@@ -429,10 +406,6 @@ export async function getInitializeGameInstructionAsync<
       InstructionAccountInputAddress<TAccountTokenProgram>
     >,
     ResolvedInstructionAccountMeta<
-      TAccountAssociatedTokenProgram,
-      InstructionAccountInputAddress<TAccountAssociatedTokenProgram>
-    >,
-    ResolvedInstructionAccountMeta<
       TAccountCreatorTokenAccount,
       InstructionAccountInputAddress<TAccountCreatorTokenAccount>
     >,
@@ -452,7 +425,6 @@ export type InitializeGameInput<
   TAccountGameVault extends InstructionAccountInput = InstructionAccountInput,
   TAccountGameVaultTokenAccount extends InstructionAccountInput = InstructionAccountInput,
   TAccountTokenProgram extends InstructionAccountInput = InstructionAccountInput,
-  TAccountAssociatedTokenProgram extends InstructionAccountInput = InstructionAccountInput,
   TAccountCreatorTokenAccount extends InstructionAccountInput = InstructionAccountInput,
   TAccountSystemProgram extends InstructionAccountInput = InstructionAccountInput,
 > = {
@@ -464,7 +436,6 @@ export type InitializeGameInput<
   gameVault: TAccountGameVault;
   gameVaultTokenAccount: TAccountGameVaultTokenAccount;
   tokenProgram?: TAccountTokenProgram;
-  associatedTokenProgram?: TAccountAssociatedTokenProgram;
   creatorTokenAccount: TAccountCreatorTokenAccount;
   systemProgram?: TAccountSystemProgram;
   gameType: InitializeGameInstructionDataArgs["gameType"];
@@ -485,7 +456,6 @@ export function getInitializeGameInstruction<
   TAccountGameVault extends InstructionAccountInput,
   TAccountGameVaultTokenAccount extends InstructionAccountInput,
   TAccountTokenProgram extends InstructionAccountInput,
-  TAccountAssociatedTokenProgram extends InstructionAccountInput,
   TAccountCreatorTokenAccount extends InstructionAccountInput,
   TAccountSystemProgram extends InstructionAccountInput,
   TProgramAddress extends Address = typeof TIMBA_PROGRAM_ADDRESS,
@@ -499,7 +469,6 @@ export function getInitializeGameInstruction<
     TAccountGameVault,
     TAccountGameVaultTokenAccount,
     TAccountTokenProgram,
-    TAccountAssociatedTokenProgram,
     TAccountCreatorTokenAccount,
     TAccountSystemProgram
   >,
@@ -528,10 +497,6 @@ export function getInitializeGameInstruction<
   ResolvedInstructionAccountMeta<
     TAccountTokenProgram,
     InstructionAccountInputAddress<TAccountTokenProgram>
-  >,
-  ResolvedInstructionAccountMeta<
-    TAccountAssociatedTokenProgram,
-    InstructionAccountInputAddress<TAccountAssociatedTokenProgram>
   >,
   ResolvedInstructionAccountMeta<
     TAccountCreatorTokenAccount,
@@ -564,11 +529,6 @@ export function getInitializeGameInstruction<
       isWritable: true,
     },
     tokenProgram: { value: input.tokenProgram ?? null, isSigner: false, isWritable: false },
-    associatedTokenProgram: {
-      value: input.associatedTokenProgram ?? null,
-      isSigner: false,
-      isWritable: false,
-    },
     creatorTokenAccount: {
       value: input.creatorTokenAccount ?? null,
       isSigner: false,
@@ -589,10 +549,6 @@ export function getInitializeGameInstruction<
     accounts.tokenProgram.value =
       "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA" as Address<"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA">;
   }
-  if (!accounts.associatedTokenProgram.value) {
-    accounts.associatedTokenProgram.value =
-      "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL" as Address<"ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL">;
-  }
   if (!accounts.systemProgram.value) {
     accounts.systemProgram.value =
       "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
@@ -608,7 +564,6 @@ export function getInitializeGameInstruction<
       getAccountMeta("gameVault", accounts.gameVault),
       getAccountMeta("gameVaultTokenAccount", accounts.gameVaultTokenAccount),
       getAccountMeta("tokenProgram", accounts.tokenProgram),
-      getAccountMeta("associatedTokenProgram", accounts.associatedTokenProgram),
       getAccountMeta("creatorTokenAccount", accounts.creatorTokenAccount),
       getAccountMeta("systemProgram", accounts.systemProgram),
     ],
@@ -645,10 +600,6 @@ export function getInitializeGameInstruction<
       InstructionAccountInputAddress<TAccountTokenProgram>
     >,
     ResolvedInstructionAccountMeta<
-      TAccountAssociatedTokenProgram,
-      InstructionAccountInputAddress<TAccountAssociatedTokenProgram>
-    >,
-    ResolvedInstructionAccountMeta<
       TAccountCreatorTokenAccount,
       InstructionAccountInputAddress<TAccountCreatorTokenAccount>
     >,
@@ -673,9 +624,8 @@ export type ParsedInitializeGameInstruction<
     gameVault: TAccountMetas[5];
     gameVaultTokenAccount: TAccountMetas[6];
     tokenProgram: TAccountMetas[7];
-    associatedTokenProgram: TAccountMetas[8];
-    creatorTokenAccount: TAccountMetas[9];
-    systemProgram: TAccountMetas[10];
+    creatorTokenAccount: TAccountMetas[8];
+    systemProgram: TAccountMetas[9];
   };
   data: InitializeGameInstructionData;
 };
@@ -688,10 +638,10 @@ export function parseInitializeGameInstruction<
     InstructionWithAccounts<TAccountMetas> &
     InstructionWithData<ReadonlyUint8Array>,
 ): ParsedInitializeGameInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 11) {
+  if (instruction.accounts.length < 10) {
     throw new SolanaError(SOLANA_ERROR__PROGRAM_CLIENTS__INSUFFICIENT_ACCOUNT_METAS, {
       actualAccountMetas: instruction.accounts.length,
-      expectedAccountMetas: 11,
+      expectedAccountMetas: 10,
     });
   }
   let accountIndex = 0;
@@ -711,7 +661,6 @@ export function parseInitializeGameInstruction<
       gameVault: getNextAccount(),
       gameVaultTokenAccount: getNextAccount(),
       tokenProgram: getNextAccount(),
-      associatedTokenProgram: getNextAccount(),
       creatorTokenAccount: getNextAccount(),
       systemProgram: getNextAccount(),
     },
