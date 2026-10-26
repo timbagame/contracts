@@ -197,7 +197,6 @@ contract TimbaTest is Test {
         assertEq(timba.upgradeAuthority(), address(0xad));
         assertEq(timba.creationDigest(pending), digest);
         assertEq(timba.creationNonces(alice), 2);
-        assertEq(timba.liabilities(address(token)), 300 ether);
         assertEq(token.balanceOf(address(timba)), 300 ether);
         assertEq(timba.participantIndex(full, alice), 1);
         assertEq(timba.participantIndex(full, bob), 2);
@@ -211,7 +210,6 @@ contract TimbaTest is Test {
         timba.refundPlayer(underfilled, alice);
         vm.prank(alice);
         timba.closeGame(giveaway);
-        assertEq(timba.liabilities(address(token)), 0);
         assertEq(token.balanceOf(address(timba)), 0);
     }
 
@@ -315,7 +313,7 @@ contract TimbaTest is Test {
         timba.completeGame(game, SECRET);
         assertEq(token.balanceOf(winner) - beforeBalance, 198 ether);
         assertEq(token.balanceOf(operator), 2 ether);
-        assertEq(timba.liabilities(address(token)), 0);
+        assertEq(token.balanceOf(address(timba)), 0);
         assertEq(uint256(timba.getGame(game).status), uint256(Timba.Status.Completed));
         vm.prank(operator);
         vm.expectRevert(Timba.GameUnavailable.selector);
@@ -331,7 +329,7 @@ contract TimbaTest is Test {
         // rejection threshold at 2^255 - 1, so roughly half of all samples fall in the biased tail.
         uint256 n = (uint256(1) << 255) + 1;
         uint256 threshold = n - 2;
-        bytes32 participantsSlot = bytes32(uint256(keccak256(abi.encode(game, uint256(3)))) + 7);
+        bytes32 participantsSlot = bytes32(uint256(keccak256(abi.encode(game, uint256(2)))) + 5);
         assertEq(uint256(vm.load(address(timba), participantsSlot)), 2);
         vm.store(address(timba), participantsSlot, bytes32(n));
         bytes32 first = keccak256(abi.encode(block.chainid, address(timba), game, SECRET, entryBlock));
@@ -359,7 +357,7 @@ contract TimbaTest is Test {
         vm.prank(alice);
         timba.closeGame(game);
         assertEq(token.balanceOf(alice), 1_000_000 ether);
-        assertEq(timba.liabilities(address(token)), 0);
+        assertEq(token.balanceOf(address(timba)), 0);
         r = request(Timba.GameType.Giveaway);
         r.minPlayers = 1;
         r.maxPlayers = 1;
@@ -392,7 +390,7 @@ contract TimbaTest is Test {
         assertEq(token.balanceOf(bob), 1_000_000 ether);
         vm.prank(alice);
         timba.closeGame(game);
-        assertEq(timba.liabilities(address(token)), 0);
+        assertEq(token.balanceOf(address(timba)), 0);
     }
 
     function testUnderfilledRefundAtExpiryAndNoEarlyUnjoin() public {
@@ -555,10 +553,10 @@ contract TimbaTest is Test {
         Timba.CreateRequest memory r = request(Timba.GameType.Giveaway);
         r.token = address(other);
         bytes32 game = create(r, false);
-        assertEq(timba.liabilities(address(other)), r.amount);
+        assertEq(other.balanceOf(address(timba)), r.amount);
         vm.prank(alice);
         timba.closeGame(game);
-        assertEq(timba.liabilities(address(other)), 0);
+        assertEq(other.balanceOf(address(timba)), 0);
         r = request(Timba.GameType.Giveaway);
         bytes memory signature = sign(timba.creationDigest(r));
         r.token = address(other);
@@ -581,7 +579,6 @@ contract TimbaTest is Test {
         timba.completeGame(first, bytes32(uint256(1)));
         vm.prank(operator);
         timba.completeGame(first, SECRET);
-        assertEq(timba.liabilities(address(token)), 100 ether);
         assertEq(token.balanceOf(address(timba)), 100 ether);
         vm.prank(alice);
         timba.closeGame(second);
@@ -606,7 +603,7 @@ contract TimbaTest is Test {
         vm.expectRevert(Timba.InvalidTransfer.selector);
         timba.closeGame(game);
         assertEq(timba.getGame(game).totalAmount, 100 ether);
-        assertEq(timba.liabilities(address(tax)), 100 ether);
+        assertEq(tax.balanceOf(address(timba)), 100 ether);
     }
 
     function testReentrancyBlockedDuringDeposit() public {
@@ -634,7 +631,6 @@ contract TimbaTest is Test {
         vm.prank(operator);
         timba.completeGame(game, SECRET);
         assertEq(token.balanceOf(address(timba)), 0);
-        assertEq(timba.liabilities(address(token)), 0);
         assertEq(token.balanceOf(alice) + token.balanceOf(bob) + token.balanceOf(operator), 2_000_000 ether);
     }
 
@@ -773,6 +769,6 @@ contract TimbaTest is Test {
         vm.prank(operator);
         timba.completeGame(game, SECRET);
         emit log_named_uint("settlement gas at 1000 players", beforeGas - gasleft());
-        assertEq(timba.liabilities(address(token)), 0);
+        assertEq(token.balanceOf(address(timba)), 0);
     }
 }

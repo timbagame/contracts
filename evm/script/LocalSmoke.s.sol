@@ -57,7 +57,6 @@ contract LocalSmoke is Script {
         t.upgradeToAndCall(address(new Timba()), "");
         t.completeGame(id, secret);
         vm.stopBroadcast();
-        require(t.liabilities(address(token)) == 0, "outstanding funds");
         require(token.balanceOf(address(t)) == 0, "vault not empty");
         require(token.balanceOf(operator) == 0.2 ether, "wrong fee");
         require(t.getGame(id).status == Timba.Status.Completed, "not completed");
