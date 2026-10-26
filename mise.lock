@@ -115,29 +115,30 @@ url_api = "https://api.github.com/repos/solana-foundation/anchor/releases/assets
 provenance = "github-attestations"
 
 [[tools."github:solana-foundation/surfpool"]]
-version = "1.6.0"
+version = "1.6.1"
 backend = "github:solana-foundation/surfpool"
-specifiers = ["v1.6.0"]
+specifiers = ["v1.6.1"]
 
 [tools."github:solana-foundation/surfpool"."platforms.linux-x64"]
-checksum = "sha256:cb471b00aa3b7d603338eb74ebfec1d23959ecba005b5f1be42ba8d174107fc2"
-url = "https://github.com/solana-foundation/surfpool/releases/download/v1.6.0/surfpool-linux-x64.tar.gz"
-url_api = "https://api.github.com/repos/solana-foundation/surfpool/releases/assets/573036211"
+checksum = "sha256:64cff3fd6bb00bb0d5c7edef2915a491338d14eb19b7130abf9c81ee5357d165"
+checksum_source = "mise-versions"
+url = "https://github.com/solana-foundation/surfpool/releases/download/v1.6.1/surfpool-linux-x64.tar.gz"
+url_api = "https://api.github.com/repos/solana-foundation/surfpool/releases/assets/626886341"
 
 [tools."github:solana-foundation/surfpool"."platforms.linux-x64-baseline"]
-checksum = "sha256:cb471b00aa3b7d603338eb74ebfec1d23959ecba005b5f1be42ba8d174107fc2"
+checksum = "sha256:64cff3fd6bb00bb0d5c7edef2915a491338d14eb19b7130abf9c81ee5357d165"
 checksum_source = "mise-versions"
-url = "https://github.com/solana-foundation/surfpool/releases/download/v1.6.0/surfpool-linux-x64.tar.gz"
-url_api = "https://api.github.com/repos/solana-foundation/surfpool/releases/assets/573036211"
+url = "https://github.com/solana-foundation/surfpool/releases/download/v1.6.1/surfpool-linux-x64.tar.gz"
+url_api = "https://api.github.com/repos/solana-foundation/surfpool/releases/assets/626886341"
 
 [tools."github:solana-foundation/surfpool"."platforms.linux-x64-musl"]
-checksum = "sha256:cb471b00aa3b7d603338eb74ebfec1d23959ecba005b5f1be42ba8d174107fc2"
+checksum = "sha256:64cff3fd6bb00bb0d5c7edef2915a491338d14eb19b7130abf9c81ee5357d165"
 checksum_source = "mise-versions"
-url = "https://github.com/solana-foundation/surfpool/releases/download/v1.6.0/surfpool-linux-x64.tar.gz"
-url_api = "https://api.github.com/repos/solana-foundation/surfpool/releases/assets/573036211"
+url = "https://github.com/solana-foundation/surfpool/releases/download/v1.6.1/surfpool-linux-x64.tar.gz"
+url_api = "https://api.github.com/repos/solana-foundation/surfpool/releases/assets/626886341"
 
 [tools."github:solana-foundation/surfpool"."platforms.linux-x64-musl-baseline"]
-checksum = "sha256:cb471b00aa3b7d603338eb74ebfec1d23959ecba005b5f1be42ba8d174107fc2"
+checksum = "sha256:64cff3fd6bb00bb0d5c7edef2915a491338d14eb19b7130abf9c81ee5357d165"
 checksum_source = "mise-versions"
-url = "https://github.com/solana-foundation/surfpool/releases/download/v1.6.0/surfpool-linux-x64.tar.gz"
-url_api = "https://api.github.com/repos/solana-foundation/surfpool/releases/assets/573036211"
+url = "https://github.com/solana-foundation/surfpool/releases/download/v1.6.1/surfpool-linux-x64.tar.gz"
+url_api = "https://api.github.com/repos/solana-foundation/surfpool/releases/assets/626886341"
