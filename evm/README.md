@@ -4,7 +4,7 @@ Solidity coinflips and giveaways for EVM networks. This is a separate, UUPS-upgr
 
 ## Build and test
 
-Pinned tooling: Foundry **1.8.5**, Solidity **0.8.37**, OpenZeppelin **5.7.0**, forge-std **1.17.0**. Dependencies are git submodules pinned to commits in the parent repository and `foundry.lock`. Compilation targets **Cancun** because the selected OpenZeppelin release uses Cancun instructions. Confirm that a target L2 supports Cancun before deploying.
+Foundry is pinned in `../mise.toml` and Solidity in `foundry.toml`. OpenZeppelin and forge-std are git submodules pinned to release tags: the tag is the submodule `branch` in `../.gitmodules`, and `foundry.lock` records the tag and its commit. CI checks that both match the checked-out submodules. Compilation targets **Cancun** because the selected OpenZeppelin release uses Cancun instructions. Confirm that a target L2 supports Cancun before deploying.
 
 From the `evm/` directory:
 

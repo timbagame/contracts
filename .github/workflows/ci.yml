@@ -42,6 +42,18 @@ jobs:
           # Forge's compilation cache is incremental, so a stale entry still saves recompiling unchanged files.
           restore-keys: |
             evm-${{ runner.os }}-${{ hashFiles('mise.lock') }}-
+      - name: Check foundry.lock matches the submodules
+        run: |
+          for lib in $(jq -r 'keys[]' foundry.lock); do
+            tag=$(jq -r --arg lib "$lib" '.[$lib].tag.name' foundry.lock)
+            rev=$(jq -r --arg lib "$lib" '.[$lib].tag.rev' foundry.lock)
+            branch=$(git config -f ../.gitmodules "submodule.evm/$lib.branch")
+            commit=$(git rev-parse "HEAD:evm/$lib")
+            if [ "$branch" != "$tag" ] || [ "$commit" != "$rev" ]; then
+              echo "::error::$lib: foundry.lock has $tag@$rev, .gitmodules has $branch, the submodule is at $commit"
+              exit 1
+            fi
+          done
       - name: Format
         run: forge fmt --check
       - name: Build and check deployment size
