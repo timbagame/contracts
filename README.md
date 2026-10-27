@@ -72,10 +72,12 @@ Timba currently charges 1%.
 ## Related
 
 - **[timbagame/protocol](https://github.com/timbagame/protocol):** TypeScript clients, IDLs, ABIs and winner verification
+- **[timbagame/oracle](https://github.com/timbagame/oracle):** secrets, game approval and settlement
+- **[timbagame/bot](https://github.com/timbagame/bot):** the Telegram bot
 - **[timba.cc](https://timba.cc):** play on the web and verify games
 - **[@playtimbabot](https://t.me/playtimbabot):** play in Telegram
 
-## 🛠️ Development
+## Development
 
 <details>
 <summary><b>Repository layout</b></summary>
