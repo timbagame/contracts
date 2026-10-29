@@ -87,7 +87,9 @@ Each game's `totalAmount` holds its outstanding funds, and every payment reduces
 
 ## Deployment
 
-Use an encrypted Foundry keystore or hardware wallet supported by Forge. Set `TIMBA_OPERATOR` to the intended operator and `TIMBA_UPGRADE_AUTHORITY` to the upgrade administrator (ideally a separate multisig):
+Create the upgrade authority first: a [Safe](https://app.safe.global) on the target chain with at least two owners on hardware wallets and a threshold of at least 2, with more owners than the threshold. The deploy script refuses an upgrade authority without contract code, so a single key cannot hold it.
+
+Deploy with an encrypted Foundry keystore or hardware wallet supported by Forge. Set `TIMBA_OPERATOR` to the intended operator and `TIMBA_UPGRADE_AUTHORITY` to the Safe:
 
 ```bash
 TIMBA_OPERATOR=0x... TIMBA_UPGRADE_AUTHORITY=0x... forge script script/Deploy.s.sol:Deploy \
@@ -100,14 +102,26 @@ Provide the target explorer's required verification configuration. The script de
 
 UUPS upgrades replace the implementation while keeping the proxy address, token custody, and game state. The upgrade authority can change all contract behavior and must be trusted with escrowed funds. Transfer that authority with `proposeUpgradeAuthority` followed by the recipient's `acceptUpgradeAuthority`; operator ownership is independent.
 
-Deploy the reviewed new implementation, then upgrade using the upgrade authority's keystore:
+The Safe signs every upgrade. Deploy and verify the reviewed new implementation with any key, then write a Safe Transaction Builder batch:
 
 ```bash
-TIMBA_PROXY=0x... TIMBA_IMPLEMENTATION=0x... forge script script/Upgrade.s.sol:Upgrade \
-  --rpc-url "$RPC_URL" --account upgrade-admin --broadcast
+TIMBA_PROXY=0x... TIMBA_IMPLEMENTATION=0x... forge script script/Upgrade.s.sol:Upgrade --rpc-url "$RPC_URL"
 ```
 
-This script is for upgrades without a migration call. Upgrades needing initialization of new fields require reviewed migration calldata. UUPS checks that the target supports the proxy interface; **it does not validate storage compatibility**. Preserve existing storage slot ordering, field types, and the layouts of Game and OracleConfig; never reorder, remove, or repurpose them. Review the old/new compiler storage layouts (`forge inspect Timba storage-layout`) and test upgrades with active games before broadcast. Dependencies use OpenZeppelin namespaced storage; new Timba fields must also respect existing layout.
+The script needs no key and sends nothing. It runs the upgrade as the Safe on a discarded copy of the chain state, so a call that would revert is never written. It then writes `safe-batches/upgrade.json`. In the Safe app, open **Transaction Builder**, drag the file in, and create the batch. Each owner checks the proxy, the implementation in the description and the calldata, then signs. Once enough owners sign, one of them executes it.
+
+To move the authority to another Safe, write the two batches in turn:
+
+```bash
+TIMBA_PROXY=0x... forge script script/Upgrade.s.sol:Upgrade --rpc-url "$RPC_URL" --sig "propose(address)" <NEW_SAFE>
+# Execute safe-batches/propose-upgrade-authority.json from the current Safe, then:
+TIMBA_PROXY=0x... forge script script/Upgrade.s.sol:Upgrade --rpc-url "$RPC_URL" --sig "accept()"
+# Execute safe-batches/accept-upgrade-authority.json from the new Safe.
+```
+
+`TIMBA_SAFE_BATCH` changes the file name. The files are ignored by Git.
+
+This script is for upgrades without a migration call. Upgrades needing initialization of new fields require reviewed migration calldata. UUPS checks that the target supports the proxy interface; **it does not validate storage compatibility**. Preserve existing storage slot ordering, field types, and the layouts of Game and OracleConfig; never reorder, remove, or repurpose them. Review the old/new compiler storage layouts (`forge inspect Timba storage-layout`) and test upgrades with active games before the Safe signs. Dependencies use OpenZeppelin namespaced storage; new Timba fields must also respect existing layout.
 
 Completed/closed games retain their record and participant indexes. Paid-out funds leave the game's `totalAmount`; retaining records does not retain prizes. EVM storage is paid when written, with no recurring rent. Unlike Solana account closure, deleting entries does not return the original storage cost: clearing slots consumes gas and can provide only limited transaction gas refunds. Clearing every participant would require work proportional to game size. The current implementation therefore retains terminal history; optional future cleanup should be bounded/batched, preserve replay protection, and rely on events for historical queries.
 

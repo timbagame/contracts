@@ -33,7 +33,7 @@ The design is not fully trustless. It depends on the program upgrade authority, 
 | Operator close       | Current operator                                | Game must be empty and past the recovery boundary                            |
 | Close current Oracle | Current operator and program upgrade authority  | Closes the canonical v0.3 Oracle PDA                                         |
 
-The upgrade authority is the highest-trust role. It can deploy new program code. Users must treat its key custody and governance as part of the security model.
+The upgrade authority is the highest-trust role. It can deploy new program code. Users must treat its key custody and governance as part of the security model. It is the vault of an autonomous Squads v4 multisig: at least two members must approve every upgrade, Oracle initialization or closure, and verified-build record, and no config authority can change the members without a vote. The v0.3.0 release moves it there from a single key. See [DEPLOYMENT.md](./DEPLOYMENT.md#upgrade-custody).
 
 The oracle operator can rotate the operator, change the live Oracle configuration within on-chain limits, authorize games, approve private joins, settle valid games, and clean up eligible empty games. An operator update does not require the upgrade authority, but the new operator must sign.
 
@@ -175,7 +175,7 @@ If the legitimate operator still has control, rotate immediately with `update_or
 
 ### Upgrade-authority compromise
 
-The upgrade authority can replace the program with different code. Together with the operator, it can also close the Oracle. Protect the authority with hardware-backed signing, multisignature governance, separation of duties, and reviewed deployment procedures.
+The upgrade authority can replace the program with different code. Together with the operator, it can also close the Oracle. A compromise therefore takes keys from a threshold of multisig members. Members use hardware wallets, separate from the operator and the buffer wallet, and review each proposal's program, buffer, and hash before approving. If one member key leaks, the remaining members vote to replace it before an attacker can collect a threshold.
 
 ### Oracle closure with live games
 

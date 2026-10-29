@@ -8,20 +8,40 @@ Production service rollout, operator key custody, RPC configuration, monitoring,
 
 ## Fixed release identity
 
-| Item           | Value                                          |
-| -------------- | ---------------------------------------------- |
-| Program        | `timba`                                        |
-| Program ID     | `32Jr4JnXWvqq9GqPQynkooHsszaucUUvZfNLh2hdX2L5` |
-| Target cluster | Solana mainnet-beta                            |
-| Release line   | v0.3.0                                         |
+| Item            | Value                                          |
+| --------------- | ---------------------------------------------- |
+| Program         | `timba`                                        |
+| Program ID      | `32Jr4JnXWvqq9GqPQynkooHsszaucUUvZfNLh2hdX2L5` |
+| Target cluster  | Solana mainnet-beta                            |
+| Release line    | v0.3.0                                         |
+| Upgrade custody | Vault 0 of the Timba Squads v4 multisig        |
 
-The production program keypair used by Anchor must derive the fixed program ID. Verify it before building or deploying:
+Upgrades replace the executable of the existing program from a buffer, so they need no program keypair. `declare_id!` in `programs/timba/src/lib.rs` and every cluster in `Anchor.toml` must use the fixed program ID.
+
+## Upgrade custody
+
+The program's upgrade authority is the vault of a [Squads v4](https://squads.so) multisig (program `SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf`). No single key can upgrade the program, close the Oracle, or write the verified-build record. Until the v0.3.0 release hands it over, a single key holds the authority.
+
+The multisig must be:
+
+- **Autonomous.** It has no config authority, so only a vote can change its members or threshold.
+- **At least 2 of N, with more voters than the threshold.** One lost key must not lock upgrades forever.
+- **Executable.** At least one member can execute approved transactions.
+
+The wallet that uploads buffers and creates proposals is a member that can only propose. Members approve and execute in the [Squads app](https://app.squads.so) or any other Squads v4 client.
+
+Hand the authority to the vault once. The current authority signs; `--skip-new-upgrade-authority-signer-check` is needed because a vault is a PDA and cannot sign:
 
 ```bash
-solana-keygen pubkey <PRODUCTION_PROGRAM_KEYPAIR>
+solana program set-upgrade-authority \
+  --url mainnet-beta \
+  --keypair <CURRENT_UPGRADE_AUTHORITY> \
+  --new-upgrade-authority <SQUADS_VAULT> \
+  --skip-new-upgrade-authority-signer-check \
+  32Jr4JnXWvqq9GqPQynkooHsszaucUUvZfNLh2hdX2L5
 ```
 
-The command must return `32Jr4JnXWvqq9GqPQynkooHsszaucUUvZfNLh2hdX2L5`.
+Double-check `<SQUADS_VAULT>` first: this cannot be undone except by a Squads proposal. Then confirm `solana program show` reports the vault as the authority.
 
 ## Supported toolchain
 
@@ -30,11 +50,11 @@ The command must return `32Jr4JnXWvqq9GqPQynkooHsszaucUUvZfNLh2hdX2L5`.
 | Rust            | 1.99.1  |
 | Solana CLI      | 4.3.2   |
 | Anchor CLI      | 1.2.0   |
-| Bun             | 1.4.3   |
-| Surfpool        | 1.6.0   |
-| `solana-verify` | 0.5.1   |
+| Bun             | 1.4.4   |
+| Surfpool        | 1.6.1   |
+| `solana-verify` | 0.5.2   |
 
-Use `rust-toolchain.toml`, `Anchor.toml`, and `../.github/workflows/ci.yml` as the repository sources of truth. A verifiable build also requires a container runtime supported by Anchor.
+Use `rust-toolchain.toml`, `Anchor.toml`, `../mise.toml`, and `../.github/workflows/ci.yml` as the repository sources of truth. A verifiable build also requires a container runtime supported by Anchor.
 
 Before signing a release, record the tool versions:
 
@@ -53,8 +73,8 @@ Before any mainnet upgrade:
 
 1. Select a public commit that contains the program source, lockfiles, generated IDL, Anchor types, and Kit client.
 2. Confirm that the commit is on the intended release branch and that the working tree is clean.
-3. Confirm the current program ID and upgrade authority on mainnet.
-4. Confirm the production program keypair, upgrade-authority wallet, RPC endpoint, and expected balance impact.
+3. Confirm the current program ID and that its upgrade authority is the Squads vault.
+4. Confirm the multisig members and threshold, the buffer wallet, the RPC endpoint, and the expected balance impact.
 5. Disable new game approvals in the off-chain service.
 6. Review the account-compatibility requirements for the release.
 7. Build, deploy, and verify the same executable artifact.
@@ -135,7 +155,7 @@ solana program show \
 Record:
 
 - Current program-data address.
-- Current upgrade authority.
+- Current upgrade authority (the Squads vault).
 - Current executable hash.
 - Current Oracle account data.
 - Every open game account.
@@ -146,21 +166,47 @@ Stop if the observed program ID, authority, accounts, or balances do not match t
 
 ## Upgrade the program
 
-Deploy the exact verifiable artifact with Anchor. `--no-idl` is required because this project keeps its generated IDL off-chain:
+The upgrade has three parts: upload the build to a buffer, hand the buffer to the vault, and have the multisig run the upgrade.
+
+Write the exact verifiable artifact to a new buffer. The buffer wallet pays rent for it, about 1.8 SOL for the current build:
 
 ```bash
-anchor deploy \
-  --verifiable \
-  --no-idl \
-  --program-name timba \
-  --program-keypair <PRODUCTION_PROGRAM_KEYPAIR> \
-  --provider.cluster mainnet \
-  --provider.wallet <UPGRADE_AUTHORITY_KEYPAIR>
+solana program write-buffer \
+  --url mainnet-beta \
+  --keypair <BUFFER_WALLET> \
+  target/verifiable/timba.so
 ```
 
-Before signing, confirm again that the production program keypair derives the fixed program ID and that the provider wallet is the current on-chain upgrade authority. Anchor deploys `target/verifiable/timba.so` because `--verifiable` is set. It does not create or update an on-chain IDL account because `--no-idl` is set.
+Record the buffer address. Confirm the buffer holds the release build:
 
-Record the deployment transaction signature.
+```bash
+solana-verify get-buffer-hash --url https://api.mainnet-beta.solana.com <BUFFER>
+solana-verify get-executable-hash target/verifiable/timba.so
+```
+
+The hashes must match. Hand the buffer to the vault, which must hold the buffer's authority to use it:
+
+```bash
+solana program set-buffer-authority \
+  --url mainnet-beta \
+  --keypair <BUFFER_WALLET> \
+  --new-buffer-authority <SQUADS_VAULT> \
+  <BUFFER>
+```
+
+Create a Squads vault transaction with the upgradeable loader's `Upgrade` instruction:
+
+| Account      | Value                                          |
+| ------------ | ---------------------------------------------- |
+| Program data | The program's `programdataAddress`             |
+| Program      | `32Jr4JnXWvqq9GqPQynkooHsszaucUUvZfNLh2hdX2L5` |
+| Buffer       | `<BUFFER>`                                     |
+| Spill        | Receives the buffer's rent after the upgrade   |
+| Authority    | `<SQUADS_VAULT>`                               |
+
+Before approving, each member checks that the proposal upgrades this program from this buffer, and the buffer hash above. Once the threshold approves, a member with execute permission executes it. The upgrade closes the buffer and refunds its rent to the spill account. Do not use `anchor deploy`: it needs the upgrade authority as a local keypair.
+
+Record the proposal index and the execution transaction signature.
 
 ## Verify the deployed executable
 
@@ -192,29 +238,31 @@ solana program show \
 
 ## Verify the public source
 
-Create or update the on-chain verification record from the exact public commit:
+The verified-build record is a PDA keyed by the program and its uploader. The uploader must be the upgrade authority, so the vault writes it through Squads. Export the record transaction from the exact public commit:
 
 ```bash
-solana-verify verify-from-repo \
+solana-verify export-pda-tx \
   https://github.com/timbagame/contracts \
   --url https://api.mainnet-beta.solana.com \
   --program-id 32Jr4JnXWvqq9GqPQynkooHsszaucUUvZfNLh2hdX2L5 \
+  --uploader <SQUADS_VAULT> \
   --commit-hash <COMMIT_SHA> \
   --library-name timba \
   --mount-path solana/programs/timba \
   --workspace-path solana \
-  --keypair <UPGRADE_AUTHORITY_SIGNER>
+  --encoding base58 \
+  --compute-unit-price 0
 ```
 
-Review the requested on-chain write before approving it. For a multisignature upgrade authority, use the transaction-export flow supported by `solana-verify` instead of supplying a local keypair.
+Import that transaction as a Squads vault transaction. The vault pays the record's rent, so first send it about 0.01 SOL. Members approve it and a member executes it, as with the upgrade.
 
-After the verification PDA exists, submit the remote verification job:
+After the record exists, submit the remote verification job:
 
 ```bash
 solana-verify remote submit-job \
   --url https://api.mainnet-beta.solana.com \
   --program-id 32Jr4JnXWvqq9GqPQynkooHsszaucUUvZfNLh2hdX2L5 \
-  --uploader <UPGRADE_AUTHORITY_PUBKEY>
+  --uploader <SQUADS_VAULT>
 ```
 
 The release is not verified until the remote result succeeds and reports the same executable hash.
@@ -247,6 +295,7 @@ Complete these steps while the v0.2 executable is still installed:
 5. Close or otherwise account for each obsolete v0.2 token vault as required by the v0.2 program.
 6. Prove that no v0.2 game or `GameToken` account remains.
 7. Record the Oracle address, decoded configuration, lamport balance, and current upgrade authority.
+8. Hand the upgrade authority to the Squads vault (see [Upgrade custody](#upgrade-custody)).
 
 Do not upgrade while a game or `GameToken` account still depends on the v0.2 executable.
 
@@ -280,7 +329,7 @@ Before enabling game approvals:
 
 ## Future Oracle closure
 
-`close_oracle` is for a current v0.3 Oracle. It requires the current operator and current program upgrade authority and returns rent to the operator.
+`close_oracle` is for a current v0.3 Oracle. It requires the current operator and current program upgrade authority, so it runs as a Squads vault transaction that the operator also signs. It returns rent to the operator.
 
 Before a future incompatible upgrade:
 
@@ -303,8 +352,10 @@ Retain:
 - Pre-upgrade and post-upgrade program state.
 - Pre-upgrade and post-upgrade Oracle state.
 - Game and token-account closure evidence.
+- Squads multisig, vault, members, and threshold.
+- Buffer address and hash.
+- Squads proposal indexes, approvals, and execution signatures.
 - Deployment and migration transaction signatures.
-- Local source-verification output.
 - Verification PDA details and remote verification result.
 - Downstream client artifact comparison.
 - Approvals for service re-enablement.
@@ -314,3 +365,4 @@ Retain:
 - [Anchor verifiable builds](https://www.anchor-lang.com/docs/references/verifiable-builds)
 - [Solana verified builds](https://solana.com/docs/programs/verified-builds)
 - [Solana verifiable-build CLI](https://github.com/solana-foundation/solana-verifiable-build)
+- [Squads v4 program](https://github.com/Squads-Protocol/v4)
