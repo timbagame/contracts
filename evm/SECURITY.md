@@ -3,8 +3,10 @@
 Read the [shared trust model](../SECURITY.md) first.
 
 The UUPS upgrade authority is separate from the Oracle operator. It can replace
-contract logic and must be trusted with all escrow. Both authorities use
-consensual transfer flows. UUPS interface checks do not establish storage-layout
+contract logic and must be trusted with all escrow, so it is a Safe multisig:
+the deploy script refuses an address without code, and upgrades are Safe
+transactions that a threshold of owners signs. Both authorities use consensual
+transfer flows; the upgrade authority moves only when the new Safe accepts it. UUPS interface checks do not establish storage-layout
 compatibility; review and test upgrades against funded games.
 
 Creation and private entries require Oracle signatures. Creation authorizations

@@ -16,7 +16,7 @@ Anyone can recompute the winner from public data after the game settles.
 Read this before you rely on the contracts:
 
 - **The oracle is trusted.** It knows each secret before settlement, approves game creation and private entries, and can decline to reveal. Commit-reveal stops the secret from changing after players join, but it does not make games fair against a malicious oracle or block producer. There is no external VRF.
-- **The contracts are upgradeable.** Whoever holds the upgrade authority controls program behavior and the escrowed funds.
+- **The contracts are upgradeable.** Whoever holds the upgrade authority controls program behavior and the escrowed funds. It is a multisig: a Squads v4 vault on Solana and a Safe on EVM. The Solana program moves to its vault with the v0.3.0 release.
 - **Token policy is off-chain.** The oracle decides which tokens and minimum amounts it will sign for. The Solana program accepts only legacy SPL Token mints, and the EVM contract rejects fee-on-transfer behavior.
 - **Tests are not an audit.** The test suites are extensive, but they are not an independent security audit.
 

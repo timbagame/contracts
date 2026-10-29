@@ -5,6 +5,8 @@
 Both implementations hold game funds on-chain, verify a SHA-256 commitment,
 recompute the winner, and restrict payout recipients. They are upgradeable:
 the upgrade authority must be trusted with contract behavior and escrowed funds.
+It is a multisig on both: a Squads v4 vault on Solana and a Safe on EVM. No
+single key can upgrade either contract.
 
 The Oracle is a trusted operator. It knows secrets before settlement, approves
 creation and private entries, and can withhold a reveal. Public slot/block inputs
@@ -18,9 +20,9 @@ Local tests are not an independent security audit.
 
 ## Implementation-specific boundaries
 
-- [Solana security model](solana/SECURITY.md): program authority, account closure,
+- [Solana security model](solana/SECURITY.md): program authority and its Squads custody, account closure,
   shared mint vaults, SPL Token restrictions, and migration assumptions.
-- [EVM security model](evm/SECURITY.md): proxy authority, signed authorizations,
+- [EVM security model](evm/SECURITY.md): proxy authority and its Safe custody, signed authorizations,
   ERC-20 restrictions, retained storage, and upgrade compatibility.
 
 ## Reporting

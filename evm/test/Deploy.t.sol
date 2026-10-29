@@ -3,6 +3,7 @@ pragma solidity ^0.8.37;
 import {Test} from "forge-std/Test.sol";
 import {Deploy} from "../script/Deploy.s.sol";
 import {Timba} from "../src/Timba.sol";
+import {ContractAuthority} from "./ContractAuthority.sol";
 
 contract DeployTest is Test {
     bytes32 private constant IMPLEMENTATION_SLOT = 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;
@@ -10,15 +11,15 @@ contract DeployTest is Test {
     function testDeploysInitializedProxyWithOperationalDefaults() public {
         // vm.setEnv mutates the process environment. Exercise both paths in one
         // test so parallel Forge tests cannot overwrite each other's authority.
+        // A single key may not hold the upgrade authority.
         vm.setEnv("TIMBA_OPERATOR", vm.toString(makeAddr("operator")));
-        vm.setEnv("TIMBA_UPGRADE_AUTHORITY", vm.toString(address(0)));
+        vm.setEnv("TIMBA_UPGRADE_AUTHORITY", vm.toString(makeAddr("authority")));
         Deploy script = new Deploy();
-        vm.expectRevert(Timba.InvalidAuthorization.selector);
+        vm.expectRevert(abi.encodeWithSelector(Deploy.UpgradeAuthorityNotAContract.selector, makeAddr("authority")));
         script.run();
-        vm.stopBroadcast();
 
         address operator = makeAddr("operator");
-        address authority = makeAddr("authority");
+        address authority = address(new ContractAuthority());
         vm.setEnv("TIMBA_OPERATOR", vm.toString(operator));
         vm.setEnv("TIMBA_UPGRADE_AUTHORITY", vm.toString(authority));
 
