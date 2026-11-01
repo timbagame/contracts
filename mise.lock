@@ -87,32 +87,32 @@ url_api = "https://api.github.com/repos/foundry-rs/foundry/releases/assets/66336
 provenance = "github-attestations"
 
 [[tools."github:solana-foundation/anchor"]]
-version = "1.2.0"
+version = "1.2.2"
 backend = "github:solana-foundation/anchor"
-specifiers = ["v1.2.0"]
+specifiers = ["v1.2.2"]
 
 [tools."github:solana-foundation/anchor"."platforms.linux-x64"]
-checksum = "sha256:0c9c41a3292c281cc6eadb78d6e1c8224d8324a34b0736a89d640fd314db05b7"
-url = "https://github.com/solana-foundation/anchor/releases/download/v1.2.0/anchor-1.2.0-x86_64-unknown-linux-gnu"
-url_api = "https://api.github.com/repos/solana-foundation/anchor/releases/assets/544752893"
+checksum = "sha256:e2c35a973bcfe476f3a89b120e99820f917229faf33d3e71f6625bd94199e741"
+url = "https://github.com/solana-foundation/anchor/releases/download/v1.2.2/anchor-1.2.2-x86_64-unknown-linux-gnu"
+url_api = "https://api.github.com/repos/solana-foundation/anchor/releases/assets/685419700"
 provenance = "github-attestations"
 
 [tools."github:solana-foundation/anchor"."platforms.linux-x64-baseline"]
-checksum = "sha256:0c9c41a3292c281cc6eadb78d6e1c8224d8324a34b0736a89d640fd314db05b7"
-url = "https://github.com/solana-foundation/anchor/releases/download/v1.2.0/anchor-1.2.0-x86_64-unknown-linux-gnu"
-url_api = "https://api.github.com/repos/solana-foundation/anchor/releases/assets/544752893"
+checksum = "sha256:e2c35a973bcfe476f3a89b120e99820f917229faf33d3e71f6625bd94199e741"
+url = "https://github.com/solana-foundation/anchor/releases/download/v1.2.2/anchor-1.2.2-x86_64-unknown-linux-gnu"
+url_api = "https://api.github.com/repos/solana-foundation/anchor/releases/assets/685419700"
 provenance = "github-attestations"
 
 [tools."github:solana-foundation/anchor"."platforms.linux-x64-musl"]
-checksum = "sha256:0c9c41a3292c281cc6eadb78d6e1c8224d8324a34b0736a89d640fd314db05b7"
-url = "https://github.com/solana-foundation/anchor/releases/download/v1.2.0/anchor-1.2.0-x86_64-unknown-linux-gnu"
-url_api = "https://api.github.com/repos/solana-foundation/anchor/releases/assets/544752893"
+checksum = "sha256:e2c35a973bcfe476f3a89b120e99820f917229faf33d3e71f6625bd94199e741"
+url = "https://github.com/solana-foundation/anchor/releases/download/v1.2.2/anchor-1.2.2-x86_64-unknown-linux-gnu"
+url_api = "https://api.github.com/repos/solana-foundation/anchor/releases/assets/685419700"
 provenance = "github-attestations"
 
 [tools."github:solana-foundation/anchor"."platforms.linux-x64-musl-baseline"]
-checksum = "sha256:0c9c41a3292c281cc6eadb78d6e1c8224d8324a34b0736a89d640fd314db05b7"
-url = "https://github.com/solana-foundation/anchor/releases/download/v1.2.0/anchor-1.2.0-x86_64-unknown-linux-gnu"
-url_api = "https://api.github.com/repos/solana-foundation/anchor/releases/assets/544752893"
+checksum = "sha256:e2c35a973bcfe476f3a89b120e99820f917229faf33d3e71f6625bd94199e741"
+url = "https://github.com/solana-foundation/anchor/releases/download/v1.2.2/anchor-1.2.2-x86_64-unknown-linux-gnu"
+url_api = "https://api.github.com/repos/solana-foundation/anchor/releases/assets/685419700"
 provenance = "github-attestations"
 
 [[tools."github:solana-foundation/surfpool"]]

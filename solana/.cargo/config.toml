@@ -1,0 +1,15 @@
+# Keep real SBF objects next to the LTO bitcode in dependency rlibs.
+#
+# Under fat LTO, Cargo builds dependencies with `-C linker-plugin-lto`, so their
+# rlibs hold LLVM bitcode only. rustc 1.95 (platform-tools v1.57 and v1.58)
+# hashes object file names longer than 143 bytes, and then no longer recognises
+# them as Rust objects, so it hands the bitcode to rust-lld, which rejects it as
+# "incompatible". spl-token-confidential-transfer-proof-extraction (pulled in by
+# anchor-spl's solana-v3 feature) has a 144-byte object name and hits this.
+#
+# With `linker-plugin-lto=no`, those objects are SBF ELF with embedded bitcode:
+# rustc still LTOs them, and the misfiled copy is valid input that the linker
+# ignores. Drop this once platform-tools ships a rustc that tracks rlib objects
+# by name (rust-lang/rust main already does).
+[target.sbpfv3-solana-solana]
+rustflags = ["-C", "linker-plugin-lto=no"]

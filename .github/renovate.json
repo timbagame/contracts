@@ -7,15 +7,6 @@
   "lockFileMaintenance": { "enabled": true },
   "packageRules": [
     {
-      "description": "Hold Anchor at 1.2.0. Since 1.2.1, anchor-spl's solana-v3 feature always links spl-token-confidential-transfer-proof-extraction, whose object file name is 144 bytes. rustc 1.95 (platform-tools v1.57 and v1.58) hashes names over 143 bytes, then no longer sees the file as a Rust object under fat LTO and hands its bitcode to rust-lld, which rejects it as incompatible. Lift this once a platform-tools release on a newer rustc links `anchor build` with the newest Anchor. The Anchor CLI stays on the same version as the crates.",
-      "matchPackageNames": [
-        "anchor-lang",
-        "anchor-spl",
-        "solana-foundation/anchor"
-      ],
-      "allowedVersions": "<=1.2.0"
-    },
-    {
       "description": "litesvm 0.18 requires solana-rent ~4.4. Drop this once litesvm allows newer.",
       "matchDepNames": ["solana-rent"],
       "allowedVersions": "~4.4"
