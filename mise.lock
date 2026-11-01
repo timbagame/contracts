@@ -29,32 +29,33 @@ backend = "cargo:cargo-llvm-cov"
 specifiers = ["0.9.1"]
 
 [[tools."github:anza-xyz/agave"]]
-version = "4.3.2"
+version = "4.4.0"
 backend = "github:anza-xyz/agave"
-specifiers = ["v4.3.2"]
+specifiers = ["v4.4.0"]
 
 [tools."github:anza-xyz/agave"."platforms.linux-x64"]
-checksum = "sha256:5c9599d7fa397375df69d58e8d4f550ee45463dd6d1ecad9e5a1f053ce8e0933"
-url = "https://github.com/anza-xyz/agave/releases/download/v4.3.2/solana-release-x86_64-unknown-linux-gnu.tar.bz2"
-url_api = "https://api.github.com/repos/anza-xyz/agave/releases/assets/645358959"
+checksum = "sha256:3363f4728fe786ac7036e342a20df928aa2e3e43f807fbdce67814840538c574"
+checksum_source = "mise-versions"
+url = "https://github.com/anza-xyz/agave/releases/download/v4.4.0/solana-release-x86_64-unknown-linux-gnu.tar.bz2"
+url_api = "https://api.github.com/repos/anza-xyz/agave/releases/assets/686280700"
 
 [tools."github:anza-xyz/agave"."platforms.linux-x64-baseline"]
-checksum = "sha256:5c9599d7fa397375df69d58e8d4f550ee45463dd6d1ecad9e5a1f053ce8e0933"
+checksum = "sha256:3363f4728fe786ac7036e342a20df928aa2e3e43f807fbdce67814840538c574"
 checksum_source = "mise-versions"
-url = "https://github.com/anza-xyz/agave/releases/download/v4.3.2/solana-release-x86_64-unknown-linux-gnu.tar.bz2"
-url_api = "https://api.github.com/repos/anza-xyz/agave/releases/assets/645358959"
+url = "https://github.com/anza-xyz/agave/releases/download/v4.4.0/solana-release-x86_64-unknown-linux-gnu.tar.bz2"
+url_api = "https://api.github.com/repos/anza-xyz/agave/releases/assets/686280700"
 
 [tools."github:anza-xyz/agave"."platforms.linux-x64-musl"]
-checksum = "sha256:5c9599d7fa397375df69d58e8d4f550ee45463dd6d1ecad9e5a1f053ce8e0933"
+checksum = "sha256:3363f4728fe786ac7036e342a20df928aa2e3e43f807fbdce67814840538c574"
 checksum_source = "mise-versions"
-url = "https://github.com/anza-xyz/agave/releases/download/v4.3.2/solana-release-x86_64-unknown-linux-gnu.tar.bz2"
-url_api = "https://api.github.com/repos/anza-xyz/agave/releases/assets/645358959"
+url = "https://github.com/anza-xyz/agave/releases/download/v4.4.0/solana-release-x86_64-unknown-linux-gnu.tar.bz2"
+url_api = "https://api.github.com/repos/anza-xyz/agave/releases/assets/686280700"
 
 [tools."github:anza-xyz/agave"."platforms.linux-x64-musl-baseline"]
-checksum = "sha256:5c9599d7fa397375df69d58e8d4f550ee45463dd6d1ecad9e5a1f053ce8e0933"
+checksum = "sha256:3363f4728fe786ac7036e342a20df928aa2e3e43f807fbdce67814840538c574"
 checksum_source = "mise-versions"
-url = "https://github.com/anza-xyz/agave/releases/download/v4.3.2/solana-release-x86_64-unknown-linux-gnu.tar.bz2"
-url_api = "https://api.github.com/repos/anza-xyz/agave/releases/assets/645358959"
+url = "https://github.com/anza-xyz/agave/releases/download/v4.4.0/solana-release-x86_64-unknown-linux-gnu.tar.bz2"
+url_api = "https://api.github.com/repos/anza-xyz/agave/releases/assets/686280700"
 
 [[tools."github:foundry-rs/foundry"]]
 version = "1.8.6"
