@@ -12,6 +12,11 @@
       "allowedVersions": "~4.4"
     },
     {
+      "description": "litesvm 0.18 does not compile against Agave 4.4 (new SDK majors). Hold these until a litesvm release supports it, then drop this rule and the holds in solana/test-harness/Cargo.toml.",
+      "matchDepNames": ["solana-fee", "solana-program-runtime"],
+      "allowedVersions": "~4.3"
+    },
+    {
       "description": "Test SDK crates must match the versions litesvm uses. Bump them together with litesvm.",
       "matchDepNames": [
         "solana-instruction",
