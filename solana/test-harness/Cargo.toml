@@ -29,6 +29,11 @@ solana-sha256-hasher = { workspace = true }
 [dev-dependencies]
 base64 = "0.23.1"
 litesvm = "0.18.0"
+# litesvm 0.18 accepts Agave ^4.3, but Agave 4.4 moved to new SDK majors and litesvm no longer
+# compiles. Most Agave crates pin each other with "=", so holding solana-program-runtime holds that
+# family; solana-fee is outside it and needs its own hold. Drop both once litesvm supports Agave 4.4.
+solana-fee = "~4.3"
+solana-program-runtime = "~4.3"
 solana-instruction = "3.0"
 solana-keypair = "3.0.1"
 solana-loader-v3-interface = { version = "8.1.1", features = ["wincode"] }
