@@ -7,14 +7,18 @@
   "lockFileMaintenance": { "enabled": true },
   "packageRules": [
     {
+      "description": "anchor-spl 1.2.1's solana-v3 feature links the Token-2022 proof crates, which fail to link for sbpfv3. 1.2.1 only adds Solana v4 support, which litesvm doesn't use yet. The Anchor CLI stays on the same version as the crates.",
+      "matchPackageNames": [
+        "anchor-lang",
+        "anchor-spl",
+        "solana-foundation/anchor"
+      ],
+      "allowedVersions": "!/^v?1\\.2\\.1$/"
+    },
+    {
       "description": "litesvm 0.18 requires solana-rent ~4.4. Drop this once litesvm allows newer.",
       "matchDepNames": ["solana-rent"],
       "allowedVersions": "~4.4"
-    },
-    {
-      "description": "litesvm 0.18 does not compile against Agave 4.4 (new SDK majors). Hold these until a litesvm release supports it, then drop this rule and the holds in solana/test-harness/Cargo.toml.",
-      "matchDepNames": ["solana-fee", "solana-program-runtime"],
-      "allowedVersions": "~4.3"
     },
     {
       "description": "Test SDK crates must match the versions litesvm uses. Bump them together with litesvm.",
