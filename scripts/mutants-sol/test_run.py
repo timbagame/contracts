@@ -87,7 +87,7 @@ class Mutation:
     def __init__(self, path, line, location, value, result=None):
         self.relative_path = path
         self.line_number = line - 1  # vertigo-rs counts lines from 0
-        self.location = location
+        self.location = location  # a list in vertigo-rs, so not hashable
         self.value = value
         self.original_value = "<"
         self.result = result
@@ -101,13 +101,13 @@ class Filter(unittest.TestCase):
     def test_keeps_one_copy_of_each_change_on_a_requested_line(self):
         ranges = run.parse_ranges("evm/src/A.sol:10-12")
         mutations = [
-            Mutation("src/A.sol", 9, (1, 1, 0), "<="),
-            Mutation("src/A.sol", 10, (2, 1, 0), "<="),
-            Mutation("src/A.sol", 10, (2, 1, 0), "<="),
-            Mutation("src/A.sol", 10, (2, 1, 0), ">="),
-            Mutation("src/A.sol", 12, (3, 1, 0), "<="),
-            Mutation("src/A.sol", 13, (4, 1, 0), "<="),
-            Mutation("src/B.sol", 11, (5, 1, 0), "<="),
+            Mutation("src/A.sol", 9, [1, 1, 0], "<="),
+            Mutation("src/A.sol", 10, [2, 1, 0], "<="),
+            Mutation("src/A.sol", 10, [2, 1, 0], "<="),
+            Mutation("src/A.sol", 10, [2, 1, 0], ">="),
+            Mutation("src/A.sol", 12, [3, 1, 0], "<="),
+            Mutation("src/A.sol", 13, [4, 1, 0], "<="),
+            Mutation("src/B.sol", 11, [5, 1, 0], "<="),
         ]
         kept = run.range_filter(object, ranges, "evm/").apply(mutations)
         self.assertEqual(kept, [mutations[1], mutations[3], mutations[4]])
@@ -116,12 +116,12 @@ class Filter(unittest.TestCase):
 class Collect(unittest.TestCase):
     def test_only_changes_with_a_verdict_count(self):
         mutations = [
-            Mutation("src/A.sol", 5, (1, 1, 0), "<=", Result.LIVED),
-            Mutation("src/A.sol", 6, (2, 1, 0), "<=", Result.KILLED),
-            Mutation("src/A.sol", 7, (3, 1, 0), "<=", Result.TIMEDOUT),
-            Mutation("src/A.sol", 8, (4, 1, 0), "<=", Result.ERROR),
-            Mutation("src/A.sol", 9, (5, 1, 0), "<=", Result.EQUIVALENT),
-            Mutation("src/A.sol", 10, (6, 1, 0), "<="),
+            Mutation("src/A.sol", 5, [1, 1, 0], "<=", Result.LIVED),
+            Mutation("src/A.sol", 6, [2, 1, 0], "<=", Result.KILLED),
+            Mutation("src/A.sol", 7, [3, 1, 0], "<=", Result.TIMEDOUT),
+            Mutation("src/A.sol", 8, [4, 1, 0], "<=", Result.ERROR),
+            Mutation("src/A.sol", 9, [5, 1, 0], "<=", Result.EQUIVALENT),
+            Mutation("src/A.sol", 10, [6, 1, 0], "<="),
         ]
         results, skipped = run.collect(mutations, "evm", Result)
         self.assertEqual(

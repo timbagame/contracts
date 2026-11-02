@@ -86,7 +86,7 @@ def range_filter(base, ranges, prefix):
             kept = []
             for mutation in mutations:
                 file = prefix + mutation.relative_path
-                key = (file, mutation.location, mutation.value)
+                key = (file, tuple(mutation.location), mutation.value)
                 if key in seen or not in_ranges(ranges, file, mutation.line_number + 1):
                     continue
                 seen.add(key)
