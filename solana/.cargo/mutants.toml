@@ -1,0 +1,5 @@
+# cargo-mutants settings, used by scripts/mutants-rust.sh from solana/.
+# Only programs/timba/src/state.rs: its logic is tested on the host by the unit tests and
+# tests/game_state.rs. The other source files need the Clock syscall or the LiteSVM tests,
+# which run the deployed SBF build and are too slow to repeat per change.
+examine_globs = ["programs/timba/src/state.rs"]

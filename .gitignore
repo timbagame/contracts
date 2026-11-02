@@ -1,3 +1,10 @@
 .DS_Store
 
 /evm/coverage/
+node_modules/
+
+# mutation testing (scripts/mutants.ts, scripts/mutants-rust.sh, scripts/mutants-sol/)
+.stryker-tmp/
+/reports/
+/build/
+__pycache__/

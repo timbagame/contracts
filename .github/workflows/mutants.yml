@@ -1,0 +1,462 @@
+name: Mutants
+# Mutation testing (scripts/mutants.ts with Stryker for the TypeScript scripts and vertigo-rs
+# for the Solidity contract, scripts/mutants-rust.sh with cargo-mutants for the Solana
+# program's pure logic). It never blocks a merge: no other workflow needs it.
+# - A pull request mutates the source lines it changed, one job per language, and one
+#   comment lists the changes no test noticed, for a follow-up. A pull request that changes
+#   a language's setup also runs one real part of it, so a broken setup shows before Saturday.
+# - Every week, a quarter of all source, split into 64 parts per language, so four weeks
+#   cover everything. What lived is listed in the open "Missed mutants" issue.
+on:
+  pull_request:
+    paths:
+      - scripts/**
+      - evm/src/**
+      - evm/script/**
+      - evm/test/**
+      - evm/foundry.toml
+      - evm/foundry.lock
+      - solana/programs/**
+      - solana/test-harness/**
+      - solana/Cargo.toml
+      - solana/Cargo.lock
+      - solana/rust-toolchain.toml
+      - solana/.cargo/**
+      - stryker.conf.mjs
+      - package.json
+      - bun.lock
+      - .github/workflows/mutants.yml
+  schedule:
+    - cron: "0 5 * * 6"
+  workflow_dispatch:
+    inputs:
+      quarter:
+        description: Which quarter of the parts to run, 0 to 3 (empty for this week's)
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  # A newer push replaces a pull request's run; full runs never cancel.
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || 'full' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  CARGO_TERM_COLOR: always
+  # mise installs only what mise.lock lists, checking each download's checksum.
+  MISE_LOCKED: "1"
+
+jobs:
+  scope:
+    name: Mutants / Scope
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    outputs:
+      typescript: ${{ steps.scope.outputs.typescript }}
+      rust: ${{ steps.scope.outputs.rust }}
+      solidity: ${{ steps.scope.outputs.solidity }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The merge commit and its first parent, the base branch.
+          fetch-depth: 2
+      - name: Which languages changed
+        id: scope
+        run: |
+          changed=$(git diff --name-only HEAD^1 HEAD)
+          has() { grep -Eq "$1" <<< "$changed" && echo true || echo false; }
+          {
+            echo "typescript=$(has '^(scripts/[^/]+\.ts$|stryker\.conf\.mjs$|package\.json$|bun\.lock$|\.github/workflows/mutants\.yml$)')"
+            echo "rust=$(has '^(solana/(programs|test-harness)/|solana/Cargo\.(toml|lock)$|solana/rust-toolchain\.toml$|solana/\.cargo/|scripts/mutants-rust\.sh$|\.github/workflows/mutants\.yml$)')"
+            echo "solidity=$(has '^(evm/(src|script|test)/|evm/foundry\.(toml|lock)$|\.gitmodules$|scripts/mutants\.ts$|scripts/mutants-sol/|\.github/workflows/mutants\.yml$)')"
+          } >> "$GITHUB_OUTPUT"
+          cat "$GITHUB_OUTPUT"
+
+  typescript:
+    name: Mutants / Changed code (TypeScript)
+    needs: scope
+    if: needs.scope.outputs.typescript == 'true'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The merge commit and its first parent, the base branch.
+          fetch-depth: 2
+      - name: Install Bun
+        uses: jdx/mise-action@6be3c7ed4c21d4f76b208d351d95aac273ebb76d # v5.2.4
+        with:
+          install_args: bun
+          cache_key_prefix: mise-mutants-typescript
+      - name: Restore Bun cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.bun/install/cache
+          key: bun-install-root-${{ runner.os }}-${{ hashFiles('bun.lock', 'package.json') }}
+          restore-keys: |
+            bun-install-root-${{ runner.os }}-
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Mutate the changed code
+        run: bun run scripts/mutants.ts ts diff HEAD^1 --out build/mutants
+      - name: Try one part of everything
+        run: |
+          if git diff --quiet HEAD^1 -- stryker.conf.mjs scripts/mutants.ts package.json bun.lock .github/workflows/mutants.yml; then
+            echo "The setup didn't change."
+          else
+            bun run scripts/mutants.ts ts part 0 64 --out build/mutants-part
+          fi
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: mutants-changed-typescript
+          path: |
+            build/
+            reports/mutation/
+          retention-days: 14
+          if-no-files-found: ignore
+
+  rust:
+    name: Mutants / Changed code (Rust)
+    needs: scope
+    if: needs.scope.outputs.rust == 'true'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The merge commit and its first parent, the base branch.
+          fetch-depth: 2
+      - name: Install Rust toolchain
+        # Installs the channel and components pinned in solana/rust-toolchain.toml.
+        working-directory: solana
+        run: rustup toolchain install
+      - name: Restore Cargo cache
+        # The key CI's Solana job saves, so its host build of the test harness is reused.
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            solana/target
+            !solana/target/idl
+            !solana/target/types
+          key: cargo-contracts-${{ runner.os }}-${{ hashFiles('solana/Cargo.lock', 'solana/rust-toolchain.toml') }}
+          restore-keys: |
+            cargo-contracts-${{ runner.os }}-
+      - name: Cache cargo-mutants
+        # The script installs the version it pins, once per toolchain.
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cargo/bin/cargo-mutants
+          key: cargo-mutants-${{ runner.os }}-${{ hashFiles('solana/rust-toolchain.toml', 'scripts/mutants-rust.sh') }}
+      - name: Mutate the changed code
+        run: scripts/mutants-rust.sh diff HEAD^1 --out build/mutants
+      - name: Try one part of everything
+        run: |
+          if git diff --quiet HEAD^1 -- solana/.cargo/mutants.toml scripts/mutants-rust.sh .github/workflows/mutants.yml; then
+            echo "The setup didn't change."
+          else
+            scripts/mutants-rust.sh shard 0/64 --out build/mutants-part
+          fi
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: mutants-changed-rust
+          path: |
+            build/mutants/
+            build/mutants-part/
+            build/mutants-rust/mutants.out/
+          retention-days: 14
+          if-no-files-found: ignore
+
+  solidity:
+    name: Mutants / Changed code (Solidity)
+    needs: scope
+    if: needs.scope.outputs.solidity == 'true'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The merge commit and its first parent, the base branch.
+          fetch-depth: 2
+          # Remappings point only at the top-level libs; their nested submodules are unused.
+          submodules: true
+      - name: Install Bun and Foundry
+        uses: jdx/mise-action@6be3c7ed4c21d4f76b208d351d95aac273ebb76d # v5.2.4
+        with:
+          install_args: bun github:foundry-rs/foundry
+          cache_key_prefix: mise-evm
+      - name: Restore Foundry cache
+        # The key CI's EVM job saves. Forge's cache is incremental, so a stale entry still helps.
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.svm
+            evm/cache
+            evm/out
+          key: evm-${{ runner.os }}-${{ hashFiles('mise.lock') }}-${{ hashFiles('evm/foundry.toml', 'evm/foundry.lock', 'evm/src/**', 'evm/test/**', 'evm/script/**') }}
+          restore-keys: |
+            evm-${{ runner.os }}-${{ hashFiles('mise.lock') }}-
+      - name: Install vertigo-rs
+        run: |
+          python3 -m venv "$RUNNER_TEMP/vertigo"
+          "$RUNNER_TEMP/vertigo/bin/pip" install --disable-pip-version-check --require-virtualenv -r scripts/mutants-sol/requirements.txt
+          echo "MUTANTS_PYTHON=$RUNNER_TEMP/vertigo/bin/python" >> "$GITHUB_ENV"
+      - name: Build the contracts
+        # vertigo-rs reads the syntax trees in out/, which Forge only writes with --ast, and
+        # which must match the sources.
+        working-directory: evm
+        run: forge build --ast
+      - name: Mutate the changed code
+        run: bun run scripts/mutants.ts sol diff HEAD^1 --out build/mutants
+      - name: Try one part of everything
+        run: |
+          if git diff --quiet HEAD^1 -- scripts/mutants.ts scripts/mutants-sol .github/workflows/mutants.yml; then
+            echo "The setup didn't change."
+          else
+            # Part 0 is the contract's license, pragma and imports, with nothing to change.
+            bun run scripts/mutants.ts sol part 12 64 --out build/mutants-part
+          fi
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: mutants-changed-solidity
+          path: |
+            build/mutants/
+            build/mutants-part/
+          retention-days: 14
+          if-no-files-found: ignore
+
+  comment:
+    name: Mutants / Comment
+    needs: [scope, typescript, rust, solidity]
+    # Not when a language's job broke: its results would look like every change caught.
+    if: ${{ !cancelled() && needs.scope.result == 'success' && !contains(needs.*.result, 'failure') }}
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Download results
+        if: needs.typescript.result == 'success' || needs.rust.result == 'success' || needs.solidity.result == 'success'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: mutants-changed-*
+          path: results
+      - name: Comment what lived
+        # A fork's token can't comment; its run page has the summary.
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          FORK: ${{ github.event.pull_request.head.repo.full_name != github.repository }}
+          RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          # The changed code's results, not the setup trial's, from each language.
+          mapfile -t dirs < <(find results -name tally.txt -not -path '*-part/*' -printf '%h\n' 2>/dev/null | sort)
+          (( ${#dirs[@]} )) || dirs=(results)
+          scripts/mutants-comment.sh "${dirs[@]}"
+
+  plan:
+    name: Mutants / Plan
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    outputs:
+      parts: ${{ steps.plan.outputs.parts }}
+    steps:
+      - name: Pick this week's parts
+        id: plan
+        env:
+          QUARTER: ${{ inputs.quarter }}
+        run: |
+          quarter=${QUARTER:-$(( $(date -u +%s) / 604800 % 4 ))}
+          [[ $quarter =~ ^[0-3]$ ]] || { echo "Quarter must be 0 to 3, got $quarter" >&2; exit 1; }
+          echo "parts=$(jq -cn --argjson q "$quarter" '[range($q * 16; $q * 16 + 16)]')" >> "$GITHUB_OUTPUT"
+
+  typescript-part:
+    name: Mutants / Part ${{ matrix.part }} of 64 (TypeScript)
+    needs: plan
+    runs-on: ubuntu-26.04
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      matrix:
+        part: ${{ fromJSON(needs.plan.outputs.parts) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install Bun
+        uses: jdx/mise-action@6be3c7ed4c21d4f76b208d351d95aac273ebb76d # v5.2.4
+        with:
+          install_args: bun
+          cache_key_prefix: mise-mutants-typescript
+      - name: Restore Bun cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.bun/install/cache
+          key: bun-install-root-${{ runner.os }}-${{ hashFiles('bun.lock', 'package.json') }}
+          restore-keys: |
+            bun-install-root-${{ runner.os }}-
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      # Lived changes are findings for the issue; only a run that never got to its tally fails.
+      - name: Mutation testing
+        run: bun run scripts/mutants.ts ts part "${{ matrix.part }}" 64 --out build/mutants
+      - name: Upload what lived
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: mutants-part-typescript-${{ matrix.part }}
+          path: |
+            build/mutants/
+            reports/mutation/
+          retention-days: 14
+          if-no-files-found: ignore
+
+  rust-part:
+    name: Mutants / Part ${{ matrix.part }} of 64 (Rust)
+    needs: plan
+    runs-on: ubuntu-26.04
+    timeout-minutes: 350
+    strategy:
+      fail-fast: false
+      matrix:
+        part: ${{ fromJSON(needs.plan.outputs.parts) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install Rust toolchain
+        # Installs the channel and components pinned in solana/rust-toolchain.toml.
+        working-directory: solana
+        run: rustup toolchain install
+      - name: Restore Cargo cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            solana/target
+            !solana/target/idl
+            !solana/target/types
+          key: cargo-contracts-${{ runner.os }}-${{ hashFiles('solana/Cargo.lock', 'solana/rust-toolchain.toml') }}
+          restore-keys: |
+            cargo-contracts-${{ runner.os }}-
+      - name: Restore cargo-mutants
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cargo/bin/cargo-mutants
+          key: cargo-mutants-${{ runner.os }}-${{ hashFiles('solana/rust-toolchain.toml', 'scripts/mutants-rust.sh') }}
+      # Missed and timed out mutants are findings for the issue; only a run that never got to its tally fails.
+      - name: Mutation testing
+        run: scripts/mutants-rust.sh shard "${{ matrix.part }}/64" --out build/mutants
+      - name: Upload what lived
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: mutants-part-rust-${{ matrix.part }}
+          path: build/mutants/
+          retention-days: 14
+          if-no-files-found: ignore
+
+  solidity-part:
+    name: Mutants / Part ${{ matrix.part }} of 64 (Solidity)
+    needs: plan
+    runs-on: ubuntu-26.04
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      matrix:
+        part: ${{ fromJSON(needs.plan.outputs.parts) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Remappings point only at the top-level libs; their nested submodules are unused.
+          submodules: true
+      - name: Install Bun and Foundry
+        uses: jdx/mise-action@6be3c7ed4c21d4f76b208d351d95aac273ebb76d # v5.2.4
+        with:
+          install_args: bun github:foundry-rs/foundry
+          cache_key_prefix: mise-evm
+      - name: Restore Foundry cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.svm
+            evm/cache
+            evm/out
+          key: evm-${{ runner.os }}-${{ hashFiles('mise.lock') }}-${{ hashFiles('evm/foundry.toml', 'evm/foundry.lock', 'evm/src/**', 'evm/test/**', 'evm/script/**') }}
+          restore-keys: |
+            evm-${{ runner.os }}-${{ hashFiles('mise.lock') }}-
+      - name: Install vertigo-rs
+        run: |
+          python3 -m venv "$RUNNER_TEMP/vertigo"
+          "$RUNNER_TEMP/vertigo/bin/pip" install --disable-pip-version-check --require-virtualenv -r scripts/mutants-sol/requirements.txt
+          echo "MUTANTS_PYTHON=$RUNNER_TEMP/vertigo/bin/python" >> "$GITHUB_ENV"
+      - name: Build the contracts
+        # vertigo-rs reads the syntax trees in out/, which Forge only writes with --ast, and
+        # which must match the sources.
+        working-directory: evm
+        run: forge build --ast
+      # Lived changes are findings for the issue; only a run that never got to its tally fails.
+      - name: Mutation testing
+        run: bun run scripts/mutants.ts sol part "${{ matrix.part }}" 64 --out build/mutants
+      - name: Upload what lived
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: mutants-part-solidity-${{ matrix.part }}
+          path: build/mutants/
+          retention-days: 14
+          if-no-files-found: ignore
+
+  report:
+    name: Mutants / Report
+    needs: [plan, typescript-part, rust-part, solidity-part]
+    if: ${{ !cancelled() && needs.plan.result == 'success' }}
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: mutants-part-*
+          path: results
+      - name: List what lived in the open issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          PARTS: ${{ needs.plan.outputs.parts }}
+          JOBS: ${{ needs.typescript-part.result }} (TypeScript), ${{ needs.rust-part.result }} (Rust), ${{ needs.solidity-part.result }} (Solidity)
+        run: |
+          lived=$(find results -name lived.txt -exec cat {} + 2>/dev/null | sort -u || true)
+          parts=$(jq -r 'map(tostring) | join(", ")' <<< "$PARTS")
+          issue=$(gh issue list --state open --search 'in:title "Missed mutants"' --json number --jq '.[0].number // empty')
+          {
+            echo "Parts $parts of 64: [run]($RUN), jobs $JOBS."
+            echo
+            if [ -z "$lived" ]; then
+              echo 'Every change in these parts was caught by a test.'
+            else
+              echo "### Lived ($(wc -l <<< "$lived"))"
+              echo 'No test noticed these changes. Real gaps get their own PR; changes that keep the same behavior can be ignored.'
+              echo '```'
+              echo "$lived"
+              echo '```'
+            fi
+          } > report.md
+          cat report.md >> "$GITHUB_STEP_SUMMARY"
+          if [ -n "$issue" ]; then
+            gh issue comment "$issue" --body-file report.md
+          elif [ -n "$lived" ]; then
+            gh issue create --title 'Missed mutants' --body-file report.md
+          fi
