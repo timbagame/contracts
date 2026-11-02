@@ -16,6 +16,7 @@ missing) fails.
 import argparse
 import os
 import re
+import shutil
 import sys
 import tempfile
 from pathlib import Path
@@ -123,6 +124,17 @@ def collect(mutations, project, MutationResult):
     return results, skipped
 
 
+def why_invalid(tester):
+    """What went wrong when the tests fail on the unchanged project: the error forge printed,
+    or the names of the tests that failed."""
+    try:
+        results = tester.run_tests(network="_not_used_anywhere_")
+    except Exception as error:  # vertigo-rs raises its own types for a failed run
+        return f"{type(error).__name__}: {error}"
+    failed = [name for name, result in results.items() if not result.success]
+    return "failed: " + ", ".join(failed) if failed else "no test results"
+
+
 def main(argv):
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--ranges", required=True, help="file:from-to,... in the repository")
@@ -147,6 +159,12 @@ def main(argv):
     scope = sorted({file.removeprefix(prefix) for file in ranges if file.startswith(prefix)})
     with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False) as handle:
         handle.write("\n".join(scope) + "\n")
+    # vertigo-rs runs each mutation's tests in a copy of the project in a new temporary
+    # directory. The tests also read ../fixtures (foundry.toml's fs_permissions), so the
+    # copies sit next to a copy of it.
+    sandbox = Path(tempfile.mkdtemp(prefix="vertigo-"))
+    shutil.copytree(ROOT / "fixtures", sandbox / "fixtures")
+    tempfile.tempdir = str(sandbox)
     os.chdir(project)
     try:
         campaign = FoundryCampaign(
@@ -164,12 +182,14 @@ def main(argv):
         print(f"{len(campaign.mutations)} changes on {sum(len(r) for r in ranges.values())} ranges.")
         if campaign.mutations:
             if not campaign.valid():
-                print("The tests don't pass on the unchanged contract.", file=sys.stderr)
+                print("The tests don't pass on the unchanged contract:", file=sys.stderr)
+                print(why_invalid(campaign.tester), file=sys.stderr)
                 return 1
             campaign.store_compilation_results()
             campaign.run(lambda: None, threads=1)
     finally:
         os.unlink(handle.name)
+        shutil.rmtree(sandbox, ignore_errors=True)
 
     results, skipped = collect(campaign.mutations, args.project, MutationResult)
     rows, tally = summarize(results)

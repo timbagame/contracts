@@ -135,5 +135,31 @@ class Collect(unittest.TestCase):
         self.assertEqual(skipped, 3)
 
 
+class WhyInvalid(unittest.TestCase):
+    class Tester:
+        def __init__(self, outcome):
+            self.outcome = outcome
+
+        def run_tests(self, network):
+            if isinstance(self.outcome, Exception):
+                raise self.outcome
+            return self.outcome
+
+    class Result:
+        def __init__(self, success):
+            self.success = success
+
+    def test_forges_error_is_shown(self):
+        tester = self.Tester(RuntimeError("Error: failed to read ../fixtures"))
+        self.assertEqual(run.why_invalid(tester), "RuntimeError: Error: failed to read ../fixtures")
+
+    def test_failing_tests_are_named(self):
+        tester = self.Tester({"testA()": self.Result(True), "testB()": self.Result(False)})
+        self.assertEqual(run.why_invalid(tester), "failed: testB()")
+
+    def test_no_results_is_said(self):
+        self.assertEqual(run.why_invalid(self.Tester({})), "no test results")
+
+
 if __name__ == "__main__":
     unittest.main()

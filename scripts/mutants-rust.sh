@@ -79,11 +79,11 @@ fi
 # CI's host coverage step runs too.
 args=(--package timba --test-package timba-test-harness --no-shuffle --output "$raw"
     --timeout "${MUTANTS_TIMEOUT:-300}"
-    # Build and run only the host tests: the LiteSVM tests include the deployed program's
-    # build, which is not there. Both the build and the test step need these.
-    --cargo-arg=--lib --cargo-arg=--test --cargo-arg=game_state)
-# cargo-mutants first runs these tests on the unchanged code. If they can't build or fail,
-# it stops (exit 4) instead of counting every mutant as unviable.
+    # Both the build and the test step build only the host tests: the LiteSVM tests include
+    # the deployed program's build, which is not there. The test step adds game_state.
+    --cargo-arg=--lib
+    # The tests are run once on the unchanged code below instead.
+    --baseline skip)
 # A CI checkout is disposable: mutate it in place, so the restored build
 # cache serves every mutant. Elsewhere cargo-mutants works on a copy.
 if [[ -n ${CI:-} ]]; then args+=(--in-place); fi
@@ -106,7 +106,10 @@ case "$mode" in
 esac
 # Missed mutants (2) and timeouts (3) are findings. Anything else is a broken run.
 status=0
-(cd solana && cargo mutants "${args[@]}") || status=$?
+# The tests must pass on the unchanged code, or cargo-mutants would count every change as
+# unviable (a build error) or caught (a failing test) without telling.
+(cd solana && cargo test --package timba-test-harness --lib --test game_state)
+(cd solana && cargo mutants "${args[@]}" -- --lib --test game_state) || status=$?
 if [[ $status != 0 && $status != 2 && $status != 3 ]]; then
     echo "cargo-mutants stopped (exit $status) before its tally." >&2
     exit "$status"
