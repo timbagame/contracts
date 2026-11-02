@@ -146,3 +146,26 @@ Pull requests require 100% first-party executable line coverage for both chains.
 - **EVM:** uses Forge LCOV.
 
 </details>
+
+<details>
+<summary><b>Mutation testing</b></summary>
+
+Mutation testing checks that the tests notice when the code changes. It changes a line a little, one change at a time, and runs the tests that reach it. A change no test noticed is a gap, or a change that keeps the same behavior.
+
+- **TypeScript scripts:** Stryker, on `scripts/*.ts` (not the tests).
+- **Solidity:** vertigo-rs, on `evm/src` and `evm/script`, with the Forge tests. It has no releases, so CI pins a commit. It has no line filter either, so `scripts/mutants-sol/run.py` keeps only the changes on the lines asked for.
+- **Solana:** cargo-mutants, only on `programs/timba/src/state.rs`. The program tests need LiteSVM and are slow, so only the host `--lib` and `game_state` tests run. A gap there may still be caught by a LiteSVM test.
+
+```bash
+bun run scripts/mutants.ts ts diff origin/main     # TypeScript lines this branch changed
+bun run scripts/mutants.ts sol diff origin/main    # Solidity lines this branch changed
+scripts/mutants-rust.sh diff origin/main           # Rust lines this branch changed
+bun run scripts/mutants.ts ts part 3 64            # the 4th of 64 equal parts of all TypeScript lines
+scripts/mutants-rust.sh shard 3/64                 # the 4th of 64 equal parts of all Rust mutants
+```
+
+For Solidity, set up a virtualenv from `scripts/mutants-sol/requirements.txt`, run `forge build --ast` in `evm`, and point `MUTANTS_PYTHON` at the virtualenv's Python.
+
+It never blocks a merge. On a pull request, one comment lists the changes no test noticed, from all three languages. Every Saturday a quarter of the 64 parts per language runs, and what lived goes in the open "Missed mutants" issue.
+
+</details>
