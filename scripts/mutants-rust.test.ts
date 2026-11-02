@@ -72,3 +72,23 @@ describe("mutants-rust summarize", () => {
     expect(run.stderr).toContain("Usage:");
   });
 });
+
+describe("mutants-rust found", () => {
+  function found(list: string | null) {
+    const root = mkdtempSync(join(dir, "found-"));
+    if (list !== null) writeFileSync(join(root, "mutants.json"), list);
+    return spawnSync("bash", [script, "found", root], { encoding: "utf8" });
+  }
+
+  test("a list with mutants passes", () => {
+    expect(found('[{"name":"replace f with ()"}]').status).toBe(0);
+  });
+
+  test("an empty or missing list is a broken setup", () => {
+    for (const list of ["[]", "[\n]\n", "", null]) {
+      const run = found(list);
+      expect(run.status).toBe(1);
+      expect(run.stderr).toContain("examine_globs");
+    }
+  });
+});

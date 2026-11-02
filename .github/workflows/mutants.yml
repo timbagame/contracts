@@ -209,9 +209,10 @@ jobs:
           "$RUNNER_TEMP/vertigo/bin/pip" install --disable-pip-version-check --require-virtualenv -r scripts/mutants-sol/requirements.txt
           echo "MUTANTS_PYTHON=$RUNNER_TEMP/vertigo/bin/python" >> "$GITHUB_ENV"
       - name: Build the contracts
-        # vertigo-rs reads the syntax trees in out/, which must match the sources.
+        # vertigo-rs reads the syntax trees in out/, which Forge only writes with --ast, and
+        # which must match the sources.
         working-directory: evm
-        run: forge build
+        run: forge build --ast
       - name: Mutate the changed code
         run: bun run scripts/mutants.ts sol diff HEAD^1 --out build/mutants
       - name: Try one part of everything
@@ -399,9 +400,10 @@ jobs:
           "$RUNNER_TEMP/vertigo/bin/pip" install --disable-pip-version-check --require-virtualenv -r scripts/mutants-sol/requirements.txt
           echo "MUTANTS_PYTHON=$RUNNER_TEMP/vertigo/bin/python" >> "$GITHUB_ENV"
       - name: Build the contracts
-        # vertigo-rs reads the syntax trees in out/, which must match the sources.
+        # vertigo-rs reads the syntax trees in out/, which Forge only writes with --ast, and
+        # which must match the sources.
         working-directory: evm
-        run: forge build
+        run: forge build --ast
       # Lived changes are findings for the issue; only a run that never got to its tally fails.
       - name: Mutation testing
         run: bun run scripts/mutants.ts sol part "${{ matrix.part }}" 64 --out build/mutants

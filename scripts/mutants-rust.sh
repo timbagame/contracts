@@ -9,6 +9,7 @@
 # Usage: scripts/mutants-rust.sh diff BASE [--out DIR]  mutants in the Rust lines changed since BASE
 #        scripts/mutants-rust.sh shard K/N [--out DIR]  the Kth of N equal parts of every mutant
 #        scripts/mutants-rust.sh summarize MUTANTS_OUT DIR
+#        scripts/mutants-rust.sh found MUTANTS_OUT     fails when cargo-mutants listed no mutant at all
 # Writes what lived to DIR/lived.txt ("file:line  missed: change") and the tally
 # ("3 of 10") to DIR/tally.txt, the same files scripts/mutants.ts writes. DIR
 # defaults to build/mutants. Exits 0 once it got to its tally, whatever lived;
@@ -16,7 +17,7 @@
 set -euo pipefail
 repo=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 cd "$repo"
-usage='Usage: scripts/mutants-rust.sh diff BASE | shard K/N [--out DIR] | summarize MUTANTS_OUT DIR'
+usage='Usage: scripts/mutants-rust.sh diff BASE | shard K/N [--out DIR] | summarize MUTANTS_OUT DIR | found MUTANTS_OUT'
 
 # Turn cargo-mutants' mutants.out into lived.txt and tally.txt in a directory. Its paths
 # are relative to the solana/ workspace; the rows' are relative to the repository.
@@ -35,7 +36,22 @@ summarize() {
     echo "$(< "$out/tally.txt") changes caught by a test."
 }
 
+# Fails when cargo-mutants found nothing to mutate. For a part of everything that means the
+# setup is broken (the scope matches no file), not that every change was caught.
+found() {
+    local list
+    list=$(tr -d '[:space:]' < "$1/mutants.json" 2>/dev/null || true)
+    if [[ -z $list || $list == '[]' ]]; then
+        echo "cargo-mutants found no mutant to test: check examine_globs in solana/.cargo/mutants.toml." >&2
+        return 1
+    fi
+}
+
 mode=${1:-}
+if [[ $mode == found ]]; then
+    found "${2:?$usage}"
+    exit 0
+fi
 if [[ $mode == summarize ]]; then
     summarize "${2:?$usage}" "${3:?$usage}"
     exit 0
@@ -57,9 +73,11 @@ if [[ $(cargo mutants --version 2>/dev/null) != "cargo-mutants $version" ]]; the
     # file pins 0.9.18 (RUSTSEC-2026-0204).
     cargo install cargo-mutants --version "$version"
 fi
-# The harness crate compiles the program's source for the host. Its --lib and
-# game_state tests are the ones CI's host coverage step runs too.
-args=(--package timba-test-harness --no-shuffle --output "$raw"
+# Mutate the program's own package: the harness crate builds the same source through a
+# "../programs/..." path that cargo-mutants would not match to the repository's paths. The
+# harness crate compiles it for the host, and its --lib and game_state tests are the ones
+# CI's host coverage step runs too.
+args=(--package timba --test-package timba-test-harness --no-shuffle --output "$raw"
     --timeout "${MUTANTS_TIMEOUT:-300}"
     # CI tests the unchanged code in its own jobs.
     --baseline skip)
@@ -90,4 +108,5 @@ if [[ $status != 0 && $status != 2 && $status != 3 ]]; then
     echo "cargo-mutants stopped (exit $status) before its tally." >&2
     exit "$status"
 fi
+if [[ $mode == shard ]]; then found "$raw/mutants.out"; fi
 summarize "$raw/mutants.out" "$out"

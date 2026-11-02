@@ -164,7 +164,7 @@ bun run scripts/mutants.ts ts part 3 64            # the 4th of 64 equal parts o
 scripts/mutants-rust.sh shard 3/64                 # the 4th of 64 equal parts of all Rust mutants
 ```
 
-For Solidity, set up a virtualenv from `scripts/mutants-sol/requirements.txt`, run `forge build` in `evm`, and point `MUTANTS_PYTHON` at the virtualenv's Python.
+For Solidity, set up a virtualenv from `scripts/mutants-sol/requirements.txt`, run `forge build --ast` in `evm`, and point `MUTANTS_PYTHON` at the virtualenv's Python.
 
 It never blocks a merge. On a pull request, one comment lists the changes no test noticed, from all three languages. Every Saturday a quarter of the 64 parts per language runs, and what lived goes in the open "Missed mutants" issue.
 
