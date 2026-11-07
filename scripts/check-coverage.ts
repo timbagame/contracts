@@ -69,12 +69,11 @@ export async function checkCoverage(
   for (const report of reports) {
     let current: string | undefined;
     let reportLines = 0;
-    const contents = await Bun.file(report).text();
+    const contents = await Bun.file(resolve(root, report)).text();
     for (const entry of contents.split(/\r?\n/)) {
       if (entry.startsWith("SF:")) {
         const name = reportSourcePath(entry.slice(3), root, config.reportBase ?? ".");
         current = sources.has(name) ? name : undefined;
-        if (current) seen.add(current);
       } else if (entry.startsWith("DA:") && current) {
         const [lineNumber, hitCount] = entry.slice(3).split(",");
         if (!/^-?\d+$/.test(lineNumber ?? "") || !/^-?\d+$/.test(hitCount ?? "")) {
@@ -86,6 +85,7 @@ export async function checkCoverage(
           throw new Error("Invalid LCOV line data");
         }
         reportLines += 1;
+        seen.add(current);
         const key = `${current}\0${number}`;
         lines.set(key, (lines.get(key) ?? false) || hits > 0);
       } else if (entry === "end_of_record") {
@@ -113,13 +113,13 @@ export async function checkCoverage(
   };
 }
 
-async function main(args: string[]): Promise<number> {
+/** The gate's command line: exit code 0 passed, 1 failed or broke, 2 bad usage. `root` is the repository the config's paths and reports resolve against. */
+export async function main(args: string[], root = process.cwd()): Promise<number> {
   const [configPath, ...reports] = args;
   if (!configPath || reports.length === 0) {
     console.error("Usage: bun run scripts/check-coverage.ts <config> <lcov-report> [...]");
     return 2;
   }
-  const root = process.cwd();
   try {
     const config = (await Bun.file(resolve(root, configPath)).json()) as CoverageConfig;
     const result = await checkCoverage(config, reports, root);
