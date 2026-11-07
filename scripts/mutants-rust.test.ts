@@ -115,14 +115,10 @@ fi
 `,
       { mode: 0o755 },
     );
-    const run = spawnSync(
-      "bash",
-      [join(root, "scripts", "mutants-rust.sh"), "shard", "0/64"],
-      {
-        encoding: "utf8",
-        env: { PATH: `${join(root, "bin")}:${process.env.PATH}` },
-      },
-    );
+    const run = spawnSync("bash", [join(root, "scripts", "mutants-rust.sh"), "shard", "0/64"], {
+      encoding: "utf8",
+      env: { PATH: `${join(root, "bin")}:${process.env.PATH}` },
+    });
     expect(run.stderr).toBe("");
     expect(run.status).toBe(0);
     expect(readFileSync(seen, "utf8")).toContain("prlimit --as=8589934592\n");
