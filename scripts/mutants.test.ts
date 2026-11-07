@@ -1,7 +1,14 @@
 import { describe, expect, test } from "bun:test";
 import { spawnSync } from "node:child_process";
 import { join } from "node:path";
-import { changedRanges, compareFiles, inScope, lived, partRanges } from "./mutants.js";
+import {
+  changedRanges,
+  instrumentRanges,
+  compareFiles,
+  inScope,
+  lived,
+  partRanges,
+} from "./mutants.js";
 
 describe("mutants", () => {
   test("TypeScript mutates the scripts the coverage tests reach, not tests or the mutation setup", () => {
@@ -112,7 +119,7 @@ describe("mutants", () => {
       status,
       mutatorName,
       replacement,
-      location: { start: { line } },
+      location: { start: { line, column: 7 }, end: { line, column: 9 } },
     });
     const { rows, total } = lived({
       files: {
@@ -131,9 +138,9 @@ describe("mutants", () => {
     });
     expect(total).toBe(4);
     expect(rows).toEqual([
-      "scripts/a.ts:2  timeout: UpdateOperator",
-      "scripts/a.ts:12  no coverage: EqualityOperator",
-      'scripts/b.ts:9  survived: BooleanLiteral → "false"',
+      "scripts/a.ts:2:7-2:9  timeout: UpdateOperator",
+      "scripts/a.ts:12:7-12:9  no coverage: EqualityOperator",
+      'scripts/b.ts:9:7-9:9  survived: BooleanLiteral → "false"',
     ]);
   });
 
@@ -146,4 +153,23 @@ describe("mutants", () => {
     expect(run.stderr).toContain("OK");
     expect(run.status).toBe(0);
   });
+});
+
+test("crossing nodes are instrumented whole and owned only by their start lines", () => {
+  const content = "export function f() {\n  if (true) {\n    return 1;\n  }\n}\n";
+  const ranges = [{ file: "src/a.ts", from: 2, to: 2 }];
+  expect(instrumentRanges(ranges, () => content)).toEqual([{ file: "src/a.ts", from: 2, to: 4 }]);
+  const make = (line: number, column: number, end = column + 1) => ({
+    status: "Survived",
+    mutatorName: "BooleanLiteral",
+    replacement: "false",
+    location: { start: { line, column }, end: { line, column: end } },
+  });
+  const report = {
+    files: { "src/a.ts": { mutants: [make(2, 7, 14), make(2, 7, 21), make(3, 7)] } },
+  };
+  const { rows, total } = lived(report, ranges);
+  expect(total).toBe(2);
+  expect(new Set(rows).size).toBe(2);
+  expect(lived(report, [{ file: "src/a.ts", from: 3, to: 4 }]).rows).toHaveLength(1);
 });

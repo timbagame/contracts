@@ -16,7 +16,12 @@ export default {
   // timeout bounds only the dry run, the whole suite once with coverage. Its default of 10 s
   // is too short, so it's set well above the suite's time in CI. Mutant runs use Stryker's own
   // per-mutant timeout.
-  bun: { timeout: 600000, testFiles },
+  bun: {
+    // Instrumentation slows individual tests; the runner still stops hanging mutants.
+    bunArgs: ["--timeout", "60000"],
+    timeout: 600000,
+    testFiles,
+  },
   coverageAnalysis: "perTest",
   reporters: ["clear-text", "progress", "json"],
   jsonReporter: { fileName: "reports/mutation/mutation.json" },
