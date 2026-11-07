@@ -74,7 +74,6 @@ export async function checkCoverage(
       if (entry.startsWith("SF:")) {
         const name = reportSourcePath(entry.slice(3), root, config.reportBase ?? ".");
         current = sources.has(name) ? name : undefined;
-        if (current) seen.add(current);
       } else if (entry.startsWith("DA:") && current) {
         const [lineNumber, hitCount] = entry.slice(3).split(",");
         if (!/^-?\d+$/.test(lineNumber ?? "") || !/^-?\d+$/.test(hitCount ?? "")) {
@@ -86,6 +85,7 @@ export async function checkCoverage(
           throw new Error("Invalid LCOV line data");
         }
         reportLines += 1;
+        seen.add(current);
         const key = `${current}\0${number}`;
         lines.set(key, (lines.get(key) ?? false) || hits > 0);
       } else if (entry === "end_of_record") {

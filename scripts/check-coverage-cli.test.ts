@@ -149,6 +149,18 @@ for (const [name, run] of [
       expect(outcome.stderr).toBe(incomplete);
     });
 
+    test("a scoped file with a record but no line data counts as absent", async () => {
+      // A file the report names but gives no lines for was not measured; only a file with no
+      // executable lines is exempt, and that is declared in the config's `exclude`.
+      const root = repository(["src/a.ts", "src/b.ts"], {
+        "empty-record.info": `${record("src/a.ts", 1, 1)}SF:src/b.ts\nend_of_record\n`,
+      });
+      const outcome = await run(root, "coverage.json", "empty-record.info");
+      expect(outcome.code).toBe(1);
+      expect(JSON.parse(outcome.stdout)).toMatchObject({ missing: ["src/b.ts"], passed: false });
+      expect(outcome.stderr).toBe(incomplete);
+    });
+
     test("an absolute config path works", async () => {
       const root = repository(["src/a.ts"], { "full.info": record("src/a.ts", 1) });
       const outcome = await run(root, join(root, "coverage.json"), "full.info");
