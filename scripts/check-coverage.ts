@@ -69,7 +69,7 @@ export async function checkCoverage(
   for (const report of reports) {
     let current: string | undefined;
     let reportLines = 0;
-    const contents = await Bun.file(report).text();
+    const contents = await Bun.file(resolve(root, report)).text();
     for (const entry of contents.split(/\r?\n/)) {
       if (entry.startsWith("SF:")) {
         const name = reportSourcePath(entry.slice(3), root, config.reportBase ?? ".");
@@ -113,13 +113,13 @@ export async function checkCoverage(
   };
 }
 
-async function main(args: string[]): Promise<number> {
+/** The gate's command line: exit code 0 passed, 1 failed or broke, 2 bad usage. `root` is the repository the config's paths and reports resolve against. */
+export async function main(args: string[], root = process.cwd()): Promise<number> {
   const [configPath, ...reports] = args;
   if (!configPath || reports.length === 0) {
     console.error("Usage: bun run scripts/check-coverage.ts <config> <lcov-report> [...]");
     return 2;
   }
-  const root = process.cwd();
   try {
     const config = (await Bun.file(resolve(root, configPath)).json()) as CoverageConfig;
     const result = await checkCoverage(config, reports, root);
