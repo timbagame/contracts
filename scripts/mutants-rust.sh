@@ -104,6 +104,13 @@ case "$mode" in
         args+=(--shard "${2:?$usage}")
         ;;
 esac
+# A mutant can allocate forever. Without a limit it fills the runner's memory and
+# GitHub shuts the runner down, which loses every mutant in the part. With one, the
+# test aborts and the mutant counts as caught. Only test programs get the limit,
+# not rustc. 8 GiB is half of a hosted runner.
+if command -v prlimit >/dev/null; then
+    export "CARGO_TARGET_$(uname -m | tr '[:lower:]' '[:upper:]')_UNKNOWN_LINUX_GNU_RUNNER=prlimit --as=$((8 << 30))"
+fi
 # Missed mutants (2) and timeouts (3) are findings. Anything else is a broken run.
 status=0
 # The tests must pass on the unchanged code, or cargo-mutants would count every change as
