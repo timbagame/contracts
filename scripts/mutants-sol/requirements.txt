@@ -3,7 +3,7 @@
 # pinned to a commit. The rest are its dependencies, pinned to what that commit was
 # tried with. setuptools provides the distutils module Python 3.12 removed.
 eth-vertigo @ git+https://github.com/RareSkills/vertigo-rs@94ec8bb608d784b0441b814f419221050513f833
-click==8.5.0
+click==8.5.1
 decorator==5.3.1
 Jinja2==3.1.6
 jsonpath-rw==1.4.0
