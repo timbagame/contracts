@@ -135,6 +135,11 @@ jobs:
       - name: Typecheck
         run: bun x tsc -p tsconfig.json --noEmit
 
+      - name: Install root JS dependencies
+        # The scripts' tests import typescript (scripts/mutants.ts), which only the root package declares.
+        working-directory: .
+        run: bun install --frozen-lockfile
+
       - name: Test coverage gate
         working-directory: .
         run: bun test scripts/*.test.ts
