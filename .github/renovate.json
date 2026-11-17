@@ -5,7 +5,7 @@
   "timezone": "America/Argentina/Buenos_Aires",
   "minimumReleaseAge": "3 days",
   "minimumReleaseAgeBehaviour": "timestamp-optional",
-  "lockFileMaintenance": { "enabled": true, "schedule": ["* 0-3 */3 * *"] },
+  "groupSingleUpdates": true,
   "packageRules": [
     {
       "description": "litesvm 0.18 requires solana-rent ~4.4. Drop this once litesvm allows newer.",
