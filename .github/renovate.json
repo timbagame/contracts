@@ -6,6 +6,7 @@
   "minimumReleaseAge": "3 days",
   "minimumReleaseAgeBehaviour": "timestamp-optional",
   "groupSingleUpdates": true,
+  "semanticCommits": "enabled",
   "packageRules": [
     {
       "description": "litesvm 0.18 requires solana-rent ~4.4. Drop this once litesvm allows newer.",
