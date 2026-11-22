@@ -1,6 +1,6 @@
 # Tools CI installs. Renovate updates these versions, and mise.lock, by itself.
 [tools]
-bun = "1.4.4"
+bun = "1.4.5"
 "github:foundry-rs/foundry" = "v1.9.0"
 "github:anza-xyz/agave" = { version = "v4.4.1", bin_path = "solana-release/bin" }
 "github:solana-foundation/surfpool" = "v1.7.0"

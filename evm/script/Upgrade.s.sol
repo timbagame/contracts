@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity 0.8.38;
+pragma solidity 0.8.39;
 import {Script} from "forge-std/Script.sol";
 import {Timba} from "../src/Timba.sol";
 
