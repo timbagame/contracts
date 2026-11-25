@@ -24,9 +24,9 @@ checksum = "sha256:96fb94108eed872ff623ed39007d6b5699a83a5d0086fcfba84921c18145e
 url = "https://github.com/oven-sh/bun/releases/download/bun-v1.4.5/bun-linux-x64-musl-baseline.zip"
 
 [[tools."cargo:cargo-llvm-cov"]]
-version = "0.9.1"
+version = "0.9.2"
 backend = "cargo:cargo-llvm-cov"
-specifiers = ["0.9.1"]
+specifiers = ["0.9.2"]
 
 [[tools."github:anza-xyz/agave"]]
 version = "4.4.1"
@@ -58,32 +58,32 @@ url = "https://github.com/anza-xyz/agave/releases/download/v4.4.1/solana-release
 url_api = "https://api.github.com/repos/anza-xyz/agave/releases/assets/714427722"
 
 [[tools."github:foundry-rs/foundry"]]
-version = "1.9.0"
+version = "1.10.0"
 backend = "github:foundry-rs/foundry"
-specifiers = ["v1.9.0"]
+specifiers = ["v1.10.0"]
 
 [tools."github:foundry-rs/foundry"."platforms.linux-x64"]
-checksum = "sha256:8d17599b42e3139f1a9c171be3798c4ed8e743ae17b84cc3435e57bf2a51ae99"
-url = "https://github.com/foundry-rs/foundry/releases/download/v1.9.0/foundry_v1.9.0_linux_amd64.tar.gz"
-url_api = "https://api.github.com/repos/foundry-rs/foundry/releases/assets/703110190"
+checksum = "sha256:90729233bd9a683b872783ae2e3217fb56876fa2a3c37185f13e39dca8525041"
+url = "https://github.com/foundry-rs/foundry/releases/download/v1.10.0/foundry_v1.10.0_linux_amd64.tar.gz"
+url_api = "https://api.github.com/repos/foundry-rs/foundry/releases/assets/768285824"
 provenance = "github-attestations"
 
 [tools."github:foundry-rs/foundry"."platforms.linux-x64-baseline"]
-checksum = "sha256:8d17599b42e3139f1a9c171be3798c4ed8e743ae17b84cc3435e57bf2a51ae99"
-url = "https://github.com/foundry-rs/foundry/releases/download/v1.9.0/foundry_v1.9.0_linux_amd64.tar.gz"
-url_api = "https://api.github.com/repos/foundry-rs/foundry/releases/assets/703110190"
+checksum = "sha256:90729233bd9a683b872783ae2e3217fb56876fa2a3c37185f13e39dca8525041"
+url = "https://github.com/foundry-rs/foundry/releases/download/v1.10.0/foundry_v1.10.0_linux_amd64.tar.gz"
+url_api = "https://api.github.com/repos/foundry-rs/foundry/releases/assets/768285824"
 provenance = "github-attestations"
 
 [tools."github:foundry-rs/foundry"."platforms.linux-x64-musl"]
-checksum = "sha256:8d17599b42e3139f1a9c171be3798c4ed8e743ae17b84cc3435e57bf2a51ae99"
-url = "https://github.com/foundry-rs/foundry/releases/download/v1.9.0/foundry_v1.9.0_linux_amd64.tar.gz"
-url_api = "https://api.github.com/repos/foundry-rs/foundry/releases/assets/703110190"
+checksum = "sha256:90729233bd9a683b872783ae2e3217fb56876fa2a3c37185f13e39dca8525041"
+url = "https://github.com/foundry-rs/foundry/releases/download/v1.10.0/foundry_v1.10.0_linux_amd64.tar.gz"
+url_api = "https://api.github.com/repos/foundry-rs/foundry/releases/assets/768285824"
 provenance = "github-attestations"
 
 [tools."github:foundry-rs/foundry"."platforms.linux-x64-musl-baseline"]
-checksum = "sha256:8d17599b42e3139f1a9c171be3798c4ed8e743ae17b84cc3435e57bf2a51ae99"
-url = "https://github.com/foundry-rs/foundry/releases/download/v1.9.0/foundry_v1.9.0_linux_amd64.tar.gz"
-url_api = "https://api.github.com/repos/foundry-rs/foundry/releases/assets/703110190"
+checksum = "sha256:90729233bd9a683b872783ae2e3217fb56876fa2a3c37185f13e39dca8525041"
+url = "https://github.com/foundry-rs/foundry/releases/download/v1.10.0/foundry_v1.10.0_linux_amd64.tar.gz"
+url_api = "https://api.github.com/repos/foundry-rs/foundry/releases/assets/768285824"
 provenance = "github-attestations"
 
 [[tools."github:solana-foundation/anchor"]]
